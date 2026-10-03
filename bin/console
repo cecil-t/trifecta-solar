@@ -7,6 +7,8 @@ declare(strict_types=1);
  *   docker exec -it trifecta-solar php bin/console <command>
  *
  *   migrate                      Apply pending database migrations
+ *   fix:payment-labels [--dry-run]          Name payment milestones the first import left blank
+ *   fix:completed-payments [--dry-run]      Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]       Fill blank SolarEdge warranty / rebate / VNM answers with No where known
  *   import:service <file.json> [--dry-run]   Add service tickets (never changes existing ones)
  *   backup [--keep=N]            Snapshot the database into backups/ (verified), prune to N
@@ -94,6 +96,18 @@ try {
             $res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
             foreach ($res['log'] as $line) { out($line); }
             out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+            break;
+
+        case 'fix:payment-labels':
+            $dry = in_array('--dry-run', $args, true);
+            foreach (App\Cleanup::paymentLabels($dry) as $line) { out($line); }
+            out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
+            break;
+
+        case 'fix:completed-payments':
+            $dry = in_array('--dry-run', $args, true);
+            foreach (App\Cleanup::completedPayments($dry) as $line) { out($line); }
+            out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
             break;
 
         case 'fix:question-defaults':
