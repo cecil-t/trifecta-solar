@@ -580,3 +580,19 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .rate-calc input { display: none; }
     .rate-calc label, .rate-calc-label { display: none; }
 }
+
+/* report headers: brand blue with white text */
+.report-card-body .table th { background: var(--blue); color: #fff; border-bottom: 0; }
+.rate-note { flex-basis: 100%; font-size: .82rem; color: #5b3a8a; font-weight: 600; }
+@media print {
+    .report-card-body .table th { background: #025586 !important; color: #fff !important; }
+    .rate-note { display: none; }
+}
+
+/* dashboard: label each row of summary boxes */
+.stat-group { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: .75rem; }
+.stat-group-label { font-size: .78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--blue); text-align: right; }
+@media (max-width: 760px) {
+    .stat-group { grid-template-columns: 1fr; gap: .3rem; }
+    .stat-group-label { text-align: left; }
+}

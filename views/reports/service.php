@@ -31,7 +31,8 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
         <label>Trip charge <span class="money-input">$<input type="number" id="rate-trip" value="225" min="0" step="5" inputmode="decimal"></span></label>
         <label>Hourly rate <span class="money-input">$<input type="number" id="rate-hour" value="95" min="0" step="5" inputmode="decimal"></span></label>
         <span class="muted small no-print">Not saved; reloading resets to $225 and $95.</span>
-        <span class="print-only small">$<span data-show="trip">225</span> per trip + $<span data-show="hour">95</span> per man-hour</span>
+        <span class="rate-note">The first hour is not included in the trip charge: every man-hour is priced at the hourly rate.</span>
+        <span class="print-only small">Warranty priced at $<span data-show="trip">225</span> per trip + $<span data-show="hour">95</span> per man-hour (first hour not included in the trip charge)</span>
     </div>
     <p class="hint report-hint">Tickets opened in the date range. Amount billed is what was entered on each ticket (customer or SolarInsure). Warranty cost is an estimate: trips &times; trip charge + man-hours &times; hourly rate.</p>
 

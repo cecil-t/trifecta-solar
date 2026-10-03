@@ -6,7 +6,7 @@ echo App\View::partial('reports/_filters', ['report' => $report, 'f' => $f, 'use
     <div class="rate-calc">
         <label>Estimated growth <span class="money-input"><input type="number" id="growth" value="15" step="1" inputmode="decimal">%</span></label>
         <span class="muted small no-print">Applied to each window's pace. Not saved; reloading resets to 15%.</span>
-        <span class="print-only small">Includes <span data-show="growth">15</span>% estimated growth over each window's pace.</span>
+        <span class="print-only small">Includes <span data-show="growth">15</span>% estimated growth over current pace.</span>
     </div>
     <p class="hint report-hint">Each window's pace, scaled to 12 months, plus the growth rate. The small figure under each is the flat pace with no growth. Windows end on the as-of date.</p>
     <table class="table" id="proj-table">
