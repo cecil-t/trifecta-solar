@@ -12,9 +12,16 @@ services:
     volumes:
       # Code (live: git pull on the host updates the app, no rebuild needed)
       - ./:/var/www/app
-      # The database lives in ./data and nightly snapshots in ./backups (both git-ignored)
+      # Live database in a Docker-managed volume. Synology shared folders use DSM ACLs that
+      # block the container's web user from writing, so the database cannot live in ./data.
+      - trifecta-data:/var/www/app/data
+      # Nightly snapshots land in ./backups on the NAS share (written as root by the backup task)
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://localhost/health') === false ? 1 : 0);"]
       interval: 60s
       timeout: 5s
       retries: 3
+
+volumes:
+  trifecta-data:
+    name: trifecta-data

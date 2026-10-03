@@ -1,14 +1,16 @@
 # Running the tracker on the Synology DS225+
 
 The app runs as one Docker container under **Container Manager**. The code lives in a git clone at
-`/volume1/docker/trifecta-solar`. The SQLite database is in `data/` and nightly snapshots go to `backups/`
-inside that folder; git ignores both.
+`/volume1/docker/trifecta-solar`. The live SQLite database is in a Docker-managed volume named `trifecta-data`.
+Synology shared folders use DSM ACLs that stop the container's web user from writing, which is why the
+database isn't in the share. Nightly verified snapshots go to `backups/` in the share, where Hyper Backup can reach them.
 
 ```
 /volume1/docker/trifecta-solar/
-├── data/trifecta.sqlite      <- live database (never copy this while running; use backups/)
-├── backups/trifecta-*.sqlite <- verified nightly snapshots
+├── backups/trifecta-*.sqlite <- verified nightly snapshots (this is what gets backed up offsite)
 └── ... code (git) ...
+
+Docker volume "trifecta-data"  <- live database (never copy it while running; use backups/)
 ```
 
 ---
@@ -103,13 +105,20 @@ Each run writes `backups/trifecta-YYYYMMDD-HHMMSS.sqlite` and verifies it with a
 It keeps the newest 30 snapshots.
 
 **Offsite copy:** in **Hyper Backup**, add `docker/trifecta-solar/backups` to a backup task with an
-offsite destination (Synology C2, Backblaze B2, Google Drive, and so on). Back up the `backups` folder, **not** `data`:
-a file copy of the live database can be caught mid-write, while the snapshots are always consistent.
+offsite destination (Synology C2, Backblaze B2, Google Drive, and so on). These snapshots are always consistent,
+unlike a file copy of a live database.
 
 To run a backup by hand: `docker exec trifecta-solar php bin/console backup`
 
-**Restore:** stop the container, copy the chosen snapshot over `data/trifecta.sqlite`, delete any
-`data/trifecta.sqlite-wal` and `data/trifecta.sqlite-shm` files, then start the container again.
+**Restore** (replace FILE with the snapshot name):
+
+```sh
+cd /volume1/docker/trifecta-solar
+docker compose stop
+docker run --rm --entrypoint sh -v trifecta-data:/data -v "$PWD/backups":/b trifecta-solar:latest -c \
+  'cp /b/FILE /data/trifecta.sqlite && rm -f /data/trifecta.sqlite-wal /data/trifecta.sqlite-shm && chown 33:33 /data/trifecta.sqlite'
+docker compose start
+```
 
 ## 7. Updating
 
