@@ -568,8 +568,12 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .print-only { display: none; }
 
 /* weather: four days on desktop, two on phones */
+/* phones: all four days in one row that scrolls sideways, like the nav */
 @media (max-width: 760px) {
-    .weather .wday:nth-of-type(n+3) { display: none; }
+    .weather { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 1.1rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .weather::-webkit-scrollbar { display: none; }
+    .weather-place { flex: none; font-size: .68rem; line-height: 1.2; max-width: 4.2rem; }
+    .weather .wday { flex: none; }
 }
 
 @media print {
