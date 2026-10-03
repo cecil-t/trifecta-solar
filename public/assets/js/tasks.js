@@ -177,4 +177,22 @@
     });
     applyPhones();
     phone.addEventListener('change', applyPhones);
+
+    // Green check beside Completed: fill in today's date (shown only while the date is empty).
+    function syncToday(input) {
+        input.closest('.date-wrap')?.classList.toggle('has-date', !!input.value);
+    }
+    document.querySelectorAll('.date-wrap input').forEach((input) => {
+        syncToday(input);
+        input.addEventListener('change', () => syncToday(input));
+        input.addEventListener('input', () => syncToday(input));
+    });
+    document.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-set-today]');
+        if (!b) return;
+        e.preventDefault();
+        const input = b.closest('.date-wrap').querySelector('input');
+        input.value = localToday();
+        input.dispatchEvent(new Event('change'));
+    });
 })();

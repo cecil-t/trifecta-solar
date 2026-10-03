@@ -299,7 +299,7 @@ tr.clickable { cursor: pointer; }
 .tgrid { font-size: .88rem; }
 .trow {
     display: grid; align-items: center; gap: .4rem;
-    grid-template-columns: minmax(200px, 2.2fr) 70px 124px 112px minmax(90px, .9fr) 70px minmax(140px, 2fr) 32px;
+    grid-template-columns: minmax(200px, 2.2fr) 70px 150px 112px minmax(90px, .9fr) 70px minmax(140px, 2fr) 32px;
     padding: .3rem 1rem; border-top: 1px solid var(--border); position: relative;
 }
 .phase-block { overflow: visible; }
@@ -393,11 +393,11 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
 
 @media (max-width: 1100px) {
     .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .trow { grid-template-columns: minmax(160px, 2fr) 64px 122px 110px minmax(80px, .8fr) 64px minmax(120px, 1.6fr) 32px; }
+    .trow { grid-template-columns: minmax(160px, 2fr) 64px 146px 110px minmax(80px, .8fr) 64px minmax(120px, 1.6fr) 32px; }
 }
 
 @media (min-width: 761px) and (max-width: 960px) {
-    .trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 118px 106px minmax(56px, .7fr) 56px minmax(80px, 1.3fr) 28px; }
+    .trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 142px 106px minmax(56px, .7fr) 56px minmax(80px, 1.3fr) 28px; }
     .trow input, .trow select { font-size: .8rem; padding: .25rem .3rem; }
 }
 
@@ -412,27 +412,34 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
     .eq-row input[type=text] { grid-column: 1 / -2; }
     .navmenu .usermenu-panel { left: auto; right: 0; }
 
-    /* tasks become stacked cards on phones */
+    /* tasks become compact cards on phones:
+       name ............ menu
+       completed  target  assigned
+       needed / ref #
+       note */
     .trow.thead { display: none; }
     .trow {
-        grid-template-columns: 1fr 1fr 32px;
-        grid-template-areas: "name name menu" "needed owner owner" "done target target" "ref ref ref" "note note note";
-        padding: .65rem .9rem; row-gap: .35rem;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 4.4rem 28px;
+        grid-template-areas: "name name name menu" "done target owner owner" "needed ref ref ref" "note note note note";
+        padding: .5rem .7rem; row-gap: .3rem; column-gap: .4rem;
     }
-    .trow > .tname { grid-area: name; }
-    .trow > [data-field=needed] { grid-area: needed; }
-    .trow > .needed-cell { grid-area: needed; }
-    .trow > [data-field=owner_id] { grid-area: owner; }
+    .trow > .tname { grid-area: name; font-size: .92rem; }
+    .trow > [data-field=needed], .trow > .needed-cell { grid-area: needed; }
+    .trow > .needed-cell:empty, .trow > .needed-cell[data-needed=""]:not(:has(*)), .trow > .needed-cell[data-needed="1"] { display: none; }
+    .trow > .dw-owner { grid-area: owner; }
     .trow > .dw-target { grid-area: target; }
     .trow > .dw-done { grid-area: done; }
-    .dwrap .mlabel { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; margin-bottom: .1rem; }
-    .trow > [data-field=reference] { grid-area: ref; }
+    .trow > .rollup { grid-column: 1 / 3; grid-row: 2; align-self: end; padding-bottom: .35rem; font-size: .8rem; }
+    .dwrap .mlabel { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; margin-bottom: .05rem; }
+    .trow > [data-field=reference] { grid-column: 1 / -1; grid-row: 3; }
+    .trow:has(> select[data-field=needed]) > [data-field=reference] { grid-column: 2 / -1; }
     .trow > [data-field=note] { grid-area: note; }
     .trow > .tmenu { grid-area: menu; }
-    .trow > .rollup { grid-area: target; }
     .trow > span:empty { display: none; }
-    .trow-sub { border-left: 3px solid var(--blue-50); }
-    .trow-sub .tname { padding-left: .2rem; }
+    .trow input, .trow select { padding: .28rem .35rem; font-size: .84rem; }
+    .trow select[data-field=owner_id] { padding-right: .1rem; }
+    .trow-sub { margin-left: 1rem; border-left: 3px solid #b9cbd8; padding-left: .6rem; }
+    .trow-sub .tname { padding-left: 0; font-size: .88rem; }
     .comment-form { flex-direction: column; align-items: stretch; }
     .cell-note { max-width: 180px; }
 }
@@ -731,3 +738,11 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .phase-block.is-collapsed .phase-title { border-radius: var(--radius); }
     .tasks-wrap { gap: .6rem; }
 }
+
+/* Completed date: green check beside an empty date fills in today */
+.date-wrap { display: flex; align-items: center; gap: .3rem; }
+.date-wrap input { flex: 1 1 auto; min-width: 0; }
+.today-btn { flex: none; width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--green); color: #fff; font-size: .72rem; font-weight: 800; padding: 0; cursor: pointer; display: grid; place-items: center; }
+.today-btn:hover { filter: brightness(.92); }
+.date-wrap.has-date .today-btn { display: none; }
+.is-na .today-btn, .parent-na .today-btn { display: none; }

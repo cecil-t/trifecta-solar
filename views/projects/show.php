@@ -181,7 +181,7 @@ $back = '/projects/' . (int) $p['id'];
             </div>
             <div class="tgrid">
                 <div class="trow thead">
-                    <span><?= e($phaseLabel) ?></span><span>Needed</span><span>Completed</span><span class="th-target">Target</span><span>Ref #</span><span>Owner</span><span>Note</span><span></span>
+                    <span><?= e($phaseLabel) ?></span><span>Needed</span><span>Completed</span><span class="th-target">Target</span><span>Ref #</span><span>Assigned</span><span>Note</span><span></span>
                 </div>
                 <?php foreach ($tasks as $t): $hasSubs = (bool) $t['subs']; ?>
                     <div class="task" id="task-<?= (int) $t['id'] ?>">
@@ -199,13 +199,13 @@ $back = '/projects/' . (int) $p['id'];
                                 ?>
                                 <span class="rollup"><?= $sd ?>/<?= count($active) ?> completed</span>
                             <?php else: ?>
-                                <label class="dwrap dw-done"><span class="mlabel">Completed</span><input type="date" data-field="done_date" value="<?= e($t['done_date']) ?>" aria-label="Done date"></label>
+                                <label class="dwrap dw-done"><span class="mlabel">Completed</span><span class="date-wrap"><input type="date" data-field="done_date" value="<?= e($t['done_date']) ?>" aria-label="Completed date"><button type="button" class="today-btn" data-set-today title="Completed today" aria-label="Mark completed today">&#10003;</button></span></label>
                                 <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($t['target_date']) ?>" aria-label="Target date" class="<?= $overdue($t) ?>"></label>
                             <?php endif; ?>
                             <?php if ($t['ref_label']): ?>
                                 <input type="text" data-field="reference" value="<?= e($t['reference']) ?>" placeholder="<?= e($t['ref_label']) ?>" aria-label="<?= e($t['ref_label']) ?>">
                             <?php else: ?><span></span><?php endif; ?>
-                            <select data-field="owner_id" aria-label="Owner"><?= $ownerOpts($t['owner_id']) ?></select>
+                            <label class="dwrap dw-owner"><span class="mlabel">Assigned to</span><select data-field="owner_id" aria-label="Assigned to"><?= $ownerOpts($t['owner_id']) ?></select></label>
                             <input type="text" data-field="note" value="<?= e($t['note']) ?>" placeholder="Note" aria-label="Note" title="<?= $t['note_updated_at'] ? 'Edited ' . e(fmt_dt($t['note_updated_at'])) : '' ?>">
                             <details class="tmenu">
                                 <summary aria-label="More">&#8943;</summary>
@@ -228,10 +228,10 @@ $back = '/projects/' . (int) $p['id'];
                             <div class="trow trow-sub <?= $s['resolved'] ? 'is-resolved' : '' ?> <?= (string) $s['needed'] === '0' ? 'is-na' : '' ?>" data-id="<?= (int) $s['id'] ?>" id="task-<?= (int) $s['id'] ?>">
                                 <span class="tname"><span class="dot"></span><?= e($s['name']) ?> <?= $gateBadge($s['gate']) ?></span>
                                 <span class="needed-cell" data-needed="<?= e((string) $s['needed']) ?>"><?= (string) $s['needed'] === '0' ? $naChip : '' ?></span>
-                                <label class="dwrap dw-done"><span class="mlabel">Completed</span><input type="date" data-field="done_date" value="<?= e($s['done_date']) ?>" aria-label="Done date"></label>
+                                <label class="dwrap dw-done"><span class="mlabel">Completed</span><span class="date-wrap"><input type="date" data-field="done_date" value="<?= e($s['done_date']) ?>" aria-label="Completed date"><button type="button" class="today-btn" data-set-today title="Completed today" aria-label="Mark completed today">&#10003;</button></span></label>
                                 <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date" class="<?= (string) $t['needed'] === '0' ? '' : $overdue($s) ?>"></label>
                                 <span></span>
-                                <select data-field="owner_id" aria-label="Owner"><?= $ownerOpts($s['owner_id']) ?></select>
+                                <label class="dwrap dw-owner"><span class="mlabel">Assigned to</span><select data-field="owner_id" aria-label="Assigned to"><?= $ownerOpts($s['owner_id']) ?></select></label>
                                 <input type="text" data-field="note" value="<?= e($s['note']) ?>" placeholder="Note" aria-label="Note" title="<?= $s['note_updated_at'] ? 'Edited ' . e(fmt_dt($s['note_updated_at'])) : '' ?>">
                                 <details class="tmenu">
                                     <summary aria-label="More">&#8943;</summary>
