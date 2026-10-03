@@ -7,6 +7,7 @@ declare(strict_types=1);
  *   docker exec -it trifecta-solar php bin/console <command>
  *
  *   migrate                      Apply pending database migrations
+ *   fix:question-defaults [--dry-run]       Fill blank SolarEdge warranty / rebate / VNM answers with No where known
  *   import:service <file.json> [--dry-run]   Add service tickets (never changes existing ones)
  *   backup [--keep=N]            Snapshot the database into backups/ (verified), prune to N
  *   user:list                    List users
@@ -93,6 +94,12 @@ try {
             $res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
             foreach ($res['log'] as $line) { out($line); }
             out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+            break;
+
+        case 'fix:question-defaults':
+            $dry = in_array('--dry-run', $args, true);
+            foreach (App\Cleanup::questionDefaults($dry) as $line) { out($line); }
+            out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
             break;
 
         case 'import:service':

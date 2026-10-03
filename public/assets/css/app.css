@@ -727,17 +727,23 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .filters .btn { padding: .4rem .7rem; flex: none; }
 }
 
-/* phone: collapsible phases on the project page */
-.phase-caret { display: none; }
+/* collapsible phases on the project page (click the phase title) */
+.phase-block .phase-title { cursor: pointer; user-select: none; }
+.phase-caret { display: inline-block; color: var(--blue); font-size: .95rem; width: .9rem; }
+.phase-caret::before { content: "\25BE"; }
+.phase-block.is-collapsed .phase-caret::before { content: "\25B8"; }
+.phase-block.is-collapsed .tgrid, .phase-block.is-collapsed .phase-add { display: none; }
+.phase-block.is-collapsed .phase-title { padding-bottom: .9rem; }
+.phase-block .phase-title:hover h2 { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 @media (max-width: 760px) {
-    .phase-block .phase-title { cursor: pointer; align-items: center; user-select: none; }
-    .phase-caret { display: inline-block; color: #fff; font-size: .95rem; width: .9rem; }
-    .phase-caret::before { content: "\25BE"; }
-    .phase-block.is-collapsed .phase-caret::before { content: "\25B8"; }
-    .phase-block.is-collapsed .tgrid, .phase-block.is-collapsed .phase-add { display: none; }
-    .phase-block.is-collapsed .phase-title { border-radius: var(--radius); }
+    .phase-block .phase-title { align-items: center; }
+    .phase-caret { color: #fff; }
+    .phase-block.is-collapsed .phase-title { border-radius: var(--radius); padding-bottom: .6rem; }
     .tasks-wrap { gap: .6rem; }
 }
+
+/* phone numbers never break mid-number; the whole number moves to the next line */
+a[href^="tel:"] { white-space: nowrap; }
 
 /* Completed date: green check beside an empty date fills in today */
 .date-wrap { display: flex; align-items: center; gap: .3rem; }

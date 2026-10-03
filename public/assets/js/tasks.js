@@ -143,40 +143,39 @@
     setTopbarHeight();
     window.addEventListener('resize', setTopbarHeight);
 
-    // Phones: phases start collapsed except the current one; tap the phase bar to open or close. Open phases are remembered
-    // for this project during the browser session, and a #task-123 link opens its phase.
+    // Collapsible phases. Phones start with only the current phase open; desktop starts with
+    // every phase open. Click a phase bar to open or close it; choices are remembered for this
+    // project during the browser session (separately for phone and desktop widths), and a
+    // #task-123 link always opens its phase.
     const phone = window.matchMedia('(max-width: 760px)');
-    const key = 'open-phases-' + projectId;
-    // Until the phases are toggled on this project, open the project's current phase.
     const current = 'phase-' + (document.getElementById('tasks')?.dataset.currentPhase || '');
+    const allPhases = [...document.querySelectorAll('.phase-block')].map((b) => b.id);
+    const key = () => 'open-phases-' + projectId + (phone.matches ? '-m' : '-d');
     const readOpen = () => {
         try {
-            const saved = sessionStorage.getItem(key);
+            const saved = sessionStorage.getItem(key());
             if (saved !== null) return JSON.parse(saved);
         } catch (e) { /* storage blocked */ }
-        return [current];
+        return phone.matches ? [current] : allPhases;
     };
-    const writeOpen = (ids) => { try { sessionStorage.setItem(key, JSON.stringify(ids)); } catch (e) { /* private mode */ } };
-    function applyPhones() {
+    const writeOpen = (ids) => { try { sessionStorage.setItem(key(), JSON.stringify(ids)); } catch (e) { /* private mode */ } };
+    function applyPhases() {
         const open = readOpen();
         const target = location.hash ? document.querySelector(location.hash) : null;
         document.querySelectorAll('.phase-block').forEach((block) => {
             const keepOpen = open.includes(block.id) || (target && block.contains(target));
-            block.classList.toggle('is-collapsed', phone.matches && !keepOpen);
+            block.classList.toggle('is-collapsed', !keepOpen);
         });
     }
     document.querySelectorAll('[data-phase-toggle]').forEach((title) => {
         title.addEventListener('click', () => {
-            if (!phone.matches) return;
             const block = title.closest('.phase-block');
             block.classList.toggle('is-collapsed');
-            const open = new Set(readOpen());
-            block.classList.contains('is-collapsed') ? open.delete(block.id) : open.add(block.id);
-            writeOpen([...open]);
+            writeOpen([...document.querySelectorAll('.phase-block:not(.is-collapsed)')].map((b) => b.id));
         });
     });
-    applyPhones();
-    phone.addEventListener('change', applyPhones);
+    applyPhases();
+    phone.addEventListener('change', applyPhases);
 
     // Beside Completed: a green check fills in today while empty; an x clears a set date.
     function syncToday(input) {
