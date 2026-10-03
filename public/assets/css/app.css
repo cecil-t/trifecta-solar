@@ -497,8 +497,6 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
 @media (max-width: 760px) {
     .summary-3 { grid-template-columns: 1fr; }
     .visit-add label, .visit-add label.short { flex: 1 1 40%; }
-    .table-service th:nth-child(4), .table-service td:nth-child(4),
-    .table-service th:nth-child(6), .table-service td:nth-child(6) { display: none; }
 }
 .stat-service { border-left-color: #7a5ea8; }
 .stat-service.stat-orange { border-left-color: var(--orange); }
@@ -645,3 +643,75 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .trow.thead .th-target { color: #a3adb2; font-weight: 600; }
 .chip-na { background: #eceff0; color: #7d8a91; font-size: .68rem; letter-spacing: .04em; }
 .needed-cell { display: flex; align-items: center; min-height: 30px; }
+
+/* project page: stronger phase header bar, sub-tasks set off from their parent */
+.trow.thead { background: var(--blue); color: #fff; border-top: 0; }
+.trow.thead > span:first-child { color: #fff; }
+.trow.thead .th-target { color: #b9cfe0; }
+.trow-sub { background: #eef2f0; }
+.trow-sub input, .trow-sub select { background: #fff; }
+.trow-sub .tname { color: #2b3940; }
+
+/* edit forms: Save stays in reach at the bottom of the screen */
+.project-form .form-actions {
+    position: sticky; bottom: 0; z-index: 15; margin: .5rem -1px 2rem; padding: .7rem 1rem;
+    background: rgba(255, 255, 255, .96); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 -4px 16px rgba(16, 32, 40, .08); backdrop-filter: blur(4px);
+}
+
+@media (max-width: 760px) {
+    /* dashboard boxes: one line per label */
+    .stat-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .stat { min-width: 0; padding: .45rem .65rem; gap: .4rem; }
+    .stat-sub .stat-num { font-size: 1.2rem; }
+
+    /* phase headers are hidden on phones; show the phase name bar instead */
+    .phase-block .phase-title { background: var(--blue); border-radius: var(--radius) var(--radius) 0 0; padding: .6rem .9rem; }
+    .phase-block .phase-title h2, .phase-block .phase-title .muted { color: #fff; }
+
+    /* compact project list: # | name + note | status + days */
+    .table-projects thead { display: none; }
+    .table-projects tbody tr { display: grid; grid-template-columns: 3.3rem minmax(0, 1fr) auto; column-gap: .55rem; row-gap: .1rem; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+    .table-projects td { display: none; padding: 0; border: 0; white-space: normal; }
+    .table-projects td:nth-child(1) { display: block; grid-column: 1; grid-row: 1 / span 2; font-size: .88rem; padding-top: .1rem; }
+    .table-projects td:nth-child(2) { display: block; grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
+    .table-projects td:nth-child(2) > a:first-child { font-weight: 600; }
+    .table-projects td:nth-child(2) .cell-note { max-width: none; font-size: .8rem; }
+    .table-projects td:nth-child(2) .drive-link { font-size: .65rem; padding: 0 .3rem; }
+    .table-projects td:nth-child(7) { display: flex; flex-direction: column; align-items: flex-end; gap: .15rem; grid-column: 3; grid-row: 1; }
+    .table-projects td:nth-child(8) { display: block; grid-column: 3; grid-row: 2; text-align: right; font-size: .75rem; color: var(--muted); }
+    .table-projects td:nth-child(8):not(:empty)::after { content: " days"; }
+    .table-projects .phase, .table-projects .chip { font-size: .66rem; padding: .08rem .45rem; }
+
+    /* compact service list: # / opened | customer / problem | status / amount */
+    .table-service thead { display: none; }
+    .table-service tbody tr { display: grid; grid-template-columns: 4.1rem minmax(0, 1fr) auto; column-gap: .55rem; row-gap: .1rem; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+    .table-service td { display: none; padding: 0; border: 0; white-space: normal; }
+    .table-service td:nth-child(1) { display: block; grid-column: 1; grid-row: 1; font-size: .85rem; }
+    .table-service td:nth-child(2) { display: block; grid-column: 1; grid-row: 2; font-size: .72rem; color: var(--muted); }
+    .table-service td:nth-child(3) { display: block; grid-column: 2; grid-row: 1; min-width: 0; font-weight: 600; }
+    .table-service td:nth-child(3) .muted { display: none; }
+    .table-service td:nth-child(4) { display: block; grid-column: 2; grid-row: 2; min-width: 0; font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: none; }
+    .table-service td:nth-child(8) { display: block; grid-column: 3; grid-row: 2; text-align: right; font-size: .78rem; }
+    .table-service td:nth-child(9) { display: block; grid-column: 3; grid-row: 1; text-align: right; }
+    .table-service td:nth-child(9) .muted { display: none; }
+    .table-service .chip { font-size: .66rem; padding: .08rem .45rem; }
+
+    /* year headers and empty rows keep a normal full-width layout */
+    .table-projects .year-head tr, .table-service .year-head tr { display: block; padding: 0; }
+    .table-projects .year-head td, .table-service .year-head td,
+    .table-projects td.empty, .table-service td.empty { display: block; }
+}
+@media (max-width: 760px) {
+    .table-projects .drive-link { display: none; }
+    .page-head { margin-bottom: .6rem; align-items: center; }
+    .page-head h1 { font-size: 1.45rem; margin: 0; }
+    .page-head .btn { padding: .4rem .85rem; font-size: .85rem; }
+    .tabs { margin-bottom: .6rem; }
+    .tab { padding: .45rem .6rem; font-size: .85rem; }
+    .filters { gap: .4rem; margin-bottom: .6rem; flex-wrap: nowrap; }
+    .filters input[type=search], .filters select { padding: .42rem .55rem; font-size: .88rem; min-width: 0; }
+    .filters input[type=search] { flex: 1 1 auto; }
+    .filters select { flex: 0 1 40%; }
+    .filters .btn { padding: .4rem .7rem; flex: none; }
+}

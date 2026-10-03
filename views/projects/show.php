@@ -146,8 +146,8 @@ $back = '/projects/' . (int) $p['id'];
     <section class="card">
         <h2>Contract</h2>
         <dl class="kv">
-            <dt>Price</dt><dd><?= e(Projects::money($p['contract_price_cents'] !== null ? (int) $p['contract_price_cents'] : null)) ?: '<span class="muted">Not set</span>' ?></dd>
-            <?php if ($totals['price_per_watt']): ?><dt>$/W</dt><dd>$<?= number_format($totals['price_per_watt'], 2) ?></dd><?php endif; ?>
+            <dt>Price</dt><dd><?= $p['contract_price_cents'] !== null ? '<strong class="amount">' . e(Projects::money((int) $p['contract_price_cents'])) . '</strong>' : '<span class="muted">Not set</span>' ?></dd>
+            <?php if ($totals['price_per_watt']): ?><dt>$/W</dt><dd><strong class="amount">$<?= number_format($totals['price_per_watt'], 2) ?></strong></dd><?php endif; ?>
             <dt>Funding</dt><dd><?= e($funding) ?: '<span class="muted">Not set</span>' ?><?= $p['funding_note'] ? '<div class="muted small">' . e($p['funding_note']) . '</div>' : '' ?></dd>
             <dt>Tax exempt</dt><dd><?= $p['tax_exempt'] === null ? '<span class="muted">Unknown</span>' : ((int) $p['tax_exempt'] ? 'Yes' : 'No') ?></dd>
             <dt>Signed</dt><dd><?= e(fmt_date($status['start_date'])) ?: '<span class="muted">Not set</span>' ?></dd>
