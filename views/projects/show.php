@@ -174,7 +174,8 @@ $back = '/projects/' . (int) $p['id'];
         $phaseTemplates = array_filter($templateTasks, static fn ($t) => $t['phase'] === $phaseKey);
         ?>
         <section class="card card-flush phase-block" id="phase-<?= $phaseKey ?>">
-            <div class="phase-title">
+            <div class="phase-title" data-phase-toggle>
+                <span class="phase-caret" aria-hidden="true"></span>
                 <h2><?= e($phaseLabel) ?></h2>
                 <span class="muted small"><?= $done ?> of <?= count($tasks) ?> resolved</span>
             </div>

@@ -142,4 +142,31 @@
     }
     setTopbarHeight();
     window.addEventListener('resize', setTopbarHeight);
+
+    // Phones: phases start collapsed; tap the phase bar to open. Open phases are remembered
+    // for this project during the browser session, and a #task-123 link opens its phase.
+    const phone = window.matchMedia('(max-width: 760px)');
+    const key = 'open-phases-' + projectId;
+    const readOpen = () => { try { return JSON.parse(sessionStorage.getItem(key) || '[]'); } catch (e) { return []; } };
+    const writeOpen = (ids) => { try { sessionStorage.setItem(key, JSON.stringify(ids)); } catch (e) { /* private mode */ } };
+    function applyPhones() {
+        const open = readOpen();
+        const target = location.hash ? document.querySelector(location.hash) : null;
+        document.querySelectorAll('.phase-block').forEach((block) => {
+            const keepOpen = open.includes(block.id) || (target && block.contains(target));
+            block.classList.toggle('is-collapsed', phone.matches && !keepOpen);
+        });
+    }
+    document.querySelectorAll('[data-phase-toggle]').forEach((title) => {
+        title.addEventListener('click', () => {
+            if (!phone.matches) return;
+            const block = title.closest('.phase-block');
+            block.classList.toggle('is-collapsed');
+            const open = new Set(readOpen());
+            block.classList.contains('is-collapsed') ? open.delete(block.id) : open.add(block.id);
+            writeOpen([...open]);
+        });
+    });
+    applyPhones();
+    phone.addEventListener('change', applyPhones);
 })();

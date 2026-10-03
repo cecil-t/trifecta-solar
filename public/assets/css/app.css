@@ -715,3 +715,15 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .filters select { flex: 0 1 40%; }
     .filters .btn { padding: .4rem .7rem; flex: none; }
 }
+
+/* phone: collapsible phases on the project page */
+.phase-caret { display: none; }
+@media (max-width: 760px) {
+    .phase-block .phase-title { cursor: pointer; align-items: center; user-select: none; }
+    .phase-caret { display: inline-block; color: #fff; font-size: .95rem; width: .9rem; }
+    .phase-caret::before { content: "\25BE"; }
+    .phase-block.is-collapsed .phase-caret::before { content: "\25B8"; }
+    .phase-block.is-collapsed .tgrid, .phase-block.is-collapsed .phase-add { display: none; }
+    .phase-block.is-collapsed .phase-title { border-radius: var(--radius); }
+    .tasks-wrap { gap: .6rem; }
+}
