@@ -41,7 +41,20 @@ final class Db
     public static function run(string $sql, array $params = []): PDOStatement
     {
         $stmt = self::pdo()->prepare($sql);
-        $stmt->execute($params);
+        // Bind with real types: SQLite compares expressions without column affinity
+        // (e.g. COALESCE(a, b) = ?) strictly, so an int bound as text would never match.
+        $i = 0;
+        foreach ($params as $key => $value) {
+            $param = is_int($key) ? ++$i : $key;
+            $type = match (true) {
+                is_int($value)  => PDO::PARAM_INT,
+                is_bool($value) => PDO::PARAM_BOOL,
+                $value === null => PDO::PARAM_NULL,
+                default         => PDO::PARAM_STR,
+            };
+            $stmt->bindValue($param, $value, $type);
+        }
+        $stmt->execute();
         return $stmt;
     }
 

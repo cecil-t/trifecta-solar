@@ -1,0 +1,286 @@
+<?php
+declare(strict_types=1);
+
+namespace App;
+
+/**
+ * Project task trees: instantiate from the template, roll up status, and derive the
+ * project's phase from gate items. Order is never enforced; phases are groupings.
+ */
+final class Tasks
+{
+    public const PHASES = [
+        'pre_install'  => 'Pre-Install',
+        'installation' => 'Installation',
+        'closeout'     => 'Closeout',
+        'payments'     => 'Payments',
+    ];
+
+    public const GATES = [
+        'start_clock'     => 'Starts day counter',
+        'install_prereq'  => 'Required for Clear to install',
+        'install_started' => 'Moves to Installation',
+        'pto'             => 'Moves to Closeout',
+    ];
+
+    /** Copy the active template into a new project. */
+    public static function instantiate(int $projectId, bool $hasPv, bool $hasBatteries): void
+    {
+        $templates = Db::all('SELECT * FROM task_templates WHERE is_active = 1 ORDER BY parent_id IS NOT NULL, sort_order, id');
+        $applies = static fn (array $t) => $t['applies_when'] === 'all'
+            || ($t['applies_when'] === 'pv' && $hasPv)
+            || ($t['applies_when'] === 'storage' && $hasBatteries);
+
+        $map = []; // template id => project task id
+        $parentOwner = [];
+        foreach ($templates as $t) {
+            if (!$applies($t)) {
+                continue;
+            }
+            if ($t['parent_id'] !== null && !isset($map[$t['parent_id']])) {
+                continue; // parent was skipped or inactive
+            }
+            $parentId = $t['parent_id'] !== null ? $map[$t['parent_id']] : null;
+            $owner = $t['default_owner_id'] ?? ($parentId ? $parentOwner[$parentId] ?? null : null);
+            $id = Db::insert('project_tasks', [
+                'project_id'  => $projectId,
+                'parent_id'   => $parentId,
+                'template_id' => $t['id'],
+                'name'        => $t['name'],
+                'phase'       => $t['phase'],
+                'sort_order'  => $t['sort_order'],
+                'needed'      => $t['default_needed'],
+                'gate'        => $t['gate'],
+                'ref_label'   => $t['ref_label'],
+                'owner_id'    => $owner,
+            ]);
+            $map[$t['id']] = $id;
+            $parentOwner[$id] = $owner;
+        }
+    }
+
+    /** Copy one template task (and its active sub-tasks) into an existing project. */
+    public static function addFromTemplate(int $projectId, int $templateId): ?int
+    {
+        $t = Db::one('SELECT * FROM task_templates WHERE id = ? AND parent_id IS NULL', [$templateId]);
+        if (!$t) {
+            return null;
+        }
+        $sort = (int) Db::value('SELECT COALESCE(MAX(sort_order), 0) + 10 FROM project_tasks WHERE project_id = ? AND parent_id IS NULL AND phase = ?', [$projectId, $t['phase']]);
+        $id = Db::insert('project_tasks', [
+            'project_id' => $projectId, 'template_id' => $t['id'], 'name' => $t['name'], 'phase' => $t['phase'],
+            'sort_order' => $sort, 'needed' => $t['default_needed'], 'gate' => $t['gate'],
+            'ref_label' => $t['ref_label'], 'owner_id' => $t['default_owner_id'],
+        ]);
+        foreach (Db::all('SELECT * FROM task_templates WHERE parent_id = ? AND is_active = 1 ORDER BY sort_order', [$templateId]) as $s) {
+            Db::insert('project_tasks', [
+                'project_id' => $projectId, 'parent_id' => $id, 'template_id' => $s['id'], 'name' => $s['name'],
+                'phase' => $t['phase'], 'sort_order' => $s['sort_order'], 'needed' => $s['default_needed'],
+                'gate' => $s['gate'], 'owner_id' => $s['default_owner_id'] ?? $t['default_owner_id'],
+            ]);
+        }
+        return $id;
+    }
+
+    /** Duplicate a top-level task with blank dates/references (e.g. a second utility upgrade). */
+    public static function duplicate(int $taskId): ?int
+    {
+        $t = Db::one('SELECT * FROM project_tasks WHERE id = ? AND parent_id IS NULL', [$taskId]);
+        if (!$t) {
+            return null;
+        }
+        $fresh = static fn (array $r, ?int $parent, string $name) => [
+            'project_id' => $r['project_id'], 'parent_id' => $parent, 'template_id' => $r['template_id'],
+            'name' => $name, 'phase' => $r['phase'], 'sort_order' => $r['sort_order'] + ($parent ? 0 : 1),
+            'needed' => $r['needed'], 'gate' => $r['gate'], 'ref_label' => $r['ref_label'], 'owner_id' => $r['owner_id'],
+        ];
+        $count = (int) Db::value('SELECT COUNT(*) FROM project_tasks WHERE project_id = ? AND parent_id IS NULL AND (name = ? OR name LIKE ?)', [$t['project_id'], $t['name'], $t['name'] . ' #%']);
+        $baseName = preg_replace('/ #\d+$/', '', $t['name']);
+        $newId = Db::insert('project_tasks', $fresh($t, null, $baseName . ' #' . ($count + 1)));
+        foreach (Db::all('SELECT * FROM project_tasks WHERE parent_id = ? ORDER BY sort_order, id', [$taskId]) as $s) {
+            Db::insert('project_tasks', $fresh($s, $newId, $s['name']));
+        }
+        return $newId;
+    }
+
+    /** All tasks for the given projects, keyed by project id => flat list. */
+    public static function forProjects(array $projectIds): array
+    {
+        if (!$projectIds) {
+            return [];
+        }
+        $in = implode(',', array_map('intval', $projectIds));
+        $out = [];
+        foreach (Db::all("SELECT * FROM project_tasks WHERE project_id IN ($in) ORDER BY sort_order, id") as $row) {
+            $out[(int) $row['project_id']][] = $row;
+        }
+        return $out;
+    }
+
+    /** Build [phase => [task + 'subs' => [...] + 'resolved' => bool]] from a flat list. */
+    public static function tree(array $rows): array
+    {
+        $byParent = [];
+        foreach ($rows as $r) {
+            $byParent[$r['parent_id'] ?? 0][] = $r;
+        }
+        $tree = array_fill_keys(array_keys(self::PHASES), []);
+        foreach ($byParent[0] ?? [] as $t) {
+            $t['subs'] = $byParent[$t['id']] ?? [];
+            foreach ($t['subs'] as &$s) {
+                $s['resolved'] = self::leafResolved($s) || $t['needed'] === 0 || $t['needed'] === '0';
+            }
+            unset($s);
+            $t['resolved'] = self::taskResolved($t);
+            $tree[$t['phase']][] = $t;
+        }
+        return $tree;
+    }
+
+    public static function leafResolved(array $r): bool
+    {
+        return (string) $r['needed'] === '0' || !empty($r['done_date']);
+    }
+
+    public static function taskResolved(array $t): bool
+    {
+        if ((string) $t['needed'] === '0') {
+            return true;
+        }
+        if (!$t['subs']) {
+            return !empty($t['done_date']);
+        }
+        foreach ($t['subs'] as $s) {
+            if (!self::leafResolved($s)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Derive project status from its tasks.
+     * @return array{phase:string, clear_to_install:?bool, start_date:?string, pto_date:?string, days:?int, complete:bool, open_count:int}
+     */
+    public static function status(array $project, array $rows): array
+    {
+        $tree = self::tree($rows);
+        $parents = [];
+        foreach ($rows as $r) {
+            $parents[$r['id']] = $r;
+        }
+        $active = static function (array $r) use ($parents): bool {
+            if ((string) $r['needed'] === '0') {
+                return false;
+            }
+            $p = $r['parent_id'] ? ($parents[$r['parent_id']] ?? null) : null;
+            return !($p && (string) $p['needed'] === '0');
+        };
+
+        $start = $installStarted = $pto = null;
+        $prereqGroups = [];
+        foreach ($rows as $r) {
+            if (!$r['gate']) {
+                continue;
+            }
+            switch ($r['gate']) {
+                case 'start_clock':
+                    $start = $start ?? ($r['done_date'] ?: null);
+                    break;
+                case 'install_started':
+                    if ($r['done_date']) { $installStarted = $installStarted ?? $r['done_date']; }
+                    break;
+                case 'pto':
+                    if ($r['done_date']) { $pto = $pto ?? $r['done_date']; }
+                    break;
+                case 'install_prereq':
+                    $group = $r['parent_id'] ?: $r['id'];
+                    $prereqGroups[$group] ??= ['any_done' => false, 'any_active' => false];
+                    if ($active($r)) {
+                        $prereqGroups[$group]['any_active'] = true;
+                        if ($r['done_date']) { $prereqGroups[$group]['any_done'] = true; }
+                    }
+                    break;
+            }
+        }
+        $clear = null;
+        if ($prereqGroups) {
+            $clear = true;
+            foreach ($prereqGroups as $g) {
+                if ($g['any_active'] && !$g['any_done']) {
+                    $clear = false;
+                }
+            }
+        }
+
+        $complete = true;
+        foreach (['closeout', 'payments'] as $ph) {
+            foreach ($tree[$ph] as $t) {
+                if (!$t['resolved']) { $complete = false; }
+            }
+        }
+
+        $phase = match (true) {
+            $project['hold_state'] === 'cancelled' => 'cancelled',
+            $pto !== null && $complete             => 'complete',
+            $pto !== null                          => 'closeout',
+            $installStarted !== null               => 'installation',
+            default                                => 'pre_install',
+        };
+
+        $days = null;
+        if ($start) {
+            $end = $pto ?: date('Y-m-d');
+            $days = (int) floor((strtotime($end) - strtotime($start)) / 86400);
+        }
+
+        $open = 0;
+        foreach ($tree as $tasks) {
+            foreach ($tasks as $t) {
+                if (!$t['resolved']) { $open++; }
+            }
+        }
+
+        return [
+            'phase' => $phase, 'clear_to_install' => $clear, 'start_date' => $start,
+            'pto_date' => $pto, 'install_started' => $installStarted, 'days' => $days,
+            'complete' => $complete, 'open_count' => $open, 'tree' => $tree,
+        ];
+    }
+
+    public const PHASE_LABELS = [
+        'pre_install' => 'Pre-Install', 'installation' => 'Installation', 'closeout' => 'Closeout',
+        'complete' => 'Complete', 'cancelled' => 'Cancelled',
+    ];
+
+    /**
+     * Open items owned by a user across active projects:
+     *  - leaf items (sub-tasks, or tasks without sub-tasks) still needed or unanswered and not done;
+     *    sub-tasks count only once their task is answered "yes", and inherit the task's owner
+     *  - tasks with sub-tasks whose "needed" question is still unanswered (e.g. Utility upgrade?)
+     */
+    public static function openItemsFor(int $userId, int $limit = 100): array
+    {
+        return Db::all(
+            "SELECT t.*, p.project_number, p.name AS project_name, p.id AS pid,
+                    parent.name AS parent_name,
+                    EXISTS (SELECT 1 FROM project_tasks c WHERE c.parent_id = t.id) AS has_subs
+             FROM project_tasks t
+             JOIN projects p ON p.id = t.project_id
+             LEFT JOIN project_tasks parent ON parent.id = t.parent_id
+             WHERE COALESCE(p.hold_state, '') <> 'cancelled'
+               AND COALESCE(t.owner_id, parent.owner_id) = ?
+               AND t.done_date IS NULL
+               AND COALESCE(t.needed, -1) <> 0
+               AND (
+                    (parent.id IS NULL AND (t.needed IS NULL OR NOT EXISTS (SELECT 1 FROM project_tasks c WHERE c.parent_id = t.id)))
+                 OR (parent.id IS NOT NULL AND parent.needed = 1)
+               )
+             ORDER BY t.target_date IS NULL, t.target_date, p.project_number,
+                      CASE t.phase WHEN 'pre_install' THEN 1 WHEN 'installation' THEN 2 WHEN 'closeout' THEN 3 ELSE 4 END,
+                      COALESCE(parent.sort_order, t.sort_order), COALESCE(parent.id, t.id), t.sort_order
+             LIMIT " . (int) $limit,
+            [$userId]
+        );
+    }
+}

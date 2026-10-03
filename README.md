@@ -13,6 +13,16 @@ Internal project and service tracker for Trifecta Solar. It replaces the Project
 - First-run setup page, admin user management, and My account
 - Unified activity log (`activity_log`): comments, plus automatic change and event entries for every tracked field
 - Lookup tables: PA/MD/DE counties, utilities, and funding sources
+- **Projects:** list with phase tabs and filters, create/edit (customer and municipality can be added inline),
+  module/inverter/battery lines with computed DC/AC kW, ratio and $/W, and a running project log with comments
+- **Tasks:** admin-editable template (task + sub-task, gates, reference # labels, default owners) copied into each
+  new project; per-project tasks are editable inline (needed / target / done / ref # / owner / note), with custom
+  tasks, duplicates (e.g. a second utility upgrade), and add-from-template
+- **Status:** Installation when install starts, Closeout at PTO, Complete when closeout and payments are resolved;
+  "Clear to install" when the building permit and interconnection approval (conditional or full) are in
+- Customers and contacts (anyone), third-party directory (admins), municipalities unique per county (anyone adds,
+  admins set usual zoning / plan review / inspection providers)
+- Dashboard with phase counts and "My open items" (everything assigned to you that is still open)
 - Verified nightly backup command, health endpoint, and installable PWA shell (the PWA needs HTTPS)
 
 ## Layout

@@ -14,10 +14,16 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 use App\Auth;
 use App\Config;
 use App\Controllers\AccountController;
+use App\Controllers\ActivityController;
 use App\Controllers\AuthController;
+use App\Controllers\ContactController;
 use App\Controllers\DashboardController;
 use App\Controllers\HealthController;
+use App\Controllers\MunicipalityController;
+use App\Controllers\OrganizationController;
+use App\Controllers\ProjectController;
 use App\Controllers\SetupController;
+use App\Controllers\TemplateController;
 use App\Controllers\UserController;
 use App\Migrator;
 use App\Router;
@@ -62,6 +68,45 @@ $r->get('/users/{id}', [UserController::class, 'edit'], 'admin');
 $r->post('/users/{id}', [UserController::class, 'update'], 'admin');
 $r->post('/users/{id}/password', [UserController::class, 'setPassword'], 'admin');
 $r->post('/users/{id}/revoke-devices', [UserController::class, 'revokeDevices'], 'admin');
+
+// Projects
+$r->get('/projects', [ProjectController::class, 'index']);
+$r->get('/projects/new', [ProjectController::class, 'create']);
+$r->post('/projects', [ProjectController::class, 'store']);
+$r->get('/projects/{id}', [ProjectController::class, 'show']);
+$r->get('/projects/{id}/edit', [ProjectController::class, 'edit']);
+$r->post('/projects/{id}', [ProjectController::class, 'update']);
+$r->post('/projects/{id}/comments', [ProjectController::class, 'comment']);
+$r->post('/projects/{id}/tasks', [ProjectController::class, 'addTask']);
+$r->post('/projects/{id}/tasks/from-template', [ProjectController::class, 'addFromTemplate']);
+$r->post('/projects/{id}/tasks/{taskId}', [ProjectController::class, 'updateTask']);
+$r->post('/projects/{id}/tasks/{taskId}/duplicate', [ProjectController::class, 'duplicateTask']);
+$r->post('/projects/{id}/tasks/{taskId}/delete', [ProjectController::class, 'deleteTask']);
+
+// Comments on any log
+$r->post('/activity/{id}/edit', [ActivityController::class, 'edit']);
+$r->post('/activity/{id}/delete', [ActivityController::class, 'delete']);
+
+// Customers, third parties, contacts, municipalities
+$r->get('/customers', [OrganizationController::class, 'customers']);
+$r->get('/directory', [OrganizationController::class, 'directory']);
+$r->get('/organizations/new', [OrganizationController::class, 'create']);
+$r->post('/organizations', [OrganizationController::class, 'store']);
+$r->get('/organizations/{id}', [OrganizationController::class, 'show']);
+$r->post('/organizations/{id}', [OrganizationController::class, 'update']);
+$r->post('/contacts', [ContactController::class, 'store']);
+$r->post('/contacts/{id}', [ContactController::class, 'update']);
+$r->get('/municipalities', [MunicipalityController::class, 'index']);
+$r->post('/municipalities', [MunicipalityController::class, 'store']);
+$r->get('/municipalities/{id}', [MunicipalityController::class, 'show']);
+$r->post('/municipalities/{id}', [MunicipalityController::class, 'update']);
+
+// Admin: task template
+$r->get('/admin/template', [TemplateController::class, 'index'], 'admin');
+$r->get('/admin/template/new', [TemplateController::class, 'create'], 'admin');
+$r->post('/admin/template', [TemplateController::class, 'store'], 'admin');
+$r->get('/admin/template/{id}', [TemplateController::class, 'edit'], 'admin');
+$r->post('/admin/template/{id}', [TemplateController::class, 'update'], 'admin');
 
 try {
     $r->dispatch($_SERVER['REQUEST_METHOD'], current_path());

@@ -6,7 +6,7 @@ $user = Auth::user();
 $path = current_path();
 $nav = [
     ['/', 'Dashboard', true],
-    ['/projects', 'Projects', false],
+    ['/projects', 'Projects', true],
     ['/service', 'Service', false],
     ['/actions', 'Action Items', false],
     ['/reports', 'Reports', false],
@@ -33,10 +33,20 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
                     <span class="soon" title="Coming soon"><?= e($label) ?></span>
                 <?php endif; ?>
             <?php endforeach; ?>
-            <?php if (Auth::isAdmin()): ?>
-                <a href="/users" class="<?= $isActive('/users') ? 'active' : '' ?>">Users</a>
-            <?php endif; ?>
         </nav>
+
+        <details class="navmenu">
+            <summary class="<?= $isActive('/customers') || $isActive('/organizations') || $isActive('/municipalities') || $isActive('/directory') || $isActive('/admin') || $isActive('/users') ? 'active' : '' ?>">Lists &#9662;</summary>
+            <div class="usermenu-panel">
+                <a href="/customers">Customers</a>
+                <a href="/municipalities">Municipalities</a>
+                <a href="/directory">Directory (third parties)</a>
+                <?php if (Auth::isAdmin()): ?>
+                    <a href="/admin/template">Task template</a>
+                    <a href="/users">Users</a>
+                <?php endif; ?>
+            </div>
+        </details>
 
         <details class="usermenu">
             <summary>
