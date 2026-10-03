@@ -18,21 +18,25 @@ final class TodoController
         'title' => 'Task', 'details' => 'Details', 'assigned_to' => 'Assigned to', 'due_on' => 'Due',
         'project_id' => 'Project', 'service_id' => 'Service ticket',
     ];
-    public const TABS = ['mine' => 'My tasks', 'assigned' => 'Assigned by me', 'open' => 'All open', 'done' => 'Completed'];
+    public const TABS = ['mine' => 'My tasks', 'assigned' => 'Assigned by me', 'open' => 'All open', 'done' => 'Completed', 'all' => 'All'];
 
     public function index(): void
     {
         $tab = isset(self::TABS[$_GET['tab'] ?? '']) ? $_GET['tab'] : 'mine';
         $who = (int) ($_GET['who'] ?? 0);
         $q = trim((string) ($_GET['q'] ?? ''));
+        if ($q !== '') {
+            $tab = 'all'; // a search always looks across every task, open or done, anyone's
+        }
         $me = (int) Auth::id();
         [$sql, $params] = match ($tab) {
             'assigned' => ['d.done_at IS NULL AND d.created_by = ? AND d.assigned_to <> ?', [$me, $me]],
             'open' => ['d.done_at IS NULL', []],
             'done' => ['d.done_at IS NOT NULL', []],
+            'all' => ['1 = 1', []],
             default => ['d.done_at IS NULL AND d.assigned_to = ?', [$me]],
         };
-        if ($who && in_array($tab, ['open', 'done'], true)) {
+        if ($who && in_array($tab, ['open', 'done', 'all'], true)) {
             $sql .= ' AND d.assigned_to = ?';
             $params[] = $who;
         }
@@ -49,6 +53,7 @@ final class TodoController
             'assigned' => (int) Db::value('SELECT COUNT(*) FROM todos WHERE done_at IS NULL AND created_by = ? AND assigned_to <> ?', [$me, $me]),
             'open' => (int) Db::value('SELECT COUNT(*) FROM todos WHERE done_at IS NULL'),
             'done' => (int) Db::value('SELECT COUNT(*) FROM todos WHERE done_at IS NOT NULL'),
+            'all' => (int) Db::value('SELECT COUNT(*) FROM todos'),
         ];
         View::render('tasks/index', [
             'title' => 'Tasks', 'rows' => $rows, 'tab' => $tab, 'who' => $who, 'q' => $q, 'counts' => $counts,

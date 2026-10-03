@@ -10,14 +10,13 @@ $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array
 
 <div class="tabs">
 	<?php foreach (TodoController::TABS as $key => $label): ?>
-		<a href="<?= e($qs(['tab' => $key, 'who' => null])) ?>" class="tab <?= $tab === $key ? 'active' : '' ?>"><?= e($label) ?> <span class="tab-count"><?= (int) $counts[$key] ?></span></a>
+		<a href="<?= e($qs(['tab' => $key, 'who' => null, 'q' => null])) ?>" class="tab <?= $tab === $key ? 'active' : '' ?>"><?= e($label) ?> <span class="tab-count"><?= (int) $counts[$key] ?></span></a>
 	<?php endforeach; ?>
 </div>
 
 <form class="filters" method="get" action="/tasks">
-	<input type="hidden" name="tab" value="<?= e($tab) ?>">
 	<input type="search" name="q" value="<?= e($q) ?>" placeholder="Search tasks, project, ticket #">
-	<?php if (in_array($tab, ['open', 'done'], true)): ?>
+	<?php if (in_array($tab, ['open', 'done', 'all'], true)): ?>
 		<select name="who" onchange="this.form.submit()">
 			<option value="">Everyone</option>
 			<?php foreach ($users as $u): ?><option value="<?= (int) $u['id'] ?>" <?= $who === (int) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option><?php endforeach; ?>
@@ -28,7 +27,7 @@ $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array
 
 <div class="card">
 	<?php if (!$rows): ?>
-		<p class="empty"><?= match ($tab) { 'mine' => 'Nothing on your list.', 'assigned' => 'Everything you assigned to others is done.', 'done' => 'No completed tasks yet.', default => 'No open tasks.' } ?></p>
+		<p class="empty"><?= match ($tab) { 'mine' => 'Nothing on your list.', 'assigned' => 'Everything you assigned to others is done.', 'done' => 'No completed tasks yet.', 'all' => ($q !== '' ? 'No tasks match.' : 'No tasks yet.'), default => 'No open tasks.' } ?></p>
 	<?php else: ?>
 		<?= App\View::partial('tasks/_list', ['rows' => $rows, 'back' => $qs([]), 'showAssignee' => $tab !== 'mine']) ?>
 	<?php endif; ?>
