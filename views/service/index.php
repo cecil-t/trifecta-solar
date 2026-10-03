@@ -1,14 +1,24 @@
 <?php
 use App\Service;
 
-$tabs = ['active' => 'Open', 'to_invoice' => 'Ready to invoice', 'done' => 'Done', 'all' => 'All'];
+$tabs = ['active' => 'Open', 'to_invoice' => 'Ready to invoice', 'done' => 'Completed', 'all' => 'All'];
 $qs = static fn (array $over) => '/service?' . http_build_query(array_filter(array_merge(['tab' => $tab, 'q' => $q], $over), static fn ($v) => $v !== '' && $v !== null));
 $statusChip = static fn (string $s) => match ($s) {
     'open' => '<span class="chip chip-blue">Open</span>',
     'scheduled' => '<span class="chip chip-blue">Scheduled</span>',
     'to_invoice' => '<span class="chip chip-orange">Ready to invoice</span>',
-    default => '<span class="chip chip-green">Done</span>',
+    default => '<span class="chip chip-green">Completed</span>',
 };
+// The Completed list folds earlier years (by ticket # year) under a click-to-open header
+$foldYears = !$searching && $tab === 'done';
+$thisYear = (int) date('Y');
+$groups = [];
+foreach ($rows as $t) {
+    $yr = preg_match('/^S(\d{2})/', $t['ticket_number'], $m) ? 2000 + (int) $m[1] : $thisYear;
+    $groups[$foldYears && $yr < $thisYear ? $yr : $thisYear][] = $t;
+}
+krsort($groups);
+$cols = 9;
 ?>
 <div class="page-head">
     <div>
@@ -34,13 +44,17 @@ $statusChip = static fn (string $s) => match ($s) {
 <div class="card card-flush">
     <table class="table table-service">
         <thead>
-        <tr><th>#</th><th>Opened</th><th>Customer</th><th>Problem</th><th>Coverage</th><th class="num">Trips</th><th class="num">Man-hrs</th><th>Status</th></tr>
+        <tr><th>#</th><th>Opened</th><th>Customer</th><th>Problem</th><th>Coverage</th><th class="num">Trips</th><th class="num">Man-hrs</th><th class="num">Amount</th><th>Status</th></tr>
         </thead>
-        <tbody>
-        <?php if (!$rows): ?>
-            <tr><td colspan="8" class="empty"><?= $tab === 'to_invoice' ? 'Nothing waiting to be invoiced.' : 'No service tickets match.' ?></td></tr>
+        <?php if (!$rows): ?><tbody>
+            <tr><td colspan="<?= $cols ?>" class="empty"><?= $tab === 'to_invoice' ? 'Nothing waiting to be invoiced.' : 'No service tickets match.' ?></td></tr>
+        </tbody><?php endif; ?>
+        <?php foreach ($groups as $yr => $list): ?>
+        <?php if ($yr < $thisYear): ?>
+            <tbody class="year-head"><tr><td colspan="<?= $cols ?>"><button type="button" class="year-toggle" aria-expanded="false" onclick="var b=this.closest('tbody').nextElementSibling;b.hidden=!b.hidden;this.setAttribute('aria-expanded',!b.hidden)"><span class="year-caret">&#9656;</span> <?= $yr ?> <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
         <?php endif; ?>
-        <?php foreach ($rows as $t): ?>
+        <tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
+        <?php foreach ($list as $t): ?>
             <tr onclick="if(!event.target.closest('a'))location='/service/<?= (int) $t['id'] ?>'" class="clickable">
                 <td><strong><?= e($t['ticket_number']) ?></strong></td>
                 <td class="small"><?= e(fmt_date($t['opened_on'])) ?></td>
@@ -52,6 +66,7 @@ $statusChip = static fn (string $s) => match ($s) {
                 <td class="small"><?= e(Service::COVERAGE[$t['coverage']] ?? '') ?></td>
                 <td class="num"><?= (int) $t['trips'] ?: '' ?></td>
                 <td class="num"><?= (float) $t['man_hours'] ? e(Service::hours((float) $t['man_hours'])) : '' ?></td>
+                <td class="num"><?= $t['bill_amount_cents'] !== null ? e(App\Projects::money((int) $t['bill_amount_cents'])) : '' ?></td>
                 <td>
                     <?= $statusChip($t['status']) ?>
                     <?php if ($t['status'] === 'scheduled'): ?><div class="muted small"><?= e(fmt_date($t['scheduled_on'])) ?></div><?php endif; ?>
@@ -59,5 +74,6 @@ $statusChip = static fn (string $s) => match ($s) {
             </tr>
         <?php endforeach; ?>
         </tbody>
+        <?php endforeach; ?>
     </table>
 </div>

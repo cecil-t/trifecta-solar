@@ -12,7 +12,7 @@ final class Service
         'trifecta' => 'Found by Trifecta', 'other' => 'Other',
     ];
     public const STATUS_LABELS = [
-        'open' => 'Open', 'scheduled' => 'Scheduled', 'to_invoice' => 'Ready to invoice', 'done' => 'Done',
+        'open' => 'Open', 'scheduled' => 'Scheduled', 'to_invoice' => 'Ready to invoice', 'done' => 'Completed',
     ];
 
     /** Next S + YY + NNN number for the current year. */

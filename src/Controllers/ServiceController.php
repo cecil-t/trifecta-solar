@@ -18,7 +18,7 @@ final class ServiceController
         'site_street' => 'Site street', 'site_city' => 'City', 'site_state' => 'State', 'site_zip' => 'ZIP',
         'description' => 'Description', 'source' => 'Came from', 'trifecta_install' => 'Trifecta install',
         'coverage' => 'Coverage', 'owner_id' => 'Owner', 'scheduled_on' => 'Scheduled', 'completed_on' => 'Completed',
-        'drive_url' => 'Drive doc', 'billing_note' => 'Billing note', 'bill_amount_cents' => 'Amount billed',
+        'drive_url' => 'Drive folder', 'monitoring_url' => 'Monitoring portal', 'billing_note' => 'Billing note', 'bill_amount_cents' => 'Amount billed',
         'invoiced' => 'Invoiced', 'invoiced_on' => 'Invoice date', 'invoice_number' => 'Invoice #',
     ];
 
@@ -41,6 +41,7 @@ final class ServiceController
             $q !== '' ? array_fill(0, 5, '%' . $q . '%') : []
         );
         $counts = ['active' => 0, 'to_invoice' => 0, 'done' => 0, 'all' => 0];
+        $searching = $q !== '';
         $out = [];
         foreach ($rows as $t) {
             $t['status'] = Service::status($t);
@@ -56,7 +57,7 @@ final class ServiceController
                 $out[] = $t;
             }
         }
-        View::render('service/index', ['title' => 'Service', 'rows' => $out, 'counts' => $counts, 'tab' => $tab, 'q' => $q]);
+        View::render('service/index', ['title' => 'Service', 'rows' => $out, 'counts' => $counts, 'tab' => $tab, 'q' => $q, 'searching' => $searching]);
     }
 
     // ------------------------------------------------------------------ create / edit
@@ -177,6 +178,7 @@ final class ServiceController
             'scheduled_on' => Projects::parseDate($_POST['scheduled_on'] ?? ''),
             'completed_on' => Projects::parseDate($_POST['completed_on'] ?? ''),
             'drive_url' => $s('drive_url'),
+            'monitoring_url' => $s('monitoring_url'),
             'billing_note' => $s('billing_note'),
             'bill_amount_cents' => Projects::parseMoney($_POST['bill_amount'] ?? ''),
             'invoiced' => empty($_POST['invoiced']) ? 0 : 1,

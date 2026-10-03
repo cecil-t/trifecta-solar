@@ -99,6 +99,10 @@ $r->post('/service/{id}/visits/{visitId}', [ServiceController::class, 'updateVis
 $r->post('/service/{id}/visits/{visitId}/delete', [ServiceController::class, 'deleteVisit']);
 
 $r->get('/reports', [ReportController::class, 'index']);
+$r->get('/reports/sales', [ReportController::class, 'sales']);
+$r->get('/reports/projection', [ReportController::class, 'projection']);
+$r->get('/reports/time', [ReportController::class, 'time']);
+$r->get('/reports/service', [ReportController::class, 'service']);
 
 $r->post('/activity/{id}/edit', [ActivityController::class, 'edit']);
 $r->post('/activity/{id}/delete', [ActivityController::class, 'delete']);

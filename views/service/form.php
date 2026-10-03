@@ -42,8 +42,12 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
             <label class="span-all">Problem / request
                 <textarea name="description" rows="3" required placeholder="e.g. Inverter offline in monitoring portal, SolarEdge SiteID 1809815"><?= e($v('description')) ?></textarea>
             </label>
-            <label class="span-all">Google Drive service doc
-                <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://docs.google.com/...">
+            <label class="span-2">Google Drive service folder
+                <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/...">
+            </label>
+            <label class="span-2">Monitoring portal
+                <input type="url" name="monitoring_url" value="<?= e($v('monitoring_url')) ?>" placeholder="https://monitoring.solaredge.com/...">
+                <small class="hint">Direct link to this system in SolarEdge, Enphase, SMA, etc.</small>
             </label>
         </div>
     </section>

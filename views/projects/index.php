@@ -7,6 +7,15 @@ $tabs = [
     'installation' => 'Installation', 'closeout' => 'Closeout', 'on_hold' => 'On hold',
     'complete' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All',
 ];
+// Completed and Cancelled fold earlier years (by project # year) under a click-to-open header
+$foldYears = $filter['q'] === '' && in_array($filter['phase'], ['complete', 'cancelled'], true);
+$thisYear = (int) date('Y');
+$groups = [];
+foreach ($projects as $p) {
+    $yr = preg_match('/^(\d{2})\d{3}/', (string) $p['project_number'], $m) ? 2000 + (int) $m[1] : $thisYear;
+    $groups[$foldYears && $yr < $thisYear ? $yr : $thisYear][] = $p;
+}
+krsort($groups);
 $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(array_merge($filter, $over), static fn ($v) => $v !== '' && $v !== 0 && $v !== null));
 ?>
 <div class="page-head">
@@ -41,11 +50,15 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
         <thead>
         <tr><th>#</th><th>Project</th><th>Sales</th><th class="num">kW DC</th><th>Type</th><th>Municipality</th><th>Status</th><th class="num">Days</th></tr>
         </thead>
-        <tbody>
-        <?php if (!$projects): ?>
+        <?php if (!$projects): ?><tbody>
             <tr><td colspan="8" class="empty">No projects match.</td></tr>
+        </tbody><?php endif; ?>
+        <?php foreach ($groups as $yr => $list): ?>
+        <?php if ($yr < $thisYear): ?>
+            <tbody class="year-head"><tr><td colspan="8"><button type="button" class="year-toggle" aria-expanded="false" onclick="var b=this.closest('tbody').nextElementSibling;b.hidden=!b.hidden;this.setAttribute('aria-expanded',!b.hidden)"><span class="year-caret">&#9656;</span> <?= $yr ?> projects <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
         <?php endif; ?>
-        <?php foreach ($projects as $p): $st = $p['status']; ?>
+        <tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
+        <?php foreach ($list as $p): $st = $p['status']; ?>
             <tr onclick="if(!event.target.closest('a'))location='/projects/<?= (int) $p['id'] ?>'" class="clickable">
                 <td><strong><?= e($p['project_number']) ?></strong></td>
                 <td>
@@ -66,5 +79,6 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
             </tr>
         <?php endforeach; ?>
         </tbody>
+        <?php endforeach; ?>
     </table>
 </div>

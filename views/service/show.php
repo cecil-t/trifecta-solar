@@ -10,7 +10,7 @@ $statusChip = match ($status) {
     'open' => '<span class="chip chip-blue">Open</span>',
     'scheduled' => '<span class="chip chip-blue">Scheduled ' . e(fmt_date($t['scheduled_on'])) . '</span>',
     'to_invoice' => '<span class="chip chip-orange">Ready to invoice</span>',
-    default => '<span class="chip chip-green">Done</span>',
+    default => '<span class="chip chip-green">Completed</span>',
 };
 $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 ?>
@@ -26,7 +26,13 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
     </div>
     <div class="head-actions">
         <?php if ($t['drive_url']): ?>
-            <a href="<?= e($t['drive_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive doc &#8599;</a>
+            <a href="<?= e($t['drive_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive service folder &#8599;</a>
+        <?php endif; ?>
+        <?php if ($t['monitoring_url']): ?>
+            <a href="<?= e($t['monitoring_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Monitoring portal &#8599;</a>
+        <?php endif; ?>
+        <?php if (!$t['drive_url'] || !$t['monitoring_url']): ?>
+            <a href="<?= $back ?>/edit" class="btn btn-ghost">+ Add <?= !$t['drive_url'] && !$t['monitoring_url'] ? 'Drive / monitoring links' : (!$t['drive_url'] ? 'Drive folder link' : 'monitoring link') ?></a>
         <?php endif; ?>
         <a href="<?= $back ?>/edit" class="btn btn-primary">Edit</a>
     </div>
@@ -73,7 +79,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
         </div>
         <dl class="kv">
             <dt>Coverage</dt><dd><?= $t['coverage'] ? e(Service::COVERAGE[$t['coverage']]) : $muted('Not set') ?></dd>
-            <dt>Amount</dt><dd><?= $t['bill_amount_cents'] !== null ? e(Projects::money((int) $t['bill_amount_cents'])) : $muted(Service::needsInvoice($t) ? 'Not set' : 'None') ?></dd>
+            <dt>Amount</dt><dd><?= $t['bill_amount_cents'] !== null ? '<strong class="amount">' . e(Projects::money((int) $t['bill_amount_cents'])) . '</strong>' : $muted(Service::needsInvoice($t) ? 'Not set' : 'None') ?></dd>
             <?php if ($t['billing_note']): ?><dt>Note</dt><dd><?= e($t['billing_note']) ?></dd><?php endif; ?>
             <dt>Invoiced</dt><dd><?= (int) $t['invoiced'] ? 'Yes' . ($t['invoiced_on'] ? ' ' . e(fmt_date($t['invoiced_on'])) : '') . ($t['invoice_number'] ? ' &middot; #' . e($t['invoice_number']) : '') : (Service::needsInvoice($t) ? 'No' : $muted('Not needed')) ?></dd>
         </dl>
