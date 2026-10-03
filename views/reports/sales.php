@@ -13,7 +13,7 @@ $head = '<thead><tr><th>%s</th><th class="num">Projects</th><th class="num">Cont
 	<p class="hint report-hint">Dated by contract signed; cancelled projects left out.<?= $noDate ? ' ' . $noDate . ' project' . ($noDate === 1 ? ' has' : 's have') . ' no contract signed date and ' . ($noDate === 1 ? 'is' : 'are') . ' not counted.' : '' ?> $/W only counts projects with both a price and equipment.</p>
 
 	<?php if (!$f['sales']): ?>
-		<h3 class="sub report-sub">By salesperson</h3>
+		<h2 class="sub report-sub">By salesperson</h2>
 		<table class="table">
 			<?= sprintf($head, 'Salesperson') ?>
 			<tbody>
@@ -24,7 +24,7 @@ $head = '<thead><tr><th>%s</th><th class="num">Projects</th><th class="num">Cont
 		</table>
 	<?php endif; ?>
 
-	<h3 class="sub report-sub">By quarter</h3>
+	<h2 class="sub report-sub">By quarter</h2>
 	<table class="table">
 		<?= sprintf($head, 'Quarter') ?>
 		<tbody>
@@ -33,7 +33,7 @@ $head = '<thead><tr><th>%s</th><th class="num">Projects</th><th class="num">Cont
 		</tbody>
 	</table>
 
-	<h3 class="sub report-sub">By month</h3>
+	<h2 class="sub report-sub">By month</h2>
 	<table class="table">
 		<?= sprintf($head, 'Month') ?>
 		<tbody>

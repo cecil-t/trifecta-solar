@@ -41,7 +41,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 <div class="summary-grid summary-3">
 	<section class="card">
 		<h2>Request</h2>
-		<p class="desc-text"><?= nl2br(e($t['description'])) ?></p>
+		<p class="desc-text"><?= nl2br(e($t['description']), false) ?></p>
 		<dl class="kv">
 			<dt>Opened</dt><dd><?= e(fmt_date($t['opened_on'])) ?></dd>
 			<dt>Came from</dt><dd><?= $t['source'] ? e(Service::SOURCES[$t['source']]) : $muted('Not set') ?></dd>
@@ -127,7 +127,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 				<td><?= e($vi['crew'] ?? '') ?></td>
 				<td class="num"><?= $vi['man_hours'] !== null ? e(Service::hours((float) $vi['man_hours'])) : '' ?></td>
 				<td class="num"><?= (int) $vi['trips'] ?></td>
-				<td class="small"><?= nl2br(e($vi['note'] ?? '')) ?></td>
+				<td class="small"><?= nl2br(e($vi['note'] ?? ''), false) ?></td>
 				<td class="nowrap"><button type="button" class="btn btn-ghost btn-small" onclick="var r=this.closest('tr').nextElementSibling;r.hidden=!r.hidden">Edit</button></td>
 			</tr>
 			<tr class="visit-edit-row" hidden>

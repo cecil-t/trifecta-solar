@@ -26,10 +26,10 @@ $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>
 
-<section class="card">
+<div class="card">
 	<?php if (!$rows): ?>
 		<p class="empty"><?= match ($tab) { 'mine' => 'Nothing on your list.', 'assigned' => 'Everything you assigned to others is done.', 'done' => 'No completed tasks yet.', default => 'No open tasks.' } ?></p>
 	<?php else: ?>
 		<?= App\View::partial('tasks/_list', ['rows' => $rows, 'back' => $qs([]), 'showAssignee' => $tab !== 'mine']) ?>
 	<?php endif; ?>
-</section>
+</div>

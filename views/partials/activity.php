@@ -26,7 +26,7 @@ $back ??= current_path();
 						from <span class="val"><?= $a['old_value'] === null || $a['old_value'] === '' ? '<em>blank</em>' : e($a['old_value']) ?></span>
 						to <span class="val"><?= $a['new_value'] === null || $a['new_value'] === '' ? '<em>blank</em>' : e($a['new_value']) ?></span></div>
 				<?php else: ?>
-					<div class="<?= $a['kind'] === 'comment' ? 'comment-text' : '' ?>"><?= nl2br(e($a['body'])) ?></div>
+					<div class="<?= $a['kind'] === 'comment' ? 'comment-text' : '' ?>"><?= nl2br(e($a['body']), false) ?></div>
 				<?php endif; ?>
 				<?php if (Activity::canEdit($a)): ?>
 					<details class="comment-edit">

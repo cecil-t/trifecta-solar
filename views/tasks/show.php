@@ -28,7 +28,7 @@ $canDelete = Auth::isAdmin() || (int) $d['created_by'] === Auth::id() || (int) $
 <div class="grid-2">
 	<section class="card">
 		<h2>Details</h2>
-		<?= $d['details'] ? '<p class="desc-text">' . nl2br(e($d['details'])) . '</p>' : '<p class="muted">No details.</p>' ?>
+		<?= $d['details'] ? '<p class="desc-text">' . nl2br(e($d['details']), false) . '</p>' : '<p class="muted">No details.</p>' ?>
 		<dl class="kv">
 			<dt>Assigned to</dt><dd><?= e($d['assignee_name']) ?></dd>
 			<dt>Assigned by</dt><dd><?= e($d['creator_name'] ?? 'System') ?> &middot; <?= e(fmt_dt($d['created_at'], 'm/d/Y')) ?></dd>

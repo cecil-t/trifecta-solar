@@ -12,7 +12,7 @@ $sel = static fn ($a, $b) => (string) $a === (string) $b ? 'selected' : '';
 		<?php if ($parent && !$isNew): ?><p class="muted">Sub-task of <?= e($parent['name']) ?></p><?php endif; ?>
 	</div>
 </div>
-<section class="card narrow">
+<div class="card narrow">
 	<form method="post" action="<?= $isNew ? '/admin/template' : '/admin/template/' . (int) $t['id'] ?>" class="grid-form">
 		<?= Csrf::field() ?>
 		<input type="hidden" name="parent_id" value="<?= (int) ($t['parent_id'] ?? 0) ?>">
@@ -59,4 +59,4 @@ $sel = static fn ($a, $b) => (string) $a === (string) $b ? 'selected' : '';
 		<div class="span-all"><button class="btn btn-primary"><?= $isNew ? 'Add' : 'Save' ?></button></div>
 	</form>
 	<p class="hint mt">Gates drive project status: <strong>Starts day counter</strong> (contract signed), <strong>Required for Clear to install</strong> (any one done within the same task counts), <strong>Moves to Installation</strong>, <strong>Moves to Closeout</strong> (PTO).</p>
-</section>
+</div>

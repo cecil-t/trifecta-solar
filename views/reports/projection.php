@@ -2,7 +2,7 @@
 require __DIR__ . '/_helpers.php';
 echo App\View::partial('reports/_filters', ['report' => $report, 'f' => $f, 'users' => $users]);
 ?>
-<section class="card card-flush report-card-body">
+<div class="card card-flush report-card-body">
 	<div class="rate-calc">
 		<label>Estimated growth <span class="money-input"><input type="number" id="growth" value="15" step="1" inputmode="decimal">%</span></label>
 		<span class="muted small no-print">Applied to each window's pace. Not saved; reloading resets to 15%.</span>
@@ -26,7 +26,7 @@ echo App\View::partial('reports/_filters', ['report' => $report, 'f' => $f, 'use
 		</tbody>
 	</table>
 	<p class="hint report-hint">The tracker holds the 2026 tab plus a few older completed jobs, so windows reaching back into 2025 are missing sales that finished before 2026.</p>
-</section>
+</div>
 
 <script>
 // Growth-adjusted projection, recalculated as the percentage changes.

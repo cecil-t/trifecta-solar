@@ -1,4 +1,5 @@
 <?php use App\Weather; ?>
+<h1 class="visually-hidden">Dashboard</h1>
 <div class="dash-head">
 	<?php if ($weather): ?>
 		<div class="weather" aria-label="Weather for <?= e(Weather::PLACE) ?>">

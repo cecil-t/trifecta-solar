@@ -225,7 +225,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.25rem .5rem; }
 .card-head h2 { margin: 0; }
 .cell-note { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 1.25rem 0 .5rem; }
+h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 1.25rem 0 .5rem; }
 
 /* nav "Lists" dropdown */
 .navmenu { position: relative; }
@@ -365,7 +365,7 @@ textarea { font: inherit; padding: .55rem .7rem; border: 1px solid #cdd5d0; bord
 .boxwrap { flex-direction: row; align-items: center; gap: .5rem; font-weight: 500; min-height: 2.75rem; }
 .mt-sm { margin-top: .8rem; }
 .grid-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 1.2rem 0 .5rem; }
+h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 1.2rem 0 .5rem; }
 .reveal { background: var(--blue-50); border-radius: var(--radius-sm); padding: .8rem; margin-top: .8rem; }
 .provider { display: flex; flex-direction: column; gap: .5rem; }
 .checks { border: 0; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
@@ -564,7 +564,7 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 /* report readability: stronger column headers and section labels */
 .report-card-body .table th { color: #1f2d35; background: #e7eeea; border-bottom: 2px solid #c9d6cf; }
 .report-card-body .table tfoot td { background: #f3f6f4; }
-.report-card-body h3.sub { color: #2d3b43; }
+.report-card-body h3.sub, .report-card-body h2.sub { color: #2d3b43; }
 .rate-calc { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1.25rem; padding: .8rem 1rem .4rem; }
 .rate-calc label { font-size: .78rem; }
 .rate-calc-label { font-weight: 600; font-size: .88rem; padding-bottom: .5rem; }
@@ -766,3 +766,4 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .activity-body { min-width: 0; flex: 1; overflow-wrap: anywhere; word-break: break-word; }
 .activity-change .val, .comment-text { overflow-wrap: anywhere; word-break: break-word; }
 .card, .kv dd, .desc-text { min-width: 0; overflow-wrap: anywhere; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

@@ -36,7 +36,7 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 	</div>
 	<p class="hint report-hint">Tickets opened in the date range. Amount billed is what was entered on each ticket (customer or SolarInsure). Warranty cost is an estimate: trips &times; trip charge + man-hours &times; hourly rate.</p>
 
-	<h3 class="sub report-sub">By coverage</h3>
+	<h2 class="sub report-sub">By coverage</h2>
 	<table class="table">
 		<thead><tr><th>Coverage</th><th class="num">Tickets</th><th class="num">Trips</th><th class="num">Man-hours</th><th class="num">Amount billed</th></tr></thead>
 		<tbody>
@@ -45,7 +45,7 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 		<tfoot><tr><td>Total billed</td><td class="num"><?= $totals['tickets'] ?></td><td class="num"><?= $totals['trips'] ?></td><td class="num"><?= e(Service::hours($totals['hours'])) ?></td><td class="num"><?= $money2($totals['amount']) ?></td></tr></tfoot>
 	</table>
 
-	<h3 class="sub report-sub">By month</h3>
+	<h2 class="sub report-sub">By month</h2>
 	<table class="table">
 		<thead><tr><th>Month</th><th class="num">Tickets</th><th class="num">Trips</th><th class="num">Man-hours</th><th class="num">Amount billed</th><th class="num">Warranty cost (est.)</th></tr></thead>
 		<tbody>
