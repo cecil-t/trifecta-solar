@@ -554,3 +554,29 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .phase, .chip { border: 1px solid #ccc; }
 }
 .report-filters { margin-bottom: 1.1rem; }
+
+/* report readability: stronger column headers and section labels */
+.report-card-body .table th { color: #1f2d35; background: #e7eeea; border-bottom: 2px solid #c9d6cf; }
+.report-card-body .table tfoot td { background: #f3f6f4; }
+.report-card-body h3.sub { color: #2d3b43; }
+.rate-calc { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1.25rem; padding: .8rem 1rem .4rem; }
+.rate-calc label { font-size: .78rem; }
+.rate-calc-label { font-weight: 600; font-size: .88rem; padding-bottom: .5rem; }
+.money-input { display: inline-flex; align-items: center; gap: .25rem; font-weight: 600; font-size: .95rem; }
+.money-input input { width: 90px; padding: .4rem .5rem; }
+.est { font-style: italic; color: #5b3a8a; }
+.est-num { color: #5b3a8a; }
+.print-only { display: none; }
+
+/* weather: four days on desktop, two on phones */
+@media (max-width: 760px) {
+    .weather .wday:nth-of-type(n+3) { display: none; }
+}
+
+@media print {
+    .print-only { display: inline; }
+    img.print-only.report-logo { display: block; margin-bottom: .6rem; }
+    .report-card-body .table th { background: #e7eeea !important; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .rate-calc input { display: none; }
+    .rate-calc label, .rate-calc-label { display: none; }
+}

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace App;
 
 /**
- * Two-day forecast for the dashboard from Open-Meteo (free, no API key).
+ * Four-day forecast (two shown on phones) for the dashboard from Open-Meteo (free, no API key).
  * Cached in data/weather.json for 30 minutes; failures just hide the widget.
  */
 final class Weather
@@ -13,13 +13,14 @@ final class Weather
     private const LAT = 40.1634;
     private const LON = -76.3950;
     private const TTL = 1800;
+    private const DAYS = 4;
 
     /** @return array<int, array{date:string,label:string,code:int,hi:int,lo:int,pop:?int,desc:string,icon:string}>|null */
     public static function forecast(): ?array
     {
         $cacheFile = dirname(Db::path()) . '/weather.json';
         $cached = is_file($cacheFile) ? json_decode((string) file_get_contents($cacheFile), true) : null;
-        $fresh = $cached && ($cached['fetched'] ?? 0) > time() - self::TTL && ($cached['days'][0]['date'] ?? '') === date('Y-m-d');
+        $fresh = $cached && ($cached['fetched'] ?? 0) > time() - self::TTL && ($cached['days'][0]['date'] ?? '') === date('Y-m-d') && count($cached['days'] ?? []) >= self::DAYS;
         if (!$fresh) {
             $days = self::fetch();
             if ($days) {
@@ -35,7 +36,7 @@ final class Weather
         $url = 'https://api.open-meteo.com/v1/forecast?' . http_build_query([
             'latitude' => self::LAT, 'longitude' => self::LON,
             'daily' => 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
-            'temperature_unit' => 'fahrenheit', 'timezone' => 'America/New_York', 'forecast_days' => 2,
+            'temperature_unit' => 'fahrenheit', 'timezone' => 'America/New_York', 'forecast_days' => self::DAYS,
         ]);
         $ctx = stream_context_create(['http' => ['timeout' => 4, 'header' => "User-Agent: TrifectaTracker/1.0\r\n"]]);
         $raw = @file_get_contents($url, false, $ctx);
@@ -55,7 +56,7 @@ final class Weather
             [$desc, $icon] = self::describe($code);
             $out[] = [
                 'date' => $date,
-                'label' => $i === 0 ? 'Today' : ($i === 1 ? 'Tomorrow' : date('D', strtotime($date))),
+                'label' => date('l', strtotime($date)),
                 'code' => $code,
                 'hi' => (int) round((float) ($d['temperature_2m_max'][$i] ?? 0)),
                 'lo' => (int) round((float) ($d['temperature_2m_min'][$i] ?? 0)),

@@ -16,6 +16,7 @@ if ($f['sales_name']) {
     $summary .= ' · ' . $f['sales_name'];
 }
 ?>
+<img src="<?= asset('assets/img/logo-horizontal.png') ?>" alt="Trifecta Solar" class="print-only report-logo" width="190">
 <div class="page-head report-head">
     <div>
         <a href="/reports" class="back no-print">&larr; Reports</a>

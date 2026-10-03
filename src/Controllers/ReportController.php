@@ -264,7 +264,10 @@ final class ReportController
     private function svcSum(array $rows): array
     {
         $billed = array_filter($rows, static fn ($t) => $t['bill_amount_cents'] !== null);
+        $w = array_filter($rows, static fn ($t) => $t['coverage'] === 'warranty');
         return [
+            'w_trips' => (int) array_sum(array_column($w, 'trips')),
+            'w_hours' => (float) array_sum(array_column($w, 'man_hours')),
             'tickets' => count($rows),
             'trips' => (int) array_sum(array_column($rows, 'trips')),
             'hours' => (float) array_sum(array_column($rows, 'man_hours')),
