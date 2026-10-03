@@ -1,8 +1,22 @@
-<div class="page-head">
-    <div>
-        <h1>Good to see you, <?= e(explode(' ', $user['name'])[0]) ?></h1>
-        <p class="muted">Where things stand across active projects.</p>
-    </div>
+<?php use App\Weather; ?>
+<div class="dash-head">
+    <?php if ($weather): ?>
+        <div class="weather" aria-label="Weather for <?= e(Weather::PLACE) ?>">
+            <span class="weather-place"><?= e(Weather::PLACE) ?></span>
+            <?php foreach ($weather as $w): ?>
+                <div class="wday">
+                    <?= Weather::icon($w['icon']) ?>
+                    <div>
+                        <div class="wlabel"><?= e($w['label']) ?></div>
+                        <div class="wtemp"><span class="hi"><?= (int) $w['hi'] ?>&deg;</span> <span class="lo"><?= (int) $w['lo'] ?>&deg;</span></div>
+                        <div class="wdesc"><?= e($w['desc']) ?><?= $w['pop'] !== null && $w['pop'] >= 20 ? ' &middot; ' . (int) $w['pop'] . '% precip' : '' ?></div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="weather weather-empty muted small">Weather unavailable</div>
+    <?php endif; ?>
     <a href="/projects/new" class="btn btn-primary">New project</a>
 </div>
 
@@ -17,7 +31,7 @@
 <section class="card card-flush mt">
     <div class="card-head">
         <h2>My open items <span class="muted small">(<?= count($items) ?><?= count($items) >= 60 ? '+' : '' ?>)</span></h2>
-        <span class="muted small">Items you own that are still needed or unanswered, soonest target date first.</span>
+        <span class="muted small">Items you own on active projects (not on hold) that are still needed or unanswered, soonest target date first.</span>
     </div>
     <?php if (!$items): ?>
         <p class="empty">Nothing open with your name on it.</p>

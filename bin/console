@@ -14,6 +14,20 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/bootstrap.php';
 
+// `docker exec` runs as root. SQLite may create its -wal/-shm files as root, which would leave the
+// web server (www-data) unable to write. Hand everything in data/ back to www-data on exit.
+if (function_exists('posix_getuid') ? posix_getuid() === 0 : (getenv('USER') === 'root' || get_current_user() === 'root')) {
+    register_shutdown_function(static function (): void {
+        $dir = dirname(App\Db::path());
+        foreach (glob($dir . '/{,.}*', GLOB_BRACE) ?: [] as $f) {
+            if (is_file($f)) {
+                @chown($f, 'www-data');
+                @chgrp($f, 'www-data');
+            }
+        }
+    });
+}
+
 use App\Backup;
 use App\Db;
 use App\Migrator;
@@ -70,8 +84,18 @@ try {
             out("Password set for {$user['name']}.");
             break;
 
+        case 'import:projects':
+            $file = $args[1] ?? fail('Usage: import:projects <file.json> [--dry-run] [--replace]');
+            if (!is_file($file)) { fail("No such file: $file"); }
+            $data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+            $dry = in_array('--dry-run', $args, true);
+            $res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
+            foreach ($res['log'] as $line) { out($line); }
+            out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+            break;
+
         default:
-            out("Commands: migrate | backup [--keep=N] | user:list | user:password <email>");
+            out("Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] [--replace]");
     }
 } catch (Throwable $e) {
     fail('Error: ' . $e->getMessage());

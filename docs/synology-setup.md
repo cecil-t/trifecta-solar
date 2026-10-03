@@ -144,6 +144,19 @@ docker exec -it trifecta-solar php bin/console user:password person@example.com 
 curl -s http://localhost:8089/health                        # {"status":"ok",...}
 ```
 
+## Importing projects
+
+The import file (`import.json`) holds customer data, so it is never committed to git. Put it in
+`/volume1/docker/trifecta-solar/import/` (git ignores that folder), then:
+
+```sh
+docker exec trifecta-solar php bin/console import:projects import/import.json --dry-run   # report only, saves nothing
+docker exec trifecta-solar php bin/console import:projects import/import.json             # load it
+```
+
+Re-running skips project numbers that already exist. `--replace` deletes and re-imports those projects
+(their tasks and log too), which is meant for re-running an improved import before real work is entered.
+
 ## Notes
 
 - **Installing to phone home screens (PWA)** requires HTTPS, which comes with the public hostname step below.

@@ -43,6 +43,7 @@ $back = '/projects/' . (int) $p['id'];
         <h1><span class="pnum"><?= e($p['project_number']) ?></span> <?= e($p['name']) ?></h1>
         <div class="badges">
             <span id="phase-badge" class="phase phase-<?= e($status['phase']) ?>"><?= e(Tasks::PHASE_LABELS[$status['phase']]) ?></span>
+            <?php if ($p['archived_at']): ?><span class="chip">Archived <?= e(fmt_dt($p['archived_at'], 'm/d/Y')) ?></span><?php endif; ?>
             <?php if ($p['hold_state'] === 'on_hold'): ?><span class="chip chip-orange">On hold<?= $p['hold_reason'] ? ': ' . e($p['hold_reason']) : '' ?></span><?php endif; ?>
             <?php if ($p['hold_state'] === 'cancelled' && $p['hold_reason']): ?><span class="chip"><?= e($p['hold_reason']) ?></span><?php endif; ?>
             <span id="clear-badge" class="chip chip-green" <?= $status['phase'] === 'pre_install' && $status['clear_to_install'] ? '' : 'hidden' ?>>Clear to install</span>
@@ -51,7 +52,11 @@ $back = '/projects/' . (int) $p['id'];
         <?php if ($p['status_note']): ?><p class="status-note"><?= e($p['status_note']) ?></p><?php endif; ?>
     </div>
     <div class="head-actions">
-        <?php if ($p['drive_url']): ?><a href="<?= e($p['drive_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Drive folder</a><?php endif; ?>
+        <?php if ($p['drive_url']): ?>
+            <a href="<?= e($p['drive_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive folder &#8599;</a>
+        <?php else: ?>
+            <a href="/projects/<?= (int) $p['id'] ?>/edit" class="btn btn-ghost">+ Add Drive folder link</a>
+        <?php endif; ?>
         <a href="/projects/<?= (int) $p['id'] ?>/edit" class="btn btn-primary">Edit</a>
     </div>
 </div>
@@ -111,6 +116,7 @@ $back = '/projects/' . (int) $p['id'];
             <dt>Funding</dt><dd><?= e($funding) ?: '<span class="muted">Not set</span>' ?><?= $p['funding_note'] ? '<div class="muted small">' . e($p['funding_note']) . '</div>' : '' ?></dd>
             <dt>Tax exempt</dt><dd><?= $p['tax_exempt'] === null ? '<span class="muted">Unknown</span>' : ((int) $p['tax_exempt'] ? 'Yes' : 'No') ?></dd>
             <dt>Signed</dt><dd><?= e(fmt_date($status['start_date'])) ?: '<span class="muted">Not set</span>' ?></dd>
+            <?php if ($p['quote_number']): ?><dt>Quote #</dt><dd><?= e($p['quote_number']) ?></dd><?php endif; ?>
         </dl>
     </section>
 </div>

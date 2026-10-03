@@ -17,7 +17,7 @@ final class DashboardController
         $counts = ['pre_install' => 0, 'clear' => 0, 'installation' => 0, 'closeout' => 0, 'on_hold' => 0];
         foreach ($projects as $p) {
             $st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
-            if (in_array($st['phase'], ['complete', 'cancelled'], true)) {
+            if (in_array($st['phase'], ['complete', 'archived', 'cancelled'], true)) {
                 continue;
             }
             $counts[$st['phase']]++;
@@ -30,6 +30,7 @@ final class DashboardController
         View::render('dashboard', [
             'title' => 'Dashboard', 'user' => Auth::user(), 'counts' => $counts,
             'items' => Tasks::openItemsFor((int) Auth::id(), 60),
+            'weather' => \App\Weather::forecast(),
         ]);
     }
 }

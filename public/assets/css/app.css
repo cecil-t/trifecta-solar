@@ -409,3 +409,29 @@ textarea { font: inherit; padding: .55rem .7rem; border: 1px solid #cdd5d0; bord
     .comment-form { flex-direction: column; align-items: stretch; }
     .cell-note { max-width: 180px; }
 }
+
+/* dashboard weather */
+.dash-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.weather { display: flex; align-items: center; gap: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem 1.1rem; box-shadow: var(--shadow); flex-wrap: wrap; }
+.weather-place { font-weight: 700; color: var(--blue); font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+.wday { display: flex; align-items: center; gap: .6rem; }
+.wlabel { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.wtemp .hi { font-size: 1.35rem; font-weight: 750; color: var(--text); }
+.wtemp .lo { font-size: 1rem; color: var(--muted); font-weight: 600; }
+.wdesc { font-size: .8rem; color: var(--muted); }
+.weather-empty { box-shadow: none; }
+
+@media (max-width: 760px) {
+    .weather { width: 100%; gap: .9rem 1.2rem; }
+    .weather-place { flex-basis: 100%; }
+    .dash-head .btn { width: 100%; }
+    /* Lists menu: full-width panel under the header instead of hanging off the left edge */
+    .navmenu { position: static; }
+    .navmenu .usermenu-panel { position: absolute; left: .75rem; right: .75rem; top: calc(100% - .25rem); min-width: 0; }
+    .usermenu { position: static; }
+    .usermenu .usermenu-panel { right: .75rem; }
+}
+
+.drive-link { font-size: .72rem; font-weight: 700; margin-left: .4rem; padding: 0 .35rem; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.drive-link:hover { color: var(--blue); border-color: var(--blue); text-decoration: none; }
+.phase-archived { background: #e9ecef; color: #5d6a72; }

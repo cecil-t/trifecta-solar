@@ -27,6 +27,7 @@ final class ProjectController
         'inspection_mode' => 'Inspections by', 'inspection_org_id' => 'Inspection agency',
         'designer_org_id' => 'Designer', 'installer_org_id' => 'Installer', 'drive_url' => 'Drive folder',
         'status_note' => 'Status note', 'hold_state' => 'Hold / cancel', 'hold_reason' => 'Hold reason',
+        'archived_at' => 'Archived', 'quote_number' => 'Quote #',
     ];
 
     // ------------------------------------------------------------------ list
@@ -60,7 +61,7 @@ final class ProjectController
 
         $tasks = Tasks::forProjects(array_column($projects, 'id'));
         $kw = Projects::dcKwMap();
-        $counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'clear' => 0, 'all' => 0];
+        $counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'archived' => 0, 'cancelled' => 0, 'on_hold' => 0, 'clear' => 0, 'all' => 0];
         $rows = [];
         foreach ($projects as $p) {
             $st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
@@ -68,7 +69,7 @@ final class ProjectController
             $p['status'] = $st;
             $p['dc_kw'] = $kw[(int) $p['id']] ?? null;
             $onHold = $p['hold_state'] === 'on_hold';
-            $isActive = !in_array($st['phase'], ['complete', 'cancelled'], true);
+            $isActive = !in_array($st['phase'], ['complete', 'archived', 'cancelled'], true);
             $clearToStart = $st['phase'] === 'pre_install' && $st['clear_to_install'] && !$onHold;
 
             $counts['all']++;
@@ -229,7 +230,11 @@ final class ProjectController
             'status_note' => $s('status_note'),
             'hold_state' => $enum('hold_state', ['on_hold', 'cancelled']),
             'hold_reason' => $s('hold_reason'),
+            'quote_number' => $s('quote_number'),
         ];
+        // Keep the original archive timestamp when it stays checked
+        $wasArchived = $id ? Db::value('SELECT archived_at FROM projects WHERE id = ?', [$id]) : null;
+        $data['archived_at'] = empty($_POST['archived']) ? null : ($wasArchived ?: now_utc());
         if ($id !== null) {
             foreach (['zoning', 'plan_review', 'inspection'] as $slot) {
                 $data[$slot . '_mode'] = $enum($slot . '_mode', ['self', 'agency']);
@@ -386,6 +391,7 @@ final class ProjectController
             'contract_price_cents' => static fn ($v) => Projects::money($v === null ? null : (int) $v),
             'zoning_mode' => $mode, 'plan_review_mode' => $mode, 'inspection_mode' => $mode,
             'hold_state' => static fn ($v) => ['on_hold' => 'On hold', 'cancelled' => 'Cancelled'][$v] ?? 'Active',
+            'archived_at' => static fn ($v) => $v ? 'Yes' : 'No',
         ];
     }
 

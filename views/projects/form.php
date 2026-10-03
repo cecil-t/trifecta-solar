@@ -54,8 +54,11 @@ $isNew = $id === null;
                 </select>
             </label>
             <label class="check self-end"><input type="checkbox" name="is_agricultural" value="1" <?= $v('is_agricultural') ? 'checked' : '' ?>> Agricultural</label>
-            <label>Drive folder link
-                <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/...">
+            <label>OpenSolar quote #
+                <input type="text" name="quote_number" value="<?= e($v('quote_number')) ?>" class="input-short">
+            </label>
+            <label class="span-2">Google Drive project folder
+                <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/drive/folders/...">
             </label>
         </div>
     </section>
@@ -271,6 +274,7 @@ $isNew = $id === null;
             <label id="hold-reason" class="span-2 reveal" hidden>Reason
                 <input type="text" name="hold_reason" value="<?= e($v('hold_reason')) ?>" placeholder="e.g. Waiting on Mechatron, zoning hearing">
             </label>
+            <label class="check span-all"><input type="checkbox" name="archived" value="1" <?= $v('archived_at') || $v('archived') ? 'checked' : '' ?>> Archived <span class="hint-inline">(finished; moves it out of Active into the Archived tab regardless of open items)</span></label>
         </div>
     </section>
 

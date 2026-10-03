@@ -5,7 +5,7 @@ use App\Projects;
 $tabs = [
     'active' => 'Active', 'pre_install' => 'Pre-Install', 'clear' => 'Clear to install',
     'installation' => 'Installation', 'closeout' => 'Closeout', 'on_hold' => 'On hold',
-    'complete' => 'Complete', 'cancelled' => 'Cancelled', 'all' => 'All',
+    'complete' => 'Complete', 'archived' => 'Archived', 'cancelled' => 'Cancelled', 'all' => 'All',
 ];
 $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(array_merge($filter, $over), static fn ($v) => $v !== '' && $v !== 0 && $v !== null));
 ?>
@@ -50,6 +50,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
                 <td><strong><?= e($p['project_number']) ?></strong></td>
                 <td>
                     <a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a>
+                    <?php if ($p['drive_url']): ?><a href="<?= e($p['drive_url']) ?>" target="_blank" rel="noopener" class="drive-link" title="Open Google Drive folder">Drive &#8599;</a><?php endif; ?>
                     <?php if ($p['status_note']): ?><div class="muted small cell-note"><?= e($p['status_note']) ?></div><?php endif; ?>
                 </td>
                 <td><?= e($p['sales_initials'] ?? '') ?></td>

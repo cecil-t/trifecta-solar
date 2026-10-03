@@ -222,6 +222,7 @@ final class Tasks
 
         $phase = match (true) {
             $project['hold_state'] === 'cancelled' => 'cancelled',
+            !empty($project['archived_at'])         => 'archived',
             $pto !== null && $complete             => 'complete',
             $pto !== null                          => 'closeout',
             $installStarted !== null               => 'installation',
@@ -250,11 +251,11 @@ final class Tasks
 
     public const PHASE_LABELS = [
         'pre_install' => 'Pre-Install', 'installation' => 'Installation', 'closeout' => 'Closeout',
-        'complete' => 'Complete', 'cancelled' => 'Cancelled',
+        'complete' => 'Complete', 'archived' => 'Archived', 'cancelled' => 'Cancelled',
     ];
 
     /**
-     * Open items owned by a user across active projects:
+     * Open items owned by a user across active projects (not on hold, cancelled or archived):
      *  - leaf items (sub-tasks, or tasks without sub-tasks) still needed or unanswered and not done;
      *    sub-tasks count only once their task is answered "yes", and inherit the task's owner
      *  - tasks with sub-tasks whose "needed" question is still unanswered (e.g. Utility upgrade?)
@@ -268,7 +269,7 @@ final class Tasks
              FROM project_tasks t
              JOIN projects p ON p.id = t.project_id
              LEFT JOIN project_tasks parent ON parent.id = t.parent_id
-             WHERE COALESCE(p.hold_state, '') <> 'cancelled'
+             WHERE p.hold_state IS NULL AND p.archived_at IS NULL
                AND COALESCE(t.owner_id, parent.owner_id) = ?
                AND t.done_date IS NULL
                AND COALESCE(t.needed, -1) <> 0
