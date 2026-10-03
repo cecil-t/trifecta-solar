@@ -610,3 +610,25 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .open-link { opacity: 1; display: block; margin: .2rem 0 0 1.2rem; }
     .open-head td:first-child { white-space: normal; }
 }
+
+/* ---------- tasks (one-off to-dos) ---------- */
+.todo-list { list-style: none; margin: 0; padding: 0; }
+.todo { display: flex; gap: .75rem; align-items: flex-start; padding: .6rem 0; border-bottom: 1px solid var(--border); }
+.todo:last-child { border-bottom: 0; }
+.todo-check { margin: 0; }
+.checkbox-btn { width: 22px; height: 22px; border: 2px solid #9fb0a7; border-radius: 6px; background: #fff; cursor: pointer; display: grid; place-items: center; color: #fff; font-size: .85rem; font-weight: 800; padding: 0; margin-top: .1rem; }
+.checkbox-btn:hover { border-color: var(--green); background: var(--green-50); }
+.todo.is-done .checkbox-btn { background: var(--green); border-color: var(--green); }
+.todo-main { min-width: 0; flex: 1; }
+.todo-title { font-weight: 600; color: var(--text); }
+.todo.is-done .todo-title { color: #9aa5ab; text-decoration: line-through; }
+.todo-meta { display: flex; flex-wrap: wrap; gap: .2rem .8rem; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.due-overdue { color: var(--red); font-weight: 700; }
+.due-today { color: #a5620a; font-weight: 700; }
+.chip-red { background: #fbe3e0; color: #8c1d14; }
+.is-done-title { text-decoration: line-through; color: #8a979e; }
+.card-head-actions { display: flex; gap: .5rem; align-items: center; }
+.task-strip { padding: .8rem 1.1rem; margin-bottom: 1rem; }
+.task-strip-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.task-strip-head h2 { margin: 0; font-size: 1rem; }
+.card-head-plain { padding: 0 0 .5rem; }

@@ -104,6 +104,14 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
     </section>
 </div>
 
+<section class="card task-strip" id="todos">
+    <div class="task-strip-head">
+        <h2>Tasks <span class="muted small">(<?= count($todos) ?> open)</span></h2>
+        <a href="/tasks/new?service=<?= (int) $t['id'] ?>&amp;back=<?= e(rawurlencode('/service/' . (int) $t['id'] . '#todos')) ?>" class="btn btn-ghost btn-small">+ Assign a task</a>
+    </div>
+    <?php if ($todos): ?><?= App\View::partial('tasks/_list', ['rows' => $todos, 'back' => '/service/' . (int) $t['id'] . '#todos', 'showLink' => false]) ?><?php endif; ?>
+</section>
+
 <section class="card card-flush" id="visits">
     <div class="phase-title">
         <h2>Visits</h2>

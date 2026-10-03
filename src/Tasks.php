@@ -294,16 +294,16 @@ final class Tasks
     ];
 
     /**
-     * Open items owned by a user across active projects (not on hold, cancelled or archived):
-     *  - leaf items (sub-tasks, or tasks without sub-tasks) still needed or unanswered and not done;
-     *    sub-tasks count only once their task is answered "yes", and inherit the task's owner
-     *  - tasks with sub-tasks whose "needed" question is still unanswered (e.g. Utility upgrade?)
+     * Open items a user owns that are actionable now, on active projects (not on hold,
+     * cancelled or completed). Actionable means: the task's phase has been reached (a
+     * Closeout task waits for PTO), or it has a target date within the next 30 days or
+     * already past. For Payments, only each project's next unpaid milestone counts.
      */
-    public static function openItemsFor(int $userId, int $limit = 100): array
+    public static function openItemsFor(int $userId, int $limit = 2000): array
     {
-        return Db::all(
+        $rows = Db::all(
             "SELECT t.*, p.project_number, p.name AS project_name, p.id AS pid,
-                    parent.name AS parent_name,
+                    parent.name AS parent_name, parent.phase AS parent_phase,
                     EXISTS (SELECT 1 FROM project_tasks c WHERE c.parent_id = t.id) AS has_subs
              FROM project_tasks t
              JOIN projects p ON p.id = t.project_id
@@ -318,9 +318,46 @@ final class Tasks
                )
              ORDER BY t.target_date IS NULL, t.target_date, p.project_number,
                       CASE t.phase WHEN 'pre_install' THEN 1 WHEN 'installation' THEN 2 WHEN 'closeout' THEN 3 ELSE 4 END,
-                      COALESCE(parent.sort_order, t.sort_order), COALESCE(parent.id, t.id), t.sort_order
-             LIMIT " . (int) $limit,
+                      COALESCE(parent.sort_order, t.sort_order), COALESCE(parent.id, t.id), t.sort_order",
             [$userId]
         );
+        if (!$rows) {
+            return [];
+        }
+        $pids = array_values(array_unique(array_map(static fn ($r) => (int) $r['pid'], $rows)));
+        $all = self::forProjects($pids);
+        $projects = [];
+        foreach (Db::all('SELECT * FROM projects WHERE id IN (' . implode(',', $pids) . ')') as $p) {
+            $projects[(int) $p['id']] = $p;
+        }
+        $rank = ['pre_install' => 1, 'installation' => 2, 'closeout' => 3, 'complete' => 4];
+        $phaseRank = [];
+        $nextPayment = [];
+        foreach ($pids as $pid) {
+            $st = self::status($projects[$pid], $all[$pid] ?? []);
+            $phaseRank[$pid] = $rank[$st['phase']] ?? 1;
+            foreach ($st['tree']['payments'] ?? [] as $t) {
+                if (!$t['resolved']) {
+                    $nextPayment[$pid] = (int) $t['id'];
+                    break;
+                }
+            }
+        }
+        $soon = date('Y-m-d', strtotime('+30 days'));
+        $out = [];
+        foreach ($rows as $r) {
+            $pid = (int) $r['pid'];
+            $phase = $r['parent_phase'] ?? $r['phase'];
+            $topId = (int) ($r['parent_id'] ?? $r['id']);
+            $keep = ($r['target_date'] && $r['target_date'] <= $soon)
+                || ($phase === 'payments' ? ($nextPayment[$pid] ?? 0) === $topId : ($rank[$phase] ?? 1) <= $phaseRank[$pid]);
+            if ($keep) {
+                $out[] = $r;
+            }
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+        return $out;
     }
 }

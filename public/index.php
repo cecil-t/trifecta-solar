@@ -29,6 +29,7 @@ use App\Migrator;
 use App\Router;
 use App\Controllers\ServiceController;
 use App\Controllers\ReportController;
+use App\Controllers\TodoController;
 
 if (Config::bool('APP_DEBUG')) {
     ini_set('display_errors', '1');
@@ -97,6 +98,16 @@ $r->post('/service/{id}/comments', [ServiceController::class, 'comment']);
 $r->post('/service/{id}/visits', [ServiceController::class, 'addVisit']);
 $r->post('/service/{id}/visits/{visitId}', [ServiceController::class, 'updateVisit']);
 $r->post('/service/{id}/visits/{visitId}/delete', [ServiceController::class, 'deleteVisit']);
+
+$r->get('/tasks', [TodoController::class, 'index']);
+$r->get('/tasks/new', [TodoController::class, 'create']);
+$r->post('/tasks', [TodoController::class, 'store']);
+$r->get('/tasks/{id}', [TodoController::class, 'show']);
+$r->get('/tasks/{id}/edit', [TodoController::class, 'edit']);
+$r->post('/tasks/{id}', [TodoController::class, 'update']);
+$r->post('/tasks/{id}/toggle', [TodoController::class, 'toggle']);
+$r->post('/tasks/{id}/comments', [TodoController::class, 'comment']);
+$r->post('/tasks/{id}/delete', [TodoController::class, 'delete']);
 
 $r->get('/reports', [ReportController::class, 'index']);
 $r->get('/reports/sales', [ReportController::class, 'sales']);

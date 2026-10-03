@@ -36,6 +36,18 @@
 </div>
 </div>
 
+<section class="card mt" id="my-tasks">
+    <div class="card-head card-head-plain">
+        <h2>My tasks <span class="muted small">(<?= count($myTasks) ?>)</span></h2>
+        <div class="card-head-actions"><a href="/tasks" class="small">All tasks</a><a href="/tasks/new?back=/" class="btn btn-secondary btn-small">Assign a task</a></div>
+    </div>
+    <?php if (!$myTasks): ?>
+        <p class="muted small">Nothing on your list.</p>
+    <?php else: ?>
+        <?= App\View::partial('tasks/_list', ['rows' => $myTasks, 'back' => '/#my-tasks', 'showAssignee' => false]) ?>
+    <?php endif; ?>
+</section>
+
 <?php
 // Group open items by project: one summary row each, items revealed on click.
 $today = date('Y-m-d');
@@ -54,7 +66,7 @@ usort($byProject, static fn ($a, $b) => [$b['overdue'] > 0, $a['next'] === null,
 <section class="card card-flush mt">
     <div class="card-head">
         <h2>My open items <span class="muted small">(<?= count($items) ?> on <?= count($byProject) ?> project<?= count($byProject) === 1 ? '' : 's' ?>)</span></h2>
-        <span class="muted small">Project tasks you own that are still needed or unanswered, on active projects (not on hold). Click a project to see its items.</span>
+        <span class="muted small">Project tasks you own that are actionable now: the project has reached that phase, the target date is within 30 days, or it is the next payment. Click a project to see its items.</span>
     </div>
     <?php if (!$items): ?>
         <p class="empty">Nothing open with your name on it.</p>

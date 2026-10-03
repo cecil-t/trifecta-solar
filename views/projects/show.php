@@ -154,6 +154,14 @@ $back = '/projects/' . (int) $p['id'];
     </section>
 </div>
 
+<section class="card task-strip" id="todos">
+    <div class="task-strip-head">
+        <h2>Tasks <span class="muted small">(<?= count($todos) ?> open)</span></h2>
+        <a href="/tasks/new?project=<?= (int) $p['id'] ?>&amp;back=<?= e(rawurlencode('/projects/' . (int) $p['id'] . '#todos')) ?>" class="btn btn-ghost btn-small">+ Assign a task</a>
+    </div>
+    <?php if ($todos): ?><?= App\View::partial('tasks/_list', ['rows' => $todos, 'back' => '/projects/' . (int) $p['id'] . '#todos', 'showLink' => false]) ?><?php endif; ?>
+</section>
+
 <div id="tasks" class="tasks-wrap" data-today="<?= $today ?>">
     <?php foreach (Tasks::PHASES as $phaseKey => $phaseLabel): $tasks = $tree[$phaseKey]; ?>
         <?php

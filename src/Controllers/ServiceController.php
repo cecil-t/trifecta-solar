@@ -268,7 +268,7 @@ final class ServiceController
         ) : [];
         View::render('service/show', [
             'title' => $t['ticket_number'] . ' ' . ($t['customer_name'] ?? ''),
-            't' => $t, 'visits' => Service::visits($id), 'contacts' => $contacts, 'history' => $history,
+            't' => $t, 'visits' => Service::visits($id), 'todos' => \App\Todos::forService($id), 'contacts' => $contacts, 'history' => $history,
             'activity' => Activity::feed('service', $id, $commentsOnly), 'commentsOnly' => $commentsOnly,
         ]);
     }
