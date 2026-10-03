@@ -6,7 +6,7 @@ ENV TZ=America/New_York
 
 RUN a2enmod headers \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
-    && echo "ServerTokens Prod\nServerSignature Off" > /etc/apache2/conf-enabled/zz-security.conf \
+    && echo "ServerTokens Prod\nServerSignature Off\nServerName trifecta-tracker" > /etc/apache2/conf-enabled/zz-security.conf \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-trifecta.ini"
