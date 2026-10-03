@@ -70,7 +70,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 </main>
 
 <footer class="footer">
-    Trifecta Solar Tracker
+    Trifecta Solar Ops Tracker
 </footer>
 </body>
 </html>

@@ -17,7 +17,6 @@
     <?php else: ?>
         <div class="weather weather-empty muted small">Weather unavailable</div>
     <?php endif; ?>
-    <a href="/projects/new" class="btn btn-primary">New project</a>
 </div>
 
 <div class="stat-group"><span class="stat-group-label">Projects</span>

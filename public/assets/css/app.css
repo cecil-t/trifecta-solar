@@ -299,7 +299,7 @@ tr.clickable { cursor: pointer; }
 .tgrid { font-size: .88rem; }
 .trow {
     display: grid; align-items: center; gap: .4rem;
-    grid-template-columns: minmax(200px, 2.2fr) 70px 140px 140px minmax(90px, .9fr) 70px minmax(140px, 2fr) 32px;
+    grid-template-columns: minmax(200px, 2.2fr) 70px 124px 112px minmax(90px, .9fr) 70px minmax(140px, 2fr) 32px;
     padding: .3rem 1rem; border-top: 1px solid var(--border); position: relative;
 }
 .phase-block { overflow: visible; }
@@ -393,11 +393,11 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
 
 @media (max-width: 1100px) {
     .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .trow { grid-template-columns: minmax(160px, 2fr) 64px 132px 132px minmax(80px, .8fr) 64px minmax(120px, 1.6fr) 32px; }
+    .trow { grid-template-columns: minmax(160px, 2fr) 64px 122px 110px minmax(80px, .8fr) 64px minmax(120px, 1.6fr) 32px; }
 }
 
 @media (min-width: 761px) and (max-width: 960px) {
-    .trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 124px 124px minmax(56px, .7fr) 56px minmax(80px, 1.3fr) 28px; }
+    .trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 118px 106px minmax(56px, .7fr) 56px minmax(80px, 1.3fr) 28px; }
     .trow input, .trow select { font-size: .8rem; padding: .25rem .3rem; }
 }
 
@@ -416,7 +416,7 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
     .trow.thead { display: none; }
     .trow {
         grid-template-columns: 1fr 1fr 32px;
-        grid-template-areas: "name name menu" "needed owner owner" "target done done" "ref ref ref" "note note note";
+        grid-template-areas: "name name menu" "needed owner owner" "done target target" "ref ref ref" "note note note";
         padding: .65rem .9rem; row-gap: .35rem;
     }
     .trow > .tname { grid-area: name; }
@@ -632,3 +632,13 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .task-strip-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .task-strip-head h2 { margin: 0; font-size: 1rem; }
 .card-head-plain { padding: 0 0 .5rem; }
+
+/* task grid: Completed is the main date; Target is a quieter planning field */
+.trow input[type=date] { padding-right: .2rem; }
+.trow input[type=date]::-webkit-calendar-picker-indicator { margin-left: 0; padding: 0; opacity: .55; }
+.trow .dw-target input { font-size: .76rem; color: #7d8a91; background: #fafbfa; border-color: #e8ece9; border-style: dashed; padding-top: .25rem; padding-bottom: .25rem; }
+.trow .dw-target input:focus { color: var(--text); border-style: solid; }
+.trow .dw-target input::-webkit-calendar-picker-indicator { opacity: .35; }
+.trow .dw-target input.is-overdue { background: #fff4d1; border: 1px solid #e6c766; color: #6b5310; }
+.trow .dw-target input.is-overdue-30 { background: #fbd3cd; border: 1px solid #d9534f; color: #8c1d14; font-weight: 650; }
+.trow.thead .th-target { color: #a3adb2; font-weight: 600; }
