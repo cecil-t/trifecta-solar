@@ -10,7 +10,7 @@ final class View
     {
         http_response_code($status);
         $content = self::partial($template, $data);
-        echo self::partial($layout, $data + ['content' => $content]);
+        echo HtmlIndent::tidy(self::partial($layout, $data + ['content' => $content]));
     }
 
     public static function partial(string $template, array $data = []): string
