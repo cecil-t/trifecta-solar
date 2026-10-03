@@ -28,6 +28,9 @@ final class ServiceController
     {
         $tab = $_GET['tab'] ?? 'active';
         $q = trim((string) ($_GET['q'] ?? ''));
+        if ($q !== '') {
+            $tab = 'all'; // a search always looks across every ticket
+        }
         $rows = Db::all(
             "SELECT t.*, c.name AS customer_name, p.project_number, u.initials AS owner_initials,
                     (SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,

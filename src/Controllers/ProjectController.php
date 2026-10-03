@@ -36,6 +36,9 @@ final class ProjectController
             'sales' => (int) ($_GET['sales'] ?? 0),
             'q'     => trim((string) ($_GET['q'] ?? '')),
         ];
+        if ($filter['q'] !== '') {
+            $filter['phase'] = 'all'; // a search always looks across every project
+        }
         $sql = 'SELECT p.*, u.initials AS sales_initials, u.name AS sales_name, m.name AS municipality_name,
                        co.name AS county_name, c.name AS customer_name
                 FROM projects p

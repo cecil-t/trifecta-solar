@@ -27,14 +27,13 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 
 <div class="tabs">
 	<?php foreach ($tabs as $key => $label): ?>
-		<a href="<?= e($qs(['phase' => $key])) ?>" class="tab <?= $key === 'clear' ? 'tab-sub' : '' ?> <?= $filter['phase'] === $key ? 'active' : '' ?>"<?= $key === 'clear' ? ' title="Part of Pre-Install: building permit received and interconnection approved"' : '' ?>>
+		<a href="<?= e($qs(['phase' => $key, 'q' => null])) ?>" class="tab <?= $key === 'clear' ? 'tab-sub' : '' ?> <?= $filter['phase'] === $key ? 'active' : '' ?>"<?= $key === 'clear' ? ' title="Part of Pre-Install: building permit received and interconnection approved"' : '' ?>>
 			<?= $key === 'clear' ? '<span class="tab-sub-mark" aria-hidden="true">&#8627;</span>' : '' ?><?= e($label) ?> <span class="tab-count"><?= (int) ($counts[$key] ?? 0) ?></span>
 		</a>
 	<?php endforeach; ?>
 </div>
 
 <form class="filters" method="get" action="/projects">
-	<input type="hidden" name="phase" value="<?= e($filter['phase']) ?>">
 	<input type="search" name="q" value="<?= e($filter['q']) ?>" placeholder="Search name, #, customer, municipality">
 	<select name="sales" onchange="this.form.submit()">
 		<option value="">All salespeople</option>

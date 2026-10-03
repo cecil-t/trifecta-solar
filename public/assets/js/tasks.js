@@ -120,12 +120,6 @@
         }
     });
 
-    // Close other open menus when one opens
-    document.querySelectorAll('details.tmenu').forEach((d) => {
-        d.addEventListener('toggle', () => {
-            if (d.open) document.querySelectorAll('details.tmenu[open]').forEach((o) => { if (o !== d) o.removeAttribute('open'); });
-        });
-    });
 
     // Sub-tasks under a "No" task look disabled
     document.querySelectorAll('.task').forEach((t) => {

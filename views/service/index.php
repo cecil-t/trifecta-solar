@@ -29,14 +29,13 @@ $cols = 9;
 
 <div class="tabs">
 	<?php foreach ($tabs as $key => $label): ?>
-		<a href="<?= e($qs(['tab' => $key])) ?>" class="tab <?= $tab === $key ? 'active' : '' ?>">
+		<a href="<?= e($qs(['tab' => $key, 'q' => null])) ?>" class="tab <?= $tab === $key ? 'active' : '' ?>">
 			<?= e($label) ?> <span class="tab-count"><?= (int) ($counts[$key] ?? 0) ?></span>
 		</a>
 	<?php endforeach; ?>
 </div>
 
 <form class="filters" method="get" action="/service">
-	<input type="hidden" name="tab" value="<?= e($tab) ?>">
 	<input type="search" name="q" value="<?= e($q) ?>" placeholder="Search #, customer, description, address">
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>

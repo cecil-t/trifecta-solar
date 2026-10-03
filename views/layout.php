@@ -72,5 +72,6 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 <footer class="footer">
 	Trifecta Solar Ops Tracker
 </footer>
+<script src="<?= asset('assets/js/app.js') ?>"></script>
 </body>
 </html>
