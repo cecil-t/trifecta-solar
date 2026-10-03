@@ -1,0 +1,8 @@
+/data/*
+!/data/.gitkeep
+/backups/*
+!/backups/.gitkeep
+/.env
+.DS_Store
+@eaDir/
+#recycle/

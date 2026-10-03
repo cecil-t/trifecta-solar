@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    image: trifecta-solar:latest
+    container_name: trifecta-solar
+    restart: unless-stopped
+    ports:
+      # Host port 8089 -> container port 80. Change the left side if 8089 is taken on the NAS.
+      - "8089:80"
+    environment:
+      - TZ=America/New_York
+    volumes:
+      # Code (live: git pull on the host updates the app, no rebuild needed)
+      - ./:/var/www/app
+      # The database lives in ./data and nightly snapshots in ./backups (both git-ignored)
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://localhost/health') === false ? 1 : 0);"]
+      interval: 60s
+      timeout: 5s
+      retries: 3

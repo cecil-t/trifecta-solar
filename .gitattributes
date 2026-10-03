@@ -1,0 +1,4 @@
+# Keep shell scripts and everything else LF so they run inside the Linux container
+* text=auto eol=lf
+*.png binary
+*.ico binary

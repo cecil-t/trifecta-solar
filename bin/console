@@ -1,0 +1,78 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+/*
+ * Command-line tasks. Inside the container:
+ *   docker exec -it trifecta-solar php bin/console <command>
+ *
+ *   migrate                      Apply pending database migrations
+ *   backup [--keep=N]            Snapshot the database into backups/ (verified), prune to N
+ *   user:list                    List users
+ *   user:password <email>        Set a user's password (prompts, input hidden)
+ */
+
+require dirname(__DIR__) . '/src/bootstrap.php';
+
+use App\Backup;
+use App\Db;
+use App\Migrator;
+use App\Password;
+
+$args = array_slice($argv, 1);
+$command = $args[0] ?? 'help';
+
+function out(string $line): void { fwrite(STDOUT, $line . PHP_EOL); }
+function fail(string $line): never { fwrite(STDERR, $line . PHP_EOL); exit(1); }
+
+function prompt_hidden(string $label): string
+{
+    fwrite(STDOUT, $label);
+    $tty = stream_isatty(STDIN);
+    if ($tty) { shell_exec('stty -echo'); }
+    $value = rtrim((string) fgets(STDIN), "\r\n");
+    if ($tty) { shell_exec('stty echo'); fwrite(STDOUT, PHP_EOL); }
+    return $value;
+}
+
+try {
+    switch ($command) {
+        case 'migrate':
+            $ran = Migrator::migrate();
+            out($ran ? 'Applied: ' . implode(', ', $ran) : 'Database is up to date (' . count(Migrator::applied()) . ' migrations).');
+            break;
+
+        case 'backup':
+            $keep = null;
+            foreach ($args as $a) {
+                if (str_starts_with($a, '--keep=')) { $keep = (int) substr($a, 7); }
+            }
+            $r = Backup::run($keep);
+            out(sprintf('%s  Backup OK: %s (%s KB, integrity ok), pruned %d old', date('Y-m-d H:i:s'), basename($r['file']), number_format($r['bytes'] / 1024, 1), $r['pruned']));
+            break;
+
+        case 'user:list':
+            foreach (Db::all('SELECT * FROM users ORDER BY id') as $u) {
+                out(sprintf('%-3d %-30s %-22s %-6s %-8s %s', $u['id'], $u['email'], $u['name'],
+                    $u['is_admin'] ? 'admin' : 'user', $u['is_active'] ? 'active' : 'inactive',
+                    $u['password_hash'] ? 'password set' : 'NO PASSWORD'));
+            }
+            break;
+
+        case 'user:password':
+            $email = $args[1] ?? fail('Usage: user:password <email>');
+            $user = Db::one('SELECT * FROM users WHERE email = ?', [$email]) ?? fail("No user with email $email");
+            $p1 = prompt_hidden('New password: ');
+            $p2 = prompt_hidden('Confirm: ');
+            if ($err = Password::validate($p1, $p2)) { fail($err); }
+            Db::update('users', (int) $user['id'], ['password_hash' => Password::hash($p1), 'password_changed_at' => now_utc(), 'updated_at' => now_utc()]);
+            App\Activity::event('user', (int) $user['id'], 'Password set from the server console', null);
+            out("Password set for {$user['name']}.");
+            break;
+
+        default:
+            out("Commands: migrate | backup [--keep=N] | user:list | user:password <email>");
+    }
+} catch (Throwable $e) {
+    fail('Error: ' . $e->getMessage());
+}
