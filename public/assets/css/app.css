@@ -760,3 +760,9 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .head-actions .btn { padding: .4rem .8rem; font-size: .82rem; }
     .head-actions form { margin: 0; }
 }
+
+/* log entries: long links and values wrap inside the card instead of widening the page */
+.activity-item { min-width: 0; }
+.activity-body { min-width: 0; flex: 1; overflow-wrap: anywhere; word-break: break-word; }
+.activity-change .val, .comment-text { overflow-wrap: anywhere; word-break: break-word; }
+.card, .kv dd, .desc-text { min-width: 0; overflow-wrap: anywhere; }
