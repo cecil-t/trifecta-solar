@@ -251,6 +251,12 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; col
 .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 .tab-count { background: #eef1f0; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; margin-left: .2rem; }
 .tab.active .tab-count { background: var(--blue-50); }
+/* "Clear to install" is a slice of Pre-Install: tuck it against its parent tab */
+.tab-sub { font-size: .82rem; padding-left: .2rem; margin-left: -.45rem; color: #6b7a72; }
+.tab-sub-mark { color: var(--green); font-weight: 700; margin-right: .2rem; }
+.tab-sub.active { color: #3f7a24; border-bottom-color: var(--green); }
+.stat-sub { background: #fafcf8; }
+.stat-sub .stat-num { font-size: 1.35rem; }
 .filters { display: flex; gap: .5rem; margin-bottom: .9rem; flex-wrap: wrap; }
 .filters input[type=search] { max-width: 340px; }
 .filters select { max-width: 220px; }
@@ -466,3 +472,50 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
 .drive-link { font-size: .72rem; font-weight: 700; margin-left: .4rem; padding: 0 .35rem; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
 .drive-link:hover { color: var(--blue); border-color: var(--blue); text-decoration: none; }
 .phase-archived { background: #e9ecef; color: #5d6a72; }
+
+/* ---------- service ---------- */
+.summary-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.desc-text { margin: 0 0 .75rem; white-space: normal; }
+.nowrap { white-space: nowrap; }
+.table td.cell-desc { max-width: 380px; white-space: normal; }
+.table-visits td:nth-child(5) { white-space: normal; min-width: 180px; }
+.quick-form { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--border); }
+.quick-form input { width: auto; flex: 1 1 110px; padding: .35rem .5rem; font-size: .85rem; }
+.quick-form input[type=date] { flex: 0 1 150px; }
+.table-visits td { vertical-align: top; }
+.table-visits tfoot td { border-top: 2px solid var(--border); }
+.visit-edit-row td { padding: 0; white-space: normal; }
+.visit-edit-form { border-radius: 0; background: var(--blue-50); }
+.visit-add { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-end; padding: .8rem 1rem .9rem; border-top: 1px solid var(--border); background: #fafbfa; border-radius: 0 0 var(--radius) var(--radius); }
+.visit-add label { font-size: .78rem; flex: 0 1 150px; }
+.visit-add label.short { flex: 0 1 90px; }
+.visit-add label.grow { flex: 1 1 160px; }
+.visit-add label.grow-2 { flex: 2 1 240px; }
+.visit-add input { padding: .4rem .5rem; font-size: .88rem; }
+@media (max-width: 1100px) { .summary-3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) {
+    .summary-3 { grid-template-columns: 1fr; }
+    .visit-add label, .visit-add label.short { flex: 1 1 40%; }
+    .table-service th:nth-child(4), .table-service td:nth-child(4),
+    .table-service th:nth-child(6), .table-service td:nth-child(6) { display: none; }
+}
+.stat-service { border-left-color: #7a5ea8; }
+.stat-service.stat-orange { border-left-color: var(--orange); }
+
+/* ---------- reports ---------- */
+.report-period { align-items: center; }
+.report-period select { max-width: 200px; }
+.custom-range { display: inline-flex; gap: .4rem; align-items: center; }
+.custom-range input { width: auto; padding: .4rem .5rem; }
+.report-nav { display: flex; gap: 1rem; margin: 0 0 .9rem; font-size: .88rem; font-weight: 600; flex-wrap: wrap; }
+.report-metrics { padding: .2rem 1rem .6rem; gap: 2rem; }
+.report-sub { padding: 0 1rem; }
+.report-hint { padding: 0 1rem .6rem; margin: 0; }
+.report-more { border-top: 1px solid var(--border); }
+.report-more > summary { padding: .7rem 1rem; cursor: pointer; font-weight: 600; font-size: .88rem; color: var(--blue); }
+.table tfoot td { border-top: 2px solid var(--border); font-weight: 600; }
+.check-col { width: 64px; }
+tr.is-excluded td { color: #a3adb2; text-decoration: line-through; }
+tr.is-excluded td.check-col { text-decoration: none; }
+section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
+.table th.num { text-align: right; }

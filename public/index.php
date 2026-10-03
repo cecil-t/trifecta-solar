@@ -27,6 +27,8 @@ use App\Controllers\TemplateController;
 use App\Controllers\UserController;
 use App\Migrator;
 use App\Router;
+use App\Controllers\ServiceController;
+use App\Controllers\ReportController;
 
 if (Config::bool('APP_DEBUG')) {
     ini_set('display_errors', '1');
@@ -84,6 +86,20 @@ $r->post('/projects/{id}/tasks/{taskId}/duplicate', [ProjectController::class, '
 $r->post('/projects/{id}/tasks/{taskId}/delete', [ProjectController::class, 'deleteTask']);
 
 // Comments on any log
+$r->get('/service', [ServiceController::class, 'index']);
+$r->get('/service/new', [ServiceController::class, 'create']);
+$r->post('/service', [ServiceController::class, 'store']);
+$r->get('/service/{id}', [ServiceController::class, 'show']);
+$r->get('/service/{id}/edit', [ServiceController::class, 'edit']);
+$r->post('/service/{id}', [ServiceController::class, 'update']);
+$r->post('/service/{id}/quick', [ServiceController::class, 'quick']);
+$r->post('/service/{id}/comments', [ServiceController::class, 'comment']);
+$r->post('/service/{id}/visits', [ServiceController::class, 'addVisit']);
+$r->post('/service/{id}/visits/{visitId}', [ServiceController::class, 'updateVisit']);
+$r->post('/service/{id}/visits/{visitId}/delete', [ServiceController::class, 'deleteVisit']);
+
+$r->get('/reports', [ReportController::class, 'index']);
+
 $r->post('/activity/{id}/edit', [ActivityController::class, 'edit']);
 $r->post('/activity/{id}/delete', [ActivityController::class, 'delete']);
 

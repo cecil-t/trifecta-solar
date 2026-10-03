@@ -29,8 +29,14 @@ final class DashboardController
                 $counts['clear']++;
             }
         }
+        $service = ['open' => 0, 'to_invoice' => 0];
+        foreach (Db::all('SELECT coverage, completed_on, scheduled_on, invoiced FROM service_tickets') as $t) {
+            $st = \App\Service::status($t);
+            if ($st === 'open' || $st === 'scheduled') { $service['open']++; }
+            if ($st === 'to_invoice') { $service['to_invoice']++; }
+        }
         View::render('dashboard', [
-            'title' => 'Dashboard', 'user' => Auth::user(), 'counts' => $counts,
+            'title' => 'Dashboard', 'user' => Auth::user(), 'counts' => $counts, 'service' => $service,
             'items' => Tasks::openItemsFor((int) Auth::id(), 60),
             'weather' => \App\Weather::forecast(),
         ]);

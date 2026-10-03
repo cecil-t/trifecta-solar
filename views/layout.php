@@ -7,9 +7,9 @@ $path = current_path();
 $nav = [
     ['/', 'Dashboard', true],
     ['/projects', 'Projects', true],
-    ['/service', 'Service', false],
+    ['/service', 'Service', true],
     ['/actions', 'Action Items', false],
-    ['/reports', 'Reports', false],
+    ['/reports', 'Reports', true],
 ];
 $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_starts_with($path, $href);
 ?>
