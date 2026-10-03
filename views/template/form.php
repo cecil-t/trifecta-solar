@@ -31,6 +31,7 @@ $sel = static fn ($a, $b) => (string) $a === (string) $b ? 'selected' : '';
                 <option value="0" <?= $sel($t['default_needed'], 0) ?>>No</option>
                 <option value="" <?= $t['default_needed'] === null ? 'selected' : '' ?>>Ask (leave blank)</option>
             </select>
+            <small class="hint">"Ask" makes it a question item: projects show a Yes / No / ? choice for it (top-level items only).</small>
         </label>
         <label>Applies to
             <select name="applies_when">
