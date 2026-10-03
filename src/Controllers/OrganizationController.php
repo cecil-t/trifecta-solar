@@ -78,7 +78,7 @@ final class OrganizationController
         $contacts = Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? ORDER BY is_active DESC, is_primary DESC, name", [$id]);
         $projects = $o['type'] === 'customer'
             ? Db::all('SELECT id, project_number, name FROM projects WHERE customer_id = ? ORDER BY project_number', [$id])
-            : Db::all('SELECT DISTINCT id, project_number, name FROM projects WHERE ? IN (zoning_org_id, plan_review_org_id, inspection_org_id, designer_org_id, installer_org_id) ORDER BY project_number', [$id]);
+            : Db::all('SELECT DISTINCT id, project_number, name FROM projects WHERE ? IN (zoning_org_id, building_org_id, inspection_org_id, designer_org_id, installer_org_id) ORDER BY project_number', [$id]);
         View::render('organizations/form', [
             'title' => $o['name'], 'o' => $o, 'contacts' => $contacts, 'projects' => $projects,
             'activity' => Activity::feed('organization', $id), 'canManage' => self::canManage($o['type']),

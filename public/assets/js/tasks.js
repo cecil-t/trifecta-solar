@@ -52,6 +52,28 @@
         }
     }
 
+    // Target date highlight: past due with no done date (cream), 30+ days past due (red).
+    function localToday() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function markOverdue(row) {
+        const target = row.querySelector('[data-field="target_date"]');
+        if (!target) return;
+        const done = row.querySelector('[data-field="done_date"]');
+        const needed = row.querySelector('[data-field="needed"]');
+        let cls = '';
+        const today = localToday();
+        if (target.value && target.value < today && !(done && done.value)
+            && !(needed && needed.value === '0') && !row.classList.contains('parent-na')) {
+            const days = Math.round((Date.parse(today) - Date.parse(target.value)) / 86400000);
+            cls = days >= 30 ? 'is-overdue-30' : 'is-overdue';
+        }
+        target.classList.remove('is-overdue', 'is-overdue-30');
+        if (cls) target.classList.add(cls);
+        target.title = cls ? 'Past target date' + (cls === 'is-overdue-30' ? ' by 30+ days' : '') : '';
+    }
+
     document.querySelectorAll('.trow[data-id]').forEach((row) => {
         row.querySelectorAll('[data-field]').forEach((el) => {
             el.addEventListener('change', async () => {
@@ -61,9 +83,10 @@
                     if (field === 'needed') {
                         row.classList.toggle('is-na', el.value === '0');
                         if (row.classList.contains('trow-task')) {
-                            row.closest('.task').querySelectorAll('.trow-sub').forEach((s) => s.classList.toggle('parent-na', el.value === '0'));
+                            row.closest('.task').querySelectorAll('.trow-sub').forEach((s) => { s.classList.toggle('parent-na', el.value === '0'); markOverdue(s); });
                         }
                     }
+                    if (['needed', 'target_date', 'done_date'].includes(field)) markOverdue(row);
                 } catch (e) { /* alert already shown */ }
             });
         });
@@ -105,4 +128,14 @@
         const sel = t.querySelector('.trow-task [data-field="needed"]');
         if (sel && sel.value === '0') t.querySelectorAll('.trow-sub').forEach((s) => s.classList.add('parent-na'));
     });
+
+    document.querySelectorAll('.trow[data-id]').forEach(markOverdue);
+
+    // Sticky column headers sit just under the sticky top bar, whatever its height.
+    const topbar = document.querySelector('.topbar');
+    function setTopbarHeight() {
+        if (topbar) document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+    }
+    setTopbarHeight();
+    window.addEventListener('resize', setTopbarHeight);
 })();

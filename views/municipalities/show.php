@@ -26,17 +26,17 @@ $dis = $admin ? '' : 'disabled';
                     <?php foreach ($counties as $c): ?><option value="<?= (int) $c['id'] ?>" <?= (int) $c['id'] === (int) $m['county_id'] ? 'selected' : '' ?>><?= e($c['name'] . ' (' . $c['state_code'] . ')') ?></option><?php endforeach; ?>
                 </select>
             </label>
-            <?php foreach (['zoning' => 'Zoning', 'plan_review' => 'Plan review', 'inspection' => 'Inspections'] as $slot => $label): ?>
+            <?php foreach (Municipalities::SLOTS as $key => $slot): ?>
                 <div class="provider span-all">
-                    <label><?= $label ?> by
-                        <select name="<?= $slot ?>_mode" data-reveal="agency" data-target="#<?= $slot ?>-org" <?= $dis ?>>
-                            <?php foreach (Municipalities::MODES as $k => $l): ?><option value="<?= $k ?>" <?= (string) $m[$slot . '_mode'] === (string) $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?>
+                    <label><?= e($slot['label']) ?> by
+                        <select name="<?= $slot['by'] ?>" data-reveal="third_party" data-target="#<?= $key ?>-org" <?= $dis ?>>
+                            <?php foreach (Municipalities::BY as $k => $l): ?><option value="<?= $k ?>" <?= (string) $m[$slot['by']] === (string) $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?>
                         </select>
                     </label>
-                    <label id="<?= $slot ?>-org" hidden>Agency
-                        <select name="<?= $slot ?>_org_id" <?= $dis ?>>
+                    <label id="<?= $key ?>-org" hidden>Third party
+                        <select name="<?= $slot['org'] ?>" <?= $dis ?>>
                             <option value="">Choose</option>
-                            <?php foreach ($agencies as $a): ?><option value="<?= (int) $a['id'] ?>" <?= (int) $a['id'] === (int) $m[$slot . '_org_id'] ? 'selected' : '' ?>><?= e($a['name']) ?></option><?php endforeach; ?>
+                            <?php foreach ($agencies as $a): ?><option value="<?= (int) $a['id'] ?>" <?= (int) $a['id'] === (int) $m[$slot['org']] ? 'selected' : '' ?>><?= e($a['name']) ?></option><?php endforeach; ?>
                         </select>
                     </label>
                 </div>

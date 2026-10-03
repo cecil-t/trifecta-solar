@@ -27,13 +27,39 @@ $gateBadge = static fn (?string $g) => match ($g) {
     'pto' => '<span class="gate" title="Moves the project to Closeout">phase</span>',
     default => '',
 };
-$provider = static function (string $slot) use ($p): string {
-    return match ($p[$slot . '_mode']) {
-        'self' => 'Municipality',
-        'agency' => $p[$slot . '_org_name'] ?: 'Agency (not chosen)',
+$provider = static function (array $slot) use ($p): string {
+    return match ((string) $p[$slot['by']]) {
+        'municipality' => 'Municipality',
+        'county' => 'County',
+        'third_party' => e($p[str_replace('_id', '_name', $slot['org'])] ?? '') ?: 'Third party (not chosen)',
         default => '<span class="muted">Not set</span>',
     };
 };
+$today = date('Y-m-d');
+// Target cell highlight: past target with no done date (cream), 30+ days past (red).
+$overdue = static function (array $t) use ($today): string {
+    if ((string) $t['needed'] === '0' || !empty($t['done_date']) || empty($t['target_date']) || $t['target_date'] >= $today) {
+        return '';
+    }
+    $days = (int) ((strtotime($today) - strtotime($t['target_date'])) / 86400);
+    return $days >= 30 ? 'is-overdue-30' : 'is-overdue';
+};
+// Yes / No / not answered for a question-type task, looked up by name.
+$answer = static function (string $name) use ($tree): string {
+    foreach ($tree as $tasks) {
+        foreach ($tasks as $t) {
+            if (strcasecmp($t['name'], $name) === 0) {
+                return match ((string) $t['needed']) {
+                    '1' => !empty($t['done_date']) ? 'Yes &middot; done ' . e(fmt_date($t['done_date'])) : 'Yes',
+                    '0' => 'No',
+                    default => '<span class="muted">Not answered</span>',
+                };
+            }
+        }
+    }
+    return '<span class="muted">Not on this project</span>';
+};
+$siteAddr = trim(implode(', ', array_filter([trim((string) $p['site_street']), trim((string) $p['site_city']), trim(($p['site_state'] ?? '') . ' ' . ($p['site_zip'] ?? ''))])));
 $fmtNum = static fn ($n, $d = 1) => rtrim(rtrim(number_format((float) $n, $d), '0'), '.');
 $back = '/projects/' . (int) $p['id'];
 ?>
@@ -43,6 +69,7 @@ $back = '/projects/' . (int) $p['id'];
         <h1><span class="pnum"><?= e($p['project_number']) ?></span> <?= e($p['name']) ?></h1>
         <div class="badges">
             <span id="phase-badge" class="phase phase-<?= e($status['phase']) ?>"><?= e(Tasks::PHASE_LABELS[$status['phase']]) ?></span>
+            <?php if ((string) $p['tax_exempt'] === '1'): ?><span class="chip chip-purple" title="Customer has a tax-exempt certificate">Tax exempt</span><?php endif; ?>
             <?php if ($p['archived_at']): ?><span class="chip">Archived <?= e(fmt_dt($p['archived_at'], 'm/d/Y')) ?></span><?php endif; ?>
             <?php if ($p['hold_state'] === 'on_hold'): ?><span class="chip chip-orange">On hold<?= $p['hold_reason'] ? ': ' . e($p['hold_reason']) : '' ?></span><?php endif; ?>
             <?php if ($p['hold_state'] === 'cancelled' && $p['hold_reason']): ?><span class="chip"><?= e($p['hold_reason']) ?></span><?php endif; ?>
@@ -70,7 +97,7 @@ $back = '/projects/' . (int) $p['id'];
                 <dt><?= e($c['role'] ?: 'Contact') ?></dt>
                 <dd><?= e($c['name']) ?><?php if ($c['phone']): ?> &middot; <a href="tel:<?= e(preg_replace('/[^0-9+]/', '', $c['phone'])) ?>"><?= e($c['phone']) ?></a><?php endif; ?><?php if ($c['email']): ?><br><a href="mailto:<?= e($c['email']) ?>" class="small"><?= e($c['email']) ?></a><?php endif; ?></dd>
             <?php endforeach; ?>
-            <dt>Site</dt><dd><?= e(trim(($p['site_street'] ?? '') . ', ' . ($p['site_city'] ?? '') . ' ' . ($p['site_state'] ?? '') . ' ' . ($p['site_zip'] ?? ''), ' ,')) ?: '<span class="muted">Not set</span>' ?></dd>
+            <dt>Site</dt><dd><?= $siteAddr !== '' ? '<a href="https://www.google.com/maps/search/?api=1&amp;query=' . e(rawurlencode($siteAddr)) . '" target="_blank" rel="noopener" title="Open in Google Maps">' . e($siteAddr) . ' &#8599;</a>' : '<span class="muted">Not set</span>' ?></dd>
             <dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$p['customer_type']] ?? '') ?><?= $p['is_agricultural'] ? ' &middot; Agricultural' : '' ?></dd>
             <dt>Salesperson</dt><dd><?= e($p['salesperson_name'] ?? '') ?></dd>
         </dl>
@@ -80,9 +107,9 @@ $back = '/projects/' . (int) $p['id'];
         <h2>Jurisdiction</h2>
         <dl class="kv">
             <dt>Municipality</dt><dd><?= $p['municipality_id'] ? '<a href="/municipalities/' . (int) $p['municipality_id'] . '">' . e($p['municipality_name']) . '</a><div class="muted small">' . e($p['county_name'] . ' Co., ' . $p['county_state']) . '</div>' : '<span class="muted">Not set</span>' ?></dd>
-            <dt>Zoning</dt><dd><?= $provider('zoning') ?></dd>
-            <dt>Plan review</dt><dd><?= $provider('plan_review') ?></dd>
-            <dt>Inspections</dt><dd><?= $provider('inspection') ?></dd>
+            <?php foreach (Municipalities::SLOTS as $slot): ?>
+                <dt><?= e($slot['label']) ?></dt><dd><?= $provider($slot) ?></dd>
+            <?php endforeach; ?>
             <dt>Utility</dt><dd><?= e($p['utility_name'] ?? '') ?></dd>
             <dt>Designer</dt><dd><?= e($p['designer_name'] ?? '') ?></dd>
             <dt>Installer</dt><dd><?= e($p['installer_name'] ?? 'Trifecta (in-house)') ?></dd>
@@ -97,12 +124,16 @@ $back = '/projects/' . (int) $p['id'];
             <div><span class="m-num"><?= $totals['ratio'] ? number_format($totals['ratio'], 2) : '-' ?></span><span class="m-label">DC/AC</span></div>
             <?php if ($p['has_batteries']): ?><div><span class="m-num"><?= $fmtNum($totals['storage_kwh'], 1) ?></span><span class="m-label">kWh storage</span></div><?php endif; ?>
         </div>
-        <ul class="eq-list">
-            <?php foreach ($eq['modules'] as $m): ?><li><?= (int) $m['qty'] ?> &times; <?= $fmtNum($m['watts']) ?>W <?= e($m['description'] ?? '') ?></li><?php endforeach; ?>
-            <?php foreach ($eq['inverters'] as $i): ?><li><?= (int) $i['qty'] ?> &times; <?= $fmtNum($i['ac_kw'], 2) ?> kW <?= e($i['description'] ?? '') ?></li><?php endforeach; ?>
-            <?php foreach ($eq['batteries'] as $b): ?><li><?= (int) $b['qty'] ?> &times; <?= $b['kwh'] ? $fmtNum($b['kwh']) . ' kWh' : 'battery' ?> <?= e($b['description'] ?? '') ?></li><?php endforeach; ?>
-        </ul>
         <dl class="kv">
+            <?php if ($eq['modules']): ?>
+                <dt>Modules</dt><dd><?php foreach ($eq['modules'] as $m): ?><div><?= (int) $m['qty'] ?> &times; <?= $fmtNum($m['watts']) ?> W<?= $m['description'] ? ' <span class="muted">' . e($m['description']) . '</span>' : '' ?></div><?php endforeach; ?></dd>
+            <?php endif; ?>
+            <?php if ($eq['inverters']): ?>
+                <dt>Inverters</dt><dd><?php foreach ($eq['inverters'] as $i): ?><div><?= (int) $i['qty'] ?> &times; <?= $fmtNum($i['ac_kw'], 2) ?> kW AC<?= $i['description'] ? ' <span class="muted">' . e($i['description']) . '</span>' : '' ?></div><?php endforeach; ?></dd>
+            <?php endif; ?>
+            <?php if ($eq['batteries']): ?>
+                <dt>Batteries</dt><dd><?php foreach ($eq['batteries'] as $b): ?><div><?= (int) $b['qty'] ?> &times; <?= $b['kwh'] ? $fmtNum($b['kwh']) . ' kWh' : 'battery' ?><?= $b['kw'] ? ' / ' . $fmtNum($b['kw']) . ' kW' : '' ?><?= $b['description'] ? ' <span class="muted">' . e($b['description']) . '</span>' : '' ?></div><?php endforeach; ?></dd>
+            <?php endif; ?>
             <dt>Install</dt><dd><?= e(Projects::INSTALL_TYPES[$p['install_type']] ?? '') ?><?= $p['racking'] ? ' &middot; ' . e($p['racking']) : '' ?></dd>
             <?php if ($p['est_annual_kwh']): ?><dt>Est. annual</dt><dd><?= number_format((int) $p['est_annual_kwh']) ?> kWh</dd><?php endif; ?>
         </dl>
@@ -116,12 +147,15 @@ $back = '/projects/' . (int) $p['id'];
             <dt>Funding</dt><dd><?= e($funding) ?: '<span class="muted">Not set</span>' ?><?= $p['funding_note'] ? '<div class="muted small">' . e($p['funding_note']) . '</div>' : '' ?></dd>
             <dt>Tax exempt</dt><dd><?= $p['tax_exempt'] === null ? '<span class="muted">Unknown</span>' : ((int) $p['tax_exempt'] ? 'Yes' : 'No') ?></dd>
             <dt>Signed</dt><dd><?= e(fmt_date($status['start_date'])) ?: '<span class="muted">Not set</span>' ?></dd>
+            <dt>SolarInsure</dt><dd><?= $answer('SolarInsure registration') ?></dd>
+            <dt>Utility rebate</dt><dd><?= $answer('Utility rebate') ?></dd>
+            <dt>VNM</dt><dd><?= $answer('Virtual net metering') ?></dd>
             <?php if ($p['quote_number']): ?><dt>Quote #</dt><dd><?= e($p['quote_number']) ?></dd><?php endif; ?>
         </dl>
     </section>
 </div>
 
-<div id="tasks" class="tasks-wrap">
+<div id="tasks" class="tasks-wrap" data-today="<?= $today ?>">
     <?php foreach (Tasks::PHASES as $phaseKey => $phaseLabel): $tasks = $tree[$phaseKey]; ?>
         <?php
         $done = count(array_filter($tasks, static fn ($t) => $t['resolved']));
@@ -134,7 +168,7 @@ $back = '/projects/' . (int) $p['id'];
             </div>
             <div class="tgrid">
                 <div class="trow thead">
-                    <span>Item</span><span>Needed</span><span>Target</span><span>Done</span><span>Ref #</span><span>Owner</span><span>Note</span><span></span>
+                    <span><?= e($phaseLabel) ?></span><span>Needed</span><span>Target</span><span>Done</span><span>Ref #</span><span>Owner</span><span>Note</span><span></span>
                 </div>
                 <?php foreach ($tasks as $t): $hasSubs = (bool) $t['subs']; ?>
                     <div class="task" id="task-<?= (int) $t['id'] ?>">
@@ -148,7 +182,7 @@ $back = '/projects/' . (int) $p['id'];
                                 ?>
                                 <span class="rollup"><?= $sd ?>/<?= count($active) ?> done</span>
                             <?php else: ?>
-                                <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($t['target_date']) ?>" aria-label="Target date"></label>
+                                <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($t['target_date']) ?>" aria-label="Target date" class="<?= $overdue($t) ?>"></label>
                                 <label class="dwrap dw-done"><span class="mlabel">Done</span><input type="date" data-field="done_date" value="<?= e($t['done_date']) ?>" aria-label="Done date"></label>
                             <?php endif; ?>
                             <?php if ($t['ref_label']): ?>
@@ -170,7 +204,7 @@ $back = '/projects/' . (int) $p['id'];
                             <div class="trow trow-sub <?= $s['resolved'] ? 'is-resolved' : '' ?> <?= (string) $s['needed'] === '0' ? 'is-na' : '' ?>" data-id="<?= (int) $s['id'] ?>" id="task-<?= (int) $s['id'] ?>">
                                 <span class="tname"><span class="dot"></span><?= e($s['name']) ?> <?= $gateBadge($s['gate']) ?></span>
                                 <select data-field="needed" aria-label="Needed"><?= $neededSel($s['needed']) ?></select>
-                                <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date"></label>
+                                <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date" class="<?= (string) $t['needed'] === '0' ? '' : $overdue($s) ?>"></label>
                                 <label class="dwrap dw-done"><span class="mlabel">Done</span><input type="date" data-field="done_date" value="<?= e($s['done_date']) ?>" aria-label="Done date"></label>
                                 <span></span>
                                 <select data-field="owner_id" aria-label="Owner"><?= $ownerOpts($s['owner_id']) ?></select>

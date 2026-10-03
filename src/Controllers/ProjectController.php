@@ -22,9 +22,6 @@ final class ProjectController
         'est_annual_kwh' => 'Est. annual kWh', 'funding_note' => 'Funding note',
         'site_street' => 'Site street', 'site_city' => 'Site city', 'site_state' => 'Site state', 'site_zip' => 'Site ZIP',
         'utility_id' => 'Utility', 'municipality_id' => 'Municipality',
-        'zoning_mode' => 'Zoning by', 'zoning_org_id' => 'Zoning agency',
-        'plan_review_mode' => 'Plan review by', 'plan_review_org_id' => 'Plan review agency',
-        'inspection_mode' => 'Inspections by', 'inspection_org_id' => 'Inspection agency',
         'designer_org_id' => 'Designer', 'installer_org_id' => 'Installer', 'drive_url' => 'Drive folder',
         'status_note' => 'Status note', 'hold_state' => 'Hold / cancel', 'hold_reason' => 'Hold reason',
         'archived_at' => 'Archived', 'quote_number' => 'Quote #',
@@ -178,7 +175,7 @@ final class ProjectController
                     $data = $this->applyMunicipalityDefaults($data, true);
                 }
                 Db::update('projects', $id, $data + ['updated_at' => now_utc()]);
-                Activity::changes('project', $id, $before, $data, self::TRACKED, $this->formatters());
+                Activity::changes('project', $id, $before, $data, self::TRACKED + Municipalities::providerLabels(), $this->formatters());
 
                 $this->saveEquipment($id, $equipment);
                 $afterEq = Projects::equipment($id);
@@ -187,6 +184,15 @@ final class ProjectController
                 }
                 $this->saveFunding($id, $funding);
                 Activity::changes('project', $id, ['f' => $beforeFunding], ['f' => $this->fundingNames($id)], ['f' => 'Funding']);
+
+                foreach (['has_pv' => 'pv', 'has_batteries' => 'storage'] as $flag => $scope) {
+                    if ($data[$flag] && !(int) $before[$flag]) {
+                        $added = Tasks::addScope($id, $scope);
+                        if ($added) {
+                            Activity::event('project', $id, 'Added ' . ($scope === 'pv' ? 'Solar PV' : 'battery') . ' tasks: ' . implode(', ', $added));
+                        }
+                    }
+                }
             });
         } catch (\InvalidArgumentException $e) {
             $_SESSION['old_project'] = $_POST;
@@ -236,10 +242,7 @@ final class ProjectController
         $wasArchived = $id ? Db::value('SELECT archived_at FROM projects WHERE id = ?', [$id]) : null;
         $data['archived_at'] = empty($_POST['archived']) ? null : ($wasArchived ?: now_utc());
         if ($id !== null) {
-            foreach (['zoning', 'plan_review', 'inspection'] as $slot) {
-                $data[$slot . '_mode'] = $enum($slot . '_mode', ['self', 'agency']);
-                $data[$slot . '_org_id'] = $data[$slot . '_mode'] === 'agency' ? $int($slot . '_org_id') : null;
-            }
+            $data += Municipalities::providerInput();
         }
 
         if (!$data['project_number'] || !preg_match('/^[0-9A-Za-z\-]{3,12}$/', $data['project_number'])) {
@@ -362,12 +365,12 @@ final class ProjectController
         if (!$m) {
             return $data;
         }
-        foreach (['zoning', 'plan_review', 'inspection'] as $slot) {
+        foreach (Municipalities::SLOTS as $slot) {
             // On create, fill blanks. On a municipality change, take the new municipality's
             // setup only where it has one, so the user's own choices aren't wiped.
-            if ($overwrite ? !empty($m[$slot . '_mode']) : empty($data[$slot . '_mode'])) {
-                $data[$slot . '_mode'] = $m[$slot . '_mode'];
-                $data[$slot . '_org_id'] = $m[$slot . '_org_id'];
+            if ($overwrite ? !empty($m[$slot['by']]) : empty($data[$slot['by']])) {
+                $data[$slot['by']] = $m[$slot['by']];
+                $data[$slot['org']] = $m[$slot['org']];
             }
         }
         return $data;
@@ -378,10 +381,8 @@ final class ProjectController
         $lookup = static fn (string $sql) => static fn ($v) => $v === null || $v === '' ? '' : (string) (Db::value($sql, [$v]) ?? "#$v");
         $org = $lookup('SELECT name FROM organizations WHERE id = ?');
         $yn = static fn ($v) => $v === null || $v === '' ? '' : ((int) $v ? 'Yes' : 'No');
-        $mode = static fn ($v) => Municipalities::MODES[$v ?? ''] ?? (string) $v;
-        return [
+        return Municipalities::providerFormatters() + [
             'customer_id' => $org, 'designer_org_id' => $org, 'installer_org_id' => $org,
-            'zoning_org_id' => $org, 'plan_review_org_id' => $org, 'inspection_org_id' => $org,
             'salesperson_id' => $lookup('SELECT name FROM users WHERE id = ?'),
             'utility_id' => $lookup('SELECT name FROM utilities WHERE id = ?'),
             'municipality_id' => $lookup("SELECT m.name || ' (' || c.name || ' Co.)' FROM municipalities m JOIN counties c ON c.id = m.county_id WHERE m.id = ?"),
@@ -389,7 +390,6 @@ final class ProjectController
             'install_type' => static fn ($v) => Projects::INSTALL_TYPES[$v] ?? (string) $v,
             'is_agricultural' => $yn, 'has_pv' => $yn, 'has_batteries' => $yn, 'tax_exempt' => $yn,
             'contract_price_cents' => static fn ($v) => Projects::money($v === null ? null : (int) $v),
-            'zoning_mode' => $mode, 'plan_review_mode' => $mode, 'inspection_mode' => $mode,
             'hold_state' => static fn ($v) => ['on_hold' => 'On hold', 'cancelled' => 'Cancelled'][$v] ?? 'Active',
             'archived_at' => static fn ($v) => $v ? 'Yes' : 'No',
         ];

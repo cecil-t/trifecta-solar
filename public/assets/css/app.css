@@ -119,12 +119,14 @@ p { margin: 0 0 .75rem; }
 .chip-green { background: var(--green-50); color: #3f7a24; }
 .chip-blue { background: var(--blue-50); color: var(--blue); }
 .chip-orange { background: var(--orange-50); color: #a5620a; }
+.chip-purple { background: #efe8f7; color: #5b3a8a; }
 
 /* ---------- forms ---------- */
 .stack { display: flex; flex-direction: column; gap: .85rem; }
 label { display: flex; flex-direction: column; gap: .3rem; font-weight: 600; font-size: .88rem; }
 label.check { flex-direction: row; align-items: center; gap: .5rem; font-weight: 500; }
-input[type=text], input[type=email], input[type=password], input[type=date], input[type=number], select, textarea {
+input[type=text], input[type=email], input[type=password], input[type=date], input[type=number],
+input[type=url], input[type=tel], input[type=search], select, textarea {
     font: inherit; font-weight: 400; color: var(--text);
     padding: .6rem .7rem; border: 1px solid #cdd5d0; border-radius: var(--radius-sm); background: #fff;
     width: 100%;
@@ -294,6 +296,9 @@ tr.clickable { cursor: pointer; }
     grid-template-columns: minmax(200px, 2.2fr) 70px 140px 140px minmax(90px, .9fr) 70px minmax(140px, 2fr) 32px;
     padding: .3rem 1rem; border-top: 1px solid var(--border); position: relative;
 }
+.phase-block { overflow: visible; }
+.trow.thead { position: sticky; top: var(--topbar-h, 64px); z-index: 6; border-bottom: 1px solid var(--border); }
+.trow.thead > span:first-child { color: var(--blue); }
 .trow.thead { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; background: #fafbfa; padding-top: .45rem; padding-bottom: .45rem; }
 .trow-task { background: #fff; }
 .trow-task .tname { font-weight: 650; }
@@ -303,6 +308,8 @@ tr.clickable { cursor: pointer; }
 .trow input, .trow select { padding: .3rem .4rem; font-size: .85rem; border-color: #dde3df; border-radius: 6px; min-width: 0; }
 .trow select { padding-right: .2rem; }
 .trow input[type=date] { font-variant-numeric: tabular-nums; }
+.trow input.is-overdue { background: #fff4d1; border-color: #e6c766; }
+.trow input.is-overdue-30 { background: #fbd3cd; border-color: #d9534f; color: #8c1d14; font-weight: 650; }
 .dwrap { display: block; margin: 0; min-width: 0; font-weight: 400; }
 .dwrap .mlabel { display: none; }
 .tname { display: flex; align-items: center; gap: .45rem; min-width: 0; }
@@ -344,7 +351,15 @@ textarea { font: inherit; padding: .55rem .7rem; border: 1px solid #cdd5d0; bord
 .grid-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem 1rem; align-items: start; }
 .grid-form .span-2 { grid-column: span 2; }
 .grid-form .span-all { grid-column: 1 / -1; }
-.hint-inline { font-weight: 400; color: var(--muted); font-size: .78rem; }
+/* hints sit under their field; checkbox fields line up with the inputs beside them */
+.grid-form .hint, label > .hint, .checkfield .hint { margin: 0; font-weight: 400; font-size: .78rem; line-height: 1.35; }
+.checkfield { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.field-label { font-weight: 600; font-size: .88rem; }
+.boxrow { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.boxwrap { flex-direction: row; align-items: center; gap: .5rem; font-weight: 500; min-height: 2.75rem; }
+.mt-sm { margin-top: .8rem; }
+.grid-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 1.2rem 0 .5rem; }
 .reveal { background: var(--blue-50); border-radius: var(--radius-sm); padding: .8rem; margin-top: .8rem; }
 .provider { display: flex; flex-direction: column; gap: .5rem; }
 .checks { border: 0; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
@@ -373,6 +388,11 @@ textarea { font: inherit; padding: .55rem .7rem; border: 1px solid #cdd5d0; bord
 @media (max-width: 1100px) {
     .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .trow { grid-template-columns: minmax(160px, 2fr) 64px 132px 132px minmax(80px, .8fr) 64px minmax(120px, 1.6fr) 32px; }
+}
+
+@media (min-width: 761px) and (max-width: 960px) {
+    .trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 124px 124px minmax(56px, .7fr) 56px minmax(80px, 1.3fr) 28px; }
+    .trow input, .trow select { font-size: .8rem; padding: .25rem .3rem; }
 }
 
 @media (max-width: 760px) {

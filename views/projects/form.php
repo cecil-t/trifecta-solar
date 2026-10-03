@@ -24,17 +24,47 @@ $isNew = $id === null;
     <?= Csrf::field() ?>
 
     <section class="card">
+        <h2>Status</h2>
+        <div class="grid-form">
+            <label class="span-2">Status note
+                <input type="text" name="status_note" value="<?= e($v('status_note')) ?>">
+                <small class="hint">Where it stands. Shown under the name on the project list.</small>
+            </label>
+            <label>Hold / cancel
+                <select name="hold_state" data-reveal-any="on_hold,cancelled" data-target="#hold-reason">
+                    <option value="">Active</option>
+                    <option value="on_hold" <?= $sel($v('hold_state'), 'on_hold') ?>>On hold</option>
+                    <option value="cancelled" <?= $sel($v('hold_state'), 'cancelled') ?>>Cancelled</option>
+                </select>
+            </label>
+            <div class="checkfield">
+                <span class="field-label">Archived</span>
+                <label class="boxwrap"><input type="checkbox" name="archived" value="1" <?= $v('archived_at') || $v('archived') ? 'checked' : '' ?>> Finished</label>
+                <small class="hint">Moves it to the Archived tab, even with open items.</small>
+            </div>
+            <label id="hold-reason" class="span-2 reveal" hidden>Reason
+                <input type="text" name="hold_reason" value="<?= e($v('hold_reason')) ?>" placeholder="e.g. Waiting on Mechatron, zoning hearing">
+            </label>
+        </div>
+    </section>
+
+    <section class="card">
         <h2>Basics</h2>
         <div class="grid-form">
             <label>Project #
-                <input type="text" name="project_number" value="<?= e($v('project_number')) ?>" required class="input-short">
+                <input type="text" name="project_number" value="<?= e($v('project_number')) ?>" required>
             </label>
-            <label class="span-2">Project name <span class="hint-inline">(unique, e.g. "Maple Hollow Farms LLC" or "Riverside Warehouse")</span>
+            <label class="span-2">Project name
                 <input type="text" name="name" value="<?= e($v('name')) ?>" required>
+                <small class="hint">Must be unique, e.g. "Maple Hollow Farms LLC" or "Riverside Warehouse".</small>
             </label>
             <?php if ($isNew): ?>
                 <label>Contract signed
                     <input type="date" name="contract_signed" value="<?= e($v('contract_signed')) ?>">
+                </label>
+            <?php else: ?>
+                <label>OpenSolar quote #
+                    <input type="text" name="quote_number" value="<?= e($v('quote_number')) ?>">
                 </label>
             <?php endif; ?>
             <label>Salesperson
@@ -53,11 +83,18 @@ $isNew = $id === null;
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label class="check self-end"><input type="checkbox" name="is_agricultural" value="1" <?= $v('is_agricultural') ? 'checked' : '' ?>> Agricultural</label>
-            <label>OpenSolar quote #
-                <input type="text" name="quote_number" value="<?= e($v('quote_number')) ?>" class="input-short">
-            </label>
-            <label class="span-2">Google Drive project folder
+            <div class="checkfield">
+                <span class="field-label">Agricultural</span>
+                <label class="boxwrap"><input type="checkbox" name="is_agricultural" value="1" <?= $v('is_agricultural') ? 'checked' : '' ?>> Farm / ag</label>
+            </div>
+            <?php if ($isNew): ?>
+                <label>OpenSolar quote #
+                    <input type="text" name="quote_number" value="<?= e($v('quote_number')) ?>">
+                </label>
+            <?php else: ?>
+                <div></div>
+            <?php endif; ?>
+            <label class="span-all">Google Drive project folder
                 <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/drive/folders/...">
             </label>
         </div>
@@ -78,7 +115,7 @@ $isNew = $id === null;
         </div>
         <div id="new-customer" class="grid-form reveal" hidden>
             <label class="span-2">New customer name <input type="text" name="new_customer_name" value="<?= e($v('new_customer_name')) ?>"></label>
-            <label>Phone <input type="text" name="new_customer_phone" value="<?= e($v('new_customer_phone')) ?>"></label>
+            <label>Phone <input type="tel" name="new_customer_phone" value="<?= e($v('new_customer_phone')) ?>"></label>
             <label>Email <input type="email" name="new_customer_email" value="<?= e($v('new_customer_email')) ?>"></label>
             <p class="hint span-all">Add more contacts on the customer's page afterward.</p>
         </div>
@@ -89,8 +126,10 @@ $isNew = $id === null;
         <div class="grid-form">
             <label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>"></label>
             <label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>"></label>
-            <label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2" class="input-short"></label>
-            <label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" class="input-short"></label>
+            <div class="grid-pair">
+                <label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2"></label>
+                <label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>"></label>
+            </div>
             <label>Utility
                 <select name="utility_id">
                     <option value="">Choose</option>
@@ -123,54 +162,48 @@ $isNew = $id === null;
 
         <?php if (!$isNew): ?>
             <div class="grid-form mt-sm">
-                <?php foreach (['zoning' => 'Zoning', 'plan_review' => 'Plan review', 'inspection' => 'Inspections'] as $slot => $label): ?>
+                <?php foreach (Municipalities::SLOTS as $key => $slot): ?>
                     <div class="provider">
-                        <label><?= $label ?> by
-                            <select name="<?= $slot ?>_mode" data-reveal="agency" data-target="#<?= $slot ?>-org">
-                                <?php foreach (Municipalities::MODES as $mk => $ml): ?>
-                                    <option value="<?= $mk ?>" <?= $sel($v($slot . '_mode'), $mk) ?>><?= e($ml) ?></option>
+                        <label><?= e($slot['label']) ?> by
+                            <select name="<?= $slot['by'] ?>" data-reveal="third_party" data-target="#<?= $key ?>-org">
+                                <?php foreach (Municipalities::BY as $bk => $bl): ?>
+                                    <option value="<?= $bk ?>" <?= $sel($v($slot['by']), $bk) ?>><?= e($bl) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </label>
-                        <label id="<?= $slot ?>-org" class="reveal" hidden>Agency
-                            <select name="<?= $slot ?>_org_id">
+                        <label id="<?= $key ?>-org" hidden>Third party
+                            <select name="<?= $slot['org'] ?>">
                                 <option value="">Choose</option>
                                 <?php foreach ($agencies as $a): ?>
-                                    <option value="<?= (int) $a['id'] ?>" <?= $sel($v($slot . '_org_id'), $a['id']) ?>><?= e($a['name']) ?></option>
+                                    <option value="<?= (int) $a['id'] ?>" <?= $sel($v($slot['org']), $a['id']) ?>><?= e($a['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </label>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <p class="hint">Defaults come from the municipality when it's chosen. Admins add agencies under Lists &rsaquo; Directory.</p>
+            <p class="hint">Defaults come from the municipality when it's chosen. Admins add third parties under Lists &rsaquo; Directory.</p>
         <?php else: ?>
-            <p class="hint">Zoning, plan review and inspection providers are copied from the municipality's usual setup and can be changed after the project is created.</p>
+            <p class="hint">Who handles zoning, the building permit and inspections is copied from the municipality's usual setup and can be changed after the project is created.</p>
         <?php endif; ?>
     </section>
 
     <section class="card">
         <h2>System</h2>
         <div class="grid-form">
+            <div class="checkfield span-2">
+                <span class="field-label">System includes</span>
+                <div class="boxrow">
+                    <label class="boxwrap"><input type="checkbox" name="has_pv" value="1" <?= $v('has_pv', 1) ? 'checked' : '' ?> data-toggle="#pv-block"> Solar PV</label>
+                    <label class="boxwrap"><input type="checkbox" name="has_batteries" value="1" <?= $v('has_batteries') ? 'checked' : '' ?> data-toggle="#battery-block"> Batteries</label>
+                </div>
+                <small class="hint">Decides which template tasks apply (panels, SREC, battery commissioning). Turning one on later adds its missing tasks; turning one off never deletes tasks.</small>
+            </div>
             <label>Install type
                 <select name="install_type">
                     <option value="">Choose</option>
                     <?php foreach (Projects::INSTALL_TYPES as $k => $label): ?>
                         <option value="<?= $k ?>" <?= $sel($v('install_type'), $k) ?>><?= e($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label class="span-2">Racking / tracker
-                <input type="text" name="racking" value="<?= e($v('racking')) ?>" list="racking-list" placeholder="e.g. SunAction 48, Mechatron, IronRidge">
-                <datalist id="racking-list"><?php foreach ($racking as $r): ?><option value="<?= e($r) ?>"><?php endforeach; ?></datalist>
-            </label>
-            <label class="check self-end"><input type="checkbox" name="has_pv" value="1" <?= $v('has_pv', 1) ? 'checked' : '' ?>> Solar PV</label>
-            <label class="check self-end"><input type="checkbox" name="has_batteries" value="1" <?= $v('has_batteries') ? 'checked' : '' ?> data-toggle="#battery-block"> Batteries</label>
-            <label>Designer
-                <select name="designer_org_id">
-                    <option value="">Choose</option>
-                    <?php foreach ($designers as $d): ?>
-                        <option value="<?= (int) $d['id'] ?>" <?= $sel($v('designer_org_id'), $d['id']) ?>><?= e($d['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>
@@ -182,20 +215,34 @@ $isNew = $id === null;
                     <?php endforeach; ?>
                 </select>
             </label>
+            <label class="span-2">Racking / tracker
+                <input type="text" name="racking" value="<?= e($v('racking')) ?>" list="racking-list" placeholder="e.g. SunAction 48, Mechatron, IronRidge">
+                <datalist id="racking-list"><?php foreach ($racking as $r): ?><option value="<?= e($r) ?>"><?php endforeach; ?></datalist>
+            </label>
+            <label>Designer
+                <select name="designer_org_id">
+                    <option value="">Choose</option>
+                    <?php foreach ($designers as $d): ?>
+                        <option value="<?= (int) $d['id'] ?>" <?= $sel($v('designer_org_id'), $d['id']) ?>><?= e($d['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
         </div>
 
-        <h3 class="sub">Modules</h3>
-        <div class="eq" data-eq="modules">
-            <div class="eq-head"><span>Qty</span><span>Watts</span><span>Description (optional)</span><span></span></div>
-            <?php foreach ($eqRows('modules') as $i => $r): ?>
-                <div class="eq-row">
-                    <input type="number" name="modules[<?= $i ?>][qty]" value="<?= e($r['qty'] ?? '') ?>" min="0" placeholder="Qty">
-                    <input type="number" name="modules[<?= $i ?>][watts]" value="<?= e($r['watts'] ?? '') ?>" step="any" min="0" placeholder="590">
-                    <input type="text" name="modules[<?= $i ?>][description]" value="<?= e($r['description'] ?? '') ?>" placeholder="SEG 590 Grade B">
-                    <button type="button" class="btn btn-ghost btn-small eq-del" title="Remove">&times;</button>
-                </div>
-            <?php endforeach; ?>
-            <button type="button" class="btn btn-ghost btn-small eq-add">+ Module line</button>
+        <div id="pv-block">
+            <h3 class="sub">Modules</h3>
+            <div class="eq" data-eq="modules">
+                <div class="eq-head"><span>Qty</span><span>Watts</span><span>Description (optional)</span><span></span></div>
+                <?php foreach ($eqRows('modules') as $i => $r): ?>
+                    <div class="eq-row">
+                        <input type="number" name="modules[<?= $i ?>][qty]" value="<?= e($r['qty'] ?? '') ?>" min="0" placeholder="Qty">
+                        <input type="number" name="modules[<?= $i ?>][watts]" value="<?= e($r['watts'] ?? '') ?>" step="any" min="0" placeholder="590">
+                        <input type="text" name="modules[<?= $i ?>][description]" value="<?= e($r['description'] ?? '') ?>" placeholder="SEG 590 Grade B">
+                        <button type="button" class="btn btn-ghost btn-small eq-del" title="Remove">&times;</button>
+                    </div>
+                <?php endforeach; ?>
+                <button type="button" class="btn btn-ghost btn-small eq-add">+ Module line</button>
+            </div>
         </div>
 
         <h3 class="sub">Inverters</h3>
@@ -233,8 +280,9 @@ $isNew = $id === null;
     <section class="card">
         <h2>Contract and funding</h2>
         <div class="grid-form">
-            <label>Contract price (incl. change orders)
+            <label>Contract price
                 <input type="text" name="contract_price" value="<?= e($price) ?>" inputmode="decimal" placeholder="0.00">
+                <small class="hint">Including change orders.</small>
             </label>
             <label>Est. annual production (kWh)
                 <input type="text" name="est_annual_kwh" value="<?= e($v('est_annual_kwh')) ?>" inputmode="numeric">
@@ -256,26 +304,7 @@ $isNew = $id === null;
         <label>Funding note
             <input type="text" name="funding_note" value="<?= e($v('funding_note')) ?>" placeholder="e.g. REAP awarded 6/2026, loan through Fulton">
         </label>
-    </section>
-
-    <section class="card">
-        <h2>Status</h2>
-        <div class="grid-form">
-            <label class="span-2">Status note <span class="hint-inline">(where it stands, shown on the project list)</span>
-                <input type="text" name="status_note" value="<?= e($v('status_note')) ?>">
-            </label>
-            <label>Hold / cancel
-                <select name="hold_state" data-reveal-any="on_hold,cancelled" data-target="#hold-reason">
-                    <option value="">Active</option>
-                    <option value="on_hold" <?= $sel($v('hold_state'), 'on_hold') ?>>On hold</option>
-                    <option value="cancelled" <?= $sel($v('hold_state'), 'cancelled') ?>>Cancelled</option>
-                </select>
-            </label>
-            <label id="hold-reason" class="span-2 reveal" hidden>Reason
-                <input type="text" name="hold_reason" value="<?= e($v('hold_reason')) ?>" placeholder="e.g. Waiting on Mechatron, zoning hearing">
-            </label>
-            <label class="check span-all"><input type="checkbox" name="archived" value="1" <?= $v('archived_at') || $v('archived') ? 'checked' : '' ?>> Archived <span class="hint-inline">(finished; moves it out of Active into the Archived tab regardless of open items)</span></label>
-        </div>
+        <p class="hint mt-sm">SolarInsure, utility rebate and VNM are answered on the project page (Closeout tasks).</p>
     </section>
 
     <div class="form-actions">

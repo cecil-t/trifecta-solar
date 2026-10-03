@@ -73,24 +73,10 @@ final class MunicipalityController
         }
         $data = ['name' => Municipalities::displayName($name), 'name_key' => $key, 'county_id' => $countyId,
             'notes' => trim((string) ($_POST['notes'] ?? '')) ?: null];
-        foreach (['zoning', 'plan_review', 'inspection'] as $slot) {
-            $mode = in_array($_POST[$slot . '_mode'] ?? '', ['self', 'agency'], true) ? $_POST[$slot . '_mode'] : null;
-            $data[$slot . '_mode'] = $mode;
-            $data[$slot . '_org_id'] = $mode === 'agency' ? (((int) ($_POST[$slot . '_org_id'] ?? 0)) ?: null) : null;
-        }
+        $data += Municipalities::providerInput();
         Db::update('municipalities', $id, $data + ['updated_at' => now_utc()]);
-        $org = static fn ($v) => $v ? (string) Db::value('SELECT name FROM organizations WHERE id = ?', [$v]) : '';
-        $mode = static fn ($v) => Municipalities::MODES[$v ?? ''] ?? '';
-        Activity::changes('municipality', $id, $before, $data, [
-            'name' => 'Name', 'county_id' => 'County', 'notes' => 'Notes',
-            'zoning_mode' => 'Zoning by', 'zoning_org_id' => 'Zoning agency',
-            'plan_review_mode' => 'Plan review by', 'plan_review_org_id' => 'Plan review agency',
-            'inspection_mode' => 'Inspections by', 'inspection_org_id' => 'Inspection agency',
-        ], [
-            'county_id' => static fn ($v) => (string) Db::value("SELECT name || ' Co., ' || state_code FROM counties WHERE id = ?", [$v]),
-            'zoning_org_id' => $org, 'plan_review_org_id' => $org, 'inspection_org_id' => $org,
-            'zoning_mode' => $mode, 'plan_review_mode' => $mode, 'inspection_mode' => $mode,
-        ]);
+        Activity::changes('municipality', $id, $before, $data, ['name' => 'Name', 'county_id' => 'County', 'notes' => 'Notes'] + Municipalities::providerLabels(),
+            ['county_id' => static fn ($v) => (string) Db::value("SELECT name || ' Co., ' || state_code FROM counties WHERE id = ?", [$v])] + Municipalities::providerFormatters());
         flash('success', 'Saved. New projects in ' . $data['name'] . ' will start with these providers.');
         redirect('/municipalities/' . $id);
     }

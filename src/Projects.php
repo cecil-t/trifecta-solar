@@ -25,7 +25,7 @@ final class Projects
         return Db::one(
             'SELECT p.*, c.name AS customer_name, u.name AS salesperson_name, u.initials AS salesperson_initials,
                     ut.name AS utility_name, m.name AS municipality_name, co.name AS county_name, co.state_code AS county_state,
-                    zo.name AS zoning_org_name, pr.name AS plan_review_org_name, io.name AS inspection_org_name,
+                    zo.name AS zoning_org_name, bo.name AS building_org_name, io.name AS inspection_org_name,
                     de.name AS designer_name, ins.name AS installer_name
              FROM projects p
              LEFT JOIN organizations c ON c.id = p.customer_id
@@ -34,7 +34,7 @@ final class Projects
              LEFT JOIN municipalities m ON m.id = p.municipality_id
              LEFT JOIN counties co ON co.id = m.county_id
              LEFT JOIN organizations zo ON zo.id = p.zoning_org_id
-             LEFT JOIN organizations pr ON pr.id = p.plan_review_org_id
+             LEFT JOIN organizations bo ON bo.id = p.building_org_id
              LEFT JOIN organizations io ON io.id = p.inspection_org_id
              LEFT JOIN organizations de ON de.id = p.designer_org_id
              LEFT JOIN organizations ins ON ins.id = p.installer_org_id

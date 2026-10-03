@@ -20,15 +20,15 @@
 
 <div class="card card-flush mt">
     <table class="table">
-        <thead><tr><th>Municipality</th><th>County</th><th>Zoning</th><th>Plan review</th><th>Inspections</th><th class="num">Projects</th></tr></thead>
+        <thead><tr><th>Municipality</th><th>County</th><th>Zoning</th><th>Building permit</th><th>Inspections</th><th class="num">Projects</th></tr></thead>
         <tbody>
         <?php if (!$rows): ?><tr><td colspan="6" class="empty">None yet.</td></tr><?php endif; ?>
         <?php foreach ($rows as $m): ?>
             <tr>
                 <td><a href="/municipalities/<?= (int) $m['id'] ?>"><?= e($m['name']) ?></a></td>
                 <td><?= e($m['county'] . ', ' . $m['state_code']) ?></td>
-                <?php foreach (['zoning', 'plan_review', 'inspection'] as $slot): ?>
-                    <td class="small"><?= $m[$slot . '_mode'] === 'self' ? 'Municipality' : ($m[$slot . '_mode'] === 'agency' ? 'Agency' : '<span class="muted">-</span>') ?></td>
+                <?php foreach (App\Municipalities::SLOTS as $slot): $by = (string) $m[$slot['by']]; ?>
+                    <td class="small"><?= $by === '' ? '<span class="muted">-</span>' : e(App\Municipalities::BY[$by] ?? $by) ?></td>
                 <?php endforeach; ?>
                 <td class="num"><?= (int) $m['project_count'] ?></td>
             </tr>

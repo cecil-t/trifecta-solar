@@ -52,8 +52,8 @@ final class Importer
         $customerId = $this->customer($p);
         $muniId = $p['municipality'] ? $this->municipality($p['municipality']) : null;
         $agencyId = $p['inspection_agency'] ? $this->org('agency', $p['inspection_agency']) : null;
-        if ($agencyId && $muniId && !Db::value('SELECT inspection_mode FROM municipalities WHERE id = ?', [$muniId])) {
-            Db::update('municipalities', $muniId, ['inspection_mode' => 'agency', 'inspection_org_id' => $agencyId]);
+        if ($agencyId && $muniId && !Db::value('SELECT inspection_by FROM municipalities WHERE id = ?', [$muniId])) {
+            Db::update('municipalities', $muniId, ['inspection_by' => 'third_party', 'inspection_org_id' => $agencyId]);
         }
         $eq = $p['equipment'];
         $installType = $p['install_type'];
@@ -82,11 +82,11 @@ final class Importer
             'site_zip' => $p['site']['zip'] ?? null,
             'utility_id' => $p['utility'] ? Db::value('SELECT id FROM utilities WHERE name = ?', [$p['utility']]) : null,
             'municipality_id' => $muniId,
-            'zoning_mode' => $muni['zoning_mode'] ?? null,
+            'zoning_by' => $muni['zoning_by'] ?? null,
             'zoning_org_id' => $muni['zoning_org_id'] ?? null,
-            'plan_review_mode' => $muni['plan_review_mode'] ?? null,
-            'plan_review_org_id' => $muni['plan_review_org_id'] ?? null,
-            'inspection_mode' => $agencyId ? 'agency' : ($muni['inspection_mode'] ?? null),
+            'building_by' => $muni['building_by'] ?? null,
+            'building_org_id' => $muni['building_org_id'] ?? null,
+            'inspection_by' => $agencyId ? 'third_party' : ($muni['inspection_by'] ?? null),
             'inspection_org_id' => $agencyId ?: ($muni['inspection_org_id'] ?? null),
             'drive_url' => $p['drive_url'],
             'status_note' => $p['status_note'],

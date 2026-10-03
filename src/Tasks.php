@@ -59,6 +59,45 @@ final class Tasks
         }
     }
 
+    /**
+     * After Solar PV or Batteries is switched on for an existing project, add the template
+     * items for that scope ('pv' or 'storage') the project doesn't already have. Returns
+     * the names added. Nothing is ever removed when a scope is switched off.
+     */
+    public static function addScope(int $projectId, string $scope): array
+    {
+        $added = [];
+        $templates = Db::all('SELECT * FROM task_templates WHERE is_active = 1 ORDER BY parent_id IS NOT NULL, sort_order, id');
+        $existing = static fn (int $tplId, ?int $parentId) => Db::value(
+            'SELECT id FROM project_tasks WHERE project_id = ? AND template_id = ? AND ' . ($parentId ? 'parent_id = ?' : 'parent_id IS NULL') . ' ORDER BY id LIMIT 1',
+            $parentId ? [$projectId, $tplId, $parentId] : [$projectId, $tplId]
+        );
+        foreach ($templates as $t) {
+            if ($t['applies_when'] !== $scope) {
+                continue;
+            }
+            if ($t['parent_id'] === null) {
+                if (!$existing((int) $t['id'], null)) {
+                    self::addFromTemplate($projectId, (int) $t['id']);
+                    $added[] = $t['name'];
+                }
+                continue;
+            }
+            $parentTaskId = (int) Db::value('SELECT id FROM project_tasks WHERE project_id = ? AND template_id = ? AND parent_id IS NULL ORDER BY id LIMIT 1', [$projectId, $t['parent_id']]);
+            if (!$parentTaskId || $existing((int) $t['id'], $parentTaskId)) {
+                continue;
+            }
+            $parent = Db::one('SELECT * FROM project_tasks WHERE id = ?', [$parentTaskId]);
+            Db::insert('project_tasks', [
+                'project_id' => $projectId, 'parent_id' => $parentTaskId, 'template_id' => $t['id'], 'name' => $t['name'],
+                'phase' => $parent['phase'], 'sort_order' => $t['sort_order'], 'needed' => $t['default_needed'],
+                'gate' => $t['gate'], 'ref_label' => $t['ref_label'], 'owner_id' => $t['default_owner_id'] ?? $parent['owner_id'],
+            ]);
+            $added[] = $parent['name'] . ' > ' . $t['name'];
+        }
+        return $added;
+    }
+
     /** Copy one template task (and its active sub-tasks) into an existing project. */
     public static function addFromTemplate(int $projectId, int $templateId): ?int
     {
