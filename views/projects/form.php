@@ -38,9 +38,9 @@ $isNew = $id === null;
                 </select>
             </label>
             <div class="checkfield">
-                <span class="field-label">Archived</span>
-                <label class="boxwrap"><input type="checkbox" name="archived" value="1" <?= $v('archived_at') || $v('archived') ? 'checked' : '' ?>> Finished</label>
-                <small class="hint">Moves it to the Archived tab, even with open items.</small>
+                <span class="field-label">Completed</span>
+                <label class="boxwrap"><input type="checkbox" name="archived" value="1" <?= $v('archived_at') || $v('archived') ? 'checked' : '' ?>> Mark completed</label>
+                <small class="hint">Moves it to the Completed tab, even with open items. Otherwise it gets there on its own after PTO once Closeout and Payments are all resolved.</small>
             </div>
             <label id="hold-reason" class="span-2 reveal" hidden>Reason
                 <input type="text" name="hold_reason" value="<?= e($v('hold_reason')) ?>" placeholder="e.g. Waiting on Mechatron, zoning hearing">

@@ -17,13 +17,15 @@ final class DashboardController
         $counts = ['pre_install' => 0, 'clear' => 0, 'installation' => 0, 'closeout' => 0, 'on_hold' => 0];
         foreach ($projects as $p) {
             $st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
-            if (in_array($st['phase'], ['complete', 'archived', 'cancelled'], true)) {
+            if (in_array($st['phase'], ['complete', 'cancelled'], true)) {
                 continue;
             }
-            $counts[$st['phase']]++;
             if ($p['hold_state'] === 'on_hold') {
                 $counts['on_hold']++;
-            } elseif ($st['phase'] === 'pre_install' && $st['clear_to_install']) {
+                continue; // on-hold jobs are not counted in the phase totals
+            }
+            $counts[$st['phase']]++;
+            if ($st['phase'] === 'pre_install' && $st['clear_to_install']) {
                 $counts['clear']++;
             }
         }

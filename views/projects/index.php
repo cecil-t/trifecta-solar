@@ -5,7 +5,7 @@ use App\Projects;
 $tabs = [
     'active' => 'Active', 'pre_install' => 'Pre-Install', 'clear' => 'Clear to install',
     'installation' => 'Installation', 'closeout' => 'Closeout', 'on_hold' => 'On hold',
-    'complete' => 'Complete', 'archived' => 'Archived', 'cancelled' => 'Cancelled', 'all' => 'All',
+    'complete' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All',
 ];
 $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(array_merge($filter, $over), static fn ($v) => $v !== '' && $v !== 0 && $v !== null));
 ?>

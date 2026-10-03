@@ -24,7 +24,7 @@ final class ProjectController
         'utility_id' => 'Utility', 'municipality_id' => 'Municipality',
         'designer_org_id' => 'Designer', 'installer_org_id' => 'Installer', 'drive_url' => 'Drive folder',
         'status_note' => 'Status note', 'hold_state' => 'Hold / cancel', 'hold_reason' => 'Hold reason',
-        'archived_at' => 'Archived', 'quote_number' => 'Quote #',
+        'archived_at' => 'Marked completed', 'quote_number' => 'Quote #',
     ];
 
     // ------------------------------------------------------------------ list
@@ -32,7 +32,7 @@ final class ProjectController
     public function index(): void
     {
         $filter = [
-            'phase' => $_GET['phase'] ?? 'active',
+            'phase' => ($ph = $_GET['phase'] ?? 'active') === 'archived' ? 'complete' : $ph, // old links
             'sales' => (int) ($_GET['sales'] ?? 0),
             'q'     => trim((string) ($_GET['q'] ?? '')),
         ];
@@ -58,7 +58,7 @@ final class ProjectController
 
         $tasks = Tasks::forProjects(array_column($projects, 'id'));
         $kw = Projects::dcKwMap();
-        $counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'archived' => 0, 'cancelled' => 0, 'on_hold' => 0, 'clear' => 0, 'all' => 0];
+        $counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'clear' => 0, 'all' => 0];
         $rows = [];
         foreach ($projects as $p) {
             $st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
@@ -66,12 +66,12 @@ final class ProjectController
             $p['status'] = $st;
             $p['dc_kw'] = $kw[(int) $p['id']] ?? null;
             $onHold = $p['hold_state'] === 'on_hold';
-            $isOpen = !in_array($st['phase'], ['complete', 'archived', 'cancelled'], true);
+            $isOpen = !in_array($st['phase'], ['complete', 'cancelled'], true);
             $isActive = $isOpen && !$onHold; // on-hold jobs live on their own tab
             $clearToStart = $st['phase'] === 'pre_install' && $st['clear_to_install'] && !$onHold;
 
             $counts['all']++;
-            $counts[$st['phase']]++;
+            if (!($onHold && $isOpen)) { $counts[$st['phase']]++; } // on-hold jobs only count on their own tab
             if ($isActive) { $counts['active']++; }
             if ($onHold && $isOpen) { $counts['on_hold']++; }
             if ($clearToStart) { $counts['clear']++; }
@@ -81,7 +81,7 @@ final class ProjectController
                 'active'  => $isActive,
                 'on_hold' => $onHold && $isOpen,
                 'clear'   => $clearToStart,
-                default   => $st['phase'] === $filter['phase'],
+                default   => $st['phase'] === $filter['phase'] && !($onHold && $isOpen),
             };
             if ($keep) {
                 $rows[] = $p;

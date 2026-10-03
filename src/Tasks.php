@@ -261,7 +261,7 @@ final class Tasks
 
         $phase = match (true) {
             $project['hold_state'] === 'cancelled' => 'cancelled',
-            !empty($project['archived_at'])         => 'archived',
+            !empty($project['archived_at'])         => 'complete', // marked completed by hand
             $pto !== null && $complete             => 'complete',
             $pto !== null                          => 'closeout',
             $installStarted !== null               => 'installation',
@@ -290,7 +290,7 @@ final class Tasks
 
     public const PHASE_LABELS = [
         'pre_install' => 'Pre-Install', 'installation' => 'Installation', 'closeout' => 'Closeout',
-        'complete' => 'Complete', 'archived' => 'Archived', 'cancelled' => 'Cancelled',
+        'complete' => 'Completed', 'cancelled' => 'Cancelled',
     ];
 
     /**

@@ -68,9 +68,8 @@ $back = '/projects/' . (int) $p['id'];
         <a href="/projects" class="back">&larr; Projects</a>
         <h1><span class="pnum"><?= e($p['project_number']) ?></span> <?= e($p['name']) ?></h1>
         <div class="badges">
-            <span id="phase-badge" class="phase phase-<?= e($status['phase']) ?>"><?= e(Tasks::PHASE_LABELS[$status['phase']]) ?></span>
+            <span id="phase-badge" class="phase phase-<?= e($status['phase']) ?>"<?= $p['archived_at'] ? ' title="Marked completed ' . e(fmt_dt($p['archived_at'], 'm/d/Y')) . '"' : '' ?>><?= e(Tasks::PHASE_LABELS[$status['phase']]) ?></span>
             <?php if ((string) $p['tax_exempt'] === '1'): ?><span class="chip chip-purple" title="Customer has a tax-exempt certificate">Tax exempt</span><?php endif; ?>
-            <?php if ($p['archived_at']): ?><span class="chip">Archived <?= e(fmt_dt($p['archived_at'], 'm/d/Y')) ?></span><?php endif; ?>
             <?php if ($p['hold_state'] === 'on_hold'): ?><span class="chip chip-orange">On hold<?= $p['hold_reason'] ? ': ' . e($p['hold_reason']) : '' ?></span><?php endif; ?>
             <?php if ($p['hold_state'] === 'cancelled' && $p['hold_reason']): ?><span class="chip"><?= e($p['hold_reason']) ?></span><?php endif; ?>
             <span id="clear-badge" class="chip chip-green" <?= $status['phase'] === 'pre_install' && $status['clear_to_install'] ? '' : 'hidden' ?>>Clear to install</span>
