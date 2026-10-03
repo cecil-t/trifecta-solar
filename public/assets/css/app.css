@@ -750,3 +750,13 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .date-wrap.has-date .clear-date-btn { display: grid; }
 .is-na .clear-date-btn, .parent-na .clear-date-btn { display: none !important; }
 .is-na .today-btn, .parent-na .today-btn { display: none; }
+
+/* page header buttons (project / service / task pages) wrap instead of running off the screen */
+.head-actions { flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.project-head > div:first-child { min-width: 0; }
+@media (max-width: 760px) {
+    .project-head { align-items: stretch; }
+    .head-actions { justify-content: flex-start; gap: .4rem; width: 100%; }
+    .head-actions .btn { padding: .4rem .8rem; font-size: .82rem; }
+    .head-actions form { margin: 0; }
+}
