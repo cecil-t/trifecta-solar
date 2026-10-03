@@ -421,6 +421,7 @@ h3.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; col
     }
     .trow > .tname { grid-area: name; }
     .trow > [data-field=needed] { grid-area: needed; }
+    .trow > .needed-cell { grid-area: needed; }
     .trow > [data-field=owner_id] { grid-area: owner; }
     .trow > .dw-target { grid-area: target; }
     .trow > .dw-done { grid-area: done; }
@@ -642,3 +643,5 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .trow .dw-target input.is-overdue { background: #fff4d1; border: 1px solid #e6c766; color: #6b5310; }
 .trow .dw-target input.is-overdue-30 { background: #fbd3cd; border: 1px solid #d9534f; color: #8c1d14; font-weight: 650; }
 .trow.thead .th-target { color: #a3adb2; font-weight: 600; }
+.chip-na { background: #eceff0; color: #7d8a91; font-size: .68rem; letter-spacing: .04em; }
+.needed-cell { display: flex; align-items: center; min-height: 30px; }

@@ -61,7 +61,7 @@
         const target = row.querySelector('[data-field="target_date"]');
         if (!target) return;
         const done = row.querySelector('[data-field="done_date"]');
-        const needed = row.querySelector('[data-field="needed"]');
+        const needed = row.querySelector('[data-field="needed"]') || { value: (row.querySelector('.needed-cell') || {}).dataset?.needed ?? '' };
         let cls = '';
         const today = localToday();
         if (target.value && target.value < today && !(done && done.value)
@@ -105,6 +105,10 @@
                 location.reload();
             }
         }
+        if (btn.dataset.action === 'set-needed') {
+            await save(row, 'needed', btn.dataset.value);
+            location.reload();
+        }
         if (btn.dataset.action === 'add-sub') {
             const name = prompt('New sub-task name:');
             if (name && name.trim()) {
@@ -125,7 +129,7 @@
 
     // Sub-tasks under a "No" task look disabled
     document.querySelectorAll('.task').forEach((t) => {
-        const sel = t.querySelector('.trow-task [data-field="needed"]');
+        const sel = t.querySelector('.trow-task [data-field="needed"]') || { value: (t.querySelector('.trow-task .needed-cell') || {}).dataset?.needed ?? '' };
         if (sel && sel.value === '0') t.querySelectorAll('.trow-sub').forEach((s) => s.classList.add('parent-na'));
     });
 

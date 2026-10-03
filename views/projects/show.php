@@ -20,6 +20,11 @@ $neededSel = static function ($val): string {
     }
     return $h;
 };
+// Question items (no default answer in the template) keep a Yes / No / ? choice; other
+// steps are simply needed unless marked "Not needed" from the menu; sub-tasks get removed instead.
+$questionTpl = array_map('intval', array_column(App\Db::all('SELECT id FROM task_templates WHERE default_needed IS NULL'), 'id'));
+$isQuestion = static fn (array $t) => $t['template_id'] !== null && in_array((int) $t['template_id'], $questionTpl, true);
+$naChip = '<span class="chip chip-na">N/A</span>';
 $gateBadge = static fn (?string $g) => match ($g) {
     'start_clock' => '<span class="gate" title="Starts the day counter">clock</span>',
     'install_prereq' => '<span class="gate" title="Required for Clear to install">prereq</span>',
@@ -181,7 +186,11 @@ $back = '/projects/' . (int) $p['id'];
                     <div class="task" id="task-<?= (int) $t['id'] ?>">
                         <div class="trow trow-task <?= $t['resolved'] ? 'is-resolved' : '' ?> <?= (string) $t['needed'] === '0' ? 'is-na' : '' ?>" data-id="<?= (int) $t['id'] ?>">
                             <span class="tname"><span class="dot"></span><?= e($t['name']) ?> <?= $gateBadge($t['gate']) ?></span>
-                            <select data-field="needed" aria-label="Needed"><?= $neededSel($t['needed']) ?></select>
+                            <?php if ($isQuestion($t)): ?>
+                                <select data-field="needed" aria-label="Needed"><?= $neededSel($t['needed']) ?></select>
+                            <?php else: ?>
+                                <span class="needed-cell" data-needed="<?= e((string) $t['needed']) ?>"><?= (string) $t['needed'] === '0' ? $naChip : '' ?></span>
+                            <?php endif; ?>
                             <?php if ($hasSubs): ?>
                                 <?php
                                 $active = array_filter($t['subs'], static fn ($s) => (string) $s['needed'] !== '0');
@@ -201,6 +210,13 @@ $back = '/projects/' . (int) $p['id'];
                                 <summary aria-label="More">&#8943;</summary>
                                 <div class="usermenu-panel">
                                     <button type="button" class="linklike" data-action="rename" data-name="<?= e($t['name']) ?>">Rename</button>
+                                    <?php if (!$isQuestion($t)): ?>
+                                        <?php if ((string) $t['needed'] === '0'): ?>
+                                            <button type="button" class="linklike" data-action="set-needed" data-value="1">Needed after all</button>
+                                        <?php else: ?>
+                                            <button type="button" class="linklike" data-action="set-needed" data-value="0">Not needed</button>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                     <button type="button" class="linklike" data-action="add-sub" data-parent="<?= (int) $t['id'] ?>">Add sub-task</button>
                                     <form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $t['id'] ?>/duplicate"><?= Csrf::field() ?><button class="linklike">Duplicate</button></form>
                                     <form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $t['id'] ?>/delete" onsubmit="return confirm('Remove &quot;<?= e($t['name']) ?>&quot;<?= $hasSubs ? ' and its sub-tasks' : '' ?> from this project?')"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
@@ -210,7 +226,7 @@ $back = '/projects/' . (int) $p['id'];
                         <?php foreach ($t['subs'] as $s): ?>
                             <div class="trow trow-sub <?= $s['resolved'] ? 'is-resolved' : '' ?> <?= (string) $s['needed'] === '0' ? 'is-na' : '' ?>" data-id="<?= (int) $s['id'] ?>" id="task-<?= (int) $s['id'] ?>">
                                 <span class="tname"><span class="dot"></span><?= e($s['name']) ?> <?= $gateBadge($s['gate']) ?></span>
-                                <select data-field="needed" aria-label="Needed"><?= $neededSel($s['needed']) ?></select>
+                                <span class="needed-cell" data-needed="<?= e((string) $s['needed']) ?>"><?= (string) $s['needed'] === '0' ? $naChip : '' ?></span>
                                 <label class="dwrap dw-done"><span class="mlabel">Completed</span><input type="date" data-field="done_date" value="<?= e($s['done_date']) ?>" aria-label="Done date"></label>
                                 <label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date" class="<?= (string) $t['needed'] === '0' ? '' : $overdue($s) ?>"></label>
                                 <span></span>
@@ -220,6 +236,7 @@ $back = '/projects/' . (int) $p['id'];
                                     <summary aria-label="More">&#8943;</summary>
                                     <div class="usermenu-panel">
                                         <button type="button" class="linklike" data-action="rename" data-name="<?= e($s['name']) ?>">Rename</button>
+                                        <?php if ((string) $s['needed'] === '0'): ?><button type="button" class="linklike" data-action="set-needed" data-value="1">Needed after all</button><?php endif; ?>
                                         <form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $s['id'] ?>/delete" onsubmit="return confirm('Remove &quot;<?= e($s['name']) ?>&quot;?')"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
                                     </div>
                                 </details>
