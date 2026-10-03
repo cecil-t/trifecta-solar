@@ -422,9 +422,20 @@ textarea { font: inherit; padding: .55rem .7rem; border: 1px solid #cdd5d0; bord
 .weather-empty { box-shadow: none; }
 
 @media (max-width: 760px) {
-    .weather { width: 100%; gap: .9rem 1.2rem; }
-    .weather-place { flex-basis: 100%; }
-    .dash-head .btn { width: 100%; }
+    .dash-head { margin-bottom: .9rem; gap: .6rem; }
+    .weather { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: .25rem .75rem; padding: .55rem .8rem; }
+    .weather-place { grid-column: 1 / -1; font-size: .7rem; }
+    .wday { gap: .45rem; }
+    .wday svg { width: 30px; height: 30px; flex: none; }
+    .wlabel { font-size: .66rem; }
+    .wtemp .hi { font-size: 1.05rem; }
+    .wtemp .lo { font-size: .85rem; }
+    .wdesc { font-size: .7rem; line-height: 1.25; }
+    .dash-head .btn { margin-left: auto; padding: .45rem .9rem; font-size: .85rem; }
+    .stat-row { gap: .5rem; }
+    .stat { padding: .5rem .75rem; flex-direction: row; align-items: baseline; gap: .5rem; }
+    .stat-num { font-size: 1.3rem; }
+    .stat-label { font-size: .8rem; }
     /* Lists menu: full-width panel under the header instead of hanging off the left edge */
     .navmenu { position: static; }
     .navmenu .usermenu-panel { position: absolute; left: .75rem; right: .75rem; top: calc(100% - .25rem); min-width: 0; }
