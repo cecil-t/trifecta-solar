@@ -143,11 +143,19 @@
     setTopbarHeight();
     window.addEventListener('resize', setTopbarHeight);
 
-    // Phones: phases start collapsed; tap the phase bar to open. Open phases are remembered
+    // Phones: phases start collapsed except the current one; tap the phase bar to open or close. Open phases are remembered
     // for this project during the browser session, and a #task-123 link opens its phase.
     const phone = window.matchMedia('(max-width: 760px)');
     const key = 'open-phases-' + projectId;
-    const readOpen = () => { try { return JSON.parse(sessionStorage.getItem(key) || '[]'); } catch (e) { return []; } };
+    // Until the phases are toggled on this project, open the project's current phase.
+    const current = 'phase-' + (document.getElementById('tasks')?.dataset.currentPhase || '');
+    const readOpen = () => {
+        try {
+            const saved = sessionStorage.getItem(key);
+            if (saved !== null) return JSON.parse(saved);
+        } catch (e) { /* storage blocked */ }
+        return [current];
+    };
     const writeOpen = (ids) => { try { sessionStorage.setItem(key, JSON.stringify(ids)); } catch (e) { /* private mode */ } };
     function applyPhones() {
         const open = readOpen();

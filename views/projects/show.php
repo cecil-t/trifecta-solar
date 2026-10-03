@@ -167,7 +167,7 @@ $back = '/projects/' . (int) $p['id'];
     <?php if ($todos): ?><?= App\View::partial('tasks/_list', ['rows' => $todos, 'back' => '/projects/' . (int) $p['id'] . '#todos', 'showLink' => false]) ?><?php endif; ?>
 </section>
 
-<div id="tasks" class="tasks-wrap" data-today="<?= $today ?>">
+<div id="tasks" class="tasks-wrap" data-today="<?= $today ?>" data-current-phase="<?= e($status['phase']) ?>">
     <?php foreach (Tasks::PHASES as $phaseKey => $phaseLabel): $tasks = $tree[$phaseKey]; ?>
         <?php
         $done = count(array_filter($tasks, static fn ($t) => $t['resolved']));
