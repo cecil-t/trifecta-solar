@@ -178,7 +178,7 @@
     applyPhones();
     phone.addEventListener('change', applyPhones);
 
-    // Green check beside Completed: fill in today's date (shown only while the date is empty).
+    // Beside Completed: a green check fills in today while empty; an x clears a set date.
     function syncToday(input) {
         input.closest('.date-wrap')?.classList.toggle('has-date', !!input.value);
     }
@@ -188,6 +188,16 @@
         input.addEventListener('input', () => syncToday(input));
     });
     document.addEventListener('click', (e) => {
+        const c = e.target.closest('[data-clear-date]');
+        if (c) {
+            e.preventDefault();
+            const input = c.closest('.date-wrap').querySelector('input');
+            if (input.value && confirm('Clear the completed date?')) {
+                input.value = '';
+                input.dispatchEvent(new Event('change'));
+            }
+            return;
+        }
         const b = e.target.closest('[data-set-today]');
         if (!b) return;
         e.preventDefault();
