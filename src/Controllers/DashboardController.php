@@ -37,7 +37,7 @@ final class DashboardController
         }
         View::render('dashboard', [
             'title' => 'Dashboard', 'user' => Auth::user(), 'counts' => $counts, 'service' => $service,
-            'items' => Tasks::openItemsFor((int) Auth::id(), 60),
+            'items' => Tasks::openItemsFor((int) Auth::id(), 2000),
             'weather' => \App\Weather::forecast(),
         ]);
     }

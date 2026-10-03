@@ -596,3 +596,17 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .stat-group { grid-template-columns: 1fr; gap: .3rem; }
     .stat-group-label { text-align: left; }
 }
+
+/* dashboard: open items grouped by project */
+.open-head { cursor: pointer; }
+.open-head:hover td { background: #f6f9f7; }
+.open-head.is-open .year-caret { transform: rotate(90deg); }
+.open-head .year-caret { color: var(--blue); margin-right: .2rem; }
+.open-link { font-size: .8rem; margin-left: .6rem; opacity: 0; }
+.open-head:hover .open-link, .open-head.is-open .open-link { opacity: 1; }
+.open-items td { background: #fbfcfb; padding-top: .45rem; padding-bottom: .45rem; font-size: .88rem; }
+.open-item { padding-left: 2.4rem !important; white-space: normal !important; }
+@media (max-width: 760px) {
+    .open-link { opacity: 1; display: block; margin: .2rem 0 0 1.2rem; }
+    .open-head td:first-child { white-space: normal; }
+}
