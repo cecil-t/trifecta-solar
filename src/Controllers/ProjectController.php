@@ -66,19 +66,20 @@ final class ProjectController
             $p['status'] = $st;
             $p['dc_kw'] = $kw[(int) $p['id']] ?? null;
             $onHold = $p['hold_state'] === 'on_hold';
-            $isActive = !in_array($st['phase'], ['complete', 'archived', 'cancelled'], true);
+            $isOpen = !in_array($st['phase'], ['complete', 'archived', 'cancelled'], true);
+            $isActive = $isOpen && !$onHold; // on-hold jobs live on their own tab
             $clearToStart = $st['phase'] === 'pre_install' && $st['clear_to_install'] && !$onHold;
 
             $counts['all']++;
             $counts[$st['phase']]++;
             if ($isActive) { $counts['active']++; }
-            if ($onHold && $isActive) { $counts['on_hold']++; }
+            if ($onHold && $isOpen) { $counts['on_hold']++; }
             if ($clearToStart) { $counts['clear']++; }
 
             $keep = match ($filter['phase']) {
                 'all'     => true,
                 'active'  => $isActive,
-                'on_hold' => $onHold && $isActive,
+                'on_hold' => $onHold && $isOpen,
                 'clear'   => $clearToStart,
                 default   => $st['phase'] === $filter['phase'],
             };
