@@ -275,7 +275,7 @@ tr.clickable { cursor: pointer; }
 .table-projects td:nth-child(2), .table-projects td:nth-child(5), .table-projects td:nth-child(6), .table-projects td:nth-child(7) { white-space: normal; }
 @media (max-width: 1280px) { .table-projects .cell-note { max-width: 260px; } }
 .table-projects .phase, .table-projects .chip { white-space: nowrap; display: inline-block; }
-@media (min-width: 761px) and (max-width: 1000px) {
+@media (min-width: 761px) and (max-width: 1040px) {
     /* tablet widths: Type is dropped so the other columns don't break mid-word */
     .table-projects th:nth-child(5), .table-projects td:nth-child(5) { display: none; }
     .table-projects th, .table-projects td { padding-left: .6rem; padding-right: .6rem; }
