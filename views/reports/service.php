@@ -38,7 +38,7 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 
 	<h2 class="sub report-sub">By coverage</h2>
 	<table class="table">
-		<thead><tr><th>Coverage</th><th class="num">Tickets</th><th class="num">Trips</th><th class="num">Man-hours</th><th class="num">Amount billed</th></tr></thead>
+		<thead><tr><th>Coverage</th><th class="num" data-short="Tkts">Tickets</th><th class="num">Trips</th><th class="num" data-short="Hrs">Man-hours</th><th class="num">Amount billed</th></tr></thead>
 		<tbody>
 		<?php foreach ($byCoverage as $c => $s): ?><?= $row($c === '' ? '<span class="muted">Not set</span>' : e(Service::COVERAGE[$c]) . ($c === 'warranty' ? ' <span class="muted small">(est. cost)</span>' : ''), $s, $c === 'warranty') ?><?php endforeach; ?>
 		</tbody>
@@ -47,7 +47,7 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 
 	<h2 class="sub report-sub">By month</h2>
 	<table class="table">
-		<thead><tr><th>Month</th><th class="num">Tickets</th><th class="num">Trips</th><th class="num">Man-hours</th><th class="num">Amount billed</th><th class="num">Warranty cost (est.)</th></tr></thead>
+		<thead><tr><th>Month</th><th class="num" data-short="Tkts">Tickets</th><th class="num">Trips</th><th class="num" data-short="Hrs">Man-hours</th><th class="num">Amount billed</th><th class="num">Warranty cost (est.)</th></tr></thead>
 		<tbody>
 		<?php if (!$byMonth): ?><tr><td colspan="6" class="empty">No service tickets in this range.</td></tr><?php endif; ?>
 		<?php foreach ($byMonth as $ym => $s): if ($f['preset'] === 'all' && !$s['tickets']) { continue; } ?><?= $monthRow(str_replace(' ', '&nbsp;', e($monthLabel($ym))), $s) ?><?php endforeach; ?>

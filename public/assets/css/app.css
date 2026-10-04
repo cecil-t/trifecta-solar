@@ -212,7 +212,8 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
 	.usermenu-name { display: none; }
 	.mainnav { order: 3; flex-basis: 100%; padding-bottom: .15rem; }
 	.grid-2 { grid-template-columns: 1fr; }
-	.page { padding: 1rem .75rem 2.5rem; }
+	.page { padding: .75rem .5rem 2rem; }
+	.card:not(.card-flush) { padding: .9rem .8rem; }
 	h1 { font-size: 1.35rem; }
 }
 
@@ -814,16 +815,21 @@ tr.row-flash { animation: row-flash 2.5s ease-out; }
 	.report-filters .rf-wide { grid-column: 1 / -1; }
 	.report-filters select, .report-filters input { min-width: 0; width: 100%; }
 	.report-filters .btn { justify-self: start; }
-	.report-card-body .table th { white-space: normal; overflow-wrap: normal; vertical-align: bottom; font-size: .66rem; letter-spacing: 0; }
-	.rate-calc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .75rem; }
+	.report-card-body .table th { white-space: normal; overflow-wrap: normal; vertical-align: bottom; font-size: .64rem; letter-spacing: 0; }
+	.rate-calc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .75rem; padding: .6rem .6rem .3rem; }
 	.rate-calc > span { grid-column: 1 / -1; }
 	.rate-calc-label { padding-bottom: 0; }
 	.money-input input { width: 100%; min-width: 0; }
-	.report-card-body .table td { font-size: .8rem; overflow-wrap: normal; }
+	.report-card-body .table td { font-size: .78rem; overflow-wrap: normal; }
+	/* short header labels where a long one would set the column width (data-short="Hrs") */
+	.report-card-body .table th[data-short] { font-size: 0; }
+	.report-card-body .table th[data-short]::after { content: attr(data-short); font-size: .64rem; }
 	.report-card-body .table td:first-child { white-space: normal; }
-	.report-card-body .table th, .report-card-body .table td { padding-left: .3rem; padding-right: .3rem; }
-	.report-card-body .table th:first-child, .report-card-body .table td:first-child { padding-left: .7rem; }
-	.report-card-body .table th:last-child, .report-card-body .table td:last-child { padding-right: .7rem; }
+	.report-card-body .table th, .report-card-body .table td { padding-left: .2rem; padding-right: .2rem; }
+	.report-card-body .table th:first-child, .report-card-body .table td:first-child { padding-left: .6rem; }
+	.report-card-body .table th:last-child, .report-card-body .table td:last-child { padding-right: .6rem; }
+	.report-metrics { padding: .2rem .6rem .5rem; gap: .5rem 1.25rem; }
+	.report-sub, .report-hint { padding-left: .6rem; padding-right: .6rem; }
 }
 
 /* collapsible phases on the project page (click the phase title) */

@@ -42,7 +42,7 @@ $cores = (int) ($server['cpu']['cores'] ?? 0);
 			<h2>The app</h2>
 			<dl class="kv">
 				<dt>Developed by</dt><dd>Greg Hassler and Claude.ai</dd>
-				<dt>Repository</dt><dd><a href="<?= e($repo) ?>" rel="noopener" target="_blank">github.com/cecil-t/trifecta-solar</a> <span class="muted small">(private)</span></dd>
+				<dt>Repository</dt><dd><a href="<?= e($repo) ?>" rel="noopener" target="_blank">github.com/cecil-t/trifecta-solar</a></dd>
 				<?php if ($version): ?>
 					<dt>Code version</dt>
 					<dd>
