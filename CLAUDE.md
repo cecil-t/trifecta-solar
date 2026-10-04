@@ -13,6 +13,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
   - Allowed: Greg's name in the About credits, the company name, generic setup defaults (Docker port 8089, container name), and the repo URL.
   - Customer and staff data were scrubbed from all history on 2026-10-04 with two `git filter-repo` rewrites. Check every commit before pushing; a slip means another rewrite and a reset of the live clone.
 - **Live data is edited by hand now.** Imports and fix scripts are add-only or fill-blanks-only. Never run or suggest `import:projects --replace`. Only overwrite a field when Greg names it.
+- **Data changes are import files, not code.** A one-off change to live data ("set X on these projects") is a JSON file for `import:updates` (fill-blanks only) or another import, built in the session scratchpad and handed to Greg. Don't add a console command or code path for a one-off data fix. If the import can't express the change yet, extend the import generically.
 - **No em dashes** anywhere: UI text, comments, commit messages, replies.
 - Every data-changing console command gets a `--dry-run`, and Greg runs the dry run before the real one.
 - Record-only imports (`build_import.py --older`) add history projects with only their dated steps and no payments. They skip existing project numbers and names and refuse `--replace`.

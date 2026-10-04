@@ -13,6 +13,7 @@ declare(strict_types=1);
  *   import:projects <file.json> [--dry-run]   Add projects (skips project numbers that exist; --replace is not used)
  *   import:service <file.json> [--dry-run]    Add service tickets (never changes existing ones)
  *   import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
+ *   import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
  *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
@@ -103,6 +104,16 @@ try {
 			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
 			break;
 
+		case 'import:updates':
+			$file = $args[1] ?? fail('Usage: import:updates <file.json> [--dry-run]');
+			if (!is_file($file)) { fail("No such file: $file"); }
+			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+			$dry = in_array('--dry-run', $args, true);
+			$res = (new App\ProjectUpdater($dry))->run($data);
+			foreach ($res['log'] as $line) { out($line); }
+			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+			break;
+
 		case 'fix:payment-labels':
 			$dry = in_array('--dry-run', $args, true);
 			foreach (App\Cleanup::paymentLabels($dry) as $line) { out($line); }
@@ -142,7 +153,7 @@ try {
 			break;
 
 		default:
-			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run]');
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());

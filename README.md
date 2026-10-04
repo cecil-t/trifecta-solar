@@ -65,6 +65,7 @@ user:password <email>                     Set a user's password (prompts, input 
 import:projects <file.json> [--dry-run]   Add projects (skips project numbers that exist)
 import:service <file.json> [--dry-run]    Add service tickets (never changes existing ones)
 import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
+import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
 fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
 fix:completed-payments [--dry-run]        Mark open payments received on Completed projects
 fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
