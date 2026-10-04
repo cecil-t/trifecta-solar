@@ -293,11 +293,27 @@ final class Tasks
         'complete' => 'Completed', 'cancelled' => 'Cancelled',
     ];
 
+    /** Open step => the later step of the same task that implies it is done (open items rule R2). */
+    public const IMPLIED_BY = [
+        'Design > Planset sent' => 'Design > Planset received',
+        'Zoning permit > Applied' => 'Zoning permit > Received',
+        'Building permit > Applied' => 'Building permit > Received',
+        'Interconnection > Applied (app and fee)' => 'Interconnection > Approved / permission to install',
+        'Interconnection > Conditional approval' => 'Interconnection > Approved / permission to install',
+        'Utility > COC submitted' => 'Utility > PTO received',
+        'Utility > Meter swap / DER visit' => 'Utility > PTO received',
+    ];
+    /** Tasks whose sub-steps run side by side; open items shows them as one line (rule R4). */
+    public const GROUPED = ['Materials', 'Monitoring portal', 'Photos', 'Commissioning'];
+
     /**
      * Open items a user owns that are actionable now, on active projects (not on hold,
      * cancelled or completed). Actionable means: the task's phase has been reached (a
      * Closeout task waits for PTO), or it has a target date within the next 30 days or
      * already past. For Payments, only each project's next unpaid milestone counts.
+     * Then: leftovers from a phase the project has moved past are hidden (R1), a step is
+     * resolved when a later step of its task is done (R2), and grouped sub-steps like
+     * Materials collapse to one line (R4). Display only; no data is changed.
      */
     public static function openItemsFor(int $userId, int $limit = 2000): array
     {
@@ -343,20 +359,63 @@ final class Tasks
                 }
             }
         }
+        // Done steps per project, keyed "Parent > Name", for the implied-done rule.
+        $doneKeys = [];
+        $children = [];
+        foreach ($all as $pid => $list) {
+            $names = array_column($list, 'name', 'id');
+            foreach ($list as $t) {
+                if ($t['parent_id']) {
+                    $children[(int) $t['parent_id']][] = $t;
+                }
+                if ($t['done_date']) {
+                    $doneKeys[$pid][($t['parent_id'] ? ($names[$t['parent_id']] ?? '') . ' > ' : '') . $t['name']] = true;
+                }
+            }
+        }
         $soon = date('Y-m-d', strtotime('+30 days'));
         $out = [];
+        $groups = [];
         foreach ($rows as $r) {
             $pid = (int) $r['pid'];
             $phase = $r['parent_phase'] ?? $r['phase'];
             $topId = (int) ($r['parent_id'] ?? $r['id']);
-            $keep = ($r['target_date'] && $r['target_date'] <= $soon)
-                || ($phase === 'payments' ? ($nextPayment[$pid] ?? 0) === $topId : ($rank[$phase] ?? 1) <= $phaseRank[$pid]);
-            if ($keep) {
-                $out[] = $r;
+            $rankHere = $rank[$phase] ?? 1;
+            // R1: an earlier phase's leftovers stop showing once the project has moved past that phase.
+            if ($phase !== 'payments' && $rankHere < $phaseRank[$pid]) {
+                continue;
             }
+            // R2: a step is treated as resolved when a later step of the same task is done.
+            $label = ($r['parent_name'] ? $r['parent_name'] . ' > ' : '') . $r['name'];
+            if (isset(self::IMPLIED_BY[$label]) && isset($doneKeys[$pid][self::IMPLIED_BY[$label]])) {
+                continue;
+            }
+            $keep = ($r['target_date'] && $r['target_date'] <= $soon)
+                || ($phase === 'payments' ? ($nextPayment[$pid] ?? 0) === $topId : $rankHere <= $phaseRank[$pid]);
+            if (!$keep) {
+                continue;
+            }
+            // R4: side-by-side sub-steps (Materials, Photos...) collapse to one line per task.
+            if ($r['parent_id'] && in_array($r['parent_name'], self::GROUPED, true)) {
+                $gid = (int) $r['parent_id'];
+                if (isset($groups[$gid])) {
+                    $out[$groups[$gid]]['group_open'][] = $r['name'];
+                    continue;
+                }
+                $total = count(array_filter($children[$gid] ?? [], static fn ($c) => (int) ($c['needed'] ?? 1) !== 0));
+                $r = ['id' => $gid, 'name' => $r['parent_name'], 'parent_name' => null, 'parent_id' => null, 'needed' => 1,
+                    'note' => null, 'group_open' => [$r['name']], 'group_total' => $total] + $r;
+                $groups[$gid] = count($out);
+            }
+            $out[] = $r;
             if (count($out) >= $limit) {
                 break;
             }
+        }
+        foreach ($groups as $idx) {
+            $g = &$out[$idx];
+            $g['note'] = count($g['group_open']) . ' of ' . $g['group_total'] . ' open: ' . implode(', ', $g['group_open']);
+            unset($g);
         }
         return $out;
     }

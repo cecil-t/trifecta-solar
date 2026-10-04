@@ -254,6 +254,10 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 /* "Clear to install" is a slice of Pre-Install: tuck it against its parent tab */
 .tab-sub { font-size: .82rem; padding-left: .2rem; margin-left: -.45rem; color: #6b7a72; }
 .tab-sub-mark { color: var(--green); font-weight: 700; margin-right: .2rem; }
+/* projects: a thin bracket over Active through Closeout, the tabs that make up Active */
+.tabs-grouped { align-items: flex-end; }
+.tab-group { display: flex; gap: .25rem; position: relative; padding-top: 7px; flex-shrink: 0; }
+.tab-group::before { content: ''; position: absolute; top: 1px; left: .35rem; right: .35rem; height: 5px; border: 2px solid #b8c7d0; border-bottom: 0; border-radius: 4px 4px 0 0; pointer-events: none; }
 .tab-sub.active { color: #3f7a24; border-bottom-color: var(--green); }
 .stat-sub { background: #fafcf8; }
 .stat-sub .stat-num { font-size: 1.35rem; }
@@ -668,6 +672,10 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     position: sticky; bottom: 0; z-index: 15; margin: .5rem -1px 2rem; padding: .7rem 1rem;
     background: rgba(255, 255, 255, .96); border: 1px solid var(--border); border-radius: var(--radius);
     box-shadow: 0 -4px 16px rgba(16, 32, 40, .08); backdrop-filter: blur(4px);
+}
+@media (min-width: 761px) {
+    /* desktop: the floating bar hugs the buttons instead of spanning the page */
+    .project-form .form-actions { width: fit-content; }
 }
 
 @media (max-width: 760px) {

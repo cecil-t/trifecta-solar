@@ -25,11 +25,13 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 	<a href="/projects/new" class="btn btn-primary">New project</a>
 </div>
 
-<div class="tabs">
+<div class="tabs tabs-grouped">
 	<?php foreach ($tabs as $key => $label): ?>
+		<?php if ($key === 'active'): ?><div class="tab-group" title="Active is Pre-Install, Installation and Closeout together"><?php endif; ?>
 		<a href="<?= e($qs(['phase' => $key, 'q' => null])) ?>" class="tab <?= $key === 'clear' ? 'tab-sub' : '' ?> <?= $filter['phase'] === $key ? 'active' : '' ?>"<?= $key === 'clear' ? ' title="Part of Pre-Install: building permit received and interconnection approved"' : '' ?>>
 			<?= $key === 'clear' ? '<span class="tab-sub-mark" aria-hidden="true">&#8627;</span>' : '' ?><?= e($label) ?> <span class="tab-count"><?= (int) ($counts[$key] ?? 0) ?></span>
 		</a>
+		<?php if ($key === 'closeout'): ?></div><?php endif; ?>
 	<?php endforeach; ?>
 </div>
 

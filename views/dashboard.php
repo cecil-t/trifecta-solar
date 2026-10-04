@@ -66,7 +66,7 @@ usort($byProject, static fn ($a, $b) => [$b['overdue'] > 0, $a['next'] === null,
 <section class="card card-flush mt">
 	<div class="card-head">
 		<h2>My open items <span class="muted small">(<?= count($items) ?> on <?= count($byProject) ?> project<?= count($byProject) === 1 ? '' : 's' ?>)</span></h2>
-		<span class="muted small">Project tasks you own that are actionable now: the project has reached that phase, the target date is within 30 days, or it is the next payment. Click a project to see its items.</span>
+		<span class="muted small">Project tasks you own that are actionable now: the project has reached that phase, the target date is within 30 days, or it is the next payment. Steps from a phase the project has moved past are left out. Click a project to see its items.</span>
 	</div>
 	<?php if (!$items): ?>
 		<p class="empty">Nothing open with your name on it.</p>
