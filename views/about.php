@@ -4,6 +4,7 @@
  * @var string  $repo
  * @var array   $host
  * @var array   $server  from App\ServerInfo, plus disk space
+ * @var ?array  $tls     host, port and cert (from App\TlsInfo, null if no TLS answered)
  * @var array   $stats  (not $data: View::partial keeps its own $data)
  */
 $bytes = static function (?float $n): string {
@@ -70,6 +71,35 @@ $cores = (int) ($server['cpu']['cores'] ?? 0);
 			<dt>PHP</dt><dd><?= e($host['php']) ?></dd>
 			<dt>Database</dt><dd>SQLite <?= e($host['sqlite']) ?>, <?= e($host['journal']) ?> mode, <?= e($bytes((float) $host['db_bytes'])) ?></dd>
 		</dl>
+
+		<?php if ($tls): $c = $tls['cert']; ?>
+			<h2 class="mt">HTTPS certificate</h2>
+			<?php if (!$c): ?>
+				<p class="muted small">No certificate answered at <?= e($tls['host'] . ':' . $tls['port']) ?>. HTTPS is handled by the reverse proxy in front of the app, so this is normal when the page is opened over plain HTTP.</p>
+			<?php else:
+				$daysLeft = $c['valid_to'] ? (int) floor(($c['valid_to'] - time()) / 86400) : null; ?>
+				<dl class="kv">
+					<dt>Covers</dt><dd><?= e(implode(', ', $c['names'])) ?><?= $c['name_match'] ? '' : ' <span class="chip chip-orange">Does not match ' . e($tls['host']) . '</span>' ?></dd>
+					<dt>Issued by</dt>
+					<dd>
+						<?= e($c['self_signed'] ? 'Self-signed' : $c['issuer']) ?>
+						<?php if ($c['trusted'] === true): ?><span class="chip chip-green">Trusted</span><?php elseif ($c['trusted'] === false): ?><span class="chip chip-orange">Not trusted</span><?php endif; ?>
+					</dd>
+					<?php if ($c['valid_to']): ?>
+						<dt>Expires</dt>
+						<dd>
+							<?= e(date('m/d/Y', $c['valid_to'])) ?>
+							<?php if ($daysLeft < 0): ?><span class="chip chip-red">Expired</span>
+							<?php elseif ($daysLeft < 21): ?><span class="chip chip-orange"><?= $daysLeft ?> day<?= $daysLeft === 1 ? '' : 's' ?> left</span>
+							<?php else: ?><span class="muted small">(<?= $daysLeft ?> days left<?= $c['valid_from'] ? ', issued ' . e(date('m/d/Y', $c['valid_from'])) : '' ?>)</span><?php endif; ?>
+						</dd>
+					<?php endif; ?>
+					<?php if ($c['key']): ?><dt>Key</dt><dd><?= e($c['key']) ?><?= $c['signature'] ? ' <span class="muted small">(signed ' . e($c['signature']) . ')</span>' : '' ?></dd><?php endif; ?>
+					<?php if ($c['protocol']): ?><dt>Connection</dt><dd><?= e($c['protocol']) ?><?= $c['cipher'] ? ' <span class="muted small">(' . e($c['cipher']) . ')</span>' : '' ?></dd><?php endif; ?>
+					<dt>Checked at</dt><dd><?= e($c['checked_via'] . ':' . $c['port']) ?> <span class="muted small">(when this page loaded)</span></dd>
+				</dl>
+			<?php endif; ?>
+		<?php endif; ?>
 	</section>
 
 	<section class="card">

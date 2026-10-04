@@ -7,6 +7,7 @@ use App\Backup;
 use App\Db;
 use App\Migrator;
 use App\ServerInfo;
+use App\TlsInfo;
 use App\Version;
 use App\View;
 
@@ -28,6 +29,14 @@ final class AboutController
 		usort($backups, static fn ($a, $b) => (@filemtime($b) ?: 0) <=> (@filemtime($a) ?: 0));
 		$lastBackup = $backups ? ['time' => @filemtime($backups[0]) ?: null, 'bytes' => @filesize($backups[0]) ?: 0] : null;
 
+		// The certificate on the address this page was opened at (the port defaults to 443)
+		$address = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? ''))[0]);
+		$tls = null;
+		if (preg_match('/^\[?([^\]\s]+?)\]?(?::(\d+))?$/', $address, $m)) {
+			$tls = ['host' => $m[1], 'port' => isset($m[2]) ? (int) $m[2] : 443];
+			$tls['cert'] = TlsInfo::probe($tls['host'], $tls['port']);
+		}
+
 		$applied = Migrator::applied();
 		View::render('about', [
 			'title' => 'About',
@@ -47,6 +56,7 @@ final class AboutController
 				'journal' => strtoupper((string) Db::value('PRAGMA journal_mode')),
 				'db_bytes' => $dbBytes,
 			],
+			'tls' => $tls,
 			'server' => ServerInfo::all() + [
 				'disk_free' => @disk_free_space(dirname($dbPath)) ?: null,
 				'disk_total' => @disk_total_space(dirname($dbPath)) ?: null,
