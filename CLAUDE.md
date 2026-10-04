@@ -5,6 +5,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
 ## Hard rules
 
 - **No customer data in git, ever.** That covers import.json, service.json, contracts, the tracker .xlsx, Drive listings and DB backups. `/import/`, `/data/` and `/backups/` are gitignored. Keep those files in the session scratchpad, and hand them to Greg through file delivery, never a commit.
+- Per-project data for `tools/import/build_import.py` (customer names, site addresses, hand-read contracts, municipality checks) lives in `import/overrides.json`, never in the script. Greg keeps that file. Example strings in comments must be fictional. History was rewritten on 2026-10-04 to remove what had been committed.
 - **Live data is edited by hand now.** Imports and fix scripts are add-only or fill-blanks-only. Never run or suggest `import:projects --replace`. Only overwrite a field when Greg names it.
 - **No em dashes** anywhere: UI text, comments, commit messages, replies.
 - Every data-changing console command gets a `--dry-run`, and Greg runs the dry run before the real one.
