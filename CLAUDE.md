@@ -11,7 +11,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
   - Where it goes instead: gitignored files (`/import/`, `/data/`, `/backups/`, `.env`). Per-project and staff data for `tools/import/` is in `import/overrides.json`, which Greg keeps. Hand such files to Greg through file delivery from the session scratchpad, never a commit.
   - Examples in comments, placeholders and docs use made-up names and example.com.
   - Allowed: Greg's name in the About credits, the company name, generic setup defaults (Docker port 8089, container name), and the repo URL.
-  - Customer and staff data were scrubbed from all history on 2026-10-04 with two `git filter-repo` rewrites. Check every commit before pushing; a slip means another rewrite and a NAS reset.
+  - Customer and staff data were scrubbed from all history on 2026-10-04 with two `git filter-repo` rewrites. Check every commit before pushing; a slip means another rewrite and a reset of the live clone.
 - **Live data is edited by hand now.** Imports and fix scripts are add-only or fill-blanks-only. Never run or suggest `import:projects --replace`. Only overwrite a field when Greg names it.
 - **No em dashes** anywhere: UI text, comments, commit messages, replies.
 - Every data-changing console command gets a `--dry-run`, and Greg runs the dry run before the real one.
