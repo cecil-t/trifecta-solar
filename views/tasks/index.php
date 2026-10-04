@@ -17,7 +17,7 @@ $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array
 <form class="filters" method="get" action="/tasks">
 	<input type="search" name="q" value="<?= e($q) ?>" placeholder="Search tasks, project, ticket #">
 	<?php if (in_array($tab, ['open', 'done', 'all'], true)): ?>
-		<select name="who" onchange="this.form.submit()">
+		<select name="who" data-autosubmit>
 			<option value="">Everyone</option>
 			<?php foreach ($users as $u): ?><option value="<?= (int) $u['id'] ?>" <?= $who === (int) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option><?php endforeach; ?>
 		</select>

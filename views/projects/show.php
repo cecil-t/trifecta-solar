@@ -253,7 +253,7 @@ $back = '/projects/' . (int) $p['id'];
 									<?php endif; ?>
 									<button type="button" class="linklike" data-action="add-sub" data-parent="<?= (int) $t['id'] ?>">Add sub-task</button>
 									<form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $t['id'] ?>/duplicate"><?= Csrf::field() ?><button class="linklike">Duplicate</button></form>
-									<form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $t['id'] ?>/delete" onsubmit="return confirm('Remove &quot;<?= e($t['name']) ?>&quot;<?= $hasSubs ? ' and its sub-tasks' : '' ?> from this project?')"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
+									<form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $t['id'] ?>/delete" data-confirm="<?= e('Remove "' . $t['name'] . '"' . ($hasSubs ? ' and its sub-tasks' : '') . ' from this project?') ?>"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
 								</div>
 							</details>
 						</div>
@@ -271,7 +271,7 @@ $back = '/projects/' . (int) $p['id'];
 									<div class="usermenu-panel">
 										<button type="button" class="linklike" data-action="rename" data-name="<?= e($s['name']) ?>">Rename</button>
 										<?php if ((string) $s['needed'] === '0'): ?><button type="button" class="linklike" data-action="set-needed" data-value="1">Needed after all</button><?php endif; ?>
-										<form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $s['id'] ?>/delete" onsubmit="return confirm('Remove &quot;<?= e($s['name']) ?>&quot;?')"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
+										<form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $s['id'] ?>/delete" data-confirm="<?= e('Remove "' . $s['name'] . '"?') ?>"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
 									</div>
 								</details>
 							</div>

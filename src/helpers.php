@@ -9,6 +9,17 @@ function e(mixed $value): string
 	return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/**
+ * A return path from a form or link (?back=, POST back) if it is safely local, else $default.
+ * Must start with a single "/"; a backslash anywhere is refused because browsers read "/\\host"
+ * as "//host" (another site), and control characters are refused outright.
+ */
+function local_path(string $path, string $default = '/'): string
+{
+	return str_starts_with($path, '/') && !str_starts_with($path, '//') && !str_contains($path, '\\')
+		&& !preg_match('/[\x00-\x1f\x7f]/', $path) ? $path : $default;
+}
+
 function redirect(string $path): never
 {
 	header('Location: ' . $path, true, 303);

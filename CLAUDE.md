@@ -25,6 +25,11 @@ Read README.md for the feature list and layout. This file covers how to work in 
 - All code is indented with **tabs** (PHP, views, CSS, JS, SQL, Python, config); `.editorconfig` sets it. Only YAML and Markdown use spaces. A 1 to 3 space remainder after the tabs is fine for docblock ` *` lines and SQL alignment.
 - Schema changes go in a new numbered file in `migrations/` (next is 012). Migrations apply automatically on start and on each request.
 - All writes go through `Activity::changes` / `Activity::event` so the project or ticket log records them.
+- Security:
+  - Escape every value in views with `e()` (or cast to int/float). User links render only through `safe_url()`. JS never uses `innerHTML` with data.
+  - A Content Security Policy (sent from `public/index.php`) allows scripts and styles only from this site, with no inline script. So no `<script>` blocks, no `onclick=`/`onsubmit=`/`onchange=` attributes and no `style=` attributes in views. Use the data attributes `app.js` handles (`data-href` rows, `data-confirm` forms and buttons, `data-autosubmit` selects, `data-print`, `data-toggle-next-row`, `.year-toggle`) or a script file in `public/assets/js/`.
+  - Validate input on the server in each controller's `input()`; SQL uses `?` placeholders only; every POST carries `Csrf::field()`.
+  - Return paths from `back` parameters go through `local_path()`.
 - UI wording: "Completed" (never "Done" or "Archived"), "Tasks" for to-dos, and "Open items" for project steps on the dashboard.
 - Search on Projects, Service and Tasks always switches to the All tab.
 - Open items rules live in `Tasks::openItemsFor`: phase reached, target date within 30 days, or next payment. Then:

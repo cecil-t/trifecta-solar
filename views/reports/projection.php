@@ -28,23 +28,3 @@ echo App\View::partial('reports/_filters', ['report' => $report, 'f' => $f, 'use
 	<p class="hint report-hint">The tracker holds the 2026 tab plus a few older completed jobs, so windows reaching back into 2025 are missing sales that finished before 2026.</p>
 </div>
 
-<script>
-// Growth-adjusted projection, recalculated as the percentage changes.
-(function () {
-	const g = document.getElementById('growth');
-	const fmt = {
-		count: (n) => n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-		money: (n) => '$' + Math.round(n).toLocaleString('en-US'),
-		kw: (n) => n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-	};
-	function calc() {
-		const k = 1 + (parseFloat(g.value) || 0) / 100;
-		document.querySelectorAll('[data-show="growth"]').forEach((el) => { el.textContent = parseFloat(g.value) || 0; });
-		document.querySelectorAll('#proj-table [data-base]').forEach((td) => {
-			td.querySelector('[data-v]').textContent = fmt[td.dataset.kind](parseFloat(td.dataset.base) * k);
-		});
-	}
-	g.addEventListener('input', calc);
-	calc();
-})();
-</script>

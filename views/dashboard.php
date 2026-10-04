@@ -75,8 +75,8 @@ usort($byProject, static fn ($a, $b) => [$b['overdue'] > 0, $a['next'] === null,
 			<thead><tr><th>Project</th><th class="num">Open</th><th class="num">Overdue</th><th class="num">Needs answer</th><th>Next target</th></tr></thead>
 			<?php foreach ($byProject as $g): ?>
 				<tbody class="open-group">
-					<tr class="open-head" onclick="var b=this.closest('tbody').nextElementSibling;b.hidden=!b.hidden;this.classList.toggle('is-open',!b.hidden)">
-						<td><span class="year-caret">&#9656;</span> <strong><?= e($g['number']) ?></strong> <?= e($g['name']) ?> <a href="/projects/<?= (int) $g['pid'] ?>" class="open-link" onclick="event.stopPropagation()">Open project &rsaquo;</a></td>
+					<tr class="open-head">
+						<td><span class="year-caret">&#9656;</span> <strong><?= e($g['number']) ?></strong> <?= e($g['name']) ?> <a href="/projects/<?= (int) $g['pid'] ?>" class="open-link">Open project &rsaquo;</a></td>
 						<td class="num"><?= count($g['items']) ?></td>
 						<td class="num <?= $g['overdue'] ? 'text-red' : '' ?>"><?= $g['overdue'] ?: '' ?></td>
 						<td class="num"><?= $g['unanswered'] ?: '' ?></td>

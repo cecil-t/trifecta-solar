@@ -37,6 +37,13 @@ if (Config::bool('APP_DEBUG')) {
 	error_reporting(E_ALL);
 }
 
+// Content Security Policy: scripts, styles and everything else only from this site, and no inline
+// script (page behavior lives in public/assets/js, wired by data- attributes). If a value ever
+// slipped past e(), the browser still would not run it.
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+	. "font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; "
+	. "base-uri 'self'; form-action 'self'; frame-ancestors 'self'");
+
 session_name('ts_sess');
 session_set_cookie_params(['path' => '/', 'secure' => is_https(), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();

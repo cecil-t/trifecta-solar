@@ -55,26 +55,3 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 	</table>
 </section>
 
-<script>
-// Warranty cost estimate, priced live from the two rate boxes.
-(function () {
-	const trip = document.getElementById('rate-trip');
-	const hour = document.getElementById('rate-hour');
-	const fmt = (n, round) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: round ? 0 : 2, maximumFractionDigits: round ? 0 : 2 });
-	function calc() {
-		const t = parseFloat(trip.value) || 0;
-		const h = parseFloat(hour.value) || 0;
-		document.querySelectorAll('[data-show="trip"]').forEach((el) => { el.textContent = t; });
-		document.querySelectorAll('[data-show="hour"]').forEach((el) => { el.textContent = h; });
-		document.querySelectorAll('[data-wtrips]').forEach((row) => {
-			const cost = (+row.dataset.wtrips) * t + (+row.dataset.whours) * h;
-			row.querySelectorAll('[data-est]').forEach((el) => {
-				el.textContent = cost || el.hasAttribute('data-round') ? fmt(cost, el.hasAttribute('data-round')) : '';
-			});
-		});
-	}
-	trip.addEventListener('input', calc);
-	hour.addEventListener('input', calc);
-	calc();
-})();
-</script>

@@ -128,7 +128,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 				<td class="num"><?= $vi['man_hours'] !== null ? e(Service::hours((float) $vi['man_hours'])) : '' ?></td>
 				<td class="num"><?= (int) $vi['trips'] ?></td>
 				<td class="small"><?= nl2br(e($vi['note'] ?? ''), false) ?></td>
-				<td class="nowrap"><button type="button" class="btn btn-ghost btn-small" onclick="var r=this.closest('tr').nextElementSibling;r.hidden=!r.hidden">Edit</button></td>
+				<td class="nowrap"><button type="button" class="btn btn-ghost btn-small" data-toggle-next-row>Edit</button></td>
 			</tr>
 			<tr class="visit-edit-row" hidden>
 				<td colspan="6">
@@ -140,7 +140,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 						<label class="short">Trips <input type="number" name="trips" value="<?= (int) $vi['trips'] ?>" min="0"></label>
 						<label class="grow-2">What was done <input type="text" name="note" value="<?= e($vi['note']) ?>"></label>
 						<button class="btn btn-primary btn-small">Save</button>
-						<button class="btn btn-ghost btn-small text-red" formaction="<?= $back ?>/visits/<?= (int) $vi['id'] ?>/delete" onclick="return confirm('Remove this visit?')">Remove</button>
+						<button class="btn btn-ghost btn-small text-red" formaction="<?= $back ?>/visits/<?= (int) $vi['id'] ?>/delete" data-confirm="Remove this visit?">Remove</button>
 					</form>
 				</td>
 			</tr>

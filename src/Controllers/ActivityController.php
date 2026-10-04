@@ -24,7 +24,6 @@ final class ActivityController
 
 	private function back(): string
 	{
-		$back = (string) ($_POST['back'] ?? '/');
-		return str_starts_with($back, '/') && !str_starts_with($back, '//') ? $back : '/';
+		return local_path((string) ($_POST['back'] ?? '/'));
 	}
 }

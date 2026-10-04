@@ -50,11 +50,11 @@ $cols = 10;
 		</tbody><?php endif; ?>
 		<?php foreach ($groups as $yr => $list): ?>
 		<?php if ($yr < $thisYear): ?>
-			<tbody class="year-head"><tr><td colspan="<?= $cols ?>"><button type="button" class="year-toggle" aria-expanded="false" onclick="var b=this.closest('tbody').nextElementSibling;b.hidden=!b.hidden;this.setAttribute('aria-expanded',!b.hidden)"><span class="year-caret">&#9656;</span> <?= $yr ?> <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
+			<tbody class="year-head"><tr><td colspan="<?= $cols ?>"><button type="button" class="year-toggle" aria-expanded="false"><span class="year-caret">&#9656;</span> <?= $yr ?> <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
 		<?php endif; ?>
 		<tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
 		<?php foreach ($list as $t): ?>
-			<tr id="ticket-<?= (int) $t['id'] ?>" onclick="if(!event.target.closest('a'))location='/service/<?= (int) $t['id'] ?>'" class="clickable">
+			<tr id="ticket-<?= (int) $t['id'] ?>" data-href="/service/<?= (int) $t['id'] ?>" class="clickable">
 				<td><strong><?= e($t['ticket_number']) ?></strong></td>
 				<td class="small"><?= e(fmt_date($t['opened_on'])) ?></td>
 				<td>

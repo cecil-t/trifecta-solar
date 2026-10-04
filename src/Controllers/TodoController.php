@@ -216,8 +216,7 @@ final class TodoController
 	/** Local return path from ?back= / POST back, else the default. */
 	private function back(string $default): string
 	{
-		$b = (string) ($_POST['back'] ?? $_GET['back'] ?? '');
-		return str_starts_with($b, '/') && !str_starts_with($b, '//') ? $b : $default;
+		return local_path((string) ($_POST['back'] ?? $_GET['back'] ?? ''), $default);
 	}
 
 	private function find(int $id): array

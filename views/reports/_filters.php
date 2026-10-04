@@ -23,7 +23,7 @@ if ($f['sales_name']) {
 		<h1><?= e(ReportController::REPORTS[$report][0]) ?></h1>
 		<p class="report-summary"><?= e($summary) ?></p>
 	</div>
-	<button type="button" class="btn btn-secondary no-print" onclick="window.print()">Print</button>
+	<button type="button" class="btn btn-secondary no-print" data-print>Print</button>
 </div>
 
 <nav class="tabs no-print">
@@ -54,16 +54,4 @@ if ($f['sales_name']) {
 	<?php endif; ?>
 	<button class="btn btn-primary btn-small">Apply</button>
 </form>
-<script>
-// Picking a preset applies it right away; typing a date switches the preset to Custom.
-(function () {
-	const form = document.getElementById('report-filters');
-	const preset = document.getElementById('rf-preset');
-	if (!form) return;
-	form.querySelectorAll('select').forEach((s) => s.addEventListener('change', () => form.submit()));
-	['rf-from', 'rf-to'].forEach((id) => {
-		const el = document.getElementById(id);
-		if (el && preset) el.addEventListener('change', () => { preset.value = 'custom'; });
-	});
-})();
-</script>
+<script src="<?= asset('assets/js/reports.js') ?>" defer></script>

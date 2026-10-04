@@ -36,7 +36,7 @@ $canDelete = Auth::isAdmin() || (int) $d['created_by'] === Auth::id() || (int) $
 			<?php if ($d['done_at']): ?><dt>Done</dt><dd><?= e(fmt_dt($d['done_at'])) ?><?= $d['done_by_name'] ? ' by ' . e($d['done_by_name']) : '' ?></dd><?php endif; ?>
 		</dl>
 		<?php if ($canDelete): ?>
-			<form method="post" action="<?= $back ?>/delete" onsubmit="return confirm('Delete this task? This cannot be undone.')" class="mt-sm"><?= Csrf::field() ?><button class="linklike text-red small">Delete task</button></form>
+			<form method="post" action="<?= $back ?>/delete" data-confirm="Delete this task? This cannot be undone." class="mt-sm"><?= Csrf::field() ?><button class="linklike text-red small">Delete task</button></form>
 		<?php endif; ?>
 	</section>
 

@@ -52,24 +52,3 @@ $median = $n ? round($n % 2 ? $days[intdiv($n, 2)] : ($days[$n / 2 - 1] + $days[
 	</table>
 </section>
 
-<script>
-// Live average: unchecked projects drop out of the completed-time stats (and print struck through).
-(function () {
-	const table = document.getElementById('time-table');
-	if (!table) return;
-	const set = (k, v) => { const el = document.querySelector('#time-stats [data-stat="' + k + '"]'); if (el) el.textContent = v; };
-	table.addEventListener('change', () => {
-		const days = [];
-		table.querySelectorAll('tbody tr[data-days]').forEach((tr) => {
-			const on = tr.querySelector('input').checked;
-			tr.classList.toggle('is-excluded', !on);
-			if (on) days.push(+tr.dataset.days);
-		});
-		days.sort((a, b) => a - b);
-		const n = days.length;
-		set('count', n);
-		set('avg', n ? Math.round(days.reduce((a, b) => a + b, 0) / n) : '-');
-		set('median', n ? Math.round(n % 2 ? days[(n - 1) / 2] : (days[n / 2 - 1] + days[n / 2]) / 2) : '-');
-	});
-})();
-</script>

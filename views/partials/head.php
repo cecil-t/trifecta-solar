@@ -8,8 +8,3 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Trifecta">
 <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
-<script>
-	if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-		navigator.serviceWorker.register('/sw.js');
-	}
-</script>

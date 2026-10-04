@@ -42,7 +42,7 @@ $showProject ??= false;
 								<button class="btn btn-primary btn-small">Save</button>
 							</div>
 						</form>
-						<form method="post" action="/activity/<?= (int) $a['id'] ?>/delete" onsubmit="return confirm('Delete this comment?')">
+						<form method="post" action="/activity/<?= (int) $a['id'] ?>/delete" data-confirm="Delete this comment?">
 							<?= Csrf::field() ?>
 							<input type="hidden" name="back" value="<?= e($back) ?>">
 							<button class="linklike text-red small">Delete comment</button>

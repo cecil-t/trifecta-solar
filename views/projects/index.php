@@ -42,7 +42,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 
 <form class="filters" method="get" action="/projects">
 	<input type="search" name="q" value="<?= e($filter['q']) ?>" placeholder="Search name, #, customer, municipality">
-	<select name="sales" onchange="this.form.submit()">
+	<select name="sales" data-autosubmit>
 		<option value="">All salespeople</option>
 		<?php foreach ($users as $u): ?>
 			<option value="<?= (int) $u['id'] ?>" <?= $filter['sales'] === (int) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option>
@@ -61,11 +61,11 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 		</tbody><?php endif; ?>
 		<?php foreach ($groups as $yr => $list): ?>
 		<?php if ($yr < $thisYear): ?>
-			<tbody class="year-head"><tr><td colspan="8"><button type="button" class="year-toggle" aria-expanded="false" onclick="var b=this.closest('tbody').nextElementSibling;b.hidden=!b.hidden;this.setAttribute('aria-expanded',!b.hidden)"><span class="year-caret">&#9656;</span> <?= $yr ?> projects <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
+			<tbody class="year-head"><tr><td colspan="8"><button type="button" class="year-toggle" aria-expanded="false"><span class="year-caret">&#9656;</span> <?= $yr ?> projects <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
 		<?php endif; ?>
 		<tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
 		<?php foreach ($list as $p): $st = $p['status']; ?>
-			<tr id="project-<?= (int) $p['id'] ?>" onclick="if(!event.target.closest('a'))location='/projects/<?= (int) $p['id'] ?>'" class="clickable">
+			<tr id="project-<?= (int) $p['id'] ?>" data-href="/projects/<?= (int) $p['id'] ?>" class="clickable">
 				<td><strong><?= e($p['project_number']) ?></strong><?php if ($icons = App\Icons::scope($p)): ?><div class="scope-icons"><?= $icons ?></div><?php endif; ?></td>
 				<td>
 					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a>
