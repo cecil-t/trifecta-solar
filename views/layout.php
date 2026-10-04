@@ -42,8 +42,8 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 				<a href="/municipalities">Municipalities</a>
 				<a href="/directory">Directory (third parties)</a>
 				<?php if (Auth::isAdmin()): ?>
-					<a href="/admin/template">Task template</a>
-					<a href="/users">Users</a>
+					<a href="/admin/template" class="menu-admin">Task template <span class="menu-tag">Admin</span></a>
+					<a href="/users" class="menu-admin">Users <span class="menu-tag">Admin</span></a>
 				<?php endif; ?>
 			</div>
 		</details>

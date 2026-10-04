@@ -86,6 +86,8 @@ p { margin: 0 0 .75rem; }
     display: block; padding: .5rem .75rem; border-radius: 6px; color: var(--text); text-align: left; width: 100%;
 }
 .usermenu-panel a:hover, .usermenu-panel .linklike:hover { background: var(--bg); text-decoration: none; }
+.usermenu-panel a.menu-admin { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+.menu-tag { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--blue); background: var(--blue-50); border-radius: 999px; padding: .1rem .45rem; }
 
 .avatar {
     display: inline-grid; place-items: center; flex: none;
