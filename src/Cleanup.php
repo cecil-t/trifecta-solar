@@ -154,6 +154,86 @@ final class Cleanup
 		return $log;
 	}
 
+	/**
+	 * Set the designer on projects whose planset went out before a given project's did.
+	 * Only blank designers are filled; projects with another designer, or with the same planset
+	 * date as the cutoff, are listed and left alone.
+	 * @return string[] log lines
+	 */
+	public static function designerBefore(string $cutoffNumber, string $designerName, bool $dryRun): array
+	{
+		$designer = Db::one("SELECT id, name FROM organizations WHERE type = 'designer' AND name = ? COLLATE NOCASE", [trim($designerName)]);
+		if (!$designer) {
+			$names = array_column(Projects::orgs('designer'), 'name');
+			throw new \InvalidArgumentException("No designer named \"$designerName\" in the Directory. Designers: " . implode(', ', $names));
+		}
+		$sent = self::plansetSentDates();
+		$cutoff = Db::one('SELECT id, project_number, name FROM projects WHERE project_number = ?', [trim($cutoffNumber)]);
+		if (!$cutoff) {
+			throw new \InvalidArgumentException("No project numbered $cutoffNumber.");
+		}
+		$cutoffDate = $sent[(int) $cutoff['id']]['sent'] ?? null;
+		if (!$cutoffDate) {
+			throw new \InvalidArgumentException("{$cutoff['project_number']} {$cutoff['name']} has no Planset sent date.");
+		}
+		$log = ["Cutoff: {$cutoff['project_number']} {$cutoff['name']}, planset sent " . fmt_date($cutoffDate) . ". Setting blank designers to {$designer['name']}.", ''];
+		$counts = ['set' => 0, 'already' => 0, 'other' => 0, 'same day' => 0];
+		$pdo = Db::pdo();
+		$pdo->beginTransaction();
+		try {
+			foreach ($sent as $pid => $r) {
+				if ($pid === (int) $cutoff['id'] || $r['sent'] > $cutoffDate) {
+					continue;
+				}
+				$label = $r['project_number'] . ' ' . $r['name'] . ' (sent ' . fmt_date($r['sent']) . ')';
+				if ($r['sent'] === $cutoffDate) {
+					$counts['same day']++;
+					$log[] = "skip   $label: same day as the cutoff" . ($r['designer'] ? ", designer is {$r['designer']}" : ', designer blank');
+				} elseif ((int) $r['designer_org_id'] === (int) $designer['id']) {
+					$counts['already']++;
+					$log[] = "ok     $label: already {$designer['name']}";
+				} elseif ($r['designer_org_id']) {
+					$counts['other']++;
+					$log[] = "skip   $label: designer is {$r['designer']}, not changed";
+				} else {
+					$counts['set']++;
+					$log[] = "set    $label";
+					Db::update('projects', $pid, ['designer_org_id' => (int) $designer['id'], 'updated_at' => now_utc()]);
+					Activity::changes('project', $pid, ['designer_org_id' => null], ['designer_org_id' => (int) $designer['id']],
+						['designer_org_id' => 'Designer'], ['designer_org_id' => static fn () => $designer['name']]);
+				}
+			}
+			$dryRun ? $pdo->rollBack() : $pdo->commit();
+		} catch (\Throwable $e) {
+			$pdo->rollBack();
+			throw $e;
+		}
+		$log[] = '';
+		$log[] = "Set {$counts['set']}, already {$designer['name']} {$counts['already']}, other designer {$counts['other']}, same day as cutoff {$counts['same day']}.";
+		return $log;
+	}
+
+	/** Earliest "Planset sent" done date per project (the step under Design), with the current designer. */
+	private static function plansetSentDates(): array
+	{
+		$rows = Db::all(
+			"SELECT p.id, p.project_number, p.name, p.designer_org_id, d.name AS designer, MIN(t.done_date) AS sent
+			 FROM project_tasks t
+			 JOIN project_tasks par ON par.id = t.parent_id
+			 JOIN projects p ON p.id = t.project_id
+			 LEFT JOIN organizations d ON d.id = p.designer_org_id
+			 WHERE t.name = 'Planset sent' COLLATE NOCASE AND par.name = 'Design' COLLATE NOCASE
+			   AND t.done_date IS NOT NULL AND t.done_date <> ''
+			 GROUP BY p.id
+			 ORDER BY sent, p.project_number"
+		);
+		$out = [];
+		foreach ($rows as $r) {
+			$out[(int) $r['id']] = $r;
+		}
+		return $out;
+	}
+
 	/** Top-level tasks from the named template whose Needed is still blank. */
 	private static function blankAnswers(string $templateName): array
 	{
