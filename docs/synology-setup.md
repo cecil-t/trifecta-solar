@@ -185,8 +185,8 @@ which also stays out of git.
 
 ## Notes
 
-- **HTTPS / remote access:** for now the DSM reverse proxy serves the app at `https://tracker.example.com`
-  with a Let's Encrypt certificate (the router forwards 8443 to the NAS). The permanent home is planned as a
+- **HTTPS / remote access:** for now the DSM reverse proxy serves the app over HTTPS on a hostname with a
+  Let's Encrypt certificate (the router forwards that port to the NAS). The permanent home is planned as a
   subdomain such as `ops.trifectasolar.com`. Behind any HTTPS proxy, create `.env` in the repo folder with
   `TRUST_PROXY=true` so the app marks its cookies Secure and logs visitors' real IP addresses.
 - **Installing to phone home screens (PWA)** requires HTTPS. Over plain `http://<nas-ip>:8089` the site works
