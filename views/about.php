@@ -54,7 +54,11 @@ $when = static fn (?int $ts): string => $ts ? date('m/d/Y g:i A', $ts) : '';
 			<dt>Runs in</dt><dd><?= $host['docker'] ? 'Docker container' : 'Directly on the server' ?><?= $host['hostname'] ? ' <span class="muted small">(' . e($host['hostname']) . ')</span>' : '' ?></dd>
 			<?php if ($host['os']): ?><dt><?= $host['docker'] ? 'Container OS' : 'OS' ?></dt><dd><?= e($host['os']) ?></dd><?php endif; ?>
 			<dt>Kernel</dt><dd><span class="literal"><?= e($host['kernel']) ?></span><?= $host['docker'] ? ' <span class="muted small">(the host\'s)</span>' : '' ?></dd>
-			<?php if ($host['server']): ?><dt>Web server</dt><dd><?= e($host['server']) ?></dd><?php endif; ?>
+			<?php if ($host['apache']): ?>
+				<dt>Web server</dt><dd>Apache <?= e($host['apache'][0]) ?> <span class="muted small">(package <?= e($host['apache'][1]) ?>)</span></dd>
+			<?php elseif ($host['server']): ?>
+				<dt>Web server</dt><dd><?= e($host['server']) ?></dd>
+			<?php endif; ?>
 			<dt>PHP</dt><dd><?= e($host['php']) ?></dd>
 			<dt>Database</dt><dd>SQLite <?= e($host['sqlite']) ?>, <?= e($host['journal']) ?> mode, <?= e($bytes((float) $host['db_bytes'])) ?></dd>
 			<?php if ($host['disk_free']): ?><dt>Free space</dt><dd><?= e($bytes((float) $host['disk_free'])) ?> <span class="muted small">(database volume)</span></dd><?php endif; ?>

@@ -35,6 +35,7 @@ final class AboutController
 			'host' => [
 				'url' => ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? ''),
 				'server' => $_SERVER['SERVER_SOFTWARE'] ?? null,
+				'apache' => self::apacheVersion(),
 				'php' => PHP_VERSION . ' (' . PHP_SAPI . ')',
 				'os' => $os,
 				'kernel' => php_uname('s') . ' ' . php_uname('r') . ' ' . php_uname('m'),
@@ -59,5 +60,25 @@ final class AboutController
 				'backup_count' => count($backups),
 			],
 		]);
+	}
+
+	/**
+	 * Apache's version. ServerTokens Prod hides it from SERVER_SOFTWARE (and from response
+	 * headers, on purpose), so read the installed Debian package instead; the php:apache
+	 * image installs Apache with apt. Returns e.g. ['2.4.65', '2.4.65-1~deb13u1'], or null.
+	 */
+	private static function apacheVersion(): ?array
+	{
+		$status = @file_get_contents('/var/lib/dpkg/status');
+		if (!$status || !str_starts_with((string) ($_SERVER['SERVER_SOFTWARE'] ?? ''), 'Apache')) {
+			return null;
+		}
+		foreach (['apache2-bin', 'apache2'] as $package) {
+			if (preg_match('/^Package: ' . $package . '\n(?:[^\n]+\n)*?Version: ([^\n]+)/m', $status, $m)) {
+				$full = trim($m[1]);
+				return [preg_replace('/^\d+:|-[^-]+$/', '', $full), $full];
+			}
+		}
+		return null;
 	}
 }
