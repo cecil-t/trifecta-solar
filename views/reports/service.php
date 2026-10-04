@@ -50,7 +50,7 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 		<thead><tr><th>Month</th><th class="num">Tickets</th><th class="num">Trips</th><th class="num">Man-hours</th><th class="num">Amount billed</th><th class="num">Warranty cost (est.)</th></tr></thead>
 		<tbody>
 		<?php if (!$byMonth): ?><tr><td colspan="6" class="empty">No service tickets in this range.</td></tr><?php endif; ?>
-		<?php foreach ($byMonth as $ym => $s): if ($f['preset'] === 'all' && !$s['tickets']) { continue; } ?><?= $monthRow(e($monthLabel($ym)), $s) ?><?php endforeach; ?>
+		<?php foreach ($byMonth as $ym => $s): if ($f['preset'] === 'all' && !$s['tickets']) { continue; } ?><?= $monthRow(str_replace(' ', '&nbsp;', e($monthLabel($ym))), $s) ?><?php endforeach; ?>
 		</tbody>
 	</table>
 </section>

@@ -36,7 +36,7 @@ if ($f['sales_name']) {
 	<?php if ($f['asof']): ?>
 		<label>As of <input type="date" name="to" value="<?= e($f['to']) ?>"></label>
 	<?php else: ?>
-		<label>Date range
+		<label class="rf-wide">Date range
 			<select name="preset" id="rf-preset">
 				<?php foreach (ReportController::PRESETS as $k => $l): ?><option value="<?= $k ?>" <?= $f['preset'] === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?>
 			</select>
@@ -45,7 +45,7 @@ if ($f['sales_name']) {
 		<label>To <input type="date" name="to" value="<?= e($f['to']) ?>" id="rf-to"></label>
 	<?php endif; ?>
 	<?php if ($f['show_sales']): ?>
-		<label>Salesperson
+		<label class="rf-wide">Salesperson
 			<select name="sales">
 				<option value="">Everyone</option>
 				<?php foreach ($users as $u): ?><option value="<?= (int) $u['id'] ?>" <?= $f['sales'] === (int) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option><?php endforeach; ?>
