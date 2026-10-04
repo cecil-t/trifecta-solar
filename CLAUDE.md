@@ -42,4 +42,4 @@ Read README.md for the feature list and layout. This file covers how to work in 
 
 ## Deploying
 
-Push to `main`. The live server pulls `main` on a schedule, and migrations apply on the next request. Console commands run as `docker exec -u root trifecta-solar php bin/console <command>`. Where and how it is hosted is kept out of the repo (see the project handoff notes).
+Push to `main`. The live server pulls `main` on a schedule, and migrations apply on the next request. Console commands run as `docker exec -u root trifecta-solar php bin/console <command>`. Where and how it is hosted is kept out of the repo (see the project context doc, `claude/ops-tracker-context.md`, in the claude.ai Project).
