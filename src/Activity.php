@@ -68,6 +68,18 @@ final class Activity
 		return Db::all($sql, [$type, $id]);
 	}
 
+	/** The most recent comment on a record (comments are only ever typed by users), or null. */
+	public static function latestComment(string $type, int $id): ?array
+	{
+		return Db::one(
+			"SELECT a.*, u.name AS user_name, u.initials AS user_initials
+			 FROM activity_log a LEFT JOIN users u ON u.id = a.user_id
+			 WHERE a.entity_type = ? AND a.entity_id = ? AND a.kind = 'comment' AND a.deleted_at IS NULL
+			 ORDER BY a.created_at DESC, a.id DESC LIMIT 1",
+			[$type, $id]
+		);
+	}
+
 	/** Authors may edit or delete their own comments for 7 days; system entries are never editable. */
 	public static function canEdit(array $entry): bool
 	{

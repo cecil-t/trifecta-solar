@@ -427,6 +427,7 @@ final class ProjectController
 			'users' => Projects::users(),
 			'templateTasks' => $templateTasks,
 			'activity' => Activity::feed('project', $id, $commentsOnly),
+			'lastComment' => Activity::latestComment('project', $id),
 			'commentsOnly' => $commentsOnly,
 		]);
 	}

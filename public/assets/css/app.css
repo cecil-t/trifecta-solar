@@ -725,6 +725,10 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 .task-strip { padding: .8rem 1.1rem; margin-bottom: 1rem; }
 .task-strip-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .task-strip-head h2 { margin: 0; font-size: 1rem; }
+/* project page: the newest comment between Tasks and the phases; long ones are clipped, the full text is in the log */
+.last-comment .activity-item { padding: .6rem 0 0; border-bottom: 0; }
+.last-comment .comment-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; overflow: hidden; }
+.last-comment-empty { margin: .4rem 0 0; }
 .card-head-plain { padding: 0 0 .5rem; }
 
 /* task grid: Completed is the main date; Target is a quieter planning field */

@@ -167,6 +167,28 @@ $back = '/projects/' . (int) $p['id'];
 	<?php if ($todos): ?><?= App\View::partial('tasks/_list', ['rows' => $todos, 'back' => '/projects/' . (int) $p['id'] . '#todos', 'showLink' => false]) ?><?php endif; ?>
 </section>
 
+<section class="card task-strip last-comment">
+	<div class="task-strip-head">
+		<h2>Latest comment</h2>
+		<a href="#log" class="btn btn-ghost btn-small">Project log &darr;</a>
+	</div>
+	<?php if ($lastComment): $c = $lastComment; ?>
+		<div class="activity-item">
+			<span class="avatar avatar-sm"><?= e($c['user_initials'] ?: ($c['user_name'] ? mb_substr($c['user_name'], 0, 1) : 'S')) ?></span>
+			<div class="activity-body">
+				<div class="activity-meta">
+					<strong><?= e($c['user_name'] ?? 'System') ?></strong>
+					<time datetime="<?= e($c['created_at']) ?>" title="<?= e(fmt_dt($c['created_at'])) ?>"><?= e(time_ago($c['created_at'])) ?></time>
+					<?php if ($c['edited_at']): ?><span class="muted">(edited)</span><?php endif; ?>
+				</div>
+				<div class="comment-text"><?= nl2br(e($c['body']), false) ?></div>
+			</div>
+		</div>
+	<?php else: ?>
+		<p class="muted small last-comment-empty">No comments yet. <a href="#log">Add one in the Project log</a>.</p>
+	<?php endif; ?>
+</section>
+
 <div id="tasks" class="tasks-wrap" data-today="<?= $today ?>" data-current-phase="<?= e($status['phase']) ?>">
 	<?php foreach (Tasks::PHASES as $phaseKey => $phaseLabel): $tasks = $tree[$phaseKey]; ?>
 		<?php
