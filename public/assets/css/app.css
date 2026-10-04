@@ -654,8 +654,23 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .open-items td { background: #fbfcfb; padding-top: .45rem; padding-bottom: .45rem; font-size: .88rem; }
 .open-item { padding-left: 2.4rem !important; white-space: normal !important; }
 @media (max-width: 760px) {
-    .open-link { opacity: 1; display: block; margin: .2rem 0 0 1.2rem; }
-    .open-head td:first-child { white-space: normal; }
+    /* phones: each project is a block with its counts on one line under the name (no column header) */
+    .table-open thead { display: none; }
+    .table-open td { overflow-wrap: normal; }
+    .table-open .open-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .9rem; padding: .65rem .9rem; border-bottom: 1px solid var(--border); }
+    .table-open .open-head td { padding: 0; border: 0; font-size: .8rem; color: var(--muted); white-space: nowrap; background: none; }
+    .table-open .open-head td:first-child { flex-basis: 100%; font-size: .95rem; color: var(--text); white-space: normal; }
+    .table-open .open-head td.text-red { color: var(--red); font-weight: 600; }
+    .table-open .open-head td:empty { display: none; }
+    .table-open .open-head td:nth-child(2) { margin-left: 1.2rem; }
+    .table-open .open-head td:nth-child(2)::after { content: " open"; }
+    .table-open .open-head td:nth-child(3)::after { content: " overdue"; }
+    .table-open .open-head td:nth-child(4)::after { content: " need an answer"; }
+    .table-open .open-head td:nth-child(5)::before { content: "Next "; }
+    .open-link { opacity: 1; margin-left: .5rem; white-space: nowrap; }
+    .table-open .open-items tr { display: flex; justify-content: space-between; gap: .75rem; padding: .45rem .9rem .45rem 2.1rem; border-bottom: 1px solid var(--border); background: #fbfcfb; }
+    .table-open .open-items td { padding: 0 !important; border: 0; background: none; }
+    .table-open .open-items td:last-child { white-space: nowrap; font-size: .8rem; }
 }
 
 /* ---------- tasks (one-off to-dos) ---------- */
