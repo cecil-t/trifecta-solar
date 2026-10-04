@@ -93,6 +93,9 @@ try {
             if (!is_file($file)) { fail("No such file: $file"); }
             $data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
             $dry = in_array('--dry-run', $args, true);
+            if (($data['mode'] ?? '') === 'record_only' && in_array('--replace', $args, true)) {
+                fail('This is a record-only import: it only adds projects and never replaces. Run it without --replace.');
+            }
             $res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
             foreach ($res['log'] as $line) { out($line); }
             out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));

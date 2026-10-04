@@ -7,12 +7,17 @@ $tabs = [
 	'installation' => 'Installation', 'closeout' => 'Closeout', 'on_hold' => 'On hold',
 	'complete' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All',
 ];
-// Completed and Cancelled fold earlier years (by project # year) under a click-to-open header
+// Completed and Cancelled fold earlier years under a click-to-open header: the project # year,
+// or the contract signed year for early jobs numbered without a year code (01, 02...)
 $foldYears = $filter['q'] === '' && in_array($filter['phase'], ['complete', 'cancelled'], true);
 $thisYear = (int) date('Y');
 $groups = [];
 foreach ($projects as $p) {
-	$yr = preg_match('/^(\d{2})\d{3}/', (string) $p['project_number'], $m) ? 2000 + (int) $m[1] : $thisYear;
+	$yr = match (true) {
+		(bool) preg_match('/^(\d{2})\d{3}/', (string) $p['project_number'], $m) => 2000 + (int) $m[1],
+		!empty($p['status']['start_date']) => (int) substr($p['status']['start_date'], 0, 4),
+		default => $thisYear,
+	};
 	$groups[$foldYears && $yr < $thisYear ? $yr : $thisYear][] = $p;
 }
 krsort($groups);

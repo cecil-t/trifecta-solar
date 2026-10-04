@@ -8,6 +8,8 @@ Read README.md for the feature list and layout. This file covers how to work in 
 - **Live data is edited by hand now.** Imports and fix scripts are add-only or fill-blanks-only. Never run or suggest `import:projects --replace`. Only overwrite a field when Greg names it.
 - **No em dashes** anywhere: UI text, comments, commit messages, replies.
 - Every data-changing console command gets a `--dry-run`, and Greg runs the dry run before the real one.
+- Record-only imports (`build_import.py --older`) add history projects with only their dated steps and no payments. They skip existing project numbers and names and refuse `--replace`.
+- Project numbers are text. Early jobs keep two digits (01 to 12, 20) and fold under their signed year on the Completed tab.
 
 ## Code conventions
 

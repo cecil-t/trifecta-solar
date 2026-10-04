@@ -6,12 +6,18 @@ namespace App;
 /**
  * Loads an import.json produced by tools/import/build_import.py.
  * Everything runs in one transaction; --dry-run rolls it back after reporting.
+ *
+ * Projects marked record_only (the older-jobs import) are history, not work: only the
+ * dated steps are kept, no payments are created, an existing project number or name is
+ * always skipped (never replaced), and existing customers and municipalities are not
+ * changed.
  */
 final class Importer
 {
     private array $log = [];
+    private bool $touchExisting = true;
     private array $counts = ['projects' => 0, 'skipped' => 0, 'replaced' => 0, 'customers' => 0, 'contacts' => 0,
-        'municipalities' => 0, 'agencies' => 0, 'task_updates' => 0, 'task_misses' => 0];
+        'municipalities' => 0, 'agencies' => 0, 'task_updates' => 0, 'task_misses' => 0, 'tasks_pruned' => 0];
 
     public function __construct(private bool $dryRun = false, private bool $replace = false)
     {
@@ -37,7 +43,18 @@ final class Importer
     private function project(array $p, string $source): void
     {
         $label = $p['number'] . ' ' . $p['name'];
+        $recordOnly = !empty($p['record_only']);
         $existing = Db::value('SELECT id FROM projects WHERE project_number = ?', [$p['number']]);
+        if ($recordOnly && $existing) {
+            $this->counts['skipped']++;
+            $this->log[] = "skip   $label (project # already exists; record-only imports never replace)";
+            return;
+        }
+        if ($recordOnly && Db::value('SELECT id FROM projects WHERE name = ? COLLATE NOCASE', [$p['name']])) {
+            $this->counts['skipped']++;
+            $this->log[] = "skip   $label (another project already has this name)";
+            return;
+        }
         if ($existing) {
             if (!$this->replace) {
                 $this->counts['skipped']++;
@@ -49,10 +66,11 @@ final class Importer
             $this->counts['replaced']++;
         }
 
+        $this->touchExisting = !$recordOnly;
         $customerId = $this->customer($p);
         $muniId = $p['municipality'] ? $this->municipality($p['municipality']) : null;
         $agencyId = $p['inspection_agency'] ? $this->org('agency', $p['inspection_agency']) : null;
-        if ($agencyId && $muniId && !Db::value('SELECT inspection_by FROM municipalities WHERE id = ?', [$muniId])) {
+        if (!$recordOnly && $agencyId && $muniId && !Db::value('SELECT inspection_by FROM municipalities WHERE id = ?', [$muniId])) {
             Db::update('municipalities', $muniId, ['inspection_by' => 'third_party', 'inspection_org_id' => $agencyId]);
         }
         $eq = $p['equipment'];
@@ -110,7 +128,7 @@ final class Importer
         }
 
         Tasks::instantiate($id, (bool) $p['has_pv'], (bool) $p['has_batteries']);
-        if (!empty($p['payments'])) {
+        if (!$recordOnly && !empty($p['payments'])) {
             $this->replacePayments($id, $p['payments']);
         }
         if ($p['signed']) {
@@ -119,6 +137,9 @@ final class Importer
         foreach ($p['tasks'] as $path => $vals) {
             $this->applyTask($id, $path, $vals, $label);
         }
+        if ($recordOnly) {
+            $this->keepDatedStepsOnly($id);
+        }
 
         $notes = array_merge($p['source_notes'] ?? [], array_map(static fn ($f) => 'Review: ' . $f, $p['flags'] ?? []));
         $body = "Imported from $source." . ($p['equipment_text'] ? "\nSpreadsheet equipment: " . $p['equipment_text'] : '')
@@ -126,7 +147,22 @@ final class Importer
         Activity::event('project', $id, $body, null);
 
         $this->counts['projects']++;
-        $this->log[] = 'import ' . $label . ($p['flags'] ? '  (' . count($p['flags']) . ' review notes)' : '');
+        $kind = $recordOnly ? ($p['hold_state'] === 'cancelled' ? ' [record, Cancelled]' : ($p['archived'] ? ' [record, Completed]' : ' [record, ACTIVE]')) : '';
+        $this->log[] = 'import ' . $label . $kind . ($p['flags'] ? '  (' . count($p['flags']) . ' review notes)' : '');
+    }
+
+    /**
+     * Record-only projects keep just the steps that have a date: every payment, every
+     * undated sub-step, and every undated task left with no sub-steps is removed.
+     */
+    private function keepDatedStepsOnly(int $projectId): void
+    {
+        $before = (int) Db::value('SELECT COUNT(*) FROM project_tasks WHERE project_id = ?', [$projectId]);
+        Db::run("DELETE FROM project_tasks WHERE project_id = ? AND phase = 'payments'", [$projectId]);
+        Db::run('DELETE FROM project_tasks WHERE project_id = ? AND parent_id IS NOT NULL AND done_date IS NULL', [$projectId]);
+        Db::run('DELETE FROM project_tasks WHERE project_id = ? AND parent_id IS NULL AND done_date IS NULL
+                   AND NOT EXISTS (SELECT 1 FROM project_tasks c WHERE c.parent_id = project_tasks.id)', [$projectId]);
+        $this->counts['tasks_pruned'] += $before - (int) Db::value('SELECT COUNT(*) FROM project_tasks WHERE project_id = ?', [$projectId]);
     }
 
     private function customer(array $p): int
@@ -150,7 +186,7 @@ final class Importer
     {
         $id = Db::value('SELECT id FROM organizations WHERE type = ? AND name = ? COLLATE NOCASE', [$type, $name]);
         if ($id) {
-            if ($address && !Db::value('SELECT street FROM organizations WHERE id = ?', [$id])) {
+            if ($this->touchExisting && $address && !Db::value('SELECT street FROM organizations WHERE id = ?', [$id])) {
                 Db::update('organizations', (int) $id, ['street' => $address['street'], 'city' => $address['city'], 'state' => $address['state'], 'zip' => $address['zip']]);
             }
             return (int) $id;

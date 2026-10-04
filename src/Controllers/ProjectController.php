@@ -249,7 +249,7 @@ final class ProjectController
             $data += Municipalities::providerInput();
         }
 
-        if (!$data['project_number'] || !preg_match('/^[0-9A-Za-z\-]{3,12}$/', $data['project_number'])) {
+        if (!$data['project_number'] || !preg_match('/^[0-9A-Za-z\-]{2,12}$/', $data['project_number'])) {
             throw new \InvalidArgumentException('Project # is required (letters/numbers, e.g. 26036).');
         }
         if (!$data['name']) {
