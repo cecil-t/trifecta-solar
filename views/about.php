@@ -3,6 +3,7 @@
  * @var ?array  $version
  * @var string  $repo
  * @var array   $host
+ * @var array   $server  from App\ServerInfo, plus disk space
  * @var array   $stats  (not $data: View::partial keeps its own $data)
  */
 $bytes = static function (?float $n): string {
@@ -18,6 +19,14 @@ $bytes = static function (?float $n): string {
 	return '';
 };
 $when = static fn (?int $ts): string => $ts ? date('m/d/Y g:i A', $ts) : '';
+$span = static function (float $secs): string {
+	$d = intdiv((int) $secs, 86400);
+	$h = intdiv((int) $secs % 86400, 3600);
+	$m = intdiv((int) $secs % 3600, 60);
+	$plural = static fn (int $n, string $w) => $n . ' ' . $w . ($n === 1 ? '' : 's');
+	return $d ? $plural($d, 'day') . ', ' . $plural($h, 'hour') : ($h ? $plural($h, 'hour') . ', ' . $plural($m, 'minute') : $plural($m, 'minute'));
+};
+$cores = (int) ($server['cpu']['cores'] ?? 0);
 ?>
 <div class="page-head">
 	<div>
@@ -53,7 +62,6 @@ $when = static fn (?int $ts): string => $ts ? date('m/d/Y g:i A', $ts) : '';
 			<?php if ($host['url'] !== 'http://' && $host['url'] !== 'https://'): ?><dt>Address</dt><dd><?= e($host['url']) ?></dd><?php endif; ?>
 			<dt>Runs in</dt><dd><?= $host['docker'] ? 'Docker container' : 'Directly on the server' ?><?= $host['hostname'] ? ' <span class="muted small">(' . e($host['hostname']) . ')</span>' : '' ?></dd>
 			<?php if ($host['os']): ?><dt><?= $host['docker'] ? 'Container OS' : 'OS' ?></dt><dd><?= e($host['os']) ?></dd><?php endif; ?>
-			<dt>Kernel</dt><dd><span class="literal"><?= e($host['kernel']) ?></span><?= $host['docker'] ? ' <span class="muted small">(the host\'s)</span>' : '' ?></dd>
 			<?php if ($host['apache']): ?>
 				<dt>Web server</dt><dd>Apache <?= e($host['apache'][0]) ?> <span class="muted small">(package <?= e($host['apache'][1]) ?>)</span></dd>
 			<?php elseif ($host['server']): ?>
@@ -61,7 +69,41 @@ $when = static fn (?int $ts): string => $ts ? date('m/d/Y g:i A', $ts) : '';
 			<?php endif; ?>
 			<dt>PHP</dt><dd><?= e($host['php']) ?></dd>
 			<dt>Database</dt><dd>SQLite <?= e($host['sqlite']) ?>, <?= e($host['journal']) ?> mode, <?= e($bytes((float) $host['db_bytes'])) ?></dd>
-			<?php if ($host['disk_free']): ?><dt>Free space</dt><dd><?= e($bytes((float) $host['disk_free'])) ?> <span class="muted small">(database volume)</span></dd><?php endif; ?>
+		</dl>
+	</section>
+
+	<section class="card">
+		<h2>Server</h2>
+		<dl class="kv">
+			<?php if ($server['model']): ?><dt>Model</dt><dd><?= e($server['model']) ?></dd><?php endif; ?>
+			<?php if ($server['cpu']['name'] ?? null): ?>
+				<dt>CPU</dt><dd><?= e($server['cpu']['name']) ?><?= $cores ? ' <span class="muted small">(' . $cores . ' core' . ($cores === 1 ? '' : 's') . ')</span>' : '' ?></dd>
+			<?php endif; ?>
+			<?php if ($server['temp_c'] !== null): ?>
+				<dt>CPU temperature</dt><dd><?= e(number_format($server['temp_c'], 0)) ?> &deg;C <span class="muted small">(<?= e(number_format($server['temp_c'] * 9 / 5 + 32, 0)) ?> &deg;F)</span></dd>
+			<?php endif; ?>
+			<?php if ($server['load']): ?>
+				<dt>Load average</dt>
+				<dd><?= e(implode(', ', array_map(static fn ($l) => number_format($l, 2), $server['load']))) ?> <span class="muted small">(1, 5 and 15 min<?= $cores ? '; ' . $cores . ' = all cores busy' : '' ?>)</span></dd>
+			<?php endif; ?>
+			<?php if ($server['memory']): ?>
+				<dt>Memory</dt>
+				<dd><?= e($bytes((float) $server['memory']['total'])) ?><?= $server['memory']['available'] !== null ? ' <span class="muted small">(' . e($bytes((float) $server['memory']['available'])) . ' available)</span>' : '' ?></dd>
+			<?php endif; ?>
+			<?php if ($server['container_memory']): ?>
+				<dt>This container</dt>
+				<dd><?= e($bytes((float) $server['container_memory']['used'])) ?> of memory <span class="muted small">(<?= $server['container_memory']['limit'] ? 'limit ' . e($bytes((float) $server['container_memory']['limit'])) : 'no limit' ?>)</span><?= $server['processes'] ? ', ' . (int) $server['processes'] . ' processes' : '' ?></dd>
+			<?php endif; ?>
+			<?php if ($server['uptime'] !== null): ?>
+				<dt>Uptime</dt><dd><?= e($span($server['uptime'])) ?> <span class="muted small">(since <?= e($when((int) round(time() - $server['uptime']))) ?>)</span></dd>
+			<?php endif; ?>
+			<?php if ($server['container_started']): ?>
+				<dt>Container started</dt><dd><?= e($when($server['container_started'])) ?> <span class="muted small">(<?= e($span(time() - $server['container_started'])) ?> ago)</span></dd>
+			<?php endif; ?>
+			<dt>Kernel</dt><dd><span class="literal"><?= e($server['kernel']) ?></span></dd>
+			<?php if ($server['disk_free']): ?>
+				<dt>Free space</dt><dd><?= e($bytes((float) $server['disk_free'])) ?><?= $server['disk_total'] ? ' of ' . e($bytes((float) $server['disk_total'])) : '' ?> <span class="muted small">(database volume)</span></dd>
+			<?php endif; ?>
 			<dt>Server time</dt><dd><?= e($when($host['server_time'])) ?> <span class="muted small">(<?= e($host['timezone']) ?>)</span></dd>
 		</dl>
 	</section>

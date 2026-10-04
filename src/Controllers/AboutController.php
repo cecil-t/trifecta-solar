@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Backup;
 use App\Db;
 use App\Migrator;
+use App\ServerInfo;
 use App\Version;
 use App\View;
 
@@ -38,7 +39,6 @@ final class AboutController
 				'apache' => self::apacheVersion(),
 				'php' => PHP_VERSION . ' (' . PHP_SAPI . ')',
 				'os' => $os,
-				'kernel' => php_uname('s') . ' ' . php_uname('r') . ' ' . php_uname('m'),
 				'docker' => is_file('/.dockerenv'),
 				'hostname' => gethostname() ?: null,
 				'timezone' => date_default_timezone_get(),
@@ -46,7 +46,10 @@ final class AboutController
 				'sqlite' => (string) Db::value('SELECT sqlite_version()'),
 				'journal' => strtoupper((string) Db::value('PRAGMA journal_mode')),
 				'db_bytes' => $dbBytes,
+			],
+			'server' => ServerInfo::all() + [
 				'disk_free' => @disk_free_space(dirname($dbPath)) ?: null,
+				'disk_total' => @disk_total_space(dirname($dbPath)) ?: null,
 			],
 			'stats' => [
 				'projects' => (int) Db::value('SELECT COUNT(*) FROM projects'),
