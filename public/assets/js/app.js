@@ -1,5 +1,13 @@
 // Site-wide behavior loaded on every page.
 (function () {
+	// Floating column headers sit just under the sticky top bar, whatever its height.
+	const topbar = document.querySelector('.topbar');
+	const setTopbarHeight = () => {
+		if (topbar) document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+	};
+	setTopbarHeight();
+	window.addEventListener('resize', setTopbarHeight);
+
 	// Drop-down menus (<details>): close when clicking anywhere else, pressing Escape,
 	// or opening another menu.
 	const menus = 'details.usermenu, details.navmenu, details.tmenu';

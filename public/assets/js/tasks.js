@@ -129,14 +129,6 @@
 
     document.querySelectorAll('.trow[data-id]').forEach(markOverdue);
 
-    // Sticky column headers sit just under the sticky top bar, whatever its height.
-    const topbar = document.querySelector('.topbar');
-    function setTopbarHeight() {
-        if (topbar) document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
-    }
-    setTopbarHeight();
-    window.addEventListener('resize', setTopbarHeight);
-
     // Collapsible phases. Phones start with only the current phase open; desktop starts with
     // every phase open. Click a phase bar to open or close it; choices are remembered for this
     // project during the browser session (separately for phone and desktop widths), and a

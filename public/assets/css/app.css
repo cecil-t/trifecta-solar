@@ -265,7 +265,22 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .filters input[type=search] { max-width: 340px; }
 .filters select { max-width: 220px; }
 tr.clickable { cursor: pointer; }
-.table-projects td { vertical-align: top; }
+.table-projects td { vertical-align: top; overflow-wrap: normal; }
+/* Projects list: blue column header that floats under the top bar (the card must not scroll for sticky to work) */
+.card-sticky-head { overflow: visible; }
+.table-projects th { white-space: nowrap; position: sticky; top: var(--topbar-h, 64px); z-index: 5; background: var(--blue); color: #fff; border-bottom: 0; }
+.table-projects th:first-child { border-top-left-radius: var(--radius); }
+.table-projects th:last-child { border-top-right-radius: var(--radius); }
+/* the card no longer scrolls sideways, so the table wraps to fit instead */
+.table-projects td:nth-child(2), .table-projects td:nth-child(5), .table-projects td:nth-child(6), .table-projects td:nth-child(7) { white-space: normal; }
+@media (max-width: 1280px) { .table-projects .cell-note { max-width: 260px; } }
+.table-projects .phase, .table-projects .chip { white-space: nowrap; display: inline-block; }
+@media (min-width: 761px) and (max-width: 1000px) {
+    /* tablet widths: Type is dropped so the other columns don't break mid-word */
+    .table-projects th:nth-child(5), .table-projects td:nth-child(5) { display: none; }
+    .table-projects th, .table-projects td { padding-left: .6rem; padding-right: .6rem; }
+    .table-projects .cell-note { max-width: 190px; }
+}
 
 /* phase badges */
 .phase { display: inline-block; padding: .14rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }

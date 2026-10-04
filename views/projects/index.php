@@ -51,7 +51,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 	<button class="btn btn-secondary btn-small">Filter</button>
 </form>
 
-<div class="card card-flush">
+<div class="card card-flush card-sticky-head">
 	<table class="table table-projects">
 		<thead>
 		<tr><th>#</th><th>Project</th><th>Sales</th><th class="num">kW DC</th><th>Type</th><th>Municipality</th><th>Status</th><th class="num">Days</th></tr>
