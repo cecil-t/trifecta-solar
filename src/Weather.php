@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace App;
 
 /**
- * Four-day forecast (two shown on phones) for the dashboard from Open-Meteo (free, no API key).
+ * Five-day forecast (today + 4; a sideways-scrolling row on phones) for the dashboard from Open-Meteo (free, no API key).
  * Cached in data/weather.json for 30 minutes; failures just hide the widget.
  */
 final class Weather
@@ -13,7 +13,7 @@ final class Weather
     private const LAT = 40.1634;
     private const LON = -76.3950;
     private const TTL = 1800;
-    private const DAYS = 4;
+    private const DAYS = 5;
 
     /** @return array<int, array{date:string,label:string,code:int,hi:int,lo:int,pop:?int,desc:string,icon:string}>|null */
     public static function forecast(): ?array

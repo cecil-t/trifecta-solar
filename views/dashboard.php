@@ -1,9 +1,8 @@
 <?php use App\Weather; ?>
 <h1 class="visually-hidden">Dashboard</h1>
-<div class="dash-head">
+<div class="stat-group dash-weather"><span class="stat-group-label"><?= e(Weather::PLACE) ?></span>
 	<?php if ($weather): ?>
-		<div class="weather" aria-label="Weather for <?= e(Weather::PLACE) ?>">
-			<span class="weather-place"><?= e(Weather::PLACE) ?></span>
+		<div class="weather" role="group" aria-label="Weather for <?= e(Weather::PLACE) ?>">
 			<?php foreach ($weather as $w): ?>
 				<div class="wday">
 					<?= Weather::icon($w['icon']) ?>

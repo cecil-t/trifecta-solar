@@ -469,9 +469,8 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 }
 
 /* dashboard weather */
-.dash-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-.weather { display: flex; align-items: center; gap: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem 1.1rem; box-shadow: var(--shadow); flex-wrap: wrap; }
-.weather-place { font-weight: 700; color: var(--blue); font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+.dash-weather { margin-bottom: 1.25rem; }
+.weather { display: flex; align-items: center; gap: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem 1.1rem; box-shadow: var(--shadow); flex-wrap: wrap; justify-self: start; max-width: 100%; }
 .wday { display: flex; align-items: center; gap: .6rem; }
 .wlabel { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .wtemp .hi { font-size: 1.35rem; font-weight: 750; color: var(--text); }
@@ -480,16 +479,14 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .weather-empty { box-shadow: none; }
 
 @media (max-width: 760px) {
-    .dash-head { margin-bottom: .9rem; gap: .6rem; }
-    .weather { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: .25rem .75rem; padding: .55rem .8rem; }
-    .weather-place { grid-column: 1 / -1; font-size: .7rem; }
+    .dash-weather { margin-bottom: .9rem; }
+    .weather { width: 100%; padding: .55rem .8rem; }
     .wday { gap: .45rem; }
     .wday svg { width: 30px; height: 30px; flex: none; }
     .wlabel { font-size: .66rem; }
     .wtemp .hi { font-size: 1.05rem; }
     .wtemp .lo { font-size: .85rem; }
     .wdesc { font-size: .7rem; line-height: 1.25; }
-    .dash-head .btn { margin-left: auto; padding: .45rem .9rem; font-size: .85rem; }
     .stat-row { gap: .5rem; }
     .stat { padding: .5rem .75rem; flex-direction: row; align-items: baseline; gap: .5rem; }
     .stat-num { font-size: 1.3rem; }
@@ -611,12 +608,10 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .est-num { color: #5b3a8a; }
 .print-only { display: none; }
 
-/* weather: four days on desktop, two on phones */
-/* phones: all four days in one row that scrolls sideways, like the nav */
+/* weather phones: all five days in one row that scrolls sideways, like the nav; "Manheim, PA" sits above it */
 @media (max-width: 760px) {
     .weather { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 1.1rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
     .weather::-webkit-scrollbar { display: none; }
-    .weather-place { flex: none; font-size: .68rem; line-height: 1.2; max-width: 4.2rem; }
     .weather .wday { flex: none; }
 }
 
@@ -637,7 +632,7 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 }
 
 /* dashboard: label each row of summary boxes */
-.stat-group { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: .75rem; }
+.stat-group { display: grid; grid-template-columns: 116px minmax(0, 1fr); align-items: center; gap: .75rem; }
 .stat-group-label { font-size: .78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--blue); text-align: right; }
 @media (max-width: 760px) {
     .stat-group { grid-template-columns: 1fr; gap: .3rem; }
