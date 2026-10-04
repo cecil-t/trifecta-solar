@@ -25,9 +25,10 @@
 		});
 	});
 
-	// Coming back to a list from a record (#project-12, #ticket-7, #todo-3): open its folded year group,
+	// Coming back to a list from a record (#project-12, #ticket-7, #todo-3), or to a log entry from the
+	// dashboard (#log-40): open its folded year group,
 	// bring the row into view below the floating header, and flash it.
-	const row = /^#[\w-]+$/.test(location.hash) ? document.querySelector('tr' + location.hash + ', li.todo' + location.hash) : null;
+	const row = /^#[\w-]+$/.test(location.hash) ? document.querySelector('tr' + location.hash + ', li.todo' + location.hash + ', li.activity-item' + location.hash) : null;
 	if (row) {
 		const body = row.closest('tbody[hidden]');
 		if (body) {

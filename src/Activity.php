@@ -68,6 +68,19 @@ final class Activity
 		return Db::all($sql, [$type, $id]);
 	}
 
+	/** The newest log entries across every project (all kinds), with the project number and name. */
+	public static function recentProjects(int $limit = 5): array
+	{
+		return Db::all(
+			"SELECT a.*, u.name AS user_name, u.initials AS user_initials, p.project_number, p.name AS project_name
+			 FROM activity_log a
+			 JOIN projects p ON p.id = a.entity_id
+			 LEFT JOIN users u ON u.id = a.user_id
+			 WHERE a.entity_type = 'project' AND a.deleted_at IS NULL
+			 ORDER BY a.created_at DESC, a.id DESC LIMIT " . max(1, $limit)
+		);
+	}
+
 	/** The most recent comment on a record (comments are only ever typed by users), or null. */
 	public static function latestComment(string $type, int $id): ?array
 	{

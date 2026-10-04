@@ -2,24 +2,27 @@
 /**
  * @var array  $entries rows from App\Activity::feed()
  * @var string $back    URL to return to after editing/deleting a comment (optional)
+ * @var bool   $showProject  name and link the project on each entry (dashboard), no edit controls
  */
 use App\Activity;
 use App\Csrf;
 
 $back ??= current_path();
+$showProject ??= false;
 ?>
 <ol class="activity">
 	<?php if (!$entries): ?>
 		<li class="activity-empty">No activity yet.</li>
 	<?php endif; ?>
 	<?php foreach ($entries as $a): ?>
-		<li class="activity-item activity-<?= e($a['kind']) ?>" id="log-<?= (int) $a['id'] ?>">
+		<li class="activity-item activity-<?= e($a['kind']) ?>"<?= $showProject ? '' : ' id="log-' . (int) $a['id'] . '"' ?>>
 			<span class="avatar avatar-sm"><?= e($a['user_initials'] ?: ($a['user_name'] ? mb_substr($a['user_name'], 0, 1) : 'S')) ?></span>
 			<div class="activity-body">
 				<div class="activity-meta">
 					<strong><?= e($a['user_name'] ?? 'System') ?></strong>
 					<time datetime="<?= e($a['created_at']) ?>" title="<?= e(fmt_dt($a['created_at'])) ?>"><?= e(time_ago($a['created_at'])) ?></time>
 					<?php if ($a['edited_at']): ?><span class="muted">(edited <?= e(fmt_dt($a['edited_at'])) ?>)</span><?php endif; ?>
+					<?php if ($showProject): ?><a href="/projects/<?= (int) $a['entity_id'] ?>#log-<?= (int) $a['id'] ?>" class="activity-project"><?= e($a['project_number'] . ' ' . $a['project_name']) ?></a><?php endif; ?>
 				</div>
 				<?php if ($a['kind'] === 'change'): ?>
 					<div>changed <strong><?= e($a['field']) ?></strong>
@@ -28,7 +31,7 @@ $back ??= current_path();
 				<?php else: ?>
 					<div class="<?= $a['kind'] === 'comment' ? 'comment-text' : '' ?>"><?= nl2br(e($a['body']), false) ?></div>
 				<?php endif; ?>
-				<?php if (Activity::canEdit($a)): ?>
+				<?php if (!$showProject && Activity::canEdit($a)): ?>
 					<details class="comment-edit">
 						<summary>Edit</summary>
 						<form method="post" action="/activity/<?= (int) $a['id'] ?>/edit" class="stack-sm">

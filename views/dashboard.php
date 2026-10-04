@@ -100,3 +100,8 @@ usort($byProject, static fn ($a, $b) => [$b['overdue'] > 0, $a['next'] === null,
 		</table>
 	<?php endif; ?>
 </section>
+
+<section class="card mt" id="latest-activity">
+	<h2>Latest activity</h2>
+	<?= App\View::partial('partials/activity', ['entries' => $recent, 'showProject' => true]) ?>
+</section>

@@ -186,6 +186,11 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
 .activity-item:last-child { border-bottom: 0; }
 .activity-meta { font-size: .85rem; display: flex; gap: .5rem; flex-wrap: wrap; align-items: baseline; }
 .activity-meta time { color: var(--muted); }
+/* dashboard Latest activity: which project an entry is on */
+.activity-project { font-weight: 600; }
+@media (max-width: 760px) { .activity-project { flex-basis: 100%; } }
+/* an entry linked from the dashboard lands clear of the top bar */
+.activity-item[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .activity-change, .activity-event { color: var(--muted); font-size: .9rem; }
 .activity-change .val { color: var(--text); background: #f1f3f2; padding: 0 .3rem; border-radius: 4px; }
 .comment-text { background: var(--blue-50); border-radius: 0 10px 10px 10px; padding: .5rem .75rem; margin-top: .2rem; color: var(--text); }

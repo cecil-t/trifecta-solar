@@ -40,6 +40,7 @@ final class DashboardController
 			'myTasks' => \App\Todos::openFor((int) Auth::id()),
 			'items' => Tasks::openItemsFor((int) Auth::id(), 2000),
 			'weather' => \App\Weather::forecast(),
+			'recent' => \App\Activity::recentProjects(5),
 		]);
 	}
 }
