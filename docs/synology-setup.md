@@ -85,8 +85,8 @@ A project created this way still runs fine, but it won't show up under Container
 
 Browse to **http://&lt;nas-ip&gt;:8089**. The app opens on the first-time setup page:
 
-1. Choose your admin account and set its password. You are then signed in.
-2. Under **Users**, set a temporary password for each person and send it to them privately.
+1. Create your admin account (name, email, initials and password). You are then signed in.
+2. Under **Users**, add each person, set a temporary password, and send it to them privately.
    Each person can change it under **My account**.
 
 Port 8089 can be changed in `docker-compose.yml` (the left side of `"8089:80"`).
@@ -161,7 +161,7 @@ If an update touches `Dockerfile`, `docker-compose.yml`, or `docker/`, also rebu
 ```sh
 docker logs -f trifecta-solar                               # Apache/PHP logs
 docker exec trifecta-solar php bin/console user:list        # users and password status
-docker exec -it trifecta-solar php bin/console user:password person@example.com   # emergency password reset
+docker exec -it trifecta-solar php bin/console user:password someone@example.com     # emergency password reset
 curl -s http://localhost:8089/health                        # {"status":"ok",...}
 ```
 

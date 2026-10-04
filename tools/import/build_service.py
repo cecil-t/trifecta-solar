@@ -16,7 +16,10 @@ from pathlib import Path
 
 import openpyxl
 
-CREW_NAMES = ['Staff', 'Crew Member', 'Crew Member', 'Staff Member']
+# Crew names to pick out of the visit notes come from import/overrides.json (gitignored, like
+# all names): {"CREW_NAMES": ["First L", ...]}. Without it, visits are imported with no crew.
+_OVERRIDES = Path(__file__).resolve().parents[2] / 'import' / 'overrides.json'
+CREW_NAMES = json.loads(_OVERRIDES.read_text()).get('CREW_NAMES', []) if _OVERRIDES.is_file() else []
 COVERAGE = {'billable': 'billable', 'warranty': 'warranty', 'solarinsure': 'solarinsure'}
 
 

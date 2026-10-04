@@ -37,7 +37,7 @@ import openpyxl
 
 TODAY = dt.date.today()
 
-# Per-project data lives in import/overrides.json, which is gitignored: customer names, site
+# Per-project data lives in import/overrides.json, which is gitignored: staff emails, customer names, site
 # addresses, hand-read contracts (contact, price), municipality checks and Greg's answers to
 # review notes. Customer data never goes in the repo. Without the file the builder still runs,
 # just with no per-project fixes. Tables (project numbers as text):
@@ -57,6 +57,7 @@ TODAY = dt.date.today()
 #   OLDER_ANSWERED        "project|flag prefix" -> note for the project log (null drops the flag)
 #   OLDER_MUNI_NOTES      project -> municipality note
 #   MANUAL_CONTRACTS      contract file name piece -> fields read by hand from the PDF
+#   SALES                 sheet salesperson initials or first name (upper case) -> user email
 OVERRIDES_PATH = Path(__file__).resolve().parents[2] / 'import' / 'overrides.json'
 
 
@@ -81,15 +82,13 @@ def load_overrides(path: Path) -> dict:
 		'OLDER_ANSWERED': pair_key(raw.get('OLDER_ANSWERED', {})),
 		'OLDER_MUNI_NOTES': raw.get('OLDER_MUNI_NOTES', {}),
 		'MANUAL_CONTRACTS': raw.get('MANUAL_CONTRACTS', {}),
+		'SALES': raw.get('SALES', {}),
 	}
 
 
 globals().update(load_overrides(OVERRIDES_PATH))
 
 
-SALES = {'XX': 'person@example.com', 'Staff': 'person@example.com',
-		 'Staff': 'person@example.com', 'Staff': 'person@example.com',
-		 'GREG': 'person@example.com'}
 CUST_TYPE = {'C': ('commercial', False), 'R': ('residential', False), 'A': ('commercial', True),
 			 'NP': ('nonprofit', False), 'M': ('government', False)}
 INSTALL_TYPE = {'POLE': 'tracker', 'ROOF': 'roof', 'GRND': 'ground', 'GROUND': 'ground'}

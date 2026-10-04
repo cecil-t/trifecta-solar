@@ -110,12 +110,12 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 			</label>
 			<label>Amount billed
 				<input type="text" name="bill_amount" value="<?= e($amount) ?>" inputmode="decimal" placeholder="0.00">
-				<small class="hint">The total Staff invoices, parts and labor.</small>
+				<small class="hint">The total to invoice, parts and labor.</small>
 			</label>
 			<div></div>
 			<label class="span-all">Billing note
 				<input type="text" name="billing_note" value="<?= e($v('billing_note')) ?>" placeholder="e.g. Quoted $4,700 for the upgrade, trip free. Parts: 1 disconnect, 2 fuses.">
-				<small class="hint">Anything Staff needs to build the invoice. Visits and man-hours are pulled in automatically.</small>
+				<small class="hint">Anything the office needs to build the invoice. Visits and man-hours are pulled in automatically.</small>
 			</label>
 			<div class="checkfield">
 				<span class="field-label">Invoiced</span>

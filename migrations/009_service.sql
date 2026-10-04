@@ -1,5 +1,5 @@
 -- Service tickets: a request (customer call or something spotted in a monitoring portal),
--- the visits made for it, and the billing outcome Staff needs for QuickBooks.
+-- the visits made for it, and the billing outcome the office needs for QuickBooks.
 -- No rates are stored: the ticket records what was billed, not how it was priced.
 
 CREATE TABLE service_tickets (
@@ -36,7 +36,7 @@ CREATE TABLE service_visits (
 	id          INTEGER PRIMARY KEY,
 	ticket_id   INTEGER NOT NULL REFERENCES service_tickets(id) ON DELETE CASCADE,
 	visit_date  TEXT,
-	crew        TEXT,                                  -- free text: "Staff, Crew Member"
+	crew        TEXT,                                  -- free text: "Chris, Pat"
 	man_hours   REAL,                                  -- on-site man-hours, travel not included
 	trips       INTEGER NOT NULL DEFAULT 1,
 	note        TEXT,
