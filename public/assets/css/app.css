@@ -637,6 +637,25 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .todo-title { font-weight: 600; color: var(--text); }
 .todo.is-done .todo-title { color: #9aa5ab; text-decoration: line-through; }
 .todo-meta { display: flex; flex-wrap: wrap; gap: .2rem .8rem; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.todo-details { margin: .15rem 0 0; font-size: .85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Tasks page: Assigned to, Due and Project / Service as columns (stacked under the title on phones) */
+.todo-head, .todo-cols .todo { display: grid; grid-template-columns: 22px minmax(0, 1fr) 9.5rem 9.5rem minmax(0, 15rem); gap: .75rem; }
+.todo-head { padding: 0 0 .45rem; border-bottom: 1px solid var(--border); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.todo-cells { display: contents; }
+.todo-cell { font-size: .88rem; padding-top: .1rem; min-width: 0; overflow-wrap: anywhere; }
+.todo-assignee { color: var(--text); }
+.todo-due { white-space: nowrap; }
+.todo-cols .is-done .todo-cell { color: #9aa5ab; }
+.phone-only { display: none; }
+@media (max-width: 760px) {
+    .todo-head { display: none; }
+    .todo-cols .todo { grid-template-columns: 22px minmax(0, 1fr); row-gap: .2rem; }
+    .todo-cells { display: flex; flex-wrap: wrap; gap: .2rem .8rem; grid-column: 2; }
+    .todo-cell { font-size: .8rem; color: var(--muted); padding-top: 0; }
+    .todo-cell:empty { display: none; }
+    .todo-details { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .phone-only { display: inline; }
+}
 .due-overdue { color: var(--red); font-weight: 700; }
 .due-today { color: #a5620a; font-weight: 700; }
 .chip-red { background: #fbe3e0; color: #8c1d14; }
