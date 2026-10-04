@@ -112,6 +112,8 @@ p { margin: 0 0 .75rem; }
 .card-flush { padding: 0; overflow-x: auto; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .span-2 { grid-column: 1 / -1; }
+/* a grid-2 column holding several cards, so each column stacks independently (no gaps from the other side) */
+.col-stack { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
 .card-module { border-top: 4px solid var(--blue); }
 .card-module p { color: var(--muted); margin: 0; font-size: .92rem; }
@@ -442,6 +444,8 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.summary-grid { grid-template-columns: 1fr; }
 	.grid-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.grid-form .span-2 { grid-column: 1 / -1; }
+/* a grid-2 column holding several cards, so each column stacks independently (no gaps from the other side) */
+.col-stack { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 	.eq-head { display: none; }
 	.eq-row, .eq-4 .eq-row { grid-template-columns: 70px 1fr 36px; }
 	.eq-4 .eq-row { grid-template-columns: 60px 1fr 1fr 36px; }

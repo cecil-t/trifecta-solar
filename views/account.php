@@ -7,7 +7,7 @@
 </div>
 
 <div class="grid-2">
-	<div class="stack">
+	<div class="col-stack">
 		<section class="card">
 			<h2>Profile</h2>
 			<form method="post" action="/account/profile" class="stack">
