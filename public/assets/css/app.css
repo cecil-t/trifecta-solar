@@ -220,19 +220,16 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
    Projects, lists, forms (v2)
    ===================================================================== */
 .text-red { color: var(--red) !important; }
-.nowrap { white-space: nowrap; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); padding: 1.25rem 1rem; text-align: center; }
 .row-gap { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .plain { list-style: none; margin: 0; padding: 0; }
 .plain li { padding: .3rem 0; }
-.mt-sm { margin-top: .75rem; }
 .self-end { align-self: end; padding-bottom: .55rem; }
 .narrow { max-width: 760px; }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.25rem .5rem; }
 .card-head h2 { margin: 0; }
 .cell-note { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 1.25rem 0 .5rem; }
 
 /* nav "Lists" dropdown */
 .navmenu { position: relative; }
@@ -322,13 +319,11 @@ tr.clickable { cursor: pointer; }
 .summary-grid .card { padding: 1rem 1.1rem; }
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .75rem; margin: 0; font-size: .9rem; }
 .kv dt { color: var(--muted); font-weight: 600; font-size: .8rem; padding-top: .1rem; }
-.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.kv dd { margin: 0; }
 .metrics { display: flex; gap: 1rem; margin-bottom: .6rem; flex-wrap: wrap; }
 .metrics > div { display: flex; flex-direction: column; }
 .m-num { font-size: 1.3rem; font-weight: 750; color: var(--blue); line-height: 1.1; }
 .m-label { font-size: .72rem; color: var(--muted); font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
-.eq-list { list-style: none; margin: 0 0 .6rem; padding: 0; font-size: .88rem; }
-.eq-list li { padding: .1rem 0; }
 
 /* task grid */
 .tasks-wrap { display: flex; flex-direction: column; gap: 1rem; }
@@ -342,12 +337,10 @@ tr.clickable { cursor: pointer; }
 }
 .phase-block { overflow: visible; }
 .trow.thead { position: sticky; top: var(--topbar-h, 64px); z-index: 6; border-bottom: 1px solid var(--border); }
-.trow.thead > span:first-child { color: var(--blue); }
-.trow.thead { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; background: #fafbfa; padding-top: .45rem; padding-bottom: .45rem; }
+.trow.thead { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; padding-top: .45rem; padding-bottom: .45rem; }
 .trow-task { background: #fff; }
 .trow-task .tname { font-weight: 650; }
-.trow-sub { background: #fcfdfc; }
-.trow-sub .tname { padding-left: 1.4rem; color: #34424a; }
+.trow-sub .tname { padding-left: 1.4rem; }
 .trow .rollup { grid-column: span 2; color: var(--muted); font-size: .82rem; }
 .trow input, .trow select { padding: .3rem .4rem; font-size: .85rem; border-color: #dde3df; border-radius: 6px; min-width: 0; }
 .trow select { padding-right: .2rem; }
@@ -450,7 +443,6 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.eq-row, .eq-4 .eq-row { grid-template-columns: 70px 1fr 36px; }
 	.eq-4 .eq-row { grid-template-columns: 60px 1fr 1fr 36px; }
 	.eq-row input[type=text] { grid-column: 1 / -2; }
-	.navmenu .usermenu-panel { left: auto; right: 0; }
 
 	/* tasks become compact cards on phones:
 	   name ............ menu
@@ -504,7 +496,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.wtemp .lo { font-size: .85rem; }
 	.wdesc { font-size: .7rem; line-height: 1.25; }
 	.stat-row { gap: .5rem; }
-	.stat { padding: .5rem .75rem; flex-direction: row; align-items: baseline; gap: .5rem; }
+	.stat { flex-direction: row; align-items: baseline; }
 	.stat-num { font-size: 1.3rem; }
 	.stat-label { font-size: .8rem; }
 	/* Lists menu: full-width panel under the header instead of hanging off the left edge */
@@ -516,7 +508,6 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 
 .drive-link { font-size: .72rem; font-weight: 700; margin-left: .4rem; padding: 0 .35rem; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
 .drive-link:hover { color: var(--blue); border-color: var(--blue); text-decoration: none; }
-.phase-archived { background: #e9ecef; color: #5d6a72; }
 
 /* ---------- service ---------- */
 .summary-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -559,16 +550,9 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .stat-service.stat-orange { border-left-color: var(--orange); }
 
 /* ---------- reports ---------- */
-.report-period { align-items: center; }
-.report-period select { max-width: 200px; }
-.custom-range { display: inline-flex; gap: .4rem; align-items: center; }
-.custom-range input { width: auto; padding: .4rem .5rem; }
-.report-nav { display: flex; gap: 1rem; margin: 0 0 .9rem; font-size: .88rem; font-weight: 600; flex-wrap: wrap; }
 .report-metrics { padding: .2rem 1rem .6rem; gap: 2rem; }
 .report-sub { padding: 0 1rem; }
 .report-hint { padding: 0 1rem .6rem; margin: 0; }
-.report-more { border-top: 1px solid var(--border); }
-.report-more > summary { padding: .7rem 1rem; cursor: pointer; font-weight: 600; font-size: .88rem; color: var(--blue); }
 .table tfoot td { border-top: 2px solid var(--border); font-weight: 600; }
 .check-col { width: 64px; }
 tr.is-excluded td { color: #a3adb2; text-decoration: line-through; }
@@ -599,13 +583,12 @@ tr.row-flash { animation: row-flash 2.5s ease-out; }
 .report-filters { align-items: flex-end; gap: .75rem; }
 .report-filters label { font-size: .78rem; }
 .report-filters select, .report-filters input { width: auto; min-width: 150px; padding: .45rem .6rem; }
-.report-hint-top { padding-top: .8rem; }
 .report-card h2 { margin-bottom: .3rem; }
 .report-card:hover { text-decoration: none; box-shadow: 0 6px 18px rgba(16, 32, 40, .1); }
 .no-price { margin-right: .35rem; }
 
 @media print {
-	.topbar, .footer, .no-print, .flashes { display: none !important; }
+	.topbar, .footer, .no-print, .flash { display: none !important; }
 	body { background: #fff; }
 	main.page { padding: 0 !important; max-width: none !important; margin: 0 !important; }
 	.card { box-shadow: none; border-color: #ccc; }
@@ -621,7 +604,6 @@ tr.row-flash { animation: row-flash 2.5s ease-out; }
 .report-filters { margin-bottom: 1.1rem; }
 
 /* report readability: stronger column headers and section labels */
-.report-card-body .table th { color: #1f2d35; background: #e7eeea; border-bottom: 2px solid #c9d6cf; }
 .report-card-body .table tfoot td { background: #f3f6f4; }
 .report-card-body h3.sub, .report-card-body h2.sub { color: #2d3b43; }
 .rate-calc { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1.25rem; padding: .8rem 1rem .4rem; }
@@ -643,7 +625,7 @@ tr.row-flash { animation: row-flash 2.5s ease-out; }
 @media print {
 	.print-only { display: inline; }
 	img.print-only.report-logo { display: block; margin-bottom: .6rem; }
-	.report-card-body .table th { background: #e7eeea !important; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.report-card-body .table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	.rate-calc input { display: none; }
 	.rate-calc label, .rate-calc-label { display: none; }
 }
@@ -745,7 +727,7 @@ tr.row-flash { animation: row-flash 2.5s ease-out; }
 .trow .dw-target input::-webkit-calendar-picker-indicator { opacity: .35; }
 .trow .dw-target input.is-overdue { background: #fff4d1; border: 1px solid #e6c766; color: #6b5310; }
 .trow .dw-target input.is-overdue-30 { background: #fbd3cd; border: 1px solid #d9534f; color: #8c1d14; font-weight: 650; }
-.trow.thead .th-target { color: #a3adb2; font-weight: 600; }
+.trow.thead .th-target { font-weight: 600; }
 .chip-na { background: #eceff0; color: #7d8a91; font-size: .68rem; letter-spacing: .04em; }
 .needed-cell { display: flex; align-items: center; min-height: 30px; }
 
