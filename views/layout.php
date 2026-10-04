@@ -55,6 +55,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 			</summary>
 			<div class="usermenu-panel">
 				<a href="/account">My account</a>
+				<a href="/about">About</a>
 				<form method="post" action="/logout">
 					<?= Csrf::field() ?>
 					<button type="submit" class="linklike">Sign out</button>
@@ -70,7 +71,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 </main>
 
 <footer class="footer">
-	Trifecta Solar Ops Tracker
+	<a href="/about">Trifecta Solar Ops Tracker</a>
 </footer>
 <script src="<?= asset('assets/js/app.js') ?>"></script>
 </body>

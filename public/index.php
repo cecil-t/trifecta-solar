@@ -13,6 +13,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth;
 use App\Config;
+use App\Controllers\AboutController;
 use App\Controllers\AccountController;
 use App\Controllers\ActivityController;
 use App\Controllers\AuthController;
@@ -60,6 +61,7 @@ $r->post('/logout', [AuthController::class, 'logout']);
 $r->get('/', [DashboardController::class, 'index']);
 
 $r->get('/account', [AccountController::class, 'show']);
+$r->get('/about', [AboutController::class, 'show']);
 $r->post('/account/password', [AccountController::class, 'password']);
 $r->post('/account/devices/{id}/revoke', [AccountController::class, 'revokeDevice']);
 $r->post('/account/devices/revoke-others', [AccountController::class, 'revokeOthers']);

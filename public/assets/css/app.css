@@ -101,6 +101,9 @@ p { margin: 0 0 .75rem; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
 .back { display: inline-block; font-size: .88rem; margin-bottom: .35rem; }
 .footer { text-align: center; color: var(--orange); font-weight: 600; font-size: .8rem; padding: 1rem; }
+.footer a { color: inherit; }
+/* technical strings: no contextual alternates (the font draws "x86" as "\00d7 86") */
+.literal { font-feature-settings: "calt" 0; font-variant-ligatures: none; }
 
 .card {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
