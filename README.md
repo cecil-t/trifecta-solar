@@ -68,8 +68,6 @@ import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
 fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
 fix:completed-payments [--dry-run]        Mark open payments received on Completed projects
 fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
-fix:designer-before <project#> <designer> [--dry-run]
-                                          Fill a blank designer on projects whose planset was sent before that project's
 ```
 
 In the container: `docker exec -u root trifecta-solar php bin/console <command>`. Always run `--dry-run` first.
