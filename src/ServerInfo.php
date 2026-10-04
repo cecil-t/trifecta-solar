@@ -27,16 +27,25 @@ final class ServerInfo
 		];
 	}
 
-	/** Synology model name (e.g. DS225+), when DSM exposes it to the container. */
+	/**
+	 * Maker and model, e.g. "Synology DS225+". DSM exposes the model in syno_hw_version, which only
+	 * exists on Synology kernels; other machines fall back to the DMI (BIOS) vendor and product.
+	 */
 	private static function model(): ?string
 	{
-		foreach (['/proc/sys/kernel/syno_hw_version', '/sys/class/dmi/id/product_name'] as $f) {
+		$read = static function (string $f): ?string {
 			$v = trim((string) @file_get_contents($f));
-			if ($v !== '' && !preg_match('/^(to be filled|default string|system product name)/i', $v)) {
-				return $v;
-			}
+			return $v === '' || preg_match('/^(to be filled|default string|system (product name|manufacturer)|not specified|o\.e\.m)/i', $v) ? null : $v;
+		};
+		if ($syno = $read('/proc/sys/kernel/syno_hw_version')) {
+			return 'Synology ' . $syno;
 		}
-		return null;
+		$product = $read('/sys/class/dmi/id/product_name');
+		$vendor = $read('/sys/class/dmi/id/sys_vendor');
+		if ($product === null) {
+			return null;
+		}
+		return $vendor !== null && stripos($product, $vendor) !== 0 ? $vendor . ' ' . $product : $product;
 	}
 
 	/** ['name' => 'Intel Celeron J4125 CPU @ 2.00GHz', 'cores' => 4], or null. */
