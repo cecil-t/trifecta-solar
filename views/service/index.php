@@ -18,7 +18,7 @@ foreach ($rows as $t) {
 	$groups[$foldYears && $yr < $thisYear ? $yr : $thisYear][] = $t;
 }
 krsort($groups);
-$cols = 9;
+$cols = 10;
 ?>
 <div class="page-head">
 	<div>
@@ -43,7 +43,7 @@ $cols = 9;
 <div class="card card-flush">
 	<table class="table table-service">
 		<thead>
-		<tr><th>#</th><th>Opened</th><th>Customer</th><th>Problem</th><th>Coverage</th><th class="num">Trips</th><th class="num">Man-hrs</th><th class="num">Amount</th><th>Status</th></tr>
+		<tr><th>#</th><th>Opened</th><th>Customer</th><th>Problem</th><th>Coverage</th><th class="num">Trips</th><th class="num">Man-hrs</th><th class="num">Amount</th><th>Owner</th><th>Status</th></tr>
 		</thead>
 		<?php if (!$rows): ?><tbody>
 			<tr><td colspan="<?= $cols ?>" class="empty"><?= $tab === 'to_invoice' ? 'Nothing waiting to be invoiced.' : 'No service tickets match.' ?></td></tr>
@@ -66,6 +66,7 @@ $cols = 9;
 				<td class="num"><?= (int) $t['trips'] ?: '' ?></td>
 				<td class="num"><?= (float) $t['man_hours'] ? e(Service::hours((float) $t['man_hours'])) : '' ?></td>
 				<td class="num"><?= $t['bill_amount_cents'] !== null ? e(App\Projects::money((int) $t['bill_amount_cents'])) : '' ?></td>
+				<td class="small cell-owner"><?php if ($t['owner_initials']): ?><span title="<?= e($t['owner_name']) ?>"><?= e($t['owner_initials']) ?></span><?php endif; ?></td>
 				<td>
 					<?= $statusChip($t['status']) ?>
 					<?php if ($t['status'] === 'scheduled'): ?><div class="muted small"><?= e(fmt_date($t['scheduled_on'])) ?></div><?php endif; ?>

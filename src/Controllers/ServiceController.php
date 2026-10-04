@@ -32,7 +32,7 @@ final class ServiceController
             $tab = 'all'; // a search always looks across every ticket
         }
         $rows = Db::all(
-            "SELECT t.*, c.name AS customer_name, p.project_number, u.initials AS owner_initials,
+            "SELECT t.*, c.name AS customer_name, p.project_number, u.initials AS owner_initials, u.name AS owner_name,
                     (SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,
                     (SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours
              FROM service_tickets t

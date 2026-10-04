@@ -490,6 +490,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .desc-text { margin: 0 0 .75rem; white-space: normal; }
 .nowrap { white-space: nowrap; }
 .table td.cell-desc { max-width: 380px; white-space: normal; }
+.table-service th { white-space: nowrap; }
 .table-visits td:nth-child(5) { white-space: normal; min-width: 180px; }
 .quick-form { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--border); }
 .quick-form input { width: auto; flex: 1 1 110px; padding: .35rem .5rem; font-size: .85rem; }
@@ -731,8 +732,10 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
     .table-service td:nth-child(3) .muted { display: none; }
     .table-service td:nth-child(4) { display: block; grid-column: 2; grid-row: 2; min-width: 0; font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: none; }
     .table-service td:nth-child(8) { display: block; grid-column: 3; grid-row: 2; text-align: right; font-size: .78rem; }
-    .table-service td:nth-child(9) { display: block; grid-column: 3; grid-row: 1; text-align: right; }
-    .table-service td:nth-child(9) .muted { display: none; }
+    .table-service td:nth-child(9) { display: block; grid-column: 1; grid-row: 3; font-size: .72rem; color: var(--muted); }
+    .table-service td:nth-child(9):empty { display: none; }
+    .table-service td:nth-child(10) { display: block; grid-column: 3; grid-row: 1; text-align: right; }
+    .table-service td:nth-child(10) .muted { display: none; }
     .table-service .chip { font-size: .66rem; padding: .08rem .45rem; }
 
     /* year headers and empty rows keep a normal full-width layout */
