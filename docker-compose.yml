@@ -5,8 +5,10 @@ services:
     container_name: trifecta-solar
     restart: unless-stopped
     ports:
-      # Host port 8089 -> container port 80. Change the left side if 8089 is taken.
-      - "8089:80"
+      # Host port 8089 -> container port 80. Change the 8089 if it is taken. APP_BIND (in .env)
+      # limits which host address listens: 127.0.0.1 when a reverse proxy on the same machine is the
+      # only way in (a VPS: Docker's published ports bypass the host firewall); default all addresses.
+      - "${APP_BIND:-0.0.0.0}:8089:80"
     environment:
       - TZ=America/New_York
     volumes:
