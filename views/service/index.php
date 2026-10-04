@@ -40,7 +40,7 @@ $cols = 10;
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>
 
-<div class="card card-flush">
+<div class="card card-flush card-sticky-head">
 	<table class="table table-service">
 		<thead>
 		<tr><th>#</th><th>Opened</th><th>Customer</th><th>Problem</th><th>Coverage</th><th class="num">Trips</th><th class="num">Man-hrs</th><th class="num">Amount</th><th>Owner</th><th>Status</th></tr>

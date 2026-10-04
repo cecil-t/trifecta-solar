@@ -267,10 +267,15 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 tr.clickable { cursor: pointer; }
 .table-projects td { vertical-align: top; overflow-wrap: normal; }
 /* Projects list: blue column header that floats under the top bar (the card must not scroll for sticky to work) */
+/* Floating blue column headers (Projects, Service, Tasks): stay under the top bar while scrolling.
+   The card must not scroll sideways for sticky to work, so these tables wrap to fit instead. */
 .card-sticky-head { overflow: visible; }
-.table-projects th { white-space: nowrap; position: sticky; top: var(--topbar-h, 64px); z-index: 5; background: var(--blue); color: #fff; border-bottom: 0; }
-.table-projects th:first-child { border-top-left-radius: var(--radius); }
-.table-projects th:last-child { border-top-right-radius: var(--radius); }
+.card-sticky-head .table th, .card-sticky-head .todo-head {
+    position: sticky; top: var(--topbar-h, 64px); z-index: 5;
+    background: var(--blue); color: #fff; border-bottom: 0; white-space: nowrap;
+}
+.card-sticky-head .table th:first-child, .card-sticky-head .todo-head { border-top-left-radius: var(--radius); }
+.card-sticky-head .table th:last-child, .card-sticky-head .todo-head { border-top-right-radius: var(--radius); }
 /* the card no longer scrolls sideways, so the table wraps to fit instead */
 .table-projects td:nth-child(2), .table-projects td:nth-child(5), .table-projects td:nth-child(6), .table-projects td:nth-child(7) { white-space: normal; }
 @media (max-width: 1280px) { .table-projects .cell-note { max-width: 260px; } }
@@ -506,6 +511,18 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .nowrap { white-space: nowrap; }
 .table td.cell-desc { max-width: 380px; white-space: normal; }
 .table-service th { white-space: nowrap; }
+.table-service td:nth-child(3) { white-space: normal; min-width: 9rem; }
+.table-service td.cell-desc { min-width: 12rem; }
+@media (min-width: 761px) and (max-width: 900px) {
+    .table-service th:nth-child(5), .table-service td:nth-child(5) { display: none; }
+    .table-service td:nth-child(3) { min-width: 7rem; }
+    .table-service td.cell-desc { min-width: 9rem; }
+}
+@media (min-width: 761px) and (max-width: 1150px) {
+    /* tablet widths: Trips and Man-hrs (on each ticket's page), and Coverage below 900px, are dropped so the table fits */
+    .table-service th:nth-child(6), .table-service td:nth-child(6), .table-service th:nth-child(7), .table-service td:nth-child(7) { display: none; }
+    .table-service th, .table-service td { padding-left: .6rem; padding-right: .6rem; }
+}
 .table-visits td:nth-child(5) { white-space: normal; min-width: 180px; }
 .quick-form { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--border); }
 .quick-form input { width: auto; flex: 1 1 110px; padding: .35rem .5rem; font-size: .85rem; }
@@ -657,6 +674,9 @@ section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 /* Tasks page: Assigned to, Due and Project / Service as columns (stacked under the title on phones) */
 .todo-head, .todo-cols .todo { display: grid; grid-template-columns: 22px minmax(0, 1fr) 9.5rem 9.5rem minmax(0, 15rem); gap: .75rem; }
 .todo-head { padding: 0 0 .45rem; border-bottom: 1px solid var(--border); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.card-sticky-head .todo-head { padding: .75rem 1rem; font-size: .75rem; letter-spacing: .05em; }
+.card-sticky-head .todo-cols .todo { padding-left: 1rem; padding-right: 1rem; }
+.card-sticky-head .todo-cols { padding-bottom: .25rem; }
 .todo-cells { display: contents; }
 .todo-cell { font-size: .88rem; padding-top: .1rem; min-width: 0; overflow-wrap: anywhere; }
 .todo-assignee { color: var(--text); }

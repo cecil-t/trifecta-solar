@@ -25,7 +25,7 @@ $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>
 
-<div class="card">
+<div class="card card-flush card-sticky-head">
 	<?php if (!$rows): ?>
 		<p class="empty"><?= match ($tab) { 'mine' => 'Nothing on your list.', 'assigned' => 'Everything you assigned to others is done.', 'done' => 'No completed tasks yet.', 'all' => ($q !== '' ? 'No tasks match.' : 'No tasks yet.'), default => 'No open tasks.' } ?></p>
 	<?php else: ?>
