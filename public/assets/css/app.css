@@ -487,7 +487,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 
 /* dashboard weather */
 .dash-weather { margin-bottom: 1.25rem; }
-.weather { display: flex; align-items: center; gap: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem 1.1rem; box-shadow: var(--shadow); flex-wrap: wrap; justify-self: start; max-width: 100%; }
+.weather { display: flex; align-items: center; gap: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: var(--radius); padding: .6rem 1.1rem; box-shadow: var(--shadow); flex-wrap: wrap; justify-self: start; max-width: 100%; }
 .wday { display: flex; align-items: center; gap: .6rem; }
 .wlabel { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .wtemp .hi { font-size: 1.35rem; font-weight: 750; color: var(--text); }
