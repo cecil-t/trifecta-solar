@@ -20,6 +20,18 @@ final class Todos
 	/** Open first by due date (no date last), then newest. */
 	private const ORDER = ' ORDER BY d.done_at IS NOT NULL, d.due_on IS NULL, d.due_on, d.created_at DESC';
 
+	/** @return array{all:int,open:int,overdue:int,done:int} */
+	public static function counts(): array
+	{
+		$r = Db::one(
+			'SELECT COUNT(*) AS all_count, SUM(done_at IS NULL) AS open_count, SUM(done_at IS NOT NULL) AS done_count,
+					SUM(done_at IS NULL AND due_on IS NOT NULL AND due_on < ?) AS overdue_count
+			 FROM todos',
+			[date('Y-m-d')]
+		);
+		return ['all' => (int) $r['all_count'], 'open' => (int) $r['open_count'], 'overdue' => (int) $r['overdue_count'], 'done' => (int) $r['done_count']];
+	}
+
 	public static function find(int $id): ?array
 	{
 		return Db::one(self::SELECT . ' WHERE d.id = ?', [$id]);

@@ -30,7 +30,13 @@ final class ReportController
 
 	public function index(): void
 	{
-		View::render('reports/index', ['title' => 'Reports']);
+		View::render('reports/index', [
+			'title' => 'Reports',
+			'projects' => Projects::phaseCounts(),
+			'service' => Service::counts(),
+			'tasks' => \App\Todos::counts(),
+			'recent' => \App\Activity::recentProjects(15),
+		]);
 	}
 
 	// ------------------------------------------------------------------ sales

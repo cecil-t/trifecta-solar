@@ -89,6 +89,31 @@ final class Projects
 		return $out;
 	}
 
+	/**
+	 * Project counts by status, the same way the Projects tabs count them: an open project on hold
+	 * counts only under on_hold, and active is Pre-Install + Installation + Closeout.
+	 * @return array{all:int,active:int,pre_install:int,installation:int,closeout:int,on_hold:int,complete:int,cancelled:int}
+	 */
+	public static function phaseCounts(): array
+	{
+		$counts = ['all' => 0, 'active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'on_hold' => 0, 'complete' => 0, 'cancelled' => 0];
+		$projects = Db::all('SELECT * FROM projects');
+		$tasks = Tasks::forProjects(array_column($projects, 'id'));
+		foreach ($projects as $p) {
+			$phase = Tasks::status($p, $tasks[(int) $p['id']] ?? [])['phase'];
+			$counts['all']++;
+			if (!in_array($phase, ['complete', 'cancelled'], true) && $p['hold_state'] === 'on_hold') {
+				$counts['on_hold']++;
+				continue;
+			}
+			$counts[$phase]++;
+			if (in_array($phase, ['pre_install', 'installation', 'closeout'], true)) {
+				$counts['active']++;
+			}
+		}
+		return $counts;
+	}
+
 	public static function money(?int $cents): string
 	{
 		return $cents === null ? '' : '$' . number_format($cents / 100, 2);

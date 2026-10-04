@@ -26,6 +26,21 @@ final class Service
 		return 'S' . $yy . str_pad((string) ((int) $max + 1), 3, '0', STR_PAD_LEFT);
 	}
 
+	/**
+	 * Ticket counts the way the Service tabs count them (open includes scheduled).
+	 * @return array{all:int,open:int,to_invoice:int,done:int}
+	 */
+	public static function counts(): array
+	{
+		$counts = ['all' => 0, 'open' => 0, 'to_invoice' => 0, 'done' => 0];
+		foreach (Db::all('SELECT coverage, completed_on, scheduled_on, invoiced FROM service_tickets') as $t) {
+			$st = self::status($t);
+			$counts['all']++;
+			$counts[$st === 'scheduled' ? 'open' : $st]++;
+		}
+		return $counts;
+	}
+
 	/** Billable and SolarInsure work gets invoiced; warranty work does not. */
 	public static function needsInvoice(array $t): bool
 	{
