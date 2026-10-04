@@ -708,6 +708,9 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 .todo-due { white-space: nowrap; }
 .todo-cols .is-done .todo-cell { color: #9aa5ab; }
 .phone-only { display: none; }
+/* Reports landing page: a heads-up shown only on phones */
+.report-phone-note { display: none; margin: 0 0 .9rem; padding: .5rem .75rem; border-radius: var(--radius-sm); background: var(--orange-50); border-left: 3px solid var(--orange); font-size: .85rem; color: var(--text); }
+@media (max-width: 760px) { .report-phone-note { display: block; } }
 @media (max-width: 760px) {
 	.todo-head { display: none; }
 	.todo-cols .todo { grid-template-columns: 22px minmax(0, 1fr); row-gap: .2rem; }
