@@ -70,7 +70,7 @@ $back = '/projects/' . (int) $p['id'];
 ?>
 <div class="project-head" data-project="<?= (int) $p['id'] ?>" data-csrf="<?= e(Csrf::token()) ?>">
 	<div>
-		<a href="/projects" class="back">&larr; Projects</a>
+		<a href="<?= e($listUrl) ?>" class="back">&larr; Projects</a>
 		<h1><span class="pnum"><?= e($p['project_number']) ?></span> <?= e($p['name']) ?></h1>
 		<div class="badges">
 			<span id="phase-badge" class="phase phase-<?= e($status['phase']) ?>"<?= $p['archived_at'] ? ' title="Marked completed ' . e(fmt_dt($p['archived_at'], 'm/d/Y')) . '"' : '' ?>><?= e(Tasks::PHASE_LABELS[$status['phase']]) ?></span>

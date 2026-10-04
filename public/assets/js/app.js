@@ -24,4 +24,18 @@
 			if (d.open) document.querySelectorAll(menus + '[open]').forEach((o) => { if (o !== d) o.removeAttribute('open'); });
 		});
 	});
+
+	// Coming back to a list from a record (#project-12): open its folded year group,
+	// bring the row into view below the floating header, and flash it.
+	const row = /^#[\w-]+$/.test(location.hash) ? document.querySelector('tr' + location.hash) : null;
+	if (row) {
+		const body = row.closest('tbody[hidden]');
+		if (body) {
+			body.hidden = false;
+			const toggle = body.previousElementSibling && body.previousElementSibling.querySelector('.year-toggle');
+			if (toggle) toggle.setAttribute('aria-expanded', 'true');
+		}
+		row.scrollIntoView({ block: 'center' });
+		row.classList.add('row-flash');
+	}
 })();

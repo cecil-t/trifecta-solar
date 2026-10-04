@@ -93,6 +93,9 @@ final class ProjectController
 			}
 		}
 
+		// Remember this list (tab, salesperson, search) so a project's back link returns to it.
+		$_SESSION['projects_list'] = '/projects' . (($q = (string) ($_SERVER['QUERY_STRING'] ?? '')) !== '' ? '?' . $q : '');
+
 		View::render('projects/index', [
 			'title' => 'Projects', 'projects' => $rows, 'counts' => $counts, 'filter' => $filter,
 			'users' => Projects::users(),
@@ -415,6 +418,7 @@ final class ProjectController
 
 		View::render('projects/show', [
 			'title' => $p['project_number'] . ' ' . $p['name'],
+			'listUrl' => ($_SESSION['projects_list'] ?? '/projects') . '#project-' . $id,
 			'todos' => \App\Todos::forProject($id),
 			'p' => $p, 'status' => $status, 'tree' => $status['tree'], 'eq' => $eq,
 			'totals' => Projects::totals($eq, $p['contract_price_cents'] !== null ? (int) $p['contract_price_cents'] : null),

@@ -271,16 +271,19 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .filters select { max-width: 220px; }
 tr.clickable { cursor: pointer; }
 .table-projects td { vertical-align: top; overflow-wrap: normal; }
-/* Projects list: blue column header that floats under the top bar (the card must not scroll for sticky to work) */
-/* Floating blue column headers (Projects, Service, Tasks): stay under the top bar while scrolling.
-   The card must not scroll sideways for sticky to work, so these tables wrap to fit instead. */
+/* Floating blue column headers on every list table: stay under the top bar while scrolling.
+   The card must not scroll sideways for sticky to work, so these tables wrap to fit instead.
+   Rounded top corners only when the header is the top of the card (no card-head above it). */
 .card-sticky-head { overflow: visible; }
 .card-sticky-head .table th, .card-sticky-head .todo-head {
 	position: sticky; top: var(--topbar-h, 64px); z-index: 5;
 	background: var(--blue); color: #fff; border-bottom: 0; white-space: nowrap;
 }
-.card-sticky-head .table th:first-child, .card-sticky-head .todo-head { border-top-left-radius: var(--radius); }
-.card-sticky-head .table th:last-child, .card-sticky-head .todo-head { border-top-right-radius: var(--radius); }
+.card-sticky-head > .table:first-child th:first-child, .card-sticky-head .todo-head { border-top-left-radius: var(--radius); }
+.card-sticky-head > .table:first-child th:last-child, .card-sticky-head .todo-head { border-top-right-radius: var(--radius); }
+/* Tables with no phone layout of their own scroll sideways inside the card on phones; the header
+   stays blue but only floats from tablet width up. */
+@media (max-width: 760px) { .card-sticky-head.scroll-x-phone { overflow-x: auto; } }
 /* the card no longer scrolls sideways, so the table wraps to fit instead */
 .table-projects td:nth-child(2), .table-projects td:nth-child(5), .table-projects td:nth-child(6), .table-projects td:nth-child(7) { white-space: normal; }
 @media (max-width: 1280px) { .table-projects .cell-note { max-width: 260px; } }
@@ -563,11 +566,18 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 tr.is-excluded td { color: #a3adb2; text-decoration: line-through; }
 tr.is-excluded td.check-col { text-decoration: none; }
 section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
+/* the row you came back to from a record (see app.js) */
+tr.row-flash { animation: row-flash 2.5s ease-out; }
+@keyframes row-flash { 0%, 35% { background: var(--orange-50); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { tr.row-flash { animation: none; background: var(--orange-50); } }
 .table th.num { text-align: right; }
 
-/* earlier years folded under a header in long lists */
-.year-head td { padding: 0; background: #f6f8f7; }
-.year-toggle { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: .5rem; width: 100%; padding: .6rem 1rem; cursor: pointer; font-weight: 700; color: var(--blue); }
+/* earlier years folded under a header in long lists: a solid band with an orange edge so it
+   stands out when scrolling past quickly */
+.year-head td { padding: 0; background: #d5e5f0; border-top: 2px solid var(--blue); border-bottom: 1px solid #b7cfe0; box-shadow: inset 5px 0 0 var(--orange); }
+.year-head tr:hover td { background: #c8dceb; }
+.year-toggle { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: .5rem; width: 100%; padding: .65rem 1rem .65rem 1.3rem; cursor: pointer; font-weight: 750; font-size: 1rem; color: var(--blue-600); }
+.year-head .tab-count { background: var(--blue); color: #fff; }
 .year-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .year-caret { display: inline-block; transition: transform .15s; }
 .year-toggle[aria-expanded="true"] .year-caret { transform: rotate(90deg); }

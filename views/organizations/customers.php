@@ -6,7 +6,7 @@
 	<input type="search" name="q" value="<?= e($q) ?>" placeholder="Search customers">
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>
-<div class="card card-flush">
+<div class="card card-flush card-sticky-head scroll-x-phone">
 	<table class="table">
 		<thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th class="num">Contacts</th><th class="num">Projects</th></tr></thead>
 		<tbody>

@@ -7,7 +7,7 @@
 </div>
 
 <?php foreach (Tasks::PHASES as $phase => $label): ?>
-	<section class="card card-flush mt">
+	<section class="card card-flush card-sticky-head scroll-x-phone mt">
 		<div class="card-head">
 			<h2><?= e($label) ?></h2>
 			<a href="/admin/template/new?phase=<?= $phase ?>" class="btn btn-ghost btn-small">+ Task</a>

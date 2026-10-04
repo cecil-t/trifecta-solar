@@ -18,7 +18,7 @@
 	</form>
 </section>
 
-<div class="card card-flush mt">
+<div class="card card-flush card-sticky-head scroll-x-phone mt">
 	<table class="table">
 		<thead><tr><th>Municipality</th><th>County</th><th>Zoning</th><th>Building permit</th><th>Inspections</th><th class="num">Projects</th></tr></thead>
 		<tbody>

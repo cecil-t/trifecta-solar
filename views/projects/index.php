@@ -65,7 +65,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 		<?php endif; ?>
 		<tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
 		<?php foreach ($list as $p): $st = $p['status']; ?>
-			<tr onclick="if(!event.target.closest('a'))location='/projects/<?= (int) $p['id'] ?>'" class="clickable">
+			<tr id="project-<?= (int) $p['id'] ?>" onclick="if(!event.target.closest('a'))location='/projects/<?= (int) $p['id'] ?>'" class="clickable">
 				<td><strong><?= e($p['project_number']) ?></strong></td>
 				<td>
 					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a>

@@ -6,7 +6,7 @@
 	<a href="/users/new" class="btn btn-primary">Add user</a>
 </div>
 
-<div class="card card-flush">
+<div class="card card-flush card-sticky-head scroll-x-phone">
 	<table class="table">
 		<thead>
 		<tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Devices</th><th>Last active</th></tr>

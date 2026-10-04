@@ -9,7 +9,7 @@
 	</div>
 	<?php endif; ?>
 </div>
-<div class="card card-flush">
+<div class="card card-flush card-sticky-head scroll-x-phone">
 	<table class="table">
 		<thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th class="num">Contacts</th></tr></thead>
 		<tbody>
