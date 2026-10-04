@@ -30,7 +30,7 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 bin/console          CLI (see Console commands below)
 docker/              Apache vhost, php.ini, entrypoint
 migrations/          NNN_name.sql, applied in order, once each
-public/              web root (index.php front controller, assets, manifest, sw.js)
+public/              web root (index.php front controller, assets, sw.js; the manifest is served by ManifestController)
 src/                 App classes (Auth, Db, Activity, Tasks, Projects, ...) and Controllers/
 tools/import/        Python builders that turn the old spreadsheets into import files
 views/               PHP templates

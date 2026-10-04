@@ -50,6 +50,7 @@ Auth::init();
 $r = new Router();
 
 $r->get('/health', [HealthController::class, 'show'], 'public');
+$r->get('/manifest.webmanifest', [App\Controllers\ManifestController::class, 'show'], 'public');
 
 $r->get('/setup', [SetupController::class, 'form'], 'public');
 $r->post('/setup', [SetupController::class, 'save'], 'public');
