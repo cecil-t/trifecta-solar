@@ -1,4 +1,4 @@
-# Running the tracker on the Synology DS225+
+# Running the Ops Tracker on the Synology DS225+
 
 The app runs as one Docker container under **Container Manager**. The code lives in a git clone at
 `/volume1/docker/trifecta-solar`. The live SQLite database is in a Docker-managed volume named `trifecta-data`.
@@ -22,7 +22,10 @@ Docker volume "trifecta-data"  <- live database (never copy it while running; us
 3. **Control Panel → Terminal & SNMP**: tick **Enable SSH service** and click Apply.
    You can turn SSH back off between updates if you prefer.
 
-## 2. Give the NAS read-only access to the private repo (deploy key)
+## 2. Give the NAS read-only access to the repo (deploy key)
+
+The repo is public at the moment, so a plain HTTPS clone (`git clone https://github.com/cecil-t/trifecta-solar.git`)
+works without a key. The deploy key below is what the DS225+ uses, and it is required if the repo is made private again.
 
 SSH in with your DSM admin account, then become root:
 
@@ -93,12 +96,12 @@ Port 8089 can be changed in `docker-compose.yml` (the left side of `"8089:80"`).
 **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script**
 
 - General: name `Trifecta tracker backup`, user **root**
-- Schedule: Daily, 2:00 AM
+- Schedule: Daily, 4:00 AM
 - Task Settings: tick **Send run details by email → only when the script terminates abnormally**
   (this requires DSM email notifications to be configured). Run command:
 
 ```sh
-/usr/local/bin/docker exec trifecta-solar php bin/console backup >> /volume1/docker/trifecta-solar/backups/backup.log 2>&1
+/usr/local/bin/docker exec -u root trifecta-solar php bin/console backup >> /volume1/docker/trifecta-solar/backups/backup.log 2>&1
 ```
 
 Each run writes `backups/trifecta-YYYYMMDD-HHMMSS.sqlite` and verifies it with an integrity check.
@@ -132,6 +135,24 @@ cd /volume1/docker/trifecta-solar && git pull
 That's it. The repo folder is mounted into the container, so new code is live immediately, and any new
 database migrations apply automatically on the next page load.
 
+**Automatic updates:** a second scheduled task pulls every hour during the work day, so pushed changes go
+live on their own. **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script**, user
+**root**, Daily, first run 08:00, repeat every hour, last run 16:00, with this command:
+
+```sh
+cd /volume1/docker/trifecta-solar && git pull --ff-only
+```
+
+**If GitHub history is ever rewritten** (as on 2026-10-04, to remove customer data), the pull stops with a
+"diverged" or "not possible to fast-forward" error. Reset once, as root, then the hourly pull works again:
+
+```sh
+cd /volume1/docker/trifecta-solar && git fetch origin && git reset --hard origin/main
+git reflog expire --expire=now --all && git gc --prune=now   # optional: drop the old commits from the NAS too
+```
+
+`reset --hard` only changes tracked code; `data/`, `backups/`, `import/` and `.env` are untracked and left alone.
+
 If an update touches `Dockerfile`, `docker-compose.yml`, or `docker/`, also rebuild:
 **Container Manager → Project → trifecta-solar → Action → Build**, or run `docker compose up -d --build`.
 
@@ -144,24 +165,31 @@ docker exec -it trifecta-solar php bin/console user:password person@example.com 
 curl -s http://localhost:8089/health                        # {"status":"ok",...}
 ```
 
-## Importing projects
+## Importing
 
-The import file (`import.json`) holds customer data, so it is never committed to git. Put it in
-`/volume1/docker/trifecta-solar/import/` (git ignores that folder), then:
+Import files hold customer data, so they are never committed to git. Put them in
+`/volume1/docker/trifecta-solar/import/` (git ignores that folder). Always run the dry run first:
 
 ```sh
-docker exec trifecta-solar php bin/console import:projects import/import.json --dry-run   # report only, saves nothing
-docker exec trifecta-solar php bin/console import:projects import/import.json             # load it
+docker exec -u root trifecta-solar php bin/console import:projects import/import.json --dry-run   # report only, saves nothing
+docker exec -u root trifecta-solar php bin/console import:projects import/import.json             # load it
 ```
 
-Re-running skips project numbers that already exist. `--replace` deletes and re-imports those projects
-(their tasks and log too), which is meant for re-running an improved import before real work is entered.
+The same pattern works for `import:service` (service tickets) and `import:todos` (Tasks). Every import only
+adds: existing projects, tickets and open Tasks are skipped, never changed. Live data is now edited by hand,
+so `import:projects --replace` (delete and re-import) is no longer used.
+
+The import files are built from the old spreadsheets by the scripts in `tools/import/`. Their per-project data
+(customer names, site addresses, hand-read contracts, confirmed municipalities) is in `import/overrides.json`,
+which also stays out of git.
 
 ## Notes
 
-- **Installing to phone home screens (PWA)** requires HTTPS, which comes with the public hostname step below.
-  Over plain `http://<nas-ip>:8089` the site works in a mobile browser but can't be installed.
-- **Remote access / HTTPS (later):** the plan is a Cloudflare Tunnel or the DSM reverse proxy with a
-  certificate on a hostname such as `tracker.trifectasolar.com`. When that is in place, create `.env` with `TRUST_PROXY=true`.
+- **HTTPS / remote access:** for now the DSM reverse proxy serves the app at `https://tracker.example.com`
+  with a Let's Encrypt certificate (the router forwards 8443 to the NAS). The permanent home is planned as a
+  subdomain such as `ops.trifectasolar.com`. Behind any HTTPS proxy, create `.env` in the repo folder with
+  `TRUST_PROXY=true` so the app marks its cookies Secure and logs visitors' real IP addresses.
+- **Installing to phone home screens (PWA)** requires HTTPS. Over plain `http://<nas-ip>:8089` the site works
+  in a mobile browser but can't be installed.
 - Logins never expire on their own. To cut off a lost phone, sign that device out under **Users → (person)**,
   or under **My account** for your own devices.

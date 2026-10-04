@@ -6,14 +6,16 @@ declare(strict_types=1);
  * Command-line tasks. Inside the container:
  *   docker exec -it trifecta-solar php bin/console <command>
  *
- *   migrate                      Apply pending database migrations
- *   fix:payment-labels [--dry-run]          Name payment milestones the first import left blank
- *   fix:completed-payments [--dry-run]      Mark open payments received (today) on Completed projects
- *   fix:question-defaults [--dry-run]       Fill blank SolarEdge warranty / rebate / VNM answers with No where known
- *   import:service <file.json> [--dry-run]   Add service tickets (never changes existing ones)
- *   backup [--keep=N]            Snapshot the database into backups/ (verified), prune to N
- *   user:list                    List users
- *   user:password <email>        Set a user's password (prompts, input hidden)
+ *   migrate                                   Apply pending database migrations
+ *   backup [--keep=N]                         Snapshot the database into backups/ (verified), prune to N
+ *   user:list                                 List users
+ *   user:password <email>                     Set a user's password (prompts, input hidden)
+ *   import:projects <file.json> [--dry-run]   Add projects (skips project numbers that exist; --replace is not used)
+ *   import:service <file.json> [--dry-run]    Add service tickets (never changes existing ones)
+ *   import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
+ *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
+ *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
+ *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
  */
 
 require dirname(__DIR__) . '/src/bootstrap.php';
@@ -140,7 +142,7 @@ try {
 			break;
 
 		default:
-			out("Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] [--replace] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run]");
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());
