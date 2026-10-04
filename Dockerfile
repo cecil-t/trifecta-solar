@@ -5,9 +5,9 @@ FROM php:8.3-apache
 ENV TZ=America/New_York
 
 RUN a2enmod headers \
-    && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
-    && echo "ServerTokens Prod\nServerSignature Off\nServerName trifecta-tracker" > /etc/apache2/conf-enabled/zz-security.conf \
-    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+	&& mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+	&& echo "ServerTokens Prod\nServerSignature Off\nServerName trifecta-tracker" > /etc/apache2/conf-enabled/zz-security.conf \
+	&& ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-trifecta.ini"
 COPY docker/vhost.conf /etc/apache2/sites-available/000-default.conf

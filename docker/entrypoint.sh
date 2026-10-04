@@ -14,7 +14,7 @@ mkdir -p "$APP/backups" 2>/dev/null || true
 # Apply pending database migrations. If this fails, still start Apache so the container
 # stays up (no restart loop) and the error is visible in the logs and the browser.
 if ! su -s /bin/sh www-data -c "php $APP/bin/console migrate"; then
-    echo "WARNING: database migration failed; see the error above. Starting web server anyway." >&2
+	echo "WARNING: database migration failed; see the error above. Starting web server anyway." >&2
 fi
 
 exec docker-php-entrypoint "$@"

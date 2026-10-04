@@ -11,12 +11,12 @@ ALTER TABLE municipalities ADD COLUMN building_org_id INTEGER REFERENCES organiz
 ALTER TABLE municipalities ADD COLUMN inspection_by TEXT;
 
 UPDATE projects SET
-    zoning_by = CASE zoning_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
-    building_by = CASE plan_review_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
-    building_org_id = plan_review_org_id,
-    inspection_by = CASE inspection_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END;
+	zoning_by = CASE zoning_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
+	building_by = CASE plan_review_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
+	building_org_id = plan_review_org_id,
+	inspection_by = CASE inspection_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END;
 UPDATE municipalities SET
-    zoning_by = CASE zoning_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
-    building_by = CASE plan_review_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
-    building_org_id = plan_review_org_id,
-    inspection_by = CASE inspection_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END;
+	zoning_by = CASE zoning_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
+	building_by = CASE plan_review_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END,
+	building_org_id = plan_review_org_id,
+	inspection_by = CASE inspection_mode WHEN 'self' THEN 'municipality' WHEN 'agency' THEN 'third_party' END;

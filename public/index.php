@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 // Under PHP's built-in dev server, let real files (css, images) be served directly.
 if (PHP_SAPI === 'cli-server') {
-    $file = __DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    if (is_file($file)) {
-        return false;
-    }
+	$file = __DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+	if (is_file($file)) {
+		return false;
+	}
 }
 
 require dirname(__DIR__) . '/src/bootstrap.php';
@@ -33,8 +33,8 @@ use App\Controllers\ReportController;
 use App\Controllers\TodoController;
 
 if (Config::bool('APP_DEBUG')) {
-    ini_set('display_errors', '1');
-    error_reporting(E_ALL);
+	ini_set('display_errors', '1');
+	error_reporting(E_ALL);
 }
 
 session_name('ts_sess');
@@ -42,7 +42,7 @@ session_set_cookie_params(['path' => '/', 'secure' => is_https(), 'httponly' => 
 session_start();
 
 if (Migrator::hasPending()) {
-    Migrator::migrate();
+	Migrator::migrate();
 }
 
 Auth::init();
@@ -142,11 +142,11 @@ $r->get('/admin/template/{id}', [TemplateController::class, 'edit'], 'admin');
 $r->post('/admin/template/{id}', [TemplateController::class, 'update'], 'admin');
 
 try {
-    $r->dispatch($_SERVER['REQUEST_METHOD'], current_path());
+	$r->dispatch($_SERVER['REQUEST_METHOD'], current_path());
 } catch (Throwable $e) {
-    error_log((string) $e);
-    http_response_code(500);
-    echo Config::bool('APP_DEBUG')
-        ? '<pre>' . e((string) $e) . '</pre>'
-        : 'Something went wrong. The error has been logged.';
+	error_log((string) $e);
+	http_response_code(500);
+	echo Config::bool('APP_DEBUG')
+		? '<pre>' . e((string) $e) . '</pre>'
+		: 'Something went wrong. The error has been logged.';
 }

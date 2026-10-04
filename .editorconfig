@@ -1,0 +1,14 @@
+# Tabs for all code (PHP, views, CSS, JS, SQL, Python, config). YAML forbids tabs; Markdown keeps spaces.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = tab
+indent_size = 4
+tab_width = 4
+
+[*.{yml,yaml,md}]
+indent_style = space
+indent_size = 2

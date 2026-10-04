@@ -21,15 +21,15 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 // `docker exec` runs as root. SQLite may create its -wal/-shm files as root, which would leave the
 // web server (www-data) unable to write. Hand everything in data/ back to www-data on exit.
 if (function_exists('posix_getuid') ? posix_getuid() === 0 : (getenv('USER') === 'root' || get_current_user() === 'root')) {
-    register_shutdown_function(static function (): void {
-        $dir = dirname(App\Db::path());
-        foreach (glob($dir . '/{,.}*', GLOB_BRACE) ?: [] as $f) {
-            if (is_file($f)) {
-                @chown($f, 'www-data');
-                @chgrp($f, 'www-data');
-            }
-        }
-    });
+	register_shutdown_function(static function (): void {
+		$dir = dirname(App\Db::path());
+		foreach (glob($dir . '/{,.}*', GLOB_BRACE) ?: [] as $f) {
+			if (is_file($f)) {
+				@chown($f, 'www-data');
+				@chgrp($f, 'www-data');
+			}
+		}
+	});
 }
 
 use App\Backup;
@@ -45,103 +45,103 @@ function fail(string $line): never { fwrite(STDERR, $line . PHP_EOL); exit(1); }
 
 function prompt_hidden(string $label): string
 {
-    fwrite(STDOUT, $label);
-    $tty = stream_isatty(STDIN);
-    if ($tty) { shell_exec('stty -echo'); }
-    $value = rtrim((string) fgets(STDIN), "\r\n");
-    if ($tty) { shell_exec('stty echo'); fwrite(STDOUT, PHP_EOL); }
-    return $value;
+	fwrite(STDOUT, $label);
+	$tty = stream_isatty(STDIN);
+	if ($tty) { shell_exec('stty -echo'); }
+	$value = rtrim((string) fgets(STDIN), "\r\n");
+	if ($tty) { shell_exec('stty echo'); fwrite(STDOUT, PHP_EOL); }
+	return $value;
 }
 
 try {
-    switch ($command) {
-        case 'migrate':
-            $ran = Migrator::migrate();
-            out($ran ? 'Applied: ' . implode(', ', $ran) : 'Database is up to date (' . count(Migrator::applied()) . ' migrations).');
-            break;
+	switch ($command) {
+		case 'migrate':
+			$ran = Migrator::migrate();
+			out($ran ? 'Applied: ' . implode(', ', $ran) : 'Database is up to date (' . count(Migrator::applied()) . ' migrations).');
+			break;
 
-        case 'backup':
-            $keep = null;
-            foreach ($args as $a) {
-                if (str_starts_with($a, '--keep=')) { $keep = (int) substr($a, 7); }
-            }
-            $r = Backup::run($keep);
-            out(sprintf('%s  Backup OK: %s (%s KB, integrity ok), pruned %d old', date('Y-m-d H:i:s'), basename($r['file']), number_format($r['bytes'] / 1024, 1), $r['pruned']));
-            break;
+		case 'backup':
+			$keep = null;
+			foreach ($args as $a) {
+				if (str_starts_with($a, '--keep=')) { $keep = (int) substr($a, 7); }
+			}
+			$r = Backup::run($keep);
+			out(sprintf('%s  Backup OK: %s (%s KB, integrity ok), pruned %d old', date('Y-m-d H:i:s'), basename($r['file']), number_format($r['bytes'] / 1024, 1), $r['pruned']));
+			break;
 
-        case 'user:list':
-            foreach (Db::all('SELECT * FROM users ORDER BY id') as $u) {
-                out(sprintf('%-3d %-30s %-22s %-6s %-8s %s', $u['id'], $u['email'], $u['name'],
-                    $u['is_admin'] ? 'admin' : 'user', $u['is_active'] ? 'active' : 'inactive',
-                    $u['password_hash'] ? 'password set' : 'NO PASSWORD'));
-            }
-            break;
+		case 'user:list':
+			foreach (Db::all('SELECT * FROM users ORDER BY id') as $u) {
+				out(sprintf('%-3d %-30s %-22s %-6s %-8s %s', $u['id'], $u['email'], $u['name'],
+					$u['is_admin'] ? 'admin' : 'user', $u['is_active'] ? 'active' : 'inactive',
+					$u['password_hash'] ? 'password set' : 'NO PASSWORD'));
+			}
+			break;
 
-        case 'user:password':
-            $email = $args[1] ?? fail('Usage: user:password <email>');
-            $user = Db::one('SELECT * FROM users WHERE email = ?', [$email]) ?? fail("No user with email $email");
-            $p1 = prompt_hidden('New password: ');
-            $p2 = prompt_hidden('Confirm: ');
-            if ($err = Password::validate($p1, $p2)) { fail($err); }
-            Db::update('users', (int) $user['id'], ['password_hash' => Password::hash($p1), 'password_changed_at' => now_utc(), 'updated_at' => now_utc()]);
-            App\Activity::event('user', (int) $user['id'], 'Password set from the server console', null);
-            out("Password set for {$user['name']}.");
-            break;
+		case 'user:password':
+			$email = $args[1] ?? fail('Usage: user:password <email>');
+			$user = Db::one('SELECT * FROM users WHERE email = ?', [$email]) ?? fail("No user with email $email");
+			$p1 = prompt_hidden('New password: ');
+			$p2 = prompt_hidden('Confirm: ');
+			if ($err = Password::validate($p1, $p2)) { fail($err); }
+			Db::update('users', (int) $user['id'], ['password_hash' => Password::hash($p1), 'password_changed_at' => now_utc(), 'updated_at' => now_utc()]);
+			App\Activity::event('user', (int) $user['id'], 'Password set from the server console', null);
+			out("Password set for {$user['name']}.");
+			break;
 
-        case 'import:projects':
-            $file = $args[1] ?? fail('Usage: import:projects <file.json> [--dry-run] [--replace]');
-            if (!is_file($file)) { fail("No such file: $file"); }
-            $data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
-            $dry = in_array('--dry-run', $args, true);
-            if (($data['mode'] ?? '') === 'record_only' && in_array('--replace', $args, true)) {
-                fail('This is a record-only import: it only adds projects and never replaces. Run it without --replace.');
-            }
-            $res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
-            foreach ($res['log'] as $line) { out($line); }
-            out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
-            break;
+		case 'import:projects':
+			$file = $args[1] ?? fail('Usage: import:projects <file.json> [--dry-run] [--replace]');
+			if (!is_file($file)) { fail("No such file: $file"); }
+			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+			$dry = in_array('--dry-run', $args, true);
+			if (($data['mode'] ?? '') === 'record_only' && in_array('--replace', $args, true)) {
+				fail('This is a record-only import: it only adds projects and never replaces. Run it without --replace.');
+			}
+			$res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
+			foreach ($res['log'] as $line) { out($line); }
+			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+			break;
 
-        case 'fix:payment-labels':
-            $dry = in_array('--dry-run', $args, true);
-            foreach (App\Cleanup::paymentLabels($dry) as $line) { out($line); }
-            out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
-            break;
+		case 'fix:payment-labels':
+			$dry = in_array('--dry-run', $args, true);
+			foreach (App\Cleanup::paymentLabels($dry) as $line) { out($line); }
+			out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
+			break;
 
-        case 'fix:completed-payments':
-            $dry = in_array('--dry-run', $args, true);
-            foreach (App\Cleanup::completedPayments($dry) as $line) { out($line); }
-            out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
-            break;
+		case 'fix:completed-payments':
+			$dry = in_array('--dry-run', $args, true);
+			foreach (App\Cleanup::completedPayments($dry) as $line) { out($line); }
+			out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
+			break;
 
-        case 'fix:question-defaults':
-            $dry = in_array('--dry-run', $args, true);
-            foreach (App\Cleanup::questionDefaults($dry) as $line) { out($line); }
-            out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
-            break;
+		case 'fix:question-defaults':
+			$dry = in_array('--dry-run', $args, true);
+			foreach (App\Cleanup::questionDefaults($dry) as $line) { out($line); }
+			out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
+			break;
 
-        case 'import:service':
-            $file = $args[1] ?? fail('Usage: import:service <file.json> [--dry-run]');
-            if (!is_file($file)) { fail("No such file: $file"); }
-            $data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
-            $dry = in_array('--dry-run', $args, true);
-            $res = (new App\ServiceImporter($dry))->run($data);
-            foreach ($res['log'] as $line) { out($line); }
-            out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
-            break;
+		case 'import:service':
+			$file = $args[1] ?? fail('Usage: import:service <file.json> [--dry-run]');
+			if (!is_file($file)) { fail("No such file: $file"); }
+			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+			$dry = in_array('--dry-run', $args, true);
+			$res = (new App\ServiceImporter($dry))->run($data);
+			foreach ($res['log'] as $line) { out($line); }
+			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+			break;
 
-        case 'import:todos':
-            $file = $args[1] ?? fail('Usage: import:todos <file.json> [--dry-run]');
-            if (!is_file($file)) { fail("No such file: $file"); }
-            $data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
-            $dry = in_array('--dry-run', $args, true);
-            $res = (new App\TodoImporter($dry))->run($data);
-            foreach ($res['log'] as $line) { out($line); }
-            out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
-            break;
+		case 'import:todos':
+			$file = $args[1] ?? fail('Usage: import:todos <file.json> [--dry-run]');
+			if (!is_file($file)) { fail("No such file: $file"); }
+			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+			$dry = in_array('--dry-run', $args, true);
+			$res = (new App\TodoImporter($dry))->run($data);
+			foreach ($res['log'] as $line) { out($line); }
+			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+			break;
 
-        default:
-            out("Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] [--replace] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run]");
-    }
+		default:
+			out("Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] [--replace] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run]");
+	}
 } catch (Throwable $e) {
-    fail('Error: ' . $e->getMessage());
+	fail('Error: ' . $e->getMessage());
 }
