@@ -36,6 +36,12 @@ final class ReportController
 			'service' => Service::counts(),
 			'tasks' => \App\Todos::counts(),
 			'recent' => \App\Activity::recentProjects(15),
+			'lists' => [
+				'customers' => (int) Db::value("SELECT COUNT(*) FROM organizations WHERE type = 'customer'"),
+				'municipalities' => (int) Db::value('SELECT COUNT(*) FROM municipalities'),
+				'directory' => array_map('intval', array_column(Db::all("SELECT type, COUNT(*) AS n FROM organizations WHERE type <> 'customer' GROUP BY type"), 'n', 'type')),
+				'users' => (int) Db::value('SELECT COUNT(*) FROM users WHERE is_active = 1'),
+			],
 		]);
 	}
 

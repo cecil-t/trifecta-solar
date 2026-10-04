@@ -53,6 +53,22 @@ $line = static fn (string $label, int $n, ?string $href, string $class = '') =>
 			<?= $line('Completed', $tasks['done'], '/tasks?tab=done') ?>
 		</ul>
 	</section>
+	<section class="card summary-card">
+		<h3>Lists</h3>
+		<ul class="summary-list">
+			<?= $line('Customers', $lists['customers'], '/customers') ?>
+			<?= $line('Municipalities', $lists['municipalities'], '/municipalities') ?>
+			<?= $line('Directory', array_sum($lists['directory']), '/directory') ?>
+			<?php if ($lists['directory']): ?>
+				<li class="summary-sub"><ul class="summary-list">
+					<?php foreach (['agency' => 'Agencies', 'designer' => 'Designers', 'contractor' => 'Contractors', 'other' => 'Other'] as $type => $label): ?>
+						<?php if (!empty($lists['directory'][$type])): ?><?= $line($label, $lists['directory'][$type], null) ?><?php endif; ?>
+					<?php endforeach; ?>
+				</ul></li>
+			<?php endif; ?>
+			<?= $line('Users', $lists['users'], App\Auth::isAdmin() ? '/users' : null) ?>
+		</ul>
+	</section>
 </div>
 
 <section class="card mt" id="latest-activity">

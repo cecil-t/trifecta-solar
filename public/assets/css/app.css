@@ -596,8 +596,8 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 /* Reports page: "At a glance" counts and latest activity under the report cards */
 .section-title { margin: 1.75rem 0 .75rem; font-size: 1.1rem; }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; align-items: start; }
-.summary-card h3 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 .5rem; padding-bottom: .45rem; border-bottom: 1px solid var(--border); font-size: 1rem; }
-.summary-total { font-size: 1.35rem; font-weight: 700; color: var(--blue); }
+.summary-card h3 { display: flex; justify-content: space-between; align-items: baseline; line-height: 2rem; margin: 0 0 .5rem; padding-bottom: .45rem; border-bottom: 1px solid var(--border); font-size: 1rem; }
+.summary-total { font-size: 1.35rem; font-weight: 700; line-height: 1; color: var(--blue); }
 .summary-list { list-style: none; margin: 0; padding: 0; }
 .summary-list li { display: flex; justify-content: space-between; gap: .75rem; padding: .22rem 0; font-size: .92rem; }
 .summary-list li.summary-sub { display: block; padding: 0 0 0 1.1rem; border-left: 2px solid var(--border); margin: .1rem 0 .1rem .3rem; }
