@@ -561,10 +561,10 @@ tr.is-excluded td.check-col { text-decoration: none; }
 section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 /* the row you came back to from a record (see app.js); the margin keeps it clear of the top bar and
    the floating column header if the browser's own #anchor jump is what places it */
-.table tr[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 3.5rem); }
-tr.row-flash { animation: row-flash 2.5s ease-out; }
+.table tr[id], li.todo[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 3.5rem); }
+tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 @keyframes row-flash { 0%, 35% { background: var(--orange-50); } 100% { background: transparent; } }
-@media (prefers-reduced-motion: reduce) { tr.row-flash { animation: none; background: var(--orange-50); } }
+@media (prefers-reduced-motion: reduce) { tr.row-flash, li.row-flash { animation: none; background: var(--orange-50); } }
 .table th.num { text-align: right; }
 
 /* earlier years folded under a header in long lists: a solid band with an orange edge so it

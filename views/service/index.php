@@ -54,7 +54,7 @@ $cols = 10;
 		<?php endif; ?>
 		<tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
 		<?php foreach ($list as $t): ?>
-			<tr onclick="if(!event.target.closest('a'))location='/service/<?= (int) $t['id'] ?>'" class="clickable">
+			<tr id="ticket-<?= (int) $t['id'] ?>" onclick="if(!event.target.closest('a'))location='/service/<?= (int) $t['id'] ?>'" class="clickable">
 				<td><strong><?= e($t['ticket_number']) ?></strong></td>
 				<td class="small"><?= e(fmt_date($t['opened_on'])) ?></td>
 				<td>

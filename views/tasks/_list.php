@@ -23,7 +23,7 @@ $preview = static function (?string $details): string {
 <?php endif; ?>
 <ul class="todo-list<?= $columns ? ' todo-cols' : '' ?>">
 	<?php foreach ($rows as $d): $due = Todos::dueState($d['due_on'], $d['done_at']); $link = Todos::linkLabel($d); $details = $preview($d['details'] ?? null); ?>
-		<li class="todo <?= $d['done_at'] ? 'is-done' : '' ?>">
+		<li id="todo-<?= (int) $d['id'] ?>" class="todo <?= $d['done_at'] ? 'is-done' : '' ?>">
 			<form method="post" action="/tasks/<?= (int) $d['id'] ?>/toggle" class="todo-check">
 				<?= Csrf::field() ?>
 				<input type="hidden" name="back" value="<?= e($back) ?>">

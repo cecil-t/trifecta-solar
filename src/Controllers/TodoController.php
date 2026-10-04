@@ -55,6 +55,9 @@ final class TodoController
 			'done' => (int) Db::value('SELECT COUNT(*) FROM todos WHERE done_at IS NOT NULL'),
 			'all' => (int) Db::value('SELECT COUNT(*) FROM todos'),
 		];
+		// Remember this list (tab, person, search) so a task's back link returns to it.
+		$_SESSION['tasks_list'] = '/tasks' . (($qs = (string) ($_SERVER['QUERY_STRING'] ?? '')) !== '' ? '?' . $qs : '');
+
 		View::render('tasks/index', [
 			'title' => 'Tasks', 'rows' => $rows, 'tab' => $tab, 'who' => $who, 'q' => $q, 'counts' => $counts,
 			'users' => Projects::users(),
@@ -143,7 +146,10 @@ final class TodoController
 	public function show(int $id): void
 	{
 		$d = $this->find($id);
-		View::render('tasks/show', ['title' => $d['title'], 'd' => $d, 'activity' => Activity::feed('todo', $id)]);
+		View::render('tasks/show', [
+			'title' => $d['title'], 'd' => $d, 'activity' => Activity::feed('todo', $id),
+			'listUrl' => ($_SESSION['tasks_list'] ?? '/tasks') . '#todo-' . $id,
+		]);
 	}
 
 	public function comment(int $id): void

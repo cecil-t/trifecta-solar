@@ -60,6 +60,9 @@ final class ServiceController
 				$out[] = $t;
 			}
 		}
+		// Remember this list (tab, search) so a ticket's back link returns to it.
+		$_SESSION['service_list'] = '/service' . (($qs = (string) ($_SERVER['QUERY_STRING'] ?? '')) !== '' ? '?' . $qs : '');
+
 		View::render('service/index', ['title' => 'Service', 'rows' => $out, 'counts' => $counts, 'tab' => $tab, 'q' => $q, 'searching' => $searching]);
 	}
 
@@ -276,6 +279,7 @@ final class ServiceController
 		) : [];
 		View::render('service/show', [
 			'title' => $t['ticket_number'] . ' ' . ($t['customer_name'] ?? ''),
+			'listUrl' => ($_SESSION['service_list'] ?? '/service') . '#ticket-' . $id,
 			't' => $t, 'visits' => Service::visits($id), 'todos' => \App\Todos::forService($id), 'contacts' => $contacts, 'history' => $history,
 			'activity' => Activity::feed('service', $id, $commentsOnly), 'commentsOnly' => $commentsOnly,
 		]);
