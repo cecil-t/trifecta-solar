@@ -281,9 +281,13 @@ tr.clickable { cursor: pointer; }
 }
 .card-sticky-head > .table:first-child th:first-child, .card-sticky-head .todo-head { border-top-left-radius: var(--radius); }
 .card-sticky-head > .table:first-child th:last-child, .card-sticky-head .todo-head { border-top-right-radius: var(--radius); }
-/* Tables with no phone layout of their own scroll sideways inside the card on phones; the header
-   stays blue but only floats from tablet width up. */
-@media (max-width: 760px) { .card-sticky-head.scroll-x-phone { overflow-x: auto; } }
+/* Tables with no phone layout of their own scroll sideways inside the card on phones. That makes the
+   card the sticky container, which would push the header down by the top bar's height, so on phones
+   the header stays blue but sits still. */
+@media (max-width: 760px) {
+	.card-sticky-head.scroll-x-phone { overflow-x: auto; }
+	.card-sticky-head.scroll-x-phone .table th { position: static; }
+}
 /* the card no longer scrolls sideways, so the table wraps to fit instead */
 .table-projects td:nth-child(2), .table-projects td:nth-child(5), .table-projects td:nth-child(6), .table-projects td:nth-child(7) { white-space: normal; }
 @media (max-width: 1280px) { .table-projects .cell-note { max-width: 260px; } }
@@ -566,7 +570,9 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 tr.is-excluded td { color: #a3adb2; text-decoration: line-through; }
 tr.is-excluded td.check-col { text-decoration: none; }
 section[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
-/* the row you came back to from a record (see app.js) */
+/* the row you came back to from a record (see app.js); the margin keeps it clear of the top bar and
+   the floating column header if the browser's own #anchor jump is what places it */
+.table tr[id] { scroll-margin-top: calc(var(--topbar-h, 64px) + 3.5rem); }
 tr.row-flash { animation: row-flash 2.5s ease-out; }
 @keyframes row-flash { 0%, 35% { background: var(--orange-50); } 100% { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { tr.row-flash { animation: none; background: var(--orange-50); } }

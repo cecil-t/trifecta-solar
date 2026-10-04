@@ -35,7 +35,10 @@
 			const toggle = body.previousElementSibling && body.previousElementSibling.querySelector('.year-toggle');
 			if (toggle) toggle.setAttribute('aria-expanded', 'true');
 		}
-		row.scrollIntoView({ block: 'center' });
+		// After load, so the browser's own jump to the #anchor (row at the very top, under the
+		// floating headers) has already happened and this one wins.
+		const show = () => requestAnimationFrame(() => row.scrollIntoView({ block: 'center' }));
+		if (document.readyState === 'complete') show(); else window.addEventListener('load', show);
 		row.classList.add('row-flash');
 	}
 })();
