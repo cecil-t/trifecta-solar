@@ -292,6 +292,13 @@ tr.clickable { cursor: pointer; }
 .table-projects td:nth-child(2), .table-projects td:nth-child(5), .table-projects td:nth-child(6), .table-projects td:nth-child(7) { white-space: normal; }
 @media (max-width: 1280px) { .table-projects .cell-note { max-width: 260px; } }
 .table-projects .phase, .table-projects .chip { white-space: nowrap; display: inline-block; }
+/* inline SVG icons (App\Icons): line drawings in currentColor, solid parts marked .fill */
+.icon { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.icon .fill { fill: currentColor; stroke: none; }
+/* install type and batteries under the project number on the Projects list */
+.scope-icons { display: flex; gap: .3rem; margin-top: .25rem; color: var(--blue); }
+.scope-icons .icon { width: 18px; height: 18px; }
+.scope-icons .icon-battery { color: var(--green-600); }
 @media (min-width: 761px) and (max-width: 1040px) {
 	/* tablet widths: Type is dropped so the other columns don't break mid-word */
 	.table-projects th:nth-child(5), .table-projects td:nth-child(5) { display: none; }

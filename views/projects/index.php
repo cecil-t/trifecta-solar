@@ -66,7 +66,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 		<tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
 		<?php foreach ($list as $p): $st = $p['status']; ?>
 			<tr id="project-<?= (int) $p['id'] ?>" onclick="if(!event.target.closest('a'))location='/projects/<?= (int) $p['id'] ?>'" class="clickable">
-				<td><strong><?= e($p['project_number']) ?></strong></td>
+				<td><strong><?= e($p['project_number']) ?></strong><?php if ($icons = App\Icons::scope($p)): ?><div class="scope-icons"><?= $icons ?></div><?php endif; ?></td>
 				<td>
 					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a>
 					<?php if ($drive = safe_url($p['drive_url'])): ?><a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="drive-link" title="Open Google Drive folder">Drive &#8599;</a><?php endif; ?>
