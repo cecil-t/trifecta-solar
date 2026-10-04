@@ -328,6 +328,7 @@ tr.clickable { cursor: pointer; }
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .75rem; margin: 0; font-size: .9rem; }
 .kv dt { color: var(--muted); font-weight: 600; font-size: .8rem; padding-top: .1rem; }
 .kv dd { margin: 0; }
+.kv .work-order { white-space: nowrap; }
 .metrics { display: flex; gap: 1rem; margin-bottom: .6rem; flex-wrap: wrap; }
 .metrics > div { display: flex; flex-direction: column; }
 .m-num { font-size: 1.3rem; font-weight: 750; color: var(--blue); line-height: 1.1; }

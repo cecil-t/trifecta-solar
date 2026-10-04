@@ -50,6 +50,17 @@ $overdue = static function (array $t) use ($today): string {
 	return $days >= 30 ? 'is-overdue-30' : 'is-overdue';
 };
 // Yes / No / not answered for a question-type task, looked up by name.
+// Utility work orders: the "Work order #" reference on Interconnection and on each Utility upgrade
+$workOrders = [];
+foreach ($tree as $tasks) {
+	foreach ($tasks as $t) {
+		if (stripos((string) $t['ref_label'], 'work order') === 0 && trim((string) $t['reference']) !== '' && (string) $t['needed'] !== '0') {
+			$ref = trim((string) $t['reference']);
+			$what = strcasecmp($t['name'], 'Interconnection') === 0 ? '' : ucfirst((string) preg_replace('/^utility\s+/i', '', $t['name'])) . ' ';
+			$workOrders[] = $what . (preg_match('/^w\.?o\b/i', $ref) ? $ref : 'WO ' . $ref);
+		}
+	}
+}
 $answer = static function (string $name) use ($tree): string {
 	foreach ($tree as $tasks) {
 		foreach ($tasks as $t) {
@@ -114,7 +125,7 @@ $back = '/projects/' . (int) $p['id'];
 			<?php foreach (Municipalities::SLOTS as $slot): ?>
 				<dt><?= e($slot['label']) ?></dt><dd><?= $provider($slot) ?></dd>
 			<?php endforeach; ?>
-			<dt>Utility</dt><dd><?= e($p['utility_name'] ?? '') ?></dd>
+			<dt>Utility</dt><dd><strong><?= e($p['utility_name'] ?? '') ?></strong><?php foreach ($workOrders as $wo): ?>&nbsp;&middot; <span class="work-order"><?= e($wo) ?></span><?php endforeach; ?></dd>
 			<dt>Designer</dt><dd><?= e($p['designer_name'] ?? '') ?></dd>
 			<dt>Installer</dt><dd><?= e($p['installer_name'] ?? 'Trifecta (in-house)') ?></dd>
 		</dl>
