@@ -85,6 +85,22 @@ function clear_old(): void
 	unset($_SESSION['old']);
 }
 
+/**
+ * A stored link that is safe to put in an href: an http(s) address with a host, or null.
+ * javascript:, data: and other schemes, and anything with control characters, are refused.
+ */
+function safe_url(?string $url): ?string
+{
+	$url = trim((string) $url);
+	return preg_match('#^https?://[^\s/?\#@]+#i', $url) && !preg_match('/[\x00-\x1F\x7F\s]/', $url) ? $url : null;
+}
+
+/** Form check for a link field: null when blank or a safe http(s) address, else the message to show. */
+function link_error(string $label, ?string $url): ?string
+{
+	return trim((string) $url) === '' || safe_url($url) !== null ? null : $label . ' must be a web address starting with https://';
+}
+
 /** Cache-busted URL for a file in public/. */
 function asset(string $path): string
 {

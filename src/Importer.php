@@ -106,7 +106,7 @@ final class Importer
 			'building_org_id' => $muni['building_org_id'] ?? null,
 			'inspection_by' => $agencyId ? 'third_party' : ($muni['inspection_by'] ?? null),
 			'inspection_org_id' => $agencyId ?: ($muni['inspection_org_id'] ?? null),
-			'drive_url' => $p['drive_url'],
+			'drive_url' => safe_url($p['drive_url'] ?? null),
 			'status_note' => $p['status_note'],
 			'hold_state' => $p['hold_state'],
 			'hold_reason' => $p['hold_reason'],

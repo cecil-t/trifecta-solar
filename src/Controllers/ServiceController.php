@@ -205,6 +205,11 @@ final class ServiceController
 		if ($data['description'] === '') {
 			throw new \InvalidArgumentException('Describe the problem or request.');
 		}
+		foreach (['drive_url' => 'The Drive folder link', 'monitoring_url' => 'The monitoring portal link'] as $k => $label) {
+			if ($error = link_error($label, $data[$k])) {
+				throw new \InvalidArgumentException($error);
+			}
+		}
 		if ($data['invoiced_on'] || $data['invoice_number']) {
 			$data['invoiced'] = 1;
 		}

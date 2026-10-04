@@ -266,8 +266,8 @@ final class ProjectController
 		if (Db::value('SELECT id FROM projects WHERE name = ? COLLATE NOCASE AND id <> ?', [$data['name'], $id ?? 0])) {
 			throw new \InvalidArgumentException('Another project is already named "' . $data['name'] . '". Project names must be unique.');
 		}
-		if ($data['drive_url'] && !preg_match('#^https?://#i', $data['drive_url'])) {
-			throw new \InvalidArgumentException('The Drive folder link should start with https://');
+		if ($error = link_error('The Drive folder link', $data['drive_url'])) {
+			throw new \InvalidArgumentException($error);
 		}
 
 		// New customer typed inline

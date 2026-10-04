@@ -69,7 +69,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 				<td><strong><?= e($p['project_number']) ?></strong></td>
 				<td>
 					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a>
-					<?php if ($p['drive_url']): ?><a href="<?= e($p['drive_url']) ?>" target="_blank" rel="noopener" class="drive-link" title="Open Google Drive folder">Drive &#8599;</a><?php endif; ?>
+					<?php if ($drive = safe_url($p['drive_url'])): ?><a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="drive-link" title="Open Google Drive folder">Drive &#8599;</a><?php endif; ?>
 					<?php if ($p['status_note']): ?><div class="muted small cell-note"><?= e($p['status_note']) ?></div><?php endif; ?>
 				</td>
 				<td><?= e($p['sales_initials'] ?? '') ?></td>

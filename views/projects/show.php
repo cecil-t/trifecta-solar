@@ -83,8 +83,8 @@ $back = '/projects/' . (int) $p['id'];
 		<?php if ($p['status_note']): ?><p class="status-note"><?= e($p['status_note']) ?></p><?php endif; ?>
 	</div>
 	<div class="head-actions">
-		<?php if ($p['drive_url']): ?>
-			<a href="<?= e($p['drive_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive folder &#8599;</a>
+		<?php if ($drive = safe_url($p['drive_url'])): ?>
+			<a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive folder &#8599;</a>
 		<?php else: ?>
 			<a href="/projects/<?= (int) $p['id'] ?>/edit" class="btn btn-ghost">+ Add Drive folder link</a>
 		<?php endif; ?>

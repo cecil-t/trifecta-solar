@@ -25,14 +25,14 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 		</div>
 	</div>
 	<div class="head-actions">
-		<?php if ($t['drive_url']): ?>
-			<a href="<?= e($t['drive_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive service folder &#8599;</a>
+		<?php if ($drive = safe_url($t['drive_url'])): ?>
+			<a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive service folder &#8599;</a>
 		<?php endif; ?>
-		<?php if ($t['monitoring_url']): ?>
-			<a href="<?= e($t['monitoring_url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Monitoring portal &#8599;</a>
+		<?php if ($monitoring = safe_url($t['monitoring_url'])): ?>
+			<a href="<?= e($monitoring) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Monitoring portal &#8599;</a>
 		<?php endif; ?>
-		<?php if (!$t['drive_url'] || !$t['monitoring_url']): ?>
-			<a href="<?= $back ?>/edit" class="btn btn-ghost">+ Add <?= !$t['drive_url'] && !$t['monitoring_url'] ? 'Drive / monitoring links' : (!$t['drive_url'] ? 'Drive folder link' : 'monitoring link') ?></a>
+		<?php if (!$drive || !$monitoring): ?>
+			<a href="<?= $back ?>/edit" class="btn btn-ghost">+ Add <?= !$drive && !$monitoring ? 'Drive / monitoring links' : (!$drive ? 'Drive folder link' : 'monitoring link') ?></a>
 		<?php endif; ?>
 		<a href="<?= $back ?>/edit" class="btn btn-primary">Edit</a>
 	</div>
@@ -153,7 +153,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 	<form method="post" action="<?= $back ?>/visits" class="visit-add">
 		<?= Csrf::field() ?>
 		<label>Date <input type="date" name="visit_date" value="<?= date('Y-m-d') ?>"></label>
-		<label class="grow">Who went <input type="text" name="crew" placeholder="e.g. Staff, Crew Member"></label>
+		<label class="grow">Who went <input type="text" name="crew" placeholder="e.g. Chris, Pat"></label>
 		<label class="short">Man-hours <input type="text" name="man_hours" inputmode="decimal" placeholder="2"></label>
 		<label class="short">Trips <input type="number" name="trips" value="1" min="0"></label>
 		<label class="grow-2">What was done <input type="text" name="note" placeholder="e.g. Replaced bad MC4 on string 3"></label>
