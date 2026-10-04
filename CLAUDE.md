@@ -4,8 +4,14 @@ Read README.md for the feature list and layout. This file covers how to work in 
 
 ## Hard rules
 
-- **No customer data in git, ever.** That covers import.json, service.json, contracts, the tracker .xlsx, Drive listings and DB backups. `/import/`, `/data/` and `/backups/` are gitignored. Keep those files in the session scratchpad, and hand them to Greg through file delivery, never a commit.
-- Per-project and staff data for `tools/import/` (customer names, site addresses, hand-read contracts, municipality checks, salesperson emails, crew names) lives in `import/overrides.json`, never in the scripts. The repo is public: no staff names or emails in code, migrations, UI text or docs either (accounts are created through /setup and Users). Greg keeps that file. Example strings in comments must be fictional. History was rewritten on 2026-10-04 to remove what had been committed.
+- **The repo is public. Nothing person-specific or environment-specific goes into git, ever:** not in code, migrations, comments, UI text, docs or commit messages.
+  - Customer data: names, addresses, phones, emails, contract prices, import.json, service.json, contracts, the tracker .xlsx, Drive listings, DB backups.
+  - Staff data: names, emails, initials tied to a person, crew lists. Accounts are created through /setup and Users.
+  - Environment data: live hostnames and ports, IP addresses, personal domains, credentials, anything from the NAS `.env`.
+  - Where it goes instead: gitignored files (`/import/`, `/data/`, `/backups/`, `.env`). Per-project and staff data for `tools/import/` is in `import/overrides.json`, which Greg keeps. Hand such files to Greg through file delivery from the session scratchpad, never a commit.
+  - Examples in comments, placeholders and docs use made-up names and example.com.
+  - Allowed: Greg's name in the About credits, the company name, generic setup defaults (Docker port 8089, Synology paths), and the repo URL.
+  - Customer and staff data were scrubbed from all history on 2026-10-04 with two `git filter-repo` rewrites. Check every commit before pushing; a slip means another rewrite and a NAS reset.
 - **Live data is edited by hand now.** Imports and fix scripts are add-only or fill-blanks-only. Never run or suggest `import:projects --replace`. Only overwrite a field when Greg names it.
 - **No em dashes** anywhere: UI text, comments, commit messages, replies.
 - Every data-changing console command gets a `--dry-run`, and Greg runs the dry run before the real one.
