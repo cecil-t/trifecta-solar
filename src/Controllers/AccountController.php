@@ -7,9 +7,10 @@ use App\Activity;
 use App\Auth;
 use App\Db;
 use App\Password;
+use App\Users;
 use App\View;
 
-/** The signed-in user's own profile: password and devices. */
+/** The signed-in user's own profile: initials, password and devices. */
 final class AccountController
 {
 	public function show(): void
@@ -19,6 +20,22 @@ final class AccountController
 			[Auth::id()]
 		);
 		View::render('account', ['title' => 'My account', 'user' => Auth::user(), 'devices' => $devices]);
+	}
+
+	public function profile(): void
+	{
+		$before = Db::one('SELECT * FROM users WHERE id = ?', [Auth::id()]);
+		$data = ['initials' => Users::cleanInitials($_POST['initials'] ?? '')];
+		if ($error = Users::initialsError($data['initials'], Auth::id())) {
+			flash('error', $error);
+			redirect('/account');
+		}
+		Db::transaction(function () use ($before, $data) {
+			Db::update('users', Auth::id(), $data + ['updated_at' => now_utc()]);
+			Activity::changes('user', Auth::id(), $before, $data, ['initials' => 'Initials']);
+		});
+		flash('success', 'Initials saved.');
+		redirect('/account');
 	}
 
 	public function password(): void

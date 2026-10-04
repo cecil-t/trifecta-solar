@@ -7,23 +7,37 @@
 </div>
 
 <div class="grid-2">
-	<section class="card">
-		<h2>Change password</h2>
-		<form method="post" action="/account/password" class="stack">
-			<?= Csrf::field() ?>
-			<label>Current password
-				<input type="password" name="current_password" autocomplete="current-password" required>
-			</label>
-			<label>New password
-				<input type="password" name="password" autocomplete="new-password" required minlength="8">
-			</label>
-			<label>Confirm new password
-				<input type="password" name="password_confirm" autocomplete="new-password" required minlength="8">
-			</label>
-			<p class="hint"><?= e(App\Password::RULES) ?></p>
-			<div><button class="btn btn-primary">Update password</button></div>
-		</form>
-	</section>
+	<div class="stack">
+		<section class="card">
+			<h2>Profile</h2>
+			<form method="post" action="/account/profile" class="stack">
+				<?= Csrf::field() ?>
+				<label>Initials
+					<input type="text" name="initials" value="<?= e($user['initials'] ?? '') ?>" maxlength="4" pattern="[A-Za-z]{1,4}" class="input-short">
+				</label>
+				<p class="hint">Shown in owner and assignee lists. Up to 4 letters. Your name and email are changed by an admin.</p>
+				<div><button class="btn btn-primary">Save initials</button></div>
+			</form>
+		</section>
+
+		<section class="card">
+			<h2>Change password</h2>
+			<form method="post" action="/account/password" class="stack">
+				<?= Csrf::field() ?>
+				<label>Current password
+					<input type="password" name="current_password" autocomplete="current-password" required>
+				</label>
+				<label>New password
+					<input type="password" name="password" autocomplete="new-password" required minlength="8">
+				</label>
+				<label>Confirm new password
+					<input type="password" name="password_confirm" autocomplete="new-password" required minlength="8">
+				</label>
+				<p class="hint"><?= e(App\Password::RULES) ?></p>
+				<div><button class="btn btn-primary">Update password</button></div>
+			</form>
+		</section>
+	</div>
 
 	<section class="card">
 		<h2>Signed-in devices</h2>

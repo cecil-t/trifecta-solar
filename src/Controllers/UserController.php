@@ -7,6 +7,7 @@ use App\Activity;
 use App\Auth;
 use App\Db;
 use App\Password;
+use App\Users;
 use App\View;
 
 /** Admin-only user management. */
@@ -134,7 +135,7 @@ final class UserController
 		return [
 			'name'      => trim((string) ($_POST['name'] ?? '')),
 			'email'     => strtolower(trim((string) ($_POST['email'] ?? ''))),
-			'initials'  => strtoupper(trim((string) ($_POST['initials'] ?? ''))) ?: null,
+			'initials'  => Users::cleanInitials($_POST['initials'] ?? ''),
 			'is_admin'  => empty($_POST['is_admin']) ? 0 : 1,
 			'is_active' => empty($_POST['is_active']) ? 0 : 1,
 		];
@@ -149,6 +150,9 @@ final class UserController
 			return 'A valid email address is required.';
 		}
 		$dupe = Db::value('SELECT id FROM users WHERE email = ? AND id <> ?', [$data['email'], $id ?? 0]);
-		return $dupe ? 'Another user already has that email.' : null;
+		if ($dupe) {
+			return 'Another user already has that email.';
+		}
+		return Users::initialsError($data['initials'], $id ?? 0);
 	}
 }

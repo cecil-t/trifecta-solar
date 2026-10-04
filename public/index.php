@@ -62,6 +62,7 @@ $r->get('/', [DashboardController::class, 'index']);
 
 $r->get('/account', [AccountController::class, 'show']);
 $r->get('/about', [AboutController::class, 'show']);
+$r->post('/account/profile', [AccountController::class, 'profile']);
 $r->post('/account/password', [AccountController::class, 'password']);
 $r->post('/account/devices/{id}/revoke', [AccountController::class, 'revokeDevice']);
 $r->post('/account/devices/revoke-others', [AccountController::class, 'revokeOthers']);

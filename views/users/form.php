@@ -23,7 +23,7 @@ $val = static fn (string $k, $default = '') => $isNew ? old($k, $default) : ($u[
 				<input type="email" name="email" value="<?= e($val('email')) ?>" required>
 			</label>
 			<label>Initials
-				<input type="text" name="initials" value="<?= e($val('initials')) ?>" maxlength="4" class="input-short">
+				<input type="text" name="initials" value="<?= e($val('initials')) ?>" maxlength="4" pattern="[A-Za-z]{1,4}" class="input-short">
 			</label>
 			<label class="check"><input type="checkbox" name="is_admin" value="1" <?= $val('is_admin', 0) ? 'checked' : '' ?>> Admin</label>
 			<label class="check"><input type="checkbox" name="is_active" value="1" <?= $val('is_active', 1) ? 'checked' : '' ?>> Active (can sign in)</label>
