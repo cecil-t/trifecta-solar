@@ -1,8 +1,9 @@
-<?php use App\Weather; ?>
+<?php use App\Weather; $weatherAt = Weather::location(); ?>
 <h1 class="visually-hidden">Dashboard</h1>
-<div class="stat-group dash-weather"><span class="stat-group-label"><?= e(Weather::PLACE) ?></span>
+<?php if ($weatherAt): ?>
+<div class="stat-group dash-weather"><span class="stat-group-label"><?= e($weatherAt['place']) ?></span>
 	<?php if ($weather): ?>
-		<div class="weather" role="group" aria-label="Weather for <?= e(Weather::PLACE) ?>">
+		<div class="weather" role="group" aria-label="Weather for <?= e($weatherAt['place']) ?>">
 			<?php foreach ($weather as $w): ?>
 				<div class="wday">
 					<?= Weather::icon($w['icon']) ?>
@@ -18,6 +19,7 @@
 		<div class="weather weather-empty muted small">Weather unavailable</div>
 	<?php endif; ?>
 </div>
+<?php endif; ?>
 
 <div class="stat-group"><span class="stat-group-label">Projects</span>
 <div class="stat-row">

@@ -616,7 +616,7 @@ tr.row-flash { animation: row-flash 2.5s ease-out; }
 .est-num { color: #5b3a8a; }
 .print-only { display: none; }
 
-/* weather phones: all five days in one row that scrolls sideways, like the nav; "Manheim, PA" sits above it */
+/* weather phones: all five days in one row that scrolls sideways, like the nav; the place name sits above it */
 @media (max-width: 760px) {
 	.weather { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 1.1rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 	.weather::-webkit-scrollbar { display: none; }

@@ -5,17 +5,17 @@ services:
     container_name: trifecta-solar
     restart: unless-stopped
     ports:
-      # Host port 8089 -> container port 80. Change the left side if 8089 is taken on the NAS.
+      # Host port 8089 -> container port 80. Change the left side if 8089 is taken.
       - "8089:80"
     environment:
       - TZ=America/New_York
     volumes:
       # Code (live: git pull on the host updates the app, no rebuild needed)
       - ./:/var/www/app
-      # Live database in a Docker-managed volume. Synology shared folders use DSM ACLs that
-      # block the container's web user from writing, so the database cannot live in ./data.
+      # Live database in a Docker-managed volume, so the container's web user can always write
+      # to it whatever the host folder's permissions are.
       - trifecta-data:/var/www/app/data
-      # Nightly snapshots land in ./backups on the NAS share (written as root by the backup task)
+      # Backup snapshots land in ./backups in the repo folder (written as root by `bin/console backup`)
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://localhost/health') === false ? 1 : 0);"]
       interval: 60s

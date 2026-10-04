@@ -8,7 +8,7 @@ mkdir -p "$APP/data"
 chown -R www-data:www-data "$APP/data"
 chmod 775 "$APP/data"
 
-# backups/ is on the NAS share; snapshots are written by root via `docker exec`, so just ensure it exists.
+# backups/ is in the repo folder on the host; snapshots are written by root via `docker exec`, so just ensure it exists.
 mkdir -p "$APP/backups" 2>/dev/null || true
 
 # Apply pending database migrations. If this fails, still start Apache so the container

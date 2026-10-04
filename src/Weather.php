@@ -5,38 +5,55 @@ namespace App;
 
 /**
  * Five-day forecast (today + 4; a sideways-scrolling row on phones) for the dashboard from Open-Meteo (free, no API key).
- * Cached in data/weather.json for 30 minutes; failures just hide the widget.
+ * The location comes from .env (WEATHER_PLACE, WEATHER_LAT, WEATHER_LON); without it the dashboard shows no weather.
+ * Cached in data/weather.json for 30 minutes; failures show "Weather unavailable".
  */
 final class Weather
 {
-	public const PLACE = 'Manheim, PA';
-	private const LAT = 40.1634;
-	private const LON = -76.3950;
 	private const TTL = 1800;
 	private const DAYS = 5;
+
+	/** The configured location: ['place' => label, 'lat' => float, 'lon' => float], or null when not set. */
+	public static function location(): ?array
+	{
+		$lat = Config::get('WEATHER_LAT');
+		$lon = Config::get('WEATHER_LON');
+		if (!is_numeric($lat) || !is_numeric($lon) || abs((float) $lat) > 90 || abs((float) $lon) > 180) {
+			return null;
+		}
+		return ['place' => Config::get('WEATHER_PLACE', 'Weather'), 'lat' => round((float) $lat, 4), 'lon' => round((float) $lon, 4)];
+	}
 
 	/** @return array<int, array{date:string,label:string,code:int,hi:int,lo:int,pop:?int,desc:string,icon:string}>|null */
 	public static function forecast(): ?array
 	{
+		$loc = self::location();
+		if (!$loc) {
+			return null;
+		}
+		$key = $loc['lat'] . ',' . $loc['lon'];
 		$cacheFile = dirname(Db::path()) . '/weather.json';
 		$cached = is_file($cacheFile) ? json_decode((string) file_get_contents($cacheFile), true) : null;
-		$fresh = $cached && ($cached['fetched'] ?? 0) > time() - self::TTL && ($cached['days'][0]['date'] ?? '') === date('Y-m-d') && count($cached['days'] ?? []) >= self::DAYS;
+		$fresh = $cached && ($cached['at'] ?? '') === $key && ($cached['fetched'] ?? 0) > time() - self::TTL
+			&& ($cached['days'][0]['date'] ?? '') === date('Y-m-d') && count($cached['days'] ?? []) >= self::DAYS;
 		if (!$fresh) {
-			$days = self::fetch();
+			$days = self::fetch($loc);
 			if ($days) {
-				@file_put_contents($cacheFile, json_encode(['fetched' => time(), 'days' => $days]));
+				@file_put_contents($cacheFile, json_encode(['at' => $key, 'fetched' => time(), 'days' => $days]));
 				$cached = ['days' => $days];
+			} elseif (($cached['at'] ?? '') !== $key) {
+				$cached = null; // never show another location's forecast
 			}
 		}
 		return $cached['days'] ?? null;
 	}
 
-	private static function fetch(): ?array
+	private static function fetch(array $loc): ?array
 	{
 		$url = 'https://api.open-meteo.com/v1/forecast?' . http_build_query([
-			'latitude' => self::LAT, 'longitude' => self::LON,
+			'latitude' => $loc['lat'], 'longitude' => $loc['lon'],
 			'daily' => 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
-			'temperature_unit' => 'fahrenheit', 'timezone' => 'America/New_York', 'forecast_days' => self::DAYS,
+			'temperature_unit' => 'fahrenheit', 'timezone' => date_default_timezone_get(), 'forecast_days' => self::DAYS,
 		]);
 		$ctx = stream_context_create(['http' => ['timeout' => 4, 'header' => "User-Agent: TrifectaTracker/1.0\r\n"]]);
 		$raw = @file_get_contents($url, false, $ctx);

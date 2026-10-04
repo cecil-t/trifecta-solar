@@ -7,10 +7,10 @@ Read README.md for the feature list and layout. This file covers how to work in 
 - **The repo is public. Nothing person-specific or environment-specific goes into git, ever:** not in code, migrations, comments, UI text, docs or commit messages.
   - Customer data: names, addresses, phones, emails, contract prices, import.json, service.json, contracts, the tracker .xlsx, Drive listings, DB backups.
   - Staff data: names, emails, initials tied to a person, crew lists. Accounts are created through /setup and Users.
-  - Environment data: live hostnames and ports, IP addresses, personal domains, credentials, anything from the NAS `.env`.
+  - Environment data: live hostnames and ports, IP addresses, personal domains, credentials, anything from the live `.env`.
   - Where it goes instead: gitignored files (`/import/`, `/data/`, `/backups/`, `.env`). Per-project and staff data for `tools/import/` is in `import/overrides.json`, which Greg keeps. Hand such files to Greg through file delivery from the session scratchpad, never a commit.
   - Examples in comments, placeholders and docs use made-up names and example.com.
-  - Allowed: Greg's name in the About credits, the company name, generic setup defaults (Docker port 8089, Synology paths), and the repo URL.
+  - Allowed: Greg's name in the About credits, the company name, generic setup defaults (Docker port 8089, container name), and the repo URL.
   - Customer and staff data were scrubbed from all history on 2026-10-04 with two `git filter-repo` rewrites. Check every commit before pushing; a slip means another rewrite and a NAS reset.
 - **Live data is edited by hand now.** Imports and fix scripts are add-only or fill-blanks-only. Never run or suggest `import:projects --replace`. Only overwrite a field when Greg names it.
 - **No em dashes** anywhere: UI text, comments, commit messages, replies.
@@ -41,4 +41,4 @@ Read README.md for the feature list and layout. This file covers how to work in 
 
 ## Deploying
 
-Push to `main`. The NAS runs `git pull` hourly from 08:00 to 16:00 as root in `/volume1/docker/trifecta-solar`. Migrations apply on the next request. Console commands run as `docker exec -u root trifecta-solar php bin/console <command>`.
+Push to `main`. The live server pulls `main` on a schedule, and migrations apply on the next request. Console commands run as `docker exec -u root trifecta-solar php bin/console <command>`. Where and how it is hosted is kept out of the repo (see the project handoff notes).

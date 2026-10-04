@@ -28,7 +28,7 @@ final class ServerInfo
 	}
 
 	/**
-	 * Maker and model, e.g. "Synology DS225+". DSM exposes the model in syno_hw_version, which only
+	 * Maker and model, e.g. "Synology DS920+". DSM exposes the model in syno_hw_version, which only
 	 * exists on Synology kernels; other machines fall back to the DMI (BIOS) vendor and product.
 	 */
 	private static function model(): ?string
