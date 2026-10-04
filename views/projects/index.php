@@ -74,7 +74,13 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 				</td>
 				<td><?= e($p['sales_initials'] ?? '') ?></td>
 				<td class="num"><?= $p['dc_kw'] !== null ? number_format($p['dc_kw'], 1) : '' ?></td>
-				<td class="small"><?= e(Projects::CUSTOMER_TYPES[$p['customer_type']] ?? '') ?><?= $p['install_type'] ? '<div class="muted">' . e(Projects::INSTALL_TYPES[$p['install_type']]) . '</div>' : '' ?></td>
+				<?php
+				$scope = array_filter([
+					$p['install_type'] ? Projects::INSTALL_TYPES[$p['install_type']] : null,
+					$p['has_batteries'] ? 'Batteries' . ($p['batt_kwh'] ? ' ' . rtrim(rtrim(number_format($p['batt_kwh'], 1), '0'), '.') . ' kWh' : '') : null,
+				]);
+				?>
+				<td class="small"><?= e(Projects::CUSTOMER_TYPES[$p['customer_type']] ?? '') ?><?= $scope ? '<div class="muted">' . e(implode(' + ', $scope)) . '</div>' : '' ?></td>
 				<td class="small"><?= e($p['municipality_name'] ?? '') ?><?= $p['county_name'] ? '<div class="muted">' . e($p['county_name']) . ' Co.</div>' : '' ?></td>
 				<td>
 					<span class="phase phase-<?= e($st['phase']) ?>"><?= e(Tasks::PHASE_LABELS[$st['phase']]) ?></span>

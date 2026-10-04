@@ -79,6 +79,16 @@ final class Projects
         return $out;
     }
 
+    /** project id => total battery kWh (lines with no kWh count as 0). */
+    public static function batteryKwhMap(): array
+    {
+        $out = [];
+        foreach (Db::all('SELECT project_id, SUM(qty * COALESCE(kwh, 0)) AS kwh FROM project_batteries GROUP BY project_id') as $r) {
+            $out[(int) $r['project_id']] = (float) $r['kwh'];
+        }
+        return $out;
+    }
+
     public static function money(?int $cents): string
     {
         return $cents === null ? '' : '$' . number_format($cents / 100, 2);

@@ -61,6 +61,7 @@ final class ProjectController
 
         $tasks = Tasks::forProjects(array_column($projects, 'id'));
         $kw = Projects::dcKwMap();
+        $battKwh = Projects::batteryKwhMap();
         $counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'clear' => 0, 'all' => 0];
         $rows = [];
         foreach ($projects as $p) {
@@ -68,6 +69,7 @@ final class ProjectController
             unset($st['tree']);
             $p['status'] = $st;
             $p['dc_kw'] = $kw[(int) $p['id']] ?? null;
+            $p['batt_kwh'] = $battKwh[(int) $p['id']] ?? null;
             $onHold = $p['hold_state'] === 'on_hold';
             $isOpen = !in_array($st['phase'], ['complete', 'cancelled'], true);
             $isActive = $isOpen && !$onHold; // on-hold jobs live on their own tab
