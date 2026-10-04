@@ -129,8 +129,18 @@ try {
             out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
             break;
 
+        case 'import:todos':
+            $file = $args[1] ?? fail('Usage: import:todos <file.json> [--dry-run]');
+            if (!is_file($file)) { fail("No such file: $file"); }
+            $data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+            $dry = in_array('--dry-run', $args, true);
+            $res = (new App\TodoImporter($dry))->run($data);
+            foreach ($res['log'] as $line) { out($line); }
+            out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+            break;
+
         default:
-            out("Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] [--replace] | import:service <file.json> [--dry-run]");
+            out("Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] [--replace] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run]");
     }
 } catch (Throwable $e) {
     fail('Error: ' . $e->getMessage());
