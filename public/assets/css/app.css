@@ -763,9 +763,9 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 
 	/* compact project list: # | name + note | status + days */
 	.table-projects thead { display: none; }
-	.table-projects tbody tr { display: grid; grid-template-columns: 3.3rem minmax(0, 1fr) auto; column-gap: .55rem; row-gap: .1rem; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+	.table-projects tbody tr { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; column-gap: .4rem; row-gap: .1rem; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
 	.table-projects td { display: none; padding: 0; border: 0; white-space: normal; }
-	.table-projects td:nth-child(1) { display: block; grid-column: 1; grid-row: 1 / span 2; font-size: .88rem; padding-top: .1rem; }
+	.table-projects td:nth-child(1) { display: block; grid-column: 1; grid-row: 1 / span 2; font-size: .8rem; font-variant-numeric: tabular-nums; padding-top: .15rem; }
 	.table-projects td:nth-child(2) { display: block; grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
 	.table-projects td:nth-child(2) > a:first-child { font-weight: 600; }
 	.table-projects td:nth-child(2) .cell-note { max-width: none; font-size: .8rem; }
