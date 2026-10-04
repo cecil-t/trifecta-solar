@@ -24,7 +24,7 @@
 <div class="stat-group"><span class="stat-group-label">Projects</span>
 <div class="stat-row">
 	<a class="stat" href="/projects?phase=pre_install"><span class="stat-num"><?= $counts['pre_install'] ?></span><span class="stat-label">Pre-Install</span></a>
-	<a class="stat stat-green stat-sub" href="/projects?phase=clear" title="Part of Pre-Install"><span class="stat-num"><?= $counts['clear'] ?></span><span class="stat-label">&#8627; Clear to install</span></a>
+	<a class="stat stat-green stat-sub" href="/projects?phase=pre_install" title="Part of Pre-Install"><span class="stat-num"><?= $counts['clear'] ?></span><span class="stat-label">&#8627; Clear to install</span></a>
 	<a class="stat" href="/projects?phase=installation"><span class="stat-num"><?= $counts['installation'] ?></span><span class="stat-label">Installation</span></a>
 	<a class="stat" href="/projects?phase=closeout"><span class="stat-num"><?= $counts['closeout'] ?></span><span class="stat-label">Closeout</span></a>
 	<a class="stat stat-orange" href="/projects?phase=on_hold"><span class="stat-num"><?= $counts['on_hold'] ?></span><span class="stat-label">On hold</span></a>

@@ -32,7 +32,7 @@ final class ProjectController
 	public function index(): void
 	{
 		$filter = [
-			'phase' => ($ph = $_GET['phase'] ?? 'active') === 'archived' ? 'complete' : $ph, // old links
+			'phase' => match ($ph = $_GET['phase'] ?? 'active') { 'archived' => 'complete', 'clear' => 'pre_install', default => $ph }, // old links
 			'sales' => (int) ($_GET['sales'] ?? 0),
 			'q'     => trim((string) ($_GET['q'] ?? '')),
 		];
@@ -62,7 +62,7 @@ final class ProjectController
 		$tasks = Tasks::forProjects(array_column($projects, 'id'));
 		$kw = Projects::dcKwMap();
 		$battKwh = Projects::batteryKwhMap();
-		$counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'clear' => 0, 'all' => 0];
+		$counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'all' => 0];
 		$rows = [];
 		foreach ($projects as $p) {
 			$st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
@@ -73,19 +73,16 @@ final class ProjectController
 			$onHold = $p['hold_state'] === 'on_hold';
 			$isOpen = !in_array($st['phase'], ['complete', 'cancelled'], true);
 			$isActive = $isOpen && !$onHold; // on-hold jobs live on their own tab
-			$clearToStart = $st['phase'] === 'pre_install' && $st['clear_to_install'] && !$onHold;
 
 			$counts['all']++;
 			if (!($onHold && $isOpen)) { $counts[$st['phase']]++; } // on-hold jobs only count on their own tab
 			if ($isActive) { $counts['active']++; }
 			if ($onHold && $isOpen) { $counts['on_hold']++; }
-			if ($clearToStart) { $counts['clear']++; }
 
 			$keep = match ($filter['phase']) {
 				'all'     => true,
 				'active'  => $isActive,
 				'on_hold' => $onHold && $isOpen,
-				'clear'   => $clearToStart,
 				default   => $st['phase'] === $filter['phase'] && !($onHold && $isOpen),
 			};
 			if ($keep) {

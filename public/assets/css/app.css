@@ -261,14 +261,10 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
 .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 .tab-count { background: #eef1f0; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; margin-left: .2rem; }
 .tab.active .tab-count { background: var(--blue-50); }
-/* "Clear to install" is a slice of Pre-Install: tuck it against its parent tab */
-.tab-sub { font-size: .82rem; padding-left: .2rem; margin-left: -.45rem; color: #6b7a72; }
-.tab-sub-mark { color: var(--green); font-weight: 700; margin-right: .2rem; }
 /* projects: a thin bracket over Active through Closeout, the tabs that make up Active */
 .tabs-grouped { align-items: flex-end; }
 .tab-group { display: flex; gap: .25rem; position: relative; padding-top: 7px; flex-shrink: 0; }
 .tab-group::before { content: ''; position: absolute; top: 1px; left: .35rem; right: .35rem; height: 5px; border: 2px solid #b8c7d0; border-bottom: 0; border-radius: 4px 4px 0 0; pointer-events: none; }
-.tab-sub.active { color: #3f7a24; border-bottom-color: var(--green); }
 .stat-sub { background: #fafcf8; }
 .stat-sub .stat-num { font-size: 1.35rem; }
 .filters { display: flex; gap: .5rem; margin-bottom: .9rem; flex-wrap: wrap; }
