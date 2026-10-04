@@ -294,8 +294,10 @@ tr.clickable { cursor: pointer; }
 /* project # a step smaller than the name, the name bold, and a tighter gap between the two columns */
 .table-projects td:nth-child(1) { font-size: .84rem; font-variant-numeric: tabular-nums; }
 @media (min-width: 761px) {
+	/* tighter rows than other tables, so more projects fit on screen */
+	.table-projects td { padding-top: .5rem; padding-bottom: .5rem; }
 	/* the smaller # sat about a pixel high next to the name; nudge it down onto the name's baseline */
-	.table-projects td:nth-child(1) { padding-top: calc(.7rem + 1.5px); }
+	.table-projects td:nth-child(1) { padding-top: calc(.5rem + 1.5px); }
 	.table-projects th:nth-child(1), .table-projects td:nth-child(1) { padding-right: .5rem; }
 	.table-projects th:nth-child(2), .table-projects td:nth-child(2) { padding-left: .75rem; }
 }
