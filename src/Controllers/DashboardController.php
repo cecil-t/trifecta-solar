@@ -14,7 +14,7 @@ final class DashboardController
 	{
 		$projects = Db::all('SELECT * FROM projects');
 		$tasks = Tasks::forProjects(array_column($projects, 'id'));
-		$counts = ['pre_install' => 0, 'clear' => 0, 'installation' => 0, 'closeout' => 0, 'on_hold' => 0];
+		$counts = ['pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'on_hold' => 0];
 		foreach ($projects as $p) {
 			$st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
 			if (in_array($st['phase'], ['complete', 'cancelled'], true)) {
@@ -25,9 +25,6 @@ final class DashboardController
 				continue; // on-hold jobs are not counted in the phase totals
 			}
 			$counts[$st['phase']]++;
-			if ($st['phase'] === 'pre_install' && $st['clear_to_install']) {
-				$counts['clear']++;
-			}
 		}
 		$service = ['open' => 0, 'to_invoice' => 0];
 		foreach (Db::all('SELECT coverage, completed_on, scheduled_on, invoiced FROM service_tickets') as $t) {

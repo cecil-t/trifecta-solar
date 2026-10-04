@@ -249,7 +249,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
 .stat-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1rem; box-shadow: var(--shadow); color: var(--text); display: flex; flex-direction: column; border-left: 4px solid var(--blue); }
 .stat:hover { text-decoration: none; border-color: var(--blue); }
-.stat-green { border-left-color: var(--green); }
+.stat-purple { border-left-color: #7a5ea8; }
 .stat-orange { border-left-color: var(--orange); }
 .stat-num { font-size: 1.7rem; font-weight: 750; color: var(--blue); line-height: 1.1; }
 .stat-label { color: var(--muted); font-size: .85rem; font-weight: 600; }
@@ -265,8 +265,6 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
 .tabs-grouped { align-items: flex-end; }
 .tab-group { display: flex; gap: .25rem; position: relative; padding-top: 7px; flex-shrink: 0; }
 .tab-group::before { content: ''; position: absolute; top: 1px; left: .35rem; right: .35rem; height: 5px; border: 2px solid #b8c7d0; border-bottom: 0; border-radius: 4px 4px 0 0; pointer-events: none; }
-.stat-sub { background: #fafcf8; }
-.stat-sub .stat-num { font-size: 1.35rem; }
 .filters { display: flex; gap: .5rem; margin-bottom: .9rem; flex-wrap: wrap; }
 .filters input[type=search] { max-width: 340px; }
 .filters select { max-width: 220px; }
@@ -556,7 +554,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.summary-3 { grid-template-columns: 1fr; }
 	.visit-add label, .visit-add label.short { flex: 1 1 40%; }
 }
-.stat-service { border-left-color: #7a5ea8; }
+.stat-service { border-left-color: var(--green); }
 .stat-service.stat-orange { border-left-color: var(--orange); }
 
 /* ---------- reports ---------- */
@@ -768,7 +766,6 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 	/* dashboard boxes: one line per label */
 	.stat-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 	.stat { min-width: 0; padding: .45rem .65rem; gap: .4rem; }
-	.stat-sub .stat-num { font-size: 1.2rem; }
 
 	/* phase headers are hidden on phones; show the phase name bar instead */
 	.phase-block .phase-title { background: var(--blue); border-radius: var(--radius) var(--radius) 0 0; padding: .6rem .9rem; }
