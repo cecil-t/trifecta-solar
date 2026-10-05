@@ -11,6 +11,10 @@ final class Projects
 		'nonprofit' => 'Non-Profit', 'government' => 'Government',
 	];
 	public const INSTALL_TYPES = ['roof' => 'Rooftop', 'ground' => 'Fixed ground mount', 'tracker' => 'Dual-axis tracker'];
+	public const INVERTER_INTERNET = [
+		'none' => 'No internet', 'ethernet' => 'Customer provided Ethernet', 'wifi' => 'Customer provided Wi-Fi',
+		'cell' => 'Cell card in inverter', 'hotspot' => 'Mobile hotspot',
+	];
 
 	/** Suggest the next YYNNN project number for the current year. */
 	public static function nextNumber(): string

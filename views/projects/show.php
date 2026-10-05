@@ -146,6 +146,7 @@ $back = '/projects/' . (int) $p['id'];
 			<?php if ($eq['inverters']): ?>
 				<dt>Inverters</dt><dd><?php foreach ($eq['inverters'] as $i): ?><div><?= (int) $i['qty'] ?> &times; <?= $fmtNum($i['ac_kw'], 2) ?> kW AC<?= $i['description'] ? ' <span class="muted">' . e($i['description']) . '</span>' : '' ?></div><?php endforeach; ?></dd>
 			<?php endif; ?>
+			<dt>Internet</dt><dd><?= isset(Projects::INVERTER_INTERNET[$p['inverter_internet'] ?? '']) ? e(Projects::INVERTER_INTERNET[$p['inverter_internet']]) : '<span class="muted">Not set</span>' ?></dd>
 			<?php if ($eq['batteries']): ?>
 				<dt>Batteries</dt><dd><?php foreach ($eq['batteries'] as $b): ?><div><?= (int) $b['qty'] ?> &times; <?= $b['kwh'] ? $fmtNum($b['kwh']) . ' kWh' : 'battery' ?><?= $b['kw'] ? ' / ' . $fmtNum($b['kw']) . ' kW' : '' ?><?= $b['description'] ? ' <span class="muted">' . e($b['description']) . '</span>' : '' ?></div><?php endforeach; ?></dd>
 			<?php endif; ?>

@@ -258,6 +258,17 @@ $isNew = $id === null;
 			<?php endforeach; ?>
 			<button type="button" class="btn btn-ghost btn-small eq-add">+ Inverter line</button>
 		</div>
+		<div class="grid-form mt-sm">
+			<label class="span-2">Inverter internet
+				<select name="inverter_internet">
+					<option value="">Choose</option>
+					<?php foreach (Projects::INVERTER_INTERNET as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $sel($v('inverter_internet'), $k) ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">How the inverter reports to monitoring.</small>
+			</label>
+		</div>
 
 		<div id="battery-block" <?= $v('has_batteries') ? '' : 'hidden' ?>>
 			<h3 class="sub">Batteries</h3>
