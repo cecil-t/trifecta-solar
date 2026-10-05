@@ -91,6 +91,7 @@ $r->get('/projects/{id}', [ProjectController::class, 'show']);
 $r->get('/projects/{id}/edit', [ProjectController::class, 'edit']);
 $r->post('/projects/{id}', [ProjectController::class, 'update']);
 $r->post('/projects/{id}/comments', [ProjectController::class, 'comment']);
+$r->post('/projects/{id}/notes', [ProjectController::class, 'saveNotes']);
 $r->post('/projects/{id}/tasks', [ProjectController::class, 'addTask']);
 $r->post('/projects/{id}/tasks/from-template', [ProjectController::class, 'addFromTemplate']);
 $r->post('/projects/{id}/tasks/{taskId}', [ProjectController::class, 'updateTask']);

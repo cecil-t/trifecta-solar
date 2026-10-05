@@ -114,7 +114,7 @@ final class ProjectController
 	{
 		$p = $this->find($id);
 		$p['funding_ids'] = array_map('intval', array_column(Db::all('SELECT funding_source_id FROM project_funding WHERE project_id = ?', [$id]), 'funding_source_id'));
-		$this->form($p + Projects::equipment($id), $id);
+		$this->form($p + Projects::equipment($id) + ['roofs' => Projects::roofs($id)], $id);
 	}
 
 	private function form(array $p, ?int $id): void
@@ -143,13 +143,14 @@ final class ProjectController
 	{
 		try {
 			$id = Db::transaction(function () {
-				[$data, $equipment, $funding] = $this->input(null);
+				[$data, $equipment, $funding, $roofs] = $this->input(null);
 				$data['created_by'] = Auth::id();
 				if ($data['municipality_id']) {
 					$data = $this->applyMunicipalityDefaults($data);
 				}
 				$id = Db::insert('projects', $data);
 				$this->saveEquipment($id, $equipment);
+				$this->saveRoofs($id, $roofs);
 				$this->saveFunding($id, $funding);
 				Tasks::instantiate($id, (bool) $data['has_pv'], (bool) $data['has_batteries']);
 
@@ -166,6 +167,7 @@ final class ProjectController
 			redirect('/projects/new');
 		}
 		flash('success', 'Project created with the standard task list. Adjust tasks below as needed.');
+		$this->roofCountNotice($id);
 		redirect('/projects/' . $id);
 	}
 
@@ -174,9 +176,10 @@ final class ProjectController
 		$before = $this->find($id);
 		$beforeEq = Projects::equipment($id);
 		$beforeFunding = $this->fundingNames($id);
+		$beforeRoofs = $this->roofSummary(Projects::roofs($id));
 		try {
-			Db::transaction(function () use ($id, $before, $beforeEq, $beforeFunding) {
-				[$data, $equipment, $funding] = $this->input($id);
+			Db::transaction(function () use ($id, $before, $beforeEq, $beforeFunding, $beforeRoofs) {
+				[$data, $equipment, $funding, $roofs] = $this->input($id);
 				if ($data['municipality_id'] && (int) $data['municipality_id'] !== (int) $before['municipality_id']) {
 					$data = $this->applyMunicipalityDefaults($data, true);
 				}
@@ -188,6 +191,8 @@ final class ProjectController
 				foreach (['modules' => 'Modules', 'inverters' => 'Inverters', 'batteries' => 'Batteries'] as $k => $label) {
 					Activity::changes('project', $id, [$k => $this->eqSummary($k, $beforeEq[$k])], [$k => $this->eqSummary($k, $afterEq[$k])], [$k => $label]);
 				}
+				$this->saveRoofs($id, $roofs);
+				Activity::changes('project', $id, ['r' => $beforeRoofs], ['r' => $this->roofSummary(Projects::roofs($id))], ['r' => 'Roof faces']);
 				$this->saveFunding($id, $funding);
 				Activity::changes('project', $id, ['f' => $beforeFunding], ['f' => $this->fundingNames($id)], ['f' => 'Funding']);
 
@@ -206,10 +211,11 @@ final class ProjectController
 			redirect('/projects/' . $id . '/edit');
 		}
 		flash('success', 'Project saved.');
+		$this->roofCountNotice($id);
 		redirect('/projects/' . $id);
 	}
 
-	/** @return array{0:array,1:array,2:int[]} */
+	/** @return array{0:array,1:array,2:int[],3:array} */
 	private function input(?int $id): array
 	{
 		$s = static fn (string $k) => ($v = trim((string) ($_POST[$k] ?? ''))) === '' ? null : $v;
@@ -302,7 +308,76 @@ final class ProjectController
 			'batteries' => $this->rows('batteries', ['qty', 'kwh', 'kw', 'description']),
 		];
 		$funding = array_values(array_filter(array_map('intval', (array) ($_POST['funding'] ?? []))));
-		return [$data, $equipment, $funding];
+		return [$data, $equipment, $funding, $this->roofRows()];
+	}
+
+	/** Roof face lines from the form; a line with nothing filled in is skipped. */
+	private function roofRows(): array
+	{
+		$out = [];
+		foreach ((array) ($_POST['roofs'] ?? []) as $r) {
+			$r = (array) $r;
+			$name = trim((string) ($r['name'] ?? '')) ?: null;
+			$material = isset(Projects::ROOF_MATERIALS[$r['material'] ?? '']) ? $r['material'] : null;
+			$azRaw = trim(str_replace('°', '', (string) ($r['azimuth'] ?? '')));
+			$panelsRaw = trim((string) ($r['panels'] ?? ''));
+			$tilt = Projects::parseTilt((string) ($r['tilt'] ?? ''));
+			if ($name === null && $material === null && $azRaw === '' && $tilt === null && $panelsRaw === '') {
+				continue;
+			}
+			$label = $name ?? 'Roof face ' . (count($out) + 1);
+			if ($azRaw !== '' && (!preg_match('/^\d{1,3}$/', $azRaw) || (int) $azRaw > 360)) {
+				throw new \InvalidArgumentException($label . ': azimuth should be 0 to 359 degrees (180 is due south).');
+			}
+			if ($panelsRaw !== '' && !preg_match('/^\d{1,5}$/', $panelsRaw)) {
+				throw new \InvalidArgumentException($label . ': panels should be a whole number.');
+			}
+			$out[] = [
+				'name' => $name, 'material' => $material,
+				'azimuth' => $azRaw === '' ? null : (int) $azRaw % 360,
+				'tilt' => $tilt,
+				'panels' => $panelsRaw === '' ? null : (int) $panelsRaw,
+			];
+		}
+		return $out;
+	}
+
+	private function saveRoofs(int $id, array $roofs): void
+	{
+		Db::run('DELETE FROM project_roofs WHERE project_id = ?', [$id]);
+		foreach ($roofs as $i => $row) {
+			Db::insert('project_roofs', $row + ['project_id' => $id, 'sort_order' => $i]);
+		}
+	}
+
+	/** One line per roof face for the project log, e.g. "East face: 18 panels, Asphalt shingle, az 180, tilt 26.6". */
+	private function roofSummary(array $roofs): string
+	{
+		$parts = [];
+		foreach ($roofs as $i => $r) {
+			$bits = array_filter([
+				$r['panels'] !== null ? $r['panels'] . ' panels' : null,
+				Projects::ROOF_MATERIALS[$r['material'] ?? ''] ?? null,
+				$r['azimuth'] !== null ? 'az ' . $r['azimuth'] : null,
+				$r['tilt'] !== null ? 'tilt ' . rtrim(rtrim(number_format((float) $r['tilt'], 1), '0'), '.') : null,
+			]);
+			$parts[] = ($r['name'] ?: 'Roof face ' . ($i + 1)) . ($bits ? ': ' . implode(', ', $bits) : '');
+		}
+		return implode('; ', $parts);
+	}
+
+	/** After a save, point out when the roof faces don't add up to the panel count. */
+	private function roofCountNotice(int $id): void
+	{
+		$roofs = Projects::roofs($id);
+		$allocated = array_sum(array_map(static fn ($r) => (int) $r['panels'], $roofs));
+		if (!$roofs || $allocated === 0) {
+			return;
+		}
+		$panels = Projects::totals(Projects::equipment($id), null)['panels'];
+		if ($allocated !== $panels) {
+			flash('info', 'Roof faces add up to ' . $allocated . ' panels, but the module lines total ' . $panels . '.');
+		}
 	}
 
 	private function rows(string $key, array $cols): array
@@ -417,11 +492,15 @@ final class ProjectController
 		$contacts = Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [$p['customer_id'] ?? 0]);
 		$templateTasks = Db::all('SELECT id, name, phase FROM task_templates WHERE parent_id IS NULL AND is_active = 1 ORDER BY phase, sort_order');
 
+		$noteDraft = $_SESSION['notes_draft'][$id] ?? null;
+		unset($_SESSION['notes_draft'][$id]);
+
 		View::render('projects/show', [
 			'title' => $p['project_number'] . ' ' . $p['name'],
 			'listUrl' => ($_SESSION['projects_list'] ?? '/projects') . '#project-' . $id,
 			'todos' => \App\Todos::forProject($id),
 			'p' => $p, 'status' => $status, 'tree' => $status['tree'], 'eq' => $eq,
+			'roofs' => Projects::roofs($id), 'noteDraft' => $noteDraft,
 			'totals' => Projects::totals($eq, $p['contract_price_cents'] !== null ? (int) $p['contract_price_cents'] : null),
 			'funding' => $this->fundingNames($id),
 			'contacts' => $contacts,
@@ -431,6 +510,34 @@ final class ProjectController
 			'lastComment' => Activity::latestComment('project', $id),
 			'commentsOnly' => $commentsOnly,
 		]);
+	}
+
+	/**
+	 * Save the project notes. The form carries the notes_updated_at it was loaded with; if someone
+	 * else saved in the meantime, nothing is overwritten and the user's text comes back as a draft
+	 * next to the saved version, so a second Save is a deliberate overwrite.
+	 */
+	public function saveNotes(int $id): void
+	{
+		$p = $this->find($id);
+		$notes = rtrim(str_replace("\r\n", "\n", (string) ($_POST['notes'] ?? '')));
+		$notes = $notes === '' ? null : $notes;
+		if (mb_strlen((string) $notes) > 100000) {
+			flash('error', 'Notes are limited to 100,000 characters.');
+			redirect('/projects/' . $id . '#notes');
+		}
+		$seen = (string) ($_POST['notes_seen'] ?? '');
+		if ($seen !== (string) ($p['notes_updated_at'] ?? '') && (string) $notes !== (string) ($p['notes'] ?? '')) {
+			$_SESSION['notes_draft'][$id] = (string) $notes;
+			flash('error', ($p['notes_updated_by_name'] ?? 'Someone') . ' saved the notes while you were editing. Your text is below, next to the saved version. Merge them and Save again.');
+			redirect('/projects/' . $id . '#notes');
+		}
+		if ((string) $notes !== (string) ($p['notes'] ?? '')) {
+			Db::update('projects', $id, ['notes' => $notes, 'notes_updated_by' => Auth::id(), 'notes_updated_at' => now_utc(), 'updated_at' => now_utc()]);
+			Activity::changes('project', $id, ['notes' => $p['notes']], ['notes' => $notes], ['notes' => 'Notes']);
+			flash('success', 'Notes saved.');
+		}
+		redirect('/projects/' . $id . '#notes');
 	}
 
 	// ------------------------------------------------------------------ tasks (JSON + forms)

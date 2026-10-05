@@ -15,6 +15,7 @@ $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array
 </div>
 
 <form class="filters" method="get" action="/tasks">
+	<input type="hidden" name="tab" value="<?= e($tab) ?>">
 	<input type="search" name="q" value="<?= e($q) ?>" placeholder="Search tasks, project, ticket #">
 	<?php if (in_array($tab, ['open', 'done', 'all'], true)): ?>
 		<select name="who" data-autosubmit>

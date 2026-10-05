@@ -23,7 +23,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
 
 - PHP 8.3 with no framework. `src/` holds classes (namespace `App\`) and `src/Controllers/`. Views are plain PHP in `views/`, rendered through `View::render`, and `HtmlIndent::tidy` re-indents the output.
 - All code is indented with **tabs** (PHP, views, CSS, JS, SQL, Python, config); `.editorconfig` sets it. Only YAML and Markdown use spaces. A 1 to 3 space remainder after the tabs is fine for docblock ` *` lines and SQL alignment.
-- Schema changes go in a new numbered file in `migrations/` (next is 014). Migrations apply automatically on start and on each request.
+- Schema changes go in a new numbered file in `migrations/` (next is 015). Migrations apply automatically on start and on each request.
 - All writes go through `Activity::changes` / `Activity::event` so the project or ticket log records them.
 - Security:
   - Escape every value in views with `e()` (or cast to int/float). User links render only through `safe_url()`. JS never uses `innerHTML` with data.

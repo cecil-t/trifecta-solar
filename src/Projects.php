@@ -18,6 +18,11 @@ final class Projects
 	public const SREC_PROVIDERS = [
 		'flett' => 'Flett Exchange', 'sol_systems' => 'Sol Systems', 'knollwood' => 'Knollwood Energy', 'xpansive' => 'Xpansive (SREC Trade)',
 	];
+	public const ROOF_MATERIALS = [
+		'shingle' => 'Asphalt shingle', 'standing_seam' => 'Standing seam metal',
+		'exposed_fastener' => 'Exposed-fastener metal', 'slate' => 'Slate', 'tile' => 'Tile',
+		'membrane' => 'Flat membrane (EPDM / TPO)', 'wood_shake' => 'Wood shake', 'other' => 'Other',
+	];
 
 	/** Suggest the next YYNNN project number for the current year. */
 	public static function nextNumber(): string
@@ -33,7 +38,7 @@ final class Projects
 			'SELECT p.*, c.name AS customer_name, u.name AS salesperson_name, u.initials AS salesperson_initials,
 					ut.name AS utility_name, m.name AS municipality_name, co.name AS county_name, co.state_code AS county_state,
 					zo.name AS zoning_org_name, bo.name AS building_org_name, io.name AS inspection_org_name,
-					de.name AS designer_name, ins.name AS installer_name
+					de.name AS designer_name, ins.name AS installer_name, nu.name AS notes_updated_by_name
 			 FROM projects p
 			 LEFT JOIN organizations c ON c.id = p.customer_id
 			 LEFT JOIN users u ON u.id = p.salesperson_id
@@ -45,6 +50,7 @@ final class Projects
 			 LEFT JOIN organizations io ON io.id = p.inspection_org_id
 			 LEFT JOIN organizations de ON de.id = p.designer_org_id
 			 LEFT JOIN organizations ins ON ins.id = p.installer_org_id
+			 LEFT JOIN users nu ON nu.id = p.notes_updated_by
 			 WHERE p.id = ?',
 			[$id]
 		);
@@ -57,6 +63,42 @@ final class Projects
 			'inverters' => Db::all('SELECT * FROM project_inverters WHERE project_id = ? ORDER BY sort_order, id', [$projectId]),
 			'batteries' => Db::all('SELECT * FROM project_batteries WHERE project_id = ? ORDER BY sort_order, id', [$projectId]),
 		];
+	}
+
+	/** Roof faces of a rooftop project, in display order. */
+	public static function roofs(int $projectId): array
+	{
+		return Db::all('SELECT * FROM project_roofs WHERE project_id = ? ORDER BY sort_order, id', [$projectId]);
+	}
+
+	/**
+	 * A roof tilt typed as degrees ("27", "26.6") or as a roofer's pitch ("6/12", "6:12"), in degrees.
+	 * Null when blank; throws when it can't be read or is out of range.
+	 */
+	public static function parseTilt(string $raw): ?float
+	{
+		$raw = trim(str_replace(['°', 'deg'], '', $raw));
+		if ($raw === '') {
+			return null;
+		}
+		if (preg_match('#^(\d+(?:\.\d+)?)\s*[/:]\s*12$#', $raw, $m)) {
+			$deg = rad2deg(atan((float) $m[1] / 12));
+		} elseif (is_numeric($raw)) {
+			$deg = (float) $raw;
+		} else {
+			throw new \InvalidArgumentException('Roof tilt "' . $raw . '" should be degrees (e.g. 27) or a pitch (e.g. 6/12).');
+		}
+		if ($deg < 0 || $deg > 90) {
+			throw new \InvalidArgumentException('Roof tilt must be between 0 and 90 degrees.');
+		}
+		return round($deg, 1);
+	}
+
+	/** Compass point for an azimuth in degrees (180 = S). */
+	public static function compass(int $deg): string
+	{
+		$points = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+		return $points[(int) round((($deg % 360) + 360) % 360 / 22.5) % 16];
 	}
 
 	/** DC/AC kW, ratio, storage, and $/W from equipment lines and contract price. */

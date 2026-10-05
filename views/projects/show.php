@@ -77,6 +77,11 @@ $answer = static function (string $name) use ($tree): string {
 };
 $siteAddr = trim(implode(', ', array_filter([trim((string) $p['site_street']), trim((string) $p['site_city']), trim(($p['site_state'] ?? '') . ' ' . ($p['site_zip'] ?? ''))])));
 $fmtNum = static fn ($n, $d = 1) => rtrim(rtrim(number_format((float) $n, $d), '0'), '.');
+$roofPanels = array_sum(array_map(static fn ($r) => (int) $r['panels'], $roofs));
+// Roofer's pitch for a tilt in degrees, to the nearest half inch of rise (26.6 degrees is 6/12)
+$pitch = static function (float $deg) use ($fmtNum): string {
+	return $deg > 0 && $deg < 90 ? $fmtNum(round(tan(deg2rad($deg)) * 24) / 2) . '/12' : '';
+};
 $back = '/projects/' . (int) $p['id'];
 ?>
 <div class="project-head" data-project="<?= (int) $p['id'] ?>" data-csrf="<?= e(Csrf::token()) ?>">
@@ -152,8 +157,32 @@ $back = '/projects/' . (int) $p['id'];
 				<dt>Batteries</dt><dd><?php foreach ($eq['batteries'] as $b): ?><div><?= (int) $b['qty'] ?> &times; <?= $b['kwh'] ? $fmtNum($b['kwh']) . ' kWh' : 'battery' ?><?= $b['kw'] ? ' / ' . $fmtNum($b['kw']) . ' kW' : '' ?><?= $b['description'] ? ' <span class="muted">' . e($b['description']) . '</span>' : '' ?></div><?php endforeach; ?></dd>
 			<?php endif; ?>
 			<dt>Install</dt><dd><?= e(Projects::INSTALL_TYPES[$p['install_type']] ?? '') ?><?= $p['racking'] ? ' &middot; ' . e($p['racking']) : '' ?></dd>
-			<?php if ($p['est_annual_kwh']): ?><dt>Est. annual</dt><dd><?= number_format((int) $p['est_annual_kwh']) ?> kWh</dd><?php endif; ?>
 		</dl>
+		<?php if ($roofs): ?>
+			<details class="roof-details">
+				<summary>Roof details <span class="muted small">(<?= count($roofs) ?> <?= count($roofs) === 1 ? 'face' : 'faces' ?><?= $roofPanels ? ', ' . $roofPanels . ' panels' : '' ?>)</span></summary>
+				<ul class="roof-list">
+					<?php foreach ($roofs as $i => $r): ?>
+						<li>
+							<div class="roof-name"><strong><?= e($r['name'] ?: 'Roof face ' . ($i + 1)) ?></strong><?php if ($r['panels'] !== null): ?><span><?= (int) $r['panels'] ?> panels</span><?php endif; ?></div>
+							<?php
+							$bits = array_filter([
+								isset(Projects::ROOF_MATERIALS[$r['material'] ?? '']) ? e(Projects::ROOF_MATERIALS[$r['material']]) : null,
+								$r['azimuth'] !== null ? 'Azimuth ' . (int) $r['azimuth'] . '&deg; ' . Projects::compass((int) $r['azimuth']) : null,
+								$r['tilt'] !== null ? 'Tilt ' . $fmtNum($r['tilt']) . '&deg;' . (($pt = $pitch((float) $r['tilt'])) !== '' ? ' (' . $pt . ')' : '') : null,
+							]);
+							?>
+							<?php if ($bits): ?><div class="muted small"><?= implode(' &middot; ', $bits) ?></div><?php endif; ?>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+				<?php if ($roofPanels && $roofPanels !== (int) $totals['panels']): ?>
+					<p class="roof-mismatch small">Roof faces total <?= $roofPanels ?> panels; the module lines total <?= (int) $totals['panels'] ?>.</p>
+				<?php endif; ?>
+			</details>
+		<?php elseif ($p['install_type'] === 'roof'): ?>
+			<p class="muted small roof-none">No roof details yet. <a href="/projects/<?= (int) $p['id'] ?>/edit#roof-block">Add roof faces</a></p>
+		<?php endif; ?>
 	</section>
 
 	<section class="card">
@@ -161,6 +190,7 @@ $back = '/projects/' . (int) $p['id'];
 		<dl class="kv">
 			<dt>Price</dt><dd><?= $p['contract_price_cents'] !== null ? '<strong class="amount">' . e(Projects::money((int) $p['contract_price_cents'])) . '</strong>' : '<span class="muted">Not set</span>' ?></dd>
 			<?php if ($totals['price_per_watt']): ?><dt>$/W</dt><dd><strong class="amount">$<?= number_format($totals['price_per_watt'], 2) ?></strong></dd><?php endif; ?>
+			<?php if ($p['est_annual_kwh']): ?><dt>Est. annual</dt><dd><?= number_format((int) $p['est_annual_kwh']) ?> kWh</dd><?php endif; ?>
 			<dt>Funding</dt><dd><?= e($funding) ?: '<span class="muted">Not set</span>' ?><?= $p['funding_note'] ? '<div class="muted small">' . e($p['funding_note']) . '</div>' : '' ?></dd>
 			<dt>Tax exempt</dt><dd><?= $p['tax_exempt'] === null ? '<span class="muted">Unknown</span>' : ((int) $p['tax_exempt'] ? 'Yes' : 'No') ?></dd>
 			<dt>Signed</dt><dd><?= e(fmt_date($status['start_date'])) ?: '<span class="muted">Not set</span>' ?></dd>
@@ -171,6 +201,29 @@ $back = '/projects/' . (int) $p['id'];
 		</dl>
 	</section>
 </div>
+
+<div class="project-notes-row">
+<section class="card task-strip notes-card" id="notes">
+	<div class="task-strip-head">
+		<h2>Notes</h2>
+		<?php if ($p['notes_updated_at']): ?><span class="muted small" title="<?= e(fmt_dt($p['notes_updated_at'])) ?>"><?= e(trim(($p['notes_updated_by_name'] ?? '') . ', ' . time_ago($p['notes_updated_at']), ', ')) ?></span><?php endif; ?>
+	</div>
+	<?php if ($noteDraft !== null): ?>
+		<div class="notes-saved">
+			<div class="muted small">Saved version<?= $p['notes_updated_by_name'] ? ', by ' . e($p['notes_updated_by_name']) : '' ?>:</div>
+			<div class="notes-saved-text"><?= $p['notes'] !== null ? e($p['notes']) : '<em>blank</em>' ?></div>
+		</div>
+	<?php endif; ?>
+	<form method="post" action="/projects/<?= (int) $p['id'] ?>/notes" class="notes-form" data-notes<?= $noteDraft !== null ? ' data-dirty' : '' ?>>
+		<?= Csrf::field() ?>
+		<input type="hidden" name="notes_seen" value="<?= e((string) $p['notes_updated_at']) ?>">
+		<textarea name="notes" rows="6" aria-label="Project notes" placeholder="General notes: site access, customer preferences, anything that doesn't fit a task or a comment"><?= "\n" . e($noteDraft ?? (string) $p['notes']) ?></textarea>
+		<div class="notes-actions">
+			<button class="btn btn-primary btn-small" data-notes-save>Save notes</button>
+			<span class="muted small" data-notes-status></span>
+		</div>
+	</form>
+</section>
 
 <section class="card task-strip" id="todos">
 	<div class="task-strip-head">
@@ -201,6 +254,7 @@ $back = '/projects/' . (int) $p['id'];
 		<p class="muted small last-comment-empty">No comments yet. <a href="#log">Add one in the Project log</a>.</p>
 	<?php endif; ?>
 </section>
+</div>
 
 <div id="tasks" class="tasks-wrap" data-today="<?= $today ?>" data-current-phase="<?= e($status['phase']) ?>">
 	<?php foreach (Tasks::PHASES as $phaseKey => $phaseLabel): $tasks = $tree[$phaseKey]; ?>
@@ -326,3 +380,4 @@ $back = '/projects/' . (int) $p['id'];
 </section>
 
 <script src="<?= asset('assets/js/tasks.js') ?>"></script>
+<script src="<?= asset('assets/js/notes.js') ?>"></script>

@@ -14,6 +14,8 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 - **Projects:**
   - List with phase tabs (Active = Pre-Install, Installation and Closeout; Clear to install; On hold; Completed; Cancelled; All), salesperson filter and search. Completed and Cancelled fold earlier years under a header.
   - Create and edit, with customer and municipality added inline; module, inverter and battery lines with computed DC/AC kW, ratio and $/W, plus how the inverter gets internet.
+  - Roof faces for rooftop installs (name, material, azimuth, tilt in degrees or pitch, panels per face), shown as Roof details under System with a warning when the faces don't add up to the panel count.
+  - Project page: Notes (one free-text block, saved with who and when; a save never overwrites someone else's newer save), Tasks and the latest comment side by side.
   - Steps copied from an admin-editable template (task + sub-task, gates, reference # labels, default owners), edited inline (needed / target / done / ref # / owner / note), plus custom steps, duplicates and add-from-template.
   - Status: Installation when install starts, Closeout at PTO, Completed when closeout and payments are resolved. "Clear to install" once the building permit and interconnection approval are in.
 - **Service:** tickets with site, coverage, owner, schedule, monitoring portal link and billing; visits with crew, trips and man-hours. Tabs for Open, Ready to invoice, Completed and All.

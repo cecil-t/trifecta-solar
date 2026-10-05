@@ -20,11 +20,11 @@
 		update();
 	});
 
-	// Equipment line editors: add / remove rows, renumbering the [i] in input names
+	// Equipment and roof face line editors: add / remove rows, renumbering the [i] in field names
 	document.querySelectorAll('.eq').forEach((eq) => {
 		const renumber = () => {
 			eq.querySelectorAll('.eq-row').forEach((row, i) => {
-				row.querySelectorAll('input').forEach((inp) => {
+				row.querySelectorAll('input, select').forEach((inp) => {
 					inp.name = inp.name.replace(/\[\d+\]/, '[' + i + ']');
 				});
 			});
@@ -32,7 +32,7 @@
 		eq.querySelector('.eq-add').addEventListener('click', () => {
 			const rows = eq.querySelectorAll('.eq-row');
 			const clone = rows[rows.length - 1].cloneNode(true);
-			clone.querySelectorAll('input').forEach((i) => { i.value = ''; });
+			clone.querySelectorAll('input, select').forEach((i) => { i.value = ''; });
 			rows[rows.length - 1].after(clone);
 			renumber();
 			clone.querySelector('input').focus();
@@ -41,7 +41,7 @@
 			if (!e.target.classList.contains('eq-del')) return;
 			const rows = eq.querySelectorAll('.eq-row');
 			const row = e.target.closest('.eq-row');
-			if (rows.length > 1) { row.remove(); } else { row.querySelectorAll('input').forEach((i) => { i.value = ''; }); }
+			if (rows.length > 1) { row.remove(); } else { row.querySelectorAll('input, select').forEach((i) => { i.value = ''; }); }
 			renumber();
 		});
 	});

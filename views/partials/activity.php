@@ -24,7 +24,16 @@ $showProject ??= false;
 					<?php if ($a['edited_at']): ?><span class="muted">(edited <?= e(fmt_dt($a['edited_at'])) ?>)</span><?php endif; ?>
 					<?php if ($showProject): ?><a href="/projects/<?= (int) $a['entity_id'] ?>#log-<?= (int) $a['id'] ?>" class="activity-project"><?= e($a['project_number'] . ' ' . $a['project_name']) ?></a><?php endif; ?>
 				</div>
-				<?php if ($a['kind'] === 'change'): ?>
+				<?php if ($a['kind'] === 'change' && (mb_strlen((string) $a['old_value']) + mb_strlen((string) $a['new_value']) > 200 || str_contains((string) $a['old_value'] . $a['new_value'], "\n"))): ?>
+					<div>changed <strong><?= e($a['field']) ?></strong></div>
+					<details class="change-long">
+						<summary>Before and after</summary>
+						<div class="change-label">Before</div>
+						<div class="val-block"><?= $a['old_value'] === null || $a['old_value'] === '' ? '<em>blank</em>' : e($a['old_value']) ?></div>
+						<div class="change-label">After</div>
+						<div class="val-block"><?= $a['new_value'] === null || $a['new_value'] === '' ? '<em>blank</em>' : e($a['new_value']) ?></div>
+					</details>
+				<?php elseif ($a['kind'] === 'change'): ?>
 					<div>changed <strong><?= e($a['field']) ?></strong>
 						from <span class="val"><?= $a['old_value'] === null || $a['old_value'] === '' ? '<em>blank</em>' : e($a['old_value']) ?></span>
 						to <span class="val"><?= $a['new_value'] === null || $a['new_value'] === '' ? '<em>blank</em>' : e($a['new_value']) ?></span></div>
