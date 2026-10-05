@@ -17,6 +17,7 @@ declare(strict_types=1);
  *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
+ *   geo:check [--dry-run]                     Township / county lookup for every project address not yet checked; lists mismatches
  */
 
 require dirname(__DIR__) . '/src/bootstrap.php';
@@ -132,6 +133,11 @@ try {
 			out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
 			break;
 
+		case 'geo:check':
+			$dry = in_array('--dry-run', $args, true);
+			foreach (App\Geo::checkAll($dry) as $line) { out($line); }
+			break;
+
 		case 'import:service':
 			$file = $args[1] ?? fail('Usage: import:service <file.json> [--dry-run]');
 			if (!is_file($file)) { fail("No such file: $file"); }
@@ -153,7 +159,7 @@ try {
 			break;
 
 		default:
-			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run]');
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());

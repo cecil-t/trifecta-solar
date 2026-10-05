@@ -78,6 +78,63 @@ final class Geo
 		return $r;
 	}
 
+	/**
+	 * The one-time check for every project whose saved address hasn't been looked up (or changed
+	 * since): the same lookup the Edit page runs, stored on each project. A dry run still fills the
+	 * lookup cache (so the real run is quick) but changes no project. One second between uncached
+	 * lookups keeps within OpenStreetMap's usage policy.
+	 * @return string[] report lines
+	 */
+	public static function checkAll(bool $dry): array
+	{
+		$lines = [];
+		$counts = ['checked' => 0, 'match' => 0, 'mismatch' => 0, 'no_municipality_set' => 0, 'no_match' => 0, 'unavailable' => 0, 'already_checked' => 0, 'no_address' => 0];
+		foreach (Db::all('SELECT id FROM projects ORDER BY project_number') as $row) {
+			$p = Projects::find((int) $row['id']);
+			$name = $p['project_number'] . ' ' . $p['name'];
+			$address = self::addressOf($p);
+			if ($address === '') {
+				$counts['no_address']++;
+				continue;
+			}
+			if ($address === (string) $p['geo_address']) {
+				$counts['already_checked']++;
+				continue;
+			}
+			$cached = (bool) Db::value('SELECT 1 FROM geo_cache WHERE address_key = ?', [strtolower($address)]);
+			$r = self::lookup((string) $p['site_street'], (string) $p['site_city'], (string) $p['site_state'], (string) $p['site_zip']);
+			if (!$cached) {
+				sleep(1);
+			}
+			if ($r === null) {
+				$counts['unavailable']++;
+				$lines[] = $name . ': lookup unavailable, try again later';
+				continue;
+			}
+			$counts['checked']++;
+			if (!$dry) {
+				Db::update('projects', (int) $p['id'], self::columns($r, $address) + ['muni_confirmed_id' => null]);
+			}
+			if ($r['status'] !== 'found') {
+				$counts['no_match']++;
+				$lines[] = $name . ': no match for this address';
+				continue;
+			}
+			$label = self::forClient($r)['label'] . ($r['source'] === 'osm_street' ? ' (approximate)' : '');
+			if (empty($p['municipality_id'])) {
+				$counts['no_municipality_set']++;
+				$lines[] = $name . ': no municipality set; lookup says ' . $label;
+			} elseif (self::mismatch(['muni_confirmed_id' => null] + $p, $r)) {
+				$counts['mismatch']++;
+				$lines[] = $name . ': MISMATCH, project has ' . $p['municipality_name'] . ' (' . $p['county_name'] . ' Co.), lookup says ' . $label;
+			} else {
+				$counts['match']++;
+			}
+		}
+		$lines[] = ($dry ? 'DRY RUN (no project changed; lookups are cached for the real run): ' : 'Done: ') . json_encode($counts);
+		return $lines;
+	}
+
 	/** Query the Census geocoder: an address match, or the geographies at a point. */
 	private static function census(string $kind, array $params): ?array
 	{

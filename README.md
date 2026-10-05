@@ -72,6 +72,7 @@ import:updates <file.json> [--dry-run]    Fill blank fields on existing projects
 fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
 fix:completed-payments [--dry-run]        Mark open payments received on Completed projects
 fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
+geo:check [--dry-run]                     Township / county lookup for every project address not yet checked; lists mismatches
 ```
 
 In the container: `docker exec -u root trifecta-solar php bin/console <command>`. Always run `--dry-run` first.
