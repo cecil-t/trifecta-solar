@@ -961,6 +961,7 @@ a[href^="tel:"] { white-space: nowrap; }
 .geo-note .geo-check { color: #3d7a26; font-weight: 600; }
 .geo-actions { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
 .geo-actions label.check { font-weight: 500; }
+.geo-dced { font-weight: 600; white-space: nowrap; }
 .geo-flag { display: inline-block; margin-top: .25rem; }
 #geo-note { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .geo-flag.chip { border-radius: var(--radius-sm); line-height: 1.35; padding-top: .2rem; padding-bottom: .2rem; }

@@ -33,6 +33,18 @@
 	const selectedText = () => (muni.selectedIndex >= 0 ? muni.options[muni.selectedIndex].text : '');
 	// "Penn Township (Lancaster Co., PA)" -> ["Lancaster", "PA"]
 	const countyOf = (text) => { const m = /\((.+) Co\., ([A-Z]{2})\)$/.exec(text); return m ? [m[1].toLowerCase(), m[2]] : null; };
+	// PA DCED's local tax lookup is the official word on which municipality a PA address is in.
+	// It's a form with no feed, so the link opens it to check by hand.
+	const DCED = 'https://apps.dced.pa.gov/Munstats-public/FindLocalTax.aspx';
+	const inPa = () => (addr.state ? addr.state.value.trim().toUpperCase() : 'PA') === 'PA';
+	const dcedLink = () => {
+		const a = el('a', 'geo-dced', 'Check with PA DCED \u2197');
+		a.href = DCED;
+		a.target = '_blank';
+		a.rel = 'noopener';
+		a.title = 'Opens the state\u2019s local tax lookup by address, the official source for PA municipalities';
+		return a;
+	};
 
 	function mismatch() {
 		if (!result || result.status !== 'found' || muni.value === '' || muni.value === 'new') return false;
@@ -70,7 +82,10 @@
 		if (!result) { note.hidden = true; return; }
 		note.hidden = false;
 		if (result.status !== 'found') {
-			note.append(el('span', 'muted', 'Address lookup found no match for this address. Choose the municipality by hand.'));
+			const line = el('div');
+			line.append(el('span', 'muted', 'Address lookup found no match for this address. Choose the municipality by hand.'));
+			if (inPa()) line.append(document.createTextNode(' '), dcedLink());
+			note.append(line);
 			return;
 		}
 		const line = el('div');
@@ -101,6 +116,7 @@
 			btn.addEventListener('click', useLookup);
 			actions.append(btn);
 		}
+		if (bad && inPa()) actions.append(dcedLink());
 		if (bad && isEdit) {
 			const lab = el('label', 'check');
 			const box = el('input');
