@@ -112,6 +112,17 @@ function link_error(string $label, ?string $url): ?string
 	return trim((string) $url) === '' || safe_url($url) !== null ? null : $label . ' must be a web address starting with https://';
 }
 
+/**
+ * An address linked to Google Maps. The arrow is a separate link to the same place, so a
+ * long press on the address copies only the address ("Copy link text" on Android).
+ */
+function maps_link(string $address): string
+{
+	$href = e('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($address));
+	return '<a href="' . $href . '" target="_blank" rel="noopener" title="Open in Google Maps">' . e($address) . '</a>'
+		. '<a href="' . $href . '" target="_blank" rel="noopener" class="link-arrow" tabindex="-1" aria-hidden="true">&#8599;</a>';
+}
+
 /** Cache-busted URL for a file in public/. */
 function asset(string $path): string
 {

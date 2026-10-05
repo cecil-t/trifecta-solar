@@ -59,7 +59,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 				<dt><?= e($c['role'] ?: 'Contact') ?></dt>
 				<dd><?= e($c['name']) ?><?php if ($c['phone']): ?> &middot; <a href="tel:<?= e(preg_replace('/[^0-9+]/', '', $c['phone'])) ?>"><?= e($c['phone']) ?></a><?php endif; ?></dd>
 			<?php endforeach; ?>
-			<dt>Site</dt><dd><?= $site !== '' ? '<a href="https://www.google.com/maps/search/?api=1&amp;query=' . e(rawurlencode($site)) . '" target="_blank" rel="noopener">' . e($site) . ' &#8599;</a>' : $muted('Not set') ?></dd>
+			<dt>Site</dt><dd><?= $site !== '' ? maps_link($site) : $muted('Not set') ?></dd>
 			<dt>Installed by</dt><dd><?= match ((string) $t['trifecta_install']) { '1' => 'Trifecta', '0' => 'Another installer', default => $muted('Unknown') } ?></dd>
 			<?php if ($t['project_id']): ?><dt>Project</dt><dd><a href="/projects/<?= (int) $t['project_id'] ?>"><?= e($t['project_number'] . ' ' . $t['project_name']) ?></a></dd><?php endif; ?>
 		</dl>

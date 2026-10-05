@@ -112,7 +112,7 @@ $back = '/projects/' . (int) $p['id'];
 				<dt><?= e($c['role'] ?: 'Contact') ?></dt>
 				<dd><?= e($c['name']) ?><?php if ($c['phone']): ?> &middot; <a href="tel:<?= e(preg_replace('/[^0-9+]/', '', $c['phone'])) ?>"><?= e($c['phone']) ?></a><?php endif; ?><?php if ($c['email']): ?><br><a href="mailto:<?= e($c['email']) ?>" class="small"><?= e($c['email']) ?></a><?php endif; ?></dd>
 			<?php endforeach; ?>
-			<dt>Site</dt><dd><?= $siteAddr !== '' ? '<a href="https://www.google.com/maps/search/?api=1&amp;query=' . e(rawurlencode($siteAddr)) . '" target="_blank" rel="noopener" title="Open in Google Maps">' . e($siteAddr) . ' &#8599;</a>' : '<span class="muted">Not set</span>' ?></dd>
+			<dt>Site</dt><dd><?= $siteAddr !== '' ? maps_link($siteAddr) : '<span class="muted">Not set</span>' ?></dd>
 			<dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$p['customer_type']] ?? '') ?><?= $p['is_agricultural'] ? ' &middot; Agricultural' : '' ?></dd>
 			<dt>Salesperson</dt><dd><?= e($p['salesperson_name'] ?? '') ?></dd>
 		</dl>

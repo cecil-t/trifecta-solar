@@ -529,6 +529,8 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 
 .drive-link { font-size: .72rem; font-weight: 700; margin-left: .4rem; padding: 0 .35rem; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
 .drive-link:hover { color: var(--blue); border-color: var(--blue); text-decoration: none; }
+.link-arrow { margin-left: .3em; }
+.link-arrow:hover { text-decoration: none; }
 
 /* ---------- service ---------- */
 .summary-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
