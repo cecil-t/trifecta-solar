@@ -147,6 +147,14 @@ $isNew = $id === null;
 					<?php endforeach; ?>
 				</select>
 			</label>
+			<label class="span-2-phone">SREC provider
+				<select name="srec_provider">
+					<option value="">Choose</option>
+					<?php foreach (Projects::SREC_PROVIDERS as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $sel($v('srec_provider'), $k) ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
 		</div>
 		<div id="new-muni" class="grid-form reveal" hidden>
 			<label class="span-2">Municipality name <input type="text" name="new_muni_name" value="<?= e($v('new_muni_name')) ?>" placeholder="e.g. Penn Township"></label>

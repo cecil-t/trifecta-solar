@@ -15,6 +15,9 @@ final class Projects
 		'none' => 'No internet', 'ethernet' => 'Customer provided Ethernet', 'wifi' => 'Customer provided Wi-Fi',
 		'cell' => 'Cell card in inverter', 'hotspot' => 'Mobile hotspot',
 	];
+	public const SREC_PROVIDERS = [
+		'flett' => 'Flett Exchange', 'sol_systems' => 'Sol Systems', 'knollwood' => 'Knollwood Energy', 'xpansive' => 'Xpansive (SREC Trade)',
+	];
 
 	/** Suggest the next YYNNN project number for the current year. */
 	public static function nextNumber(): string

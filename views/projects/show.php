@@ -126,6 +126,7 @@ $back = '/projects/' . (int) $p['id'];
 				<dt><?= e($slot['label']) ?></dt><dd><?= $provider($slot) ?></dd>
 			<?php endforeach; ?>
 			<dt>Utility</dt><dd><strong><?= e($p['utility_name'] ?? '') ?></strong><?php foreach ($workOrders as $wo): ?>&nbsp;&middot; <span class="work-order"><?= e($wo) ?></span><?php endforeach; ?></dd>
+			<dt>SREC</dt><dd><?= isset(Projects::SREC_PROVIDERS[$p['srec_provider'] ?? '']) ? e(Projects::SREC_PROVIDERS[$p['srec_provider']]) : '<span class="muted">Not set</span>' ?></dd>
 			<dt>Designer</dt><dd><?= e($p['designer_name'] ?? '') ?></dd>
 			<dt>Installer</dt><dd><?= e($p['installer_name'] ?? 'Trifecta (in-house)') ?></dd>
 		</dl>
