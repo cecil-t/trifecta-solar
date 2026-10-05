@@ -280,7 +280,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 				<?php endforeach; ?>
 				<button type="button" class="btn btn-ghost btn-small eq-add">+ Roof face</button>
 			</div>
-			<p class="hint">Azimuth is degrees from true north (90 east, 180 south, 270 west). Tilt takes degrees or a roof pitch like 6/12. Panels per face should add up to the module count.</p>
+			<p class="hint mt-sm">Azimuth is degrees from true north (90 east, 180 south, 270 west). Tilt takes degrees or a roof pitch like 6/12. Panels per face should add up to the module count.</p>
 		</div>
 
 		<h3 class="sub">Inverters</h3>
