@@ -14,6 +14,7 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 - **Projects:**
   - List with phase tabs (Active = Pre-Install, Installation and Closeout; Clear to install; On hold; Completed; Cancelled; All), salesperson filter and search. Completed and Cancelled fold earlier years under a header.
   - Create and edit, with customer and municipality added inline; module, inverter and battery lines with computed DC/AC kW, ratio and $/W, plus how the inverter gets internet.
+  - Township and county lookup from the site address (US Census geocoder; OpenStreetMap finds the point when the Census can't match a rural address). New project fills Municipality as the address is typed and the user can override it. Edit runs a one-time check of a saved address and flags a mismatch until someone picks the lookup's municipality or keeps theirs. Lookups are cached by address.
   - Roof faces for rooftop installs (name, material, azimuth, tilt in degrees or pitch, panels per face), shown as Roof details under System with a warning when the faces don't add up to the panel count.
   - Project page: Notes (one free-text block, saved with who and when; a save never overwrites someone else's newer save), Tasks and the latest comment side by side.
   - Steps copied from an admin-editable template (task + sub-task, gates, reference # labels, default owners), edited inline (needed / target / done / ref # / owner / note), plus custom steps, duplicates and add-from-template.

@@ -126,11 +126,11 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 	<section class="card">
 		<h2>Site and jurisdiction</h2>
 		<div class="grid-form">
-			<label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>"></label>
-			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>"></label>
+			<label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-geo-field="street"></label>
+			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-geo-field="city"></label>
 			<div class="grid-pair">
-				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2"></label>
-				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>"></label>
+				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2" data-geo-field="state"></label>
+				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" data-geo-field="zip"></label>
 			</div>
 			<label>Utility
 				<select name="utility_id">
@@ -157,6 +157,10 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 					<?php endforeach; ?>
 				</select>
 			</label>
+			<div id="geo-note" class="geo-note span-all" aria-live="polite" hidden
+				data-geo-url="/geo/lookup"
+				<?php if (!$isNew): ?>data-geo-check="/projects/<?= (int) $id ?>/geo-check" data-csrf="<?= e(Csrf::token()) ?>"<?php endif; ?>
+				data-geo="<?= e(json_encode($geo ?? new stdClass())) ?>"></div>
 		</div>
 		<div id="new-muni" class="grid-form reveal" hidden>
 			<label class="span-2">Municipality name <input type="text" name="new_muni_name" value="<?= e($v('new_muni_name')) ?>" placeholder="e.g. Penn Township"></label>
@@ -359,3 +363,4 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 </form>
 
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
+<script src="<?= asset('assets/js/geo.js') ?>"></script>

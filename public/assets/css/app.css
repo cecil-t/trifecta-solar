@@ -953,3 +953,14 @@ a[href^="tel:"] { white-space: nowrap; }
 .activity-change .val, .comment-text { overflow-wrap: anywhere; word-break: break-word; }
 .card, .kv dd, .desc-text { min-width: 0; overflow-wrap: anywhere; }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* address lookup (geo.js): under Municipality on the project form, and the flag on the project page */
+.geo-note { border-left: 3px solid var(--border); padding: .35rem .7rem; font-size: .88rem; display: flex; flex-direction: column; gap: .35rem; }
+.geo-note.geo-ok { border-left-color: var(--green); }
+.geo-note.geo-warn { border-left-color: var(--orange); background: var(--orange-50); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.geo-note .geo-check { color: #3d7a26; font-weight: 600; }
+.geo-actions { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+.geo-actions label.check { font-weight: 500; }
+.geo-flag { display: inline-block; margin-top: .25rem; }
+#geo-note { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
+.geo-flag.chip { border-radius: var(--radius-sm); line-height: 1.35; padding-top: .2rem; padding-bottom: .2rem; }

@@ -3,6 +3,7 @@ use App\Csrf;
 use App\Projects;
 use App\Tasks;
 use App\Municipalities;
+use App\Geo;
 
 $ownerOpts = static function ($selected) use ($users): string {
 	$h = '<option value="">-</option>';
@@ -83,6 +84,10 @@ $pitch = static function (float $deg) use ($fmtNum): string {
 	return $deg > 0 && $deg < 90 ? $fmtNum(round(tan(deg2rad($deg)) * 24) / 2) . '/12' : '';
 };
 $back = '/projects/' . (int) $p['id'];
+// Address lookup (App\Geo): flagged when it disagrees with the municipality and nobody kept theirs
+$geoMismatch = Geo::mismatch($p);
+$geoClient = Geo::forClient(Geo::stored($p));
+$geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : null;
 ?>
 <div class="project-head" data-project="<?= (int) $p['id'] ?>" data-csrf="<?= e(Csrf::token()) ?>">
 	<div>
@@ -126,7 +131,11 @@ $back = '/projects/' . (int) $p['id'];
 	<section class="card">
 		<h2>Jurisdiction</h2>
 		<dl class="kv">
-			<dt>Municipality</dt><dd><?= $p['municipality_id'] ? '<a href="/municipalities/' . (int) $p['municipality_id'] . '">' . e($p['municipality_name']) . '</a><div class="muted small">' . e($p['county_name'] . ' Co., ' . $p['county_state']) . '</div>' : '<span class="muted">Not set</span>' ?></dd>
+			<dt>Municipality</dt><dd><?= $p['municipality_id'] ? '<a href="/municipalities/' . (int) $p['municipality_id'] . '">' . e($p['municipality_name']) . '</a><div class="muted small">' . e($p['county_name'] . ' Co., ' . $p['county_state']) . '</div>' : '<span class="muted">Not set</span>' ?>
+				<?php if ($geoLabel !== null && ($geoMismatch || !$p['municipality_id'])): ?>
+					<a href="/projects/<?= (int) $p['id'] ?>/edit#geo-note" class="geo-flag <?= $geoMismatch ? 'chip chip-orange' : 'muted small' ?>" title="<?= e(Geo::SOURCES[$p['geo_source']] ?? 'Address lookup') ?>"><?= $geoMismatch ? 'Address lookup says ' : 'Address lookup: ' ?><?= e($geoLabel) ?></a>
+				<?php endif; ?>
+			</dd>
 			<?php foreach (Municipalities::SLOTS as $slot): ?>
 				<dt><?= e($slot['label']) ?></dt><dd><?= $provider($slot) ?></dd>
 			<?php endforeach; ?>

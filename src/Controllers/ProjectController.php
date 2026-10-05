@@ -7,6 +7,7 @@ use App\Activity;
 use App\Auth;
 use App\Db;
 use App\Municipalities;
+use App\Geo;
 use App\Projects;
 use App\Tasks;
 use App\View;
@@ -123,9 +124,20 @@ final class ProjectController
 			$p = array_merge($p, $old);
 			unset($_SESSION['old_project']);
 		}
+		$geo = null;
+		if ($id !== null) {
+			$saved = Projects::find($id);
+			$address = Geo::addressOf($saved);
+			$geo = Geo::forClient(Geo::stored($saved)) + [
+				// first visit since the address was entered or changed: the page asks for the one-time check
+				'pending' => $address !== '' && $address !== (string) $saved['geo_address'],
+				'mismatch' => Geo::mismatch($saved),
+				'confirmed_id' => $saved['muni_confirmed_id'] !== null ? (int) $saved['muni_confirmed_id'] : null,
+			];
+		}
 		View::render('projects/form', [
 			'title' => $id ? 'Edit ' . $p['name'] : 'New project',
-			'p' => $p, 'id' => $id,
+			'p' => $p, 'id' => $id, 'geo' => $geo,
 			'users' => Projects::users(),
 			'customers' => Projects::orgs('customer'),
 			'agencies' => Projects::orgs('agency'),
@@ -141,14 +153,22 @@ final class ProjectController
 
 	public function store(): void
 	{
+		$address = Geo::address($_POST['site_street'] ?? '', $_POST['site_city'] ?? '', $_POST['site_state'] ?? '', $_POST['site_zip'] ?? '');
+		$lookup = $address !== '' ? Geo::lookup($_POST['site_street'], $_POST['site_city'] ?? '', $_POST['site_state'] ?? '', $_POST['site_zip'] ?? '') : null;
 		try {
-			$id = Db::transaction(function () {
+			$id = Db::transaction(function () use ($address, $lookup) {
 				[$data, $equipment, $funding, $roofs] = $this->input(null);
 				$data['created_by'] = Auth::id();
 				if ($data['municipality_id']) {
 					$data = $this->applyMunicipalityDefaults($data);
 				}
 				$id = Db::insert('projects', $data);
+				if ($lookup) {
+					// Picking a different municipality than the lookup suggested on this page is an override
+					$geoCols = Geo::columns($lookup, $address);
+					$overridden = Geo::mismatch(['municipality_id' => $data['municipality_id'], 'muni_confirmed_id' => null], $lookup);
+					Db::update('projects', $id, $geoCols + ['muni_confirmed_id' => $overridden ? $data['municipality_id'] : null]);
+				}
 				$this->saveEquipment($id, $equipment);
 				$this->saveRoofs($id, $roofs);
 				$this->saveFunding($id, $funding);
@@ -177,12 +197,17 @@ final class ProjectController
 		$beforeEq = Projects::equipment($id);
 		$beforeFunding = $this->fundingNames($id);
 		$beforeRoofs = $this->roofSummary(Projects::roofs($id));
+		$address = Geo::address($_POST['site_street'] ?? '', $_POST['site_city'] ?? '', $_POST['site_state'] ?? '', $_POST['site_zip'] ?? '');
+		$lookup = $address !== '' && $address !== (string) $before['geo_address']
+			? Geo::lookup($_POST['site_street'], $_POST['site_city'] ?? '', $_POST['site_state'] ?? '', $_POST['site_zip'] ?? '')
+			: null;
 		try {
-			Db::transaction(function () use ($id, $before, $beforeEq, $beforeFunding, $beforeRoofs) {
+			Db::transaction(function () use ($id, $before, $beforeEq, $beforeFunding, $beforeRoofs, $address, $lookup) {
 				[$data, $equipment, $funding, $roofs] = $this->input($id);
 				if ($data['municipality_id'] && (int) $data['municipality_id'] !== (int) $before['municipality_id']) {
 					$data = $this->applyMunicipalityDefaults($data, true);
 				}
+				$this->saveGeo($id, $before, $data, $address, $lookup);
 				Db::update('projects', $id, $data + ['updated_at' => now_utc()]);
 				Activity::changes('project', $id, $before, $data, self::TRACKED + Municipalities::providerLabels(), $this->formatters());
 
@@ -478,6 +503,67 @@ final class ProjectController
 			'hold_state' => static fn ($v) => ['on_hold' => 'On hold', 'cancelled' => 'Cancelled'][$v] ?? 'Active',
 			'archived_at' => static fn ($v) => $v ? 'Yes' : 'No',
 		];
+	}
+
+	/**
+	 * After an edit: store a new lookup when the address changed (a new address clears an earlier
+	 * "keep mine"), and record "keep mine" when the user ticked it for a mismatch.
+	 */
+	private function saveGeo(int $id, array $before, array $data, string $address, ?array $lookup): void
+	{
+		$cols = [];
+		if ($address === '' && $before['geo_address'] !== null) {
+			$cols = ['geo_address' => null, 'geo_checked_at' => null, 'geo_status' => null, 'geo_muni' => null, 'geo_county' => null,
+				'geo_state' => null, 'geo_lat' => null, 'geo_lon' => null, 'geo_source' => null, 'muni_confirmed_id' => null];
+		} elseif ($lookup) {
+			$cols = Geo::columns($lookup, $address) + ['muni_confirmed_id' => null];
+		}
+		$after = array_merge($before, $cols, ['municipality_id' => $data['municipality_id']]);
+		$r = Geo::stored($after);
+		if (!empty($_POST['muni_keep']) && $data['municipality_id'] && Geo::mismatch(array_merge($after, ['muni_confirmed_id' => null]), $r)) {
+			$cols['muni_confirmed_id'] = $data['municipality_id'];
+			$m = Geo::match($r);
+			Activity::event('project', $id, 'Kept the municipality '
+				. Db::value("SELECT m.name || ' (' || c.name || ' Co.)' FROM municipalities m JOIN counties c ON c.id = m.county_id WHERE m.id = ?", [$data['municipality_id']])
+				. ' over the address lookup (' . ($m['name'] ?? 'no municipality') . ', ' . $m['county_label'] . ')');
+		}
+		if ($cols) {
+			Db::update('projects', $id, $cols);
+		}
+	}
+
+	/** JSON: the lookup for an address typed on the project form (not stored). */
+	public function geoLookup(): void
+	{
+		header('Content-Type: application/json');
+		$g = static fn (string $k) => trim((string) ($_GET[$k] ?? ''));
+		if (Geo::address($g('street'), $g('city'), $g('state'), $g('zip')) === '') {
+			echo json_encode(['ok' => false, 'reason' => 'incomplete']);
+			return;
+		}
+		echo json_encode(Geo::forClient(Geo::lookup($g('street'), $g('city'), $g('state'), $g('zip'))));
+	}
+
+	/** JSON: the one-time lookup for a saved project's address, stored on the project. */
+	public function geoCheck(int $id): void
+	{
+		header('Content-Type: application/json');
+		$p = $this->find($id);
+		$address = Geo::addressOf($p);
+		if ($address === '') {
+			echo json_encode(['ok' => false, 'reason' => 'incomplete']);
+			return;
+		}
+		if ($address !== (string) $p['geo_address']) {
+			$r = Geo::lookup((string) $p['site_street'], (string) $p['site_city'], (string) $p['site_state'], (string) $p['site_zip']);
+			if ($r === null) {
+				echo json_encode(['ok' => false, 'reason' => 'unavailable']);
+				return;
+			}
+			Db::update('projects', $id, Geo::columns($r, $address) + ['muni_confirmed_id' => null]);
+			$p = Projects::find($id);
+		}
+		echo json_encode(Geo::forClient(Geo::stored($p)) + ['mismatch' => Geo::mismatch($p)]);
 	}
 
 	// ------------------------------------------------------------------ detail

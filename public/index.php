@@ -86,12 +86,14 @@ $r->post('/users/{id}/revoke-devices', [UserController::class, 'revokeDevices'],
 // Projects
 $r->get('/projects', [ProjectController::class, 'index']);
 $r->get('/projects/new', [ProjectController::class, 'create']);
+$r->get('/geo/lookup', [ProjectController::class, 'geoLookup']);
 $r->post('/projects', [ProjectController::class, 'store']);
 $r->get('/projects/{id}', [ProjectController::class, 'show']);
 $r->get('/projects/{id}/edit', [ProjectController::class, 'edit']);
 $r->post('/projects/{id}', [ProjectController::class, 'update']);
 $r->post('/projects/{id}/comments', [ProjectController::class, 'comment']);
 $r->post('/projects/{id}/notes', [ProjectController::class, 'saveNotes']);
+$r->post('/projects/{id}/geo-check', [ProjectController::class, 'geoCheck']);
 $r->post('/projects/{id}/tasks', [ProjectController::class, 'addTask']);
 $r->post('/projects/{id}/tasks/from-template', [ProjectController::class, 'addFromTemplate']);
 $r->post('/projects/{id}/tasks/{taskId}', [ProjectController::class, 'updateTask']);
