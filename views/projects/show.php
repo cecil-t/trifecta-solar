@@ -206,7 +206,6 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			<dt>SolarInsure</dt><dd><?= $answer('SolarInsure registration') ?></dd>
 			<dt>Utility rebate</dt><dd><?= $answer('Utility rebate') ?></dd>
 			<dt>VNM</dt><dd><?= $answer('Virtual net metering') ?></dd>
-			<?php if ($p['quote_number']): ?><dt>Quote #</dt><dd><?= e($p['quote_number']) ?></dd><?php endif; ?>
 		</dl>
 	</section>
 </div>
