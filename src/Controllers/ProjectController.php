@@ -32,9 +32,10 @@ final class ProjectController
 
 	public function index(): void
 	{
+		$users = Projects::users();
 		$filter = [
 			'phase' => match ($ph = $_GET['phase'] ?? 'active') { 'archived' => 'complete', 'clear' => 'pre_install', default => $ph }, // old links
-			'sales' => (int) ($_GET['sales'] ?? 0),
+			'sales' => $this->salesFilter(array_map('intval', array_column($users, 'id'))),
 			'q'     => trim((string) ($_GET['q'] ?? '')),
 		];
 		if ($filter['q'] !== '') {
@@ -96,8 +97,32 @@ final class ProjectController
 
 		View::render('projects/index', [
 			'title' => 'Projects', 'projects' => $rows, 'counts' => $counts, 'filter' => $filter,
-			'users' => Projects::users(),
+			'users' => $users,
 		]);
+	}
+
+	/**
+	 * The salesperson filter sticks per user: picking one (or All) saves it to their account, and
+	 * a Projects link without one (top nav, dashboard, back link) restores it on any device.
+	 * A view preference, not project data, so it isn't written to the activity log.
+	 *
+	 * @param int[] $activeIds active users offered in the salesperson menu
+	 */
+	private function salesFilter(array $activeIds): int
+	{
+		$userId = (int) Auth::id();
+		$saved = (int) Db::value('SELECT projects_sales_id FROM users WHERE id = ?', [$userId]);
+		if (!array_key_exists('sales', $_GET)) {
+			return in_array($saved, $activeIds, true) ? $saved : 0; // a deactivated salesperson falls back to All
+		}
+		$sales = (int) $_GET['sales'];
+		if ($sales && !in_array($sales, $activeIds, true)) {
+			$sales = 0;
+		}
+		if ($sales !== $saved) {
+			Db::run('UPDATE users SET projects_sales_id = ? WHERE id = ?', [$sales ?: null, $userId]);
+		}
+		return $sales;
 	}
 
 	// ------------------------------------------------------------------ create / edit
