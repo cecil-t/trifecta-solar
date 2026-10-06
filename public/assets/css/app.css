@@ -980,6 +980,8 @@ a[href^="tel:"] { white-space: nowrap; }
 	.topsearch { flex: 1 1 0; }
 	.topsearch input[type=search] { padding-top: .38rem; padding-bottom: .38rem; }
 	.usermenu { margin-left: 0; }
+	/* while typing, the box takes the Lists menu's spot so more of the text shows */
+	.topbar-inner:has(.topsearch :focus) .navmenu { display: none; }
 	.filters.search-page-form { display: none; } /* the top bar box is right above */
 	.search-group .card-head { padding: .75rem .75rem .4rem; }
 	.table-search thead { display: none; }
