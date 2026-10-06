@@ -8,6 +8,32 @@
 	setTopbarHeight();
 	window.addEventListener('resize', setTopbarHeight);
 
+	// Record pages (a project): once the page heading scrolls away, a slim bar under the top bar
+	// names the record. It hangs below the top bar instead of pushing the page down, and the
+	// floating column headers move down to clear it. Clicking it goes back to the top.
+	const pin = document.getElementById('topbar-pin');
+	const pinFor = document.querySelector('.project-head h1');
+	if (pin && pinFor && topbar && 'IntersectionObserver' in window) {
+		topbar.appendChild(pin);
+		const pinPhase = document.getElementById('pin-phase');
+		const badge = document.getElementById('phase-badge');
+		const setOffsets = () => {
+			const h = topbar.offsetHeight + (pin.hidden ? 0 : pin.offsetHeight);
+			document.documentElement.style.setProperty('--topbar-h', h + 'px');
+		};
+		new IntersectionObserver(([entry]) => {
+			const show = !entry.isIntersecting && entry.boundingClientRect.top < topbar.offsetHeight;
+			if (show && badge && pinPhase) { // follows phase changes made on this page
+				pinPhase.className = badge.className;
+				pinPhase.textContent = badge.textContent;
+			}
+			pin.hidden = !show;
+			setOffsets();
+		}, { rootMargin: '-' + topbar.offsetHeight + 'px 0px 0px 0px' }).observe(pinFor);
+		window.addEventListener('resize', setOffsets);
+		pin.querySelector('button').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+	}
+
 	// Drop-down menus (<details>): close when clicking anywhere else, pressing Escape,
 	// or opening another menu.
 	const menus = 'details.usermenu, details.navmenu, details.tmenu';

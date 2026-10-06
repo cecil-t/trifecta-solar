@@ -89,6 +89,13 @@ $geoMismatch = Geo::mismatch($p);
 $geoClient = Geo::forClient(Geo::stored($p));
 $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : null;
 ?>
+<div class="topbar-pin" id="topbar-pin" hidden>
+	<button type="button" class="topbar-pin-inner" title="Back to the top">
+		<span class="pnum"><?= e($p['project_number']) ?></span>
+		<strong class="topbar-pin-name"><?= e($p['name']) ?></strong>
+		<span class="phase" id="pin-phase"></span>
+	</button>
+</div>
 <div class="project-head" data-project="<?= (int) $p['id'] ?>" data-csrf="<?= e(Csrf::token()) ?>">
 	<div>
 		<a href="<?= e($listUrl) ?>" class="back">&larr; <?= str_starts_with($listUrl, '/search') ? 'Search results' : 'Projects' ?></a>

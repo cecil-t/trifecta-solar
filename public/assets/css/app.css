@@ -1014,3 +1014,19 @@ a[href^="tel:"] { white-space: nowrap; }
 	.topsearch { flex-basis: 110px; }
 	.mainnav a, .navmenu summary { padding-left: .5rem; padding-right: .5rem; }
 }
+
+/* slim bar naming the project once its heading has scrolled away (app.js moves it into the top bar) */
+.topbar-pin {
+	position: absolute; left: 0; right: 0; top: 100%;
+	background: var(--surface); border-bottom: 1px solid var(--border);
+	box-shadow: 0 4px 10px rgba(16, 32, 40, .06);
+}
+.topbar-pin-inner {
+	display: flex; align-items: center; gap: .5rem; width: 100%; max-width: 1280px; margin: 0 auto;
+	padding: .35rem 1rem; border: 0; background: none; font: inherit; color: var(--text); text-align: left; cursor: pointer;
+}
+.topbar-pin-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--blue); }
+.topbar-pin .phase { flex: none; font-size: .72rem; padding: .08rem .5rem; }
+@media (max-width: 760px) {
+	.topbar-pin-inner { padding: .3rem .75rem; font-size: .9rem; }
+}
