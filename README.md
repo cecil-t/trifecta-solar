@@ -11,6 +11,7 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 
 - **Sign-in:** email and password (Argon2id, 8+ characters with upper, lower, number and symbol). Logins are per device and never expire; users sign out their own devices, admins can sign out anyone. First-run setup page, admin user management, and My account (initials, password, devices).
 - **Dashboard:** phase counts, my Tasks, "My open items" (project steps you own that are actionable now, grouped by project) and a 5-day forecast (Open-Meteo) for the location set in `.env`.
+- **Search:** a box in the top bar finds projects and service tickets together (names, customer, numbers, municipality, ticket problem and address). One match opens it directly; back links return to the results.
 - **Projects:**
   - List with phase tabs (Active = Pre-Install, Installation and Closeout; Clear to install; On hold; Completed; Cancelled; All), salesperson filter (remembered per user) and search. Completed and Cancelled fold earlier years under a header.
   - Create and edit, with customer and municipality added inline; module, inverter and battery lines with computed DC/AC kW, ratio and $/W, plus how the inverter gets internet.

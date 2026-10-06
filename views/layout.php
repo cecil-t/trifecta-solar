@@ -35,6 +35,10 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 			<?php endforeach; ?>
 		</nav>
 
+		<form class="topsearch" method="get" action="/search" role="search">
+			<input type="search" name="q" value="<?= e($path === '/search' ? trim((string) ($_GET['q'] ?? '')) : '') ?>" placeholder="Search" aria-label="Search projects and service" enterkeyhint="search">
+		</form>
+
 		<details class="navmenu">
 			<summary class="<?= $isActive('/customers') || $isActive('/organizations') || $isActive('/municipalities') || $isActive('/directory') || $isActive('/admin') || $isActive('/users') ? 'active' : '' ?>">Lists &#9662;</summary>
 			<div class="usermenu-panel">

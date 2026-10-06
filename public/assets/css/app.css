@@ -965,3 +965,46 @@ a[href^="tel:"] { white-space: nowrap; }
 .geo-flag { display: inline-block; margin-top: .25rem; }
 #geo-note { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
 .geo-flag.chip { border-radius: var(--radius-sm); line-height: 1.35; padding-top: .2rem; padding-bottom: .2rem; }
+
+/* top bar search: projects and service in one box */
+.topsearch { flex: 0 1 220px; min-width: 0; }
+.topsearch input[type=search] {
+	width: 100%; padding: .42rem .8rem .42rem 2rem; border-radius: 999px; font-size: .9rem;
+	background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d6a72' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E") no-repeat .7rem 50% / 15px;
+}
+.topsearch input[type=search]:focus { background-color: var(--surface); }
+.search-group { margin-bottom: 1rem; }
+.search-group .card-head h2 { display: flex; align-items: center; gap: .4rem; }
+.table-search td:first-child { white-space: nowrap; width: 1%; }
+@media (max-width: 760px) {
+	.topsearch { flex: 1 1 0; }
+	.topsearch input[type=search] { padding-top: .38rem; padding-bottom: .38rem; }
+	.usermenu { margin-left: 0; }
+	.filters.search-page-form { display: none; } /* the top bar box is right above */
+	.search-group .card-head { padding: .75rem .75rem .4rem; }
+	.table-search thead { display: none; }
+	.table-search tbody tr { display: grid; grid-template-columns: 4.1rem minmax(0, 1fr) auto; column-gap: .55rem; row-gap: .1rem; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+	.table-search tbody tr:last-child { border-bottom: 0; }
+	.table-search td { display: block; padding: 0; border: 0; }
+	.table-search td:first-child { grid-column: 1; grid-row: 1; font-size: .85rem; width: auto; }
+	.table-search td:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
+	.table-search td:nth-child(2) > a { font-weight: 600; }
+	.table-search td:last-child { grid-column: 3; grid-row: 1; text-align: right; }
+	.table-search td:last-child .muted { display: none; }
+	.table-search .c-sales { display: none; }
+	.table-search .c-desc { grid-column: 2; grid-row: 3; min-width: 0; color: var(--muted); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.table-search .chip, .table-search .phase { font-size: .66rem; padding: .08rem .45rem; }
+}
+/* tablet widths: keep every nav link visible next to the search box */
+@media (min-width: 761px) and (max-width: 1100px) {
+	.topbar-inner { gap: .75rem; }
+	.topsearch { flex-basis: 150px; }
+	.mainnav a { padding-left: .6rem; padding-right: .6rem; }
+	.usermenu-name { display: none; }
+}
+@media (min-width: 761px) and (max-width: 860px) {
+	.topbar-inner { gap: .5rem; }
+	.brand img { height: 34px; }
+	.topsearch { flex-basis: 110px; }
+	.mainnav a, .navmenu summary { padding-left: .5rem; padding-right: .5rem; }
+}

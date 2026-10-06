@@ -23,6 +23,7 @@ use App\Controllers\HealthController;
 use App\Controllers\MunicipalityController;
 use App\Controllers\OrganizationController;
 use App\Controllers\ProjectController;
+use App\Controllers\SearchController;
 use App\Controllers\SetupController;
 use App\Controllers\TemplateController;
 use App\Controllers\UserController;
@@ -82,6 +83,9 @@ $r->get('/users/{id}', [UserController::class, 'edit'], 'admin');
 $r->post('/users/{id}', [UserController::class, 'update'], 'admin');
 $r->post('/users/{id}/password', [UserController::class, 'setPassword'], 'admin');
 $r->post('/users/{id}/revoke-devices', [UserController::class, 'revokeDevices'], 'admin');
+
+// Search (top bar)
+$r->get('/search', [SearchController::class, 'index']);
 
 // Projects
 $r->get('/projects', [ProjectController::class, 'index']);
