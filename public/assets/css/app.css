@@ -770,7 +770,7 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 .project-notes-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; margin-bottom: 1rem; }
 .project-notes-row > .task-strip { margin-bottom: 0; }
 .notes-card { scroll-margin-top: calc(var(--topbar-h, 64px) + 12px); }
-.notes-form textarea { display: block; margin-top: .5rem; min-height: 6rem; line-height: 1.45; }
+.notes-form textarea { display: block; margin-top: .5rem; line-height: 1.45; }
 .notes-actions { display: flex; align-items: center; gap: .6rem; margin-top: .45rem; }
 .notes-actions .btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
 .notes-saved { margin-top: .5rem; }

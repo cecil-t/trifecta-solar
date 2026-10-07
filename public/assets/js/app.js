@@ -91,6 +91,35 @@
 		document.querySelectorAll('form[data-sending]').forEach((f) => { delete f.dataset.sending; });
 	});
 
+	// Text boxes marked data-autogrow (comments, project notes) grow with their text up to 8 lines,
+	// then scroll. Dragging the corner still sizes one by hand, and from then on it stays that size.
+	const growBoxes = document.querySelectorAll('textarea[data-autogrow]');
+	const fit = (t) => {
+		if (t.dataset.userSized) return;
+		const cs = getComputedStyle(t);
+		const frame = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+		const line = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+		t.style.height = 'auto'; // back to its rows="2" height, so it can shrink too
+		const h = Math.ceil(Math.min(t.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth), line * 8 + frame));
+		t.style.height = h + 'px';
+		t.dataset.autoHeight = String(t.offsetHeight);
+	};
+	growBoxes.forEach((t) => {
+		fit(t);
+		t.addEventListener('input', () => fit(t));
+	});
+	if (growBoxes.length) {
+		// A height that differs from the last fit when a press ends means it was dragged.
+		document.addEventListener('pointerup', () => growBoxes.forEach((t) => {
+			if (!t.dataset.userSized && t.dataset.autoHeight && Math.abs(t.offsetHeight - Number(t.dataset.autoHeight)) > 1) t.dataset.userSized = '1';
+		}));
+		window.addEventListener('resize', () => growBoxes.forEach(fit)); // narrower boxes wrap to more lines
+		// The comment Edit box is inside a closed <details>, so fit it once it opens.
+		document.addEventListener('toggle', (e) => {
+			if (e.target.open) e.target.querySelectorAll('textarea[data-autogrow]').forEach(fit);
+		}, true);
+	}
+
 	// Page behaviors wired by data attributes instead of inline handlers, so the Content Security
 	// Policy can forbid inline script.
 	document.addEventListener('click', (e) => {

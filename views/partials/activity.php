@@ -46,7 +46,7 @@ $showProject ??= false;
 						<form method="post" action="/activity/<?= (int) $a['id'] ?>/edit" class="stack-sm">
 							<?= Csrf::field() ?>
 							<input type="hidden" name="back" value="<?= e($back) ?>">
-							<textarea name="body" rows="3" required data-enter-submit><?= e($a['body']) ?></textarea>
+							<textarea name="body" rows="3" required data-enter-submit data-autogrow><?= e($a['body']) ?></textarea>
 							<div class="row-gap">
 								<button class="btn btn-primary btn-small">Save</button>
 							</div>

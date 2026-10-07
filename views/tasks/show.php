@@ -44,7 +44,7 @@ $canDelete = Auth::isAdmin() || (int) $d['created_by'] === Auth::id() || (int) $
 		<h2>Log</h2>
 		<form method="post" action="<?= $back ?>/comments" class="comment-form">
 			<?= Csrf::field() ?>
-			<textarea name="body" rows="2" placeholder="Add a comment... (you can edit or delete it for 7 days)" required data-enter-submit></textarea>
+			<textarea name="body" rows="2" placeholder="Add a comment... (you can edit or delete it for 7 days)" required data-enter-submit data-autogrow></textarea>
 			<button class="btn btn-primary btn-small">Post</button>
 		</form>
 		<?= App\View::partial('partials/activity', ['entries' => $activity, 'back' => $back . '#log']) ?>

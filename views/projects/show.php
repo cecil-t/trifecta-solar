@@ -232,7 +232,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 	<form method="post" action="/projects/<?= (int) $p['id'] ?>/notes" class="notes-form" data-notes<?= $noteDraft !== null ? ' data-dirty' : '' ?>>
 		<?= Csrf::field() ?>
 		<input type="hidden" name="notes_seen" value="<?= e((string) $p['notes_updated_at']) ?>">
-		<textarea name="notes" rows="6" aria-label="Project notes" placeholder="General notes: site access, customer preferences, anything that doesn't fit a task or a comment"><?= "\n" . e($noteDraft ?? (string) $p['notes']) ?></textarea>
+		<textarea name="notes" rows="2" aria-label="Project notes" data-autogrow placeholder="General notes: site access, customer preferences, anything that doesn't fit a task or a comment"><?= "\n" . e($noteDraft ?? (string) $p['notes']) ?></textarea>
 		<div class="notes-actions">
 			<button class="btn btn-primary btn-small" data-notes-save>Save notes</button>
 			<span class="muted small" data-notes-status></span>
@@ -388,7 +388,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 	</div>
 	<form method="post" action="/projects/<?= (int) $p['id'] ?>/comments" class="comment-form">
 		<?= Csrf::field() ?>
-		<textarea name="body" rows="2" placeholder="Add a comment... (you can edit or delete it for 7 days)" required data-enter-submit></textarea>
+		<textarea name="body" rows="2" placeholder="Add a comment... (you can edit or delete it for 7 days)" required data-enter-submit data-autogrow></textarea>
 		<button class="btn btn-primary btn-small">Post</button>
 	</form>
 	<?= App\View::partial('partials/activity', ['entries' => $activity, 'back' => $back . '#log']) ?>
