@@ -69,6 +69,28 @@
 		row.classList.add('row-flash');
 	}
 
+	// Comment boxes (data-enter-submit): on a computer, Enter posts and Shift+Enter starts a new line.
+	// Phone keyboards have no Shift, so there Enter stays a new line. Ctrl/Cmd+Enter posts on either.
+	const enterPosts = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+	if (enterPosts) {
+		document.querySelectorAll('textarea[data-enter-submit][placeholder]').forEach((t) => {
+			t.placeholder = t.placeholder.replace('...', '... Enter to post, Shift+Enter for a new line');
+		});
+	}
+	document.addEventListener('keydown', (e) => {
+		const box = e.target.closest && e.target.closest('textarea[data-enter-submit]');
+		if (!box || e.key !== 'Enter' || e.isComposing || e.shiftKey || e.altKey) return;
+		if (!(e.ctrlKey || e.metaKey || enterPosts)) return;
+		e.preventDefault();
+		const form = box.form;
+		if (!form || form.dataset.sending || box.value.trim() === '') return;
+		form.dataset.sending = '1'; // a held or double-pressed Enter posts once
+		form.requestSubmit();
+	});
+	window.addEventListener('pageshow', () => { // a page restored by Back can post again
+		document.querySelectorAll('form[data-sending]').forEach((f) => { delete f.dataset.sending; });
+	});
+
 	// Page behaviors wired by data attributes instead of inline handlers, so the Content Security
 	// Policy can forbid inline script.
 	document.addEventListener('click', (e) => {

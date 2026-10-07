@@ -171,7 +171,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 	</div>
 	<form method="post" action="<?= $back ?>/comments" class="comment-form">
 		<?= Csrf::field() ?>
-		<textarea name="body" rows="2" placeholder="Add a comment... (you can edit or delete it for 7 days)" required></textarea>
+		<textarea name="body" rows="2" placeholder="Add a comment... (you can edit or delete it for 7 days)" required data-enter-submit></textarea>
 		<button class="btn btn-primary btn-small">Post</button>
 	</form>
 	<?= App\View::partial('partials/activity', ['entries' => $activity, 'back' => $back . '#log']) ?>
