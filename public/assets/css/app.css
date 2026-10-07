@@ -984,8 +984,9 @@ a[href^="tel:"] { white-space: nowrap; }
 	.navmenu summary { padding-left: .4rem; padding-right: .3rem; }
 	.usermenu summary { padding-left: 0; }
 	/* while typing, the box takes the Lists menu's and avatar's spot so more of the text shows */
+	/* (squeezed to zero width rather than removed, so the row keeps the avatar's height and the page doesn't jump) */
 	.topbar-inner:has(.topsearch :focus) .navmenu,
-	.topbar-inner:has(.topsearch :focus) .usermenu { display: none; }
+	.topbar-inner:has(.topsearch :focus) .usermenu { visibility: hidden; width: 0; overflow: hidden; margin-left: -.5rem; }
 	.filters.search-page-form { display: none; } /* the top bar box is right above */
 	.search-group .card-head { padding: .75rem .75rem .4rem; }
 	.table-search thead { display: none; }
