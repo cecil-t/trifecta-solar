@@ -289,7 +289,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			</div>
 			<div class="tgrid">
 				<div class="trow thead">
-					<span><?= e($phaseLabel) ?></span><span>Needed</span><span>Completed</span><span class="th-target">Target</span><span>Ref #</span><span>Assigned</span><span>Note</span><span></span>
+					<span><?= e($phaseLabel) ?><span class="thead-check" title="Every step resolved" <?= $tasks && $done === count($tasks) ? '' : 'hidden' ?>>&#10003;</span></span><span>Needed</span><span>Completed</span><span class="th-target">Target</span><span>Ref #</span><span>Assigned</span><span>Note</span><span></span>
 				</div>
 				<?php foreach ($tasks as $t): $hasSubs = (bool) $t['subs']; ?>
 					<div class="task" id="task-<?= (int) $t['id'] ?>">

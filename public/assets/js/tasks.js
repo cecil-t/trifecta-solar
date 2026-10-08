@@ -43,8 +43,7 @@
 			const done = block.querySelectorAll('.trow-task.is-resolved').length;
 			const count = block.querySelector('.phase-done');
 			if (count) count.textContent = done;
-			const check = block.querySelector('.phase-check');
-			if (check) check.hidden = !(steps.length && done === steps.length);
+			block.querySelectorAll('.phase-check, .thead-check').forEach((c) => { c.hidden = !(steps.length && done === steps.length); });
 		});
 		const badge = document.getElementById('phase-badge');
 		if (badge && d.phase) {
