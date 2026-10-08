@@ -345,7 +345,11 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 									<summary aria-label="More">&#8943;</summary>
 									<div class="usermenu-panel">
 										<button type="button" class="linklike" data-action="rename" data-name="<?= e($s['name']) ?>">Rename</button>
-										<?php if ((string) $s['needed'] === '0'): ?><button type="button" class="linklike" data-action="set-needed" data-value="1">Needed after all</button><?php endif; ?>
+										<?php if ((string) $s['needed'] === '0'): ?>
+											<button type="button" class="linklike" data-action="set-needed" data-value="1">Needed after all</button>
+										<?php elseif ((string) $t['needed'] !== '0'): ?>
+											<button type="button" class="linklike" data-action="set-needed" data-value="0">Not needed</button>
+										<?php endif; ?>
 										<form method="post" action="/projects/<?= (int) $p['id'] ?>/tasks/<?= (int) $s['id'] ?>/delete" data-confirm="<?= e('Remove "' . $s['name'] . '"?') ?>"><?= Csrf::field() ?><button class="linklike text-red">Remove</button></form>
 									</div>
 								</details>
