@@ -37,6 +37,15 @@
 			const r = document.querySelector('.trow[data-id="' + id + '"]');
 			if (r) r.classList.toggle('is-resolved', !!ok);
 		});
+		// Phase headers: resolved count, and the checkmark once every step is resolved.
+		document.querySelectorAll('.phase-block').forEach((block) => {
+			const steps = block.querySelectorAll('.trow-task');
+			const done = block.querySelectorAll('.trow-task.is-resolved').length;
+			const count = block.querySelector('.phase-done');
+			if (count) count.textContent = done;
+			const check = block.querySelector('.phase-check');
+			if (check) check.hidden = !(steps.length && done === steps.length);
+		});
 		const badge = document.getElementById('phase-badge');
 		if (badge && d.phase) {
 			phaseClasses.forEach((c) => badge.classList.remove('phase-' + c));
@@ -69,9 +78,10 @@
 			const days = Math.round((Date.parse(today) - Date.parse(target.value)) / 86400000);
 			cls = days >= 30 ? 'is-overdue-30' : 'is-overdue';
 		}
-		target.classList.remove('is-overdue', 'is-overdue-30');
+		if (!cls && target.value) cls = 'has-target';
+		target.classList.remove('is-overdue', 'is-overdue-30', 'has-target');
 		if (cls) target.classList.add(cls);
-		target.title = cls ? 'Past target date' + (cls === 'is-overdue-30' ? ' by 30+ days' : '') : '';
+		target.title = cls && cls !== 'has-target' ? 'Past target date' + (cls === 'is-overdue-30' ? ' by 30+ days' : '') : '';
 	}
 
 	document.querySelectorAll('.trow[data-id]').forEach((row) => {

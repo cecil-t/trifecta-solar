@@ -42,10 +42,13 @@ $provider = static function (array $slot) use ($p): string {
 	};
 };
 $today = date('Y-m-d');
-// Target cell highlight: past target with no done date (cream), 30+ days past (red).
+// Target cell highlight: past target with no done date (cream), 30+ days past (red), any other target set (light blue).
 $overdue = static function (array $t) use ($today): string {
-	if ((string) $t['needed'] === '0' || !empty($t['done_date']) || empty($t['target_date']) || $t['target_date'] >= $today) {
+	if (empty($t['target_date'])) {
 		return '';
+	}
+	if ((string) $t['needed'] === '0' || !empty($t['done_date']) || $t['target_date'] >= $today) {
+		return 'has-target';
 	}
 	$days = (int) ((strtotime($today) - strtotime($t['target_date'])) / 86400);
 	return $days >= 30 ? 'is-overdue-30' : 'is-overdue';
@@ -281,7 +284,8 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			<div class="phase-title" data-phase-toggle>
 				<span class="phase-caret" aria-hidden="true"></span>
 				<h2><?= e($phaseLabel) ?></h2>
-				<span class="muted small"><?= $done ?> of <?= count($tasks) ?> resolved</span>
+				<span class="phase-check" title="Every step resolved" <?= $tasks && $done === count($tasks) ? '' : 'hidden' ?>>&#10003;</span>
+				<span class="muted small"><span class="phase-done"><?= $done ?></span> of <?= count($tasks) ?> resolved</span>
 			</div>
 			<div class="tgrid">
 				<div class="trow thead">
@@ -333,7 +337,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 								<span class="tname"><span class="dot"></span><?= e($s['name']) ?> <?= $gateBadge($s['gate']) ?></span>
 								<span class="needed-cell" data-needed="<?= e((string) $s['needed']) ?>"><?= (string) $s['needed'] === '0' ? $naChip : '' ?></span>
 								<div class="dwrap dw-done"><span class="mlabel">Completed</span><span class="date-wrap"><input type="date" data-field="done_date" value="<?= e($s['done_date']) ?>" aria-label="Completed date"><button type="button" class="today-btn" data-set-today title="Completed today" aria-label="Mark completed today">&#10003;</button><button type="button" class="clear-date-btn" data-clear-date title="Clear this date" aria-label="Clear completed date">&times;</button></span></div>
-								<label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date" class="<?= (string) $t['needed'] === '0' ? '' : $overdue($s) ?>"></label>
+								<label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date" class="<?= (string) $t['needed'] === '0' ? ($s['target_date'] ? 'has-target' : '') : $overdue($s) ?>"></label>
 								<span></span>
 								<label class="dwrap dw-owner"><span class="mlabel">Assigned to</span><select data-field="owner_id" aria-label="Assigned to"><?= $ownerOpts($s['owner_id']) ?></select></label>
 								<input type="text" data-field="note" value="<?= e($s['note']) ?>" placeholder="Note" aria-label="Note" title="<?= $s['note_updated_at'] ? 'Edited ' . e(fmt_dt($s['note_updated_at'])) : '' ?>">

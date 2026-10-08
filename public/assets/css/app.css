@@ -802,6 +802,7 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 .trow .dw-target input { font-size: .76rem; color: #7d8a91; background: #fafbfa; border-color: #e8ece9; border-style: dashed; padding-top: .25rem; padding-bottom: .25rem; }
 .trow .dw-target input:focus { color: var(--text); border-style: solid; }
 .trow .dw-target input::-webkit-calendar-picker-indicator { opacity: .35; }
+.trow .dw-target input.has-target { background: #e3f0fa; border: 1px solid #a9cbe4; color: var(--blue); }
 .trow .dw-target input.is-overdue { background: #fff4d1; border: 1px solid #e6c766; color: #6b5310; }
 .trow .dw-target input.is-overdue-30 { background: #fbd3cd; border: 1px solid #d9534f; color: #8c1d14; font-weight: 650; }
 .trow.thead .th-target { font-weight: 600; }
@@ -1030,4 +1031,11 @@ a[href^="tel:"] { white-space: nowrap; }
 .topbar-pin .phase { flex: none; font-size: .72rem; padding: .08rem .5rem; }
 @media (max-width: 760px) {
 	.topbar-pin-inner { padding: .3rem .75rem; font-size: .9rem; }
+}
+
+/* phase header checkmark once every step in the phase is resolved */
+.phase-check {
+	display: inline-grid; place-items: center; flex: none; align-self: center;
+	width: 1.35rem; height: 1.35rem; border-radius: 50%;
+	background: var(--green); color: #fff; font-size: .8rem; font-weight: 800; line-height: 1;
 }
