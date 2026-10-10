@@ -1040,3 +1040,14 @@ a[href^="tel:"] { white-space: nowrap; }
 	background: var(--green); color: #fff; font-size: .8rem; font-weight: 800; line-height: 1;
 }
 .thead-check { margin-left: .4rem; color: #fff; font-weight: 800; font-size: .9rem; line-height: 1; }
+
+/* Admin: monitoring API test page */
+.monitor-test-form { display: flex; flex-direction: column; gap: 1rem; max-width: 46rem; }
+.monitor-test-form label { max-width: 16rem; }
+.monitor-test-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.monitor-pre {
+	margin: 0; padding: .8rem; max-height: 32rem; overflow: auto;
+	background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+	font-size: .8rem; line-height: 1.4; white-space: pre-wrap; word-break: break-word;
+}
+.monitor-wrap { word-break: break-all; }

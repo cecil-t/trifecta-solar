@@ -20,6 +20,7 @@ use App\Controllers\AuthController;
 use App\Controllers\ContactController;
 use App\Controllers\DashboardController;
 use App\Controllers\HealthController;
+use App\Controllers\MonitorController;
 use App\Controllers\MunicipalityController;
 use App\Controllers\OrganizationController;
 use App\Controllers\ProjectController;
@@ -149,6 +150,10 @@ $r->get('/municipalities', [MunicipalityController::class, 'index']);
 $r->post('/municipalities', [MunicipalityController::class, 'store']);
 $r->get('/municipalities/{id}', [MunicipalityController::class, 'show']);
 $r->post('/municipalities/{id}', [MunicipalityController::class, 'update']);
+
+// Admin: monitoring API test (one call per click)
+$r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
+$r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
 
 // Admin: task template
 $r->get('/admin/template', [TemplateController::class, 'index'], 'admin');
