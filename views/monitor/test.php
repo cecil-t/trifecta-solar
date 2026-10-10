@@ -2,12 +2,17 @@
 use App\Csrf;
 
 /**
- * @var bool    $configured
- * @var array   $calls    key => label
- * @var ?array  $result   from App\SolarEdge::get plus call and at
+ * @var array   $calls          key => label
+ * @var bool    $solaredge      SolarEdge key set
+ * @var bool    $enphase        Enphase app credentials set
+ * @var ?array  $enphaseStatus  saved token times (no tokens), from App\Enphase::status
+ * @var string  $callbackUrl
+ * @var string  $fallbackUrl     approval page that returns to Enphase's own code page
+ * @var ?array  $result         from App\Http::request plus url, call and at
  * @var ?string $error
  * @var string  $siteId
- * @var array   $sites    parsed site list when the last call was the site list
+ * @var string  $systemId
+ * @var array   $rows           sites or systems parsed from a list call
  */
 $pretty = '';
 if ($result) {
@@ -18,35 +23,94 @@ if ($result) {
 		$pretty = substr($pretty, 0, 60000) . "\n... (cut off at 60,000 characters)";
 	}
 }
+$when = static fn (int $ts): string => $ts ? date('m/d/Y g:i A', $ts) : '';
+$buttons = static function (array $keys) use ($calls): string {
+	$out = '';
+	foreach ($keys as $key) {
+		$out .= '<button type="submit" name="call" value="' . e($key) . '" class="btn btn-secondary">' . e($calls[$key]) . '</button>';
+	}
+	return $out;
+};
 ?>
 <div class="page-head">
 	<div>
 		<h1>Monitoring API test</h1>
-		<p class="muted">Admin test page for SolarEdge Monitoring API V2. Each button makes exactly <strong>one</strong> call from the server; check the developer dashboard's usage afterward to see what it cost. Nothing is saved.</p>
+		<p class="muted">Admin test page for the inverter monitoring APIs. Each call button makes exactly <strong>one</strong> call from the server; check the vendor's usage page afterward to see what it cost. API responses are not saved.</p>
 	</div>
 </div>
 
-<?php if (!$configured): ?>
-	<div class="flash flash-error">No SolarEdge key is set. Add <code>SOLAREDGE_API_KEY</code> to the server .env file; it is read on the next page load.</div>
-<?php endif; ?>
 <?php if ($error): ?>
 	<div class="flash flash-error"><?= e($error) ?></div>
 <?php endif; ?>
 
-<section class="card">
-	<h2>Make one call</h2>
-	<form method="post" action="/admin/monitor-test" class="monitor-test-form">
-		<?= Csrf::field() ?>
-		<label>SolarEdge site ID <span class="muted small">(only for the one-site calls)</span>
-			<input type="text" name="site_id" value="<?= e($siteId) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
-		</label>
-		<div class="monitor-test-buttons">
-			<?php foreach ($calls as $key => $label): ?>
-				<button type="submit" name="call" value="<?= e($key) ?>" class="btn btn-secondary"<?= $configured ? '' : ' disabled' ?>><?= e($label) ?></button>
-			<?php endforeach; ?>
-		</div>
-	</form>
-</section>
+<div class="grid-2">
+	<section class="card">
+		<h2>SolarEdge <span class="muted small">(Monitoring API V2)</span></h2>
+		<?php if (!$solaredge): ?>
+			<p class="muted">Not set up. Add <code>SOLAREDGE_API_KEY</code> to the server .env file.</p>
+		<?php else: ?>
+			<form method="post" action="/admin/monitor-test" class="monitor-test-form">
+				<?= Csrf::field() ?>
+				<label>SolarEdge site ID <span class="muted small">(only for the one-site calls)</span>
+					<input type="text" name="site_id" value="<?= e($siteId) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
+				</label>
+				<div class="monitor-test-buttons"><?= $buttons(['sites', 'alerts', 'overview', 'energy']) ?></div>
+			</form>
+		<?php endif; ?>
+	</section>
+
+	<section class="card">
+		<h2>Enphase <span class="muted small">(Enlighten API v4, Watt plan)</span></h2>
+		<?php if (!$enphase): ?>
+			<p class="muted">Not set up. Add <code>ENPHASE_API_KEY</code>, <code>ENPHASE_CLIENT_ID</code> and <code>ENPHASE_CLIENT_SECRET</code> to the server .env file.</p>
+		<?php else: ?>
+			<dl class="kv">
+				<dt>Connection</dt>
+				<dd>
+					<?php if ($enphaseStatus): ?>
+						Connected <?= e($when($enphaseStatus['connected_at'])) ?>
+						<div class="muted small">Access token good until <?= e($when($enphaseStatus['expires_at'])) ?>; last refreshed <?= e($when($enphaseStatus['refreshed_at'])) ?>. The refresh token lasts about a month from then.</div>
+					<?php else: ?>
+						Not connected
+					<?php endif; ?>
+				</dd>
+				<dt>Returns to</dt><dd><code class="monitor-wrap"><?= e($callbackUrl) ?></code></dd>
+			</dl>
+			<div class="monitor-test-buttons mt-sm">
+				<a href="/admin/monitor-test/enphase-connect" class="btn btn-primary"><?= $enphaseStatus ? 'Reconnect' : 'Connect' ?> Enphase</a>
+				<?php if ($enphaseStatus): ?>
+					<form method="post" action="/admin/monitor-test/enphase-disconnect" data-confirm="Remove the saved Enphase tokens from this server?">
+						<?= Csrf::field() ?>
+						<button type="submit" class="btn btn-ghost">Disconnect</button>
+					</form>
+				<?php endif; ?>
+			</div>
+			<p class="muted small mt-sm">Connect opens Enphase's approval page; sign in with the Enlighten account that should grant access, approve, and you come back here.</p>
+
+			<?php if ($enphaseStatus): ?>
+				<form method="post" action="/admin/monitor-test" class="monitor-test-form mt">
+					<?= Csrf::field() ?>
+					<label>Enphase system ID <span class="muted small">(only for the one-system calls)</span>
+						<input type="text" name="system_id" value="<?= e($systemId) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
+					</label>
+					<div class="monitor-test-buttons"><?= $buttons(['enphase_systems', 'enphase_summary', 'enphase_energy', 'enphase_refresh']) ?></div>
+				</form>
+			<?php endif; ?>
+
+			<details class="mt">
+				<summary class="small">Approval page cannot come back here?</summary>
+				<p class="muted small">Approve through Enphase's own landing page instead: <a href="<?= e($fallbackUrl) ?>" rel="noopener" target="_blank">open the approval page</a> (it returns to Enphase's page, which shows a code), then paste the code here.</p>
+				<form method="post" action="/admin/monitor-test/enphase-code" class="monitor-test-form">
+					<?= Csrf::field() ?>
+					<label>Authorization code
+						<input type="text" name="code" autocomplete="off" required>
+					</label>
+					<div><button type="submit" class="btn btn-secondary">Trade code for tokens</button></div>
+				</form>
+			</details>
+		<?php endif; ?>
+	</section>
+</div>
 
 <?php if ($result): ?>
 	<section class="card mt">
@@ -61,18 +125,18 @@ if ($result) {
 		</dl>
 	</section>
 
-	<?php if ($sites): ?>
+	<?php if ($rows): ?>
 		<section class="card card-flush mt">
-			<div class="card-head"><h2>Sites returned: <?= count($sites) ?></h2></div>
+			<div class="card-head"><h2>Returned: <?= count($rows) ?></h2></div>
 			<table class="table">
-				<thead><tr><th>Site ID</th><th>Name</th><th>Peak power</th><th>Status</th></tr></thead>
+				<thead><tr><th>ID</th><th>Name</th><th>Size</th><th>Status</th></tr></thead>
 				<tbody>
-				<?php foreach ($sites as $s): ?>
+				<?php foreach ($rows as $row): ?>
 					<tr>
-						<td><code><?= e((string) ($s['siteId'] ?? $s['id'] ?? '')) ?></code></td>
-						<td><?= e((string) ($s['name'] ?? '')) ?></td>
-						<td><?= e((string) ($s['peakPower'] ?? '')) ?></td>
-						<td><?= e((string) ($s['activationStatus'] ?? $s['status'] ?? '')) ?></td>
+						<td><code><?= e($row['id']) ?></code></td>
+						<td><?= e($row['name']) ?></td>
+						<td><?= e($row['size']) ?></td>
+						<td><?= e($row['status']) ?></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>

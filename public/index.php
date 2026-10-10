@@ -151,9 +151,13 @@ $r->post('/municipalities', [MunicipalityController::class, 'store']);
 $r->get('/municipalities/{id}', [MunicipalityController::class, 'show']);
 $r->post('/municipalities/{id}', [MunicipalityController::class, 'update']);
 
-// Admin: monitoring API test (one call per click)
+// Admin: monitoring API test (one call per click; Enphase OAuth connect and callback)
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
+$r->get('/admin/monitor-test/enphase-connect', [MonitorController::class, 'enphaseConnect'], 'admin');
+$r->get('/admin/monitor-test/enphase-callback', [MonitorController::class, 'enphaseCallback'], 'admin');
+$r->post('/admin/monitor-test/enphase-code', [MonitorController::class, 'enphaseCode'], 'admin');
+$r->post('/admin/monitor-test/enphase-disconnect', [MonitorController::class, 'enphaseDisconnect'], 'admin');
 
 // Admin: task template
 $r->get('/admin/template', [TemplateController::class, 'index'], 'admin');
