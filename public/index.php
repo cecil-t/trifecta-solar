@@ -21,6 +21,7 @@ use App\Controllers\ContactController;
 use App\Controllers\DashboardController;
 use App\Controllers\HealthController;
 use App\Controllers\MonitorController;
+use App\Controllers\MonitorPageController;
 use App\Controllers\MunicipalityController;
 use App\Controllers\OrganizationController;
 use App\Controllers\ProjectController;
@@ -150,6 +151,9 @@ $r->get('/municipalities', [MunicipalityController::class, 'index']);
 $r->post('/municipalities', [MunicipalityController::class, 'store']);
 $r->get('/municipalities/{id}', [MunicipalityController::class, 'show']);
 $r->post('/municipalities/{id}', [MunicipalityController::class, 'update']);
+
+// Monitoring (office display; reads only what monitor:poll stored)
+$r->get('/monitor', [MonitorPageController::class, 'show']);
 
 // Admin: monitoring API test (one call per click; Enphase OAuth connect and callback)
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');

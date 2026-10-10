@@ -10,13 +10,14 @@ $nav = [
 	['/service', 'Service', true],
 	['/tasks', 'Tasks', true],
 	['/reports', 'Reports', true],
+	['/monitor', 'Monitoring', true],
 ];
 $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_starts_with($path, $href);
 ?>
 <!doctype html>
 <html lang="en">
 <head>
-	<?= App\View::partial('partials/head', ['title' => $title ?? null]) ?>
+	<?= App\View::partial('partials/head', ['title' => $title ?? null, 'refresh' => $refresh ?? null]) ?>
 </head>
 <body>
 <header class="topbar">

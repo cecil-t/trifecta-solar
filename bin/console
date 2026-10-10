@@ -18,6 +18,10 @@ declare(strict_types=1);
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
  *   geo:check [--dry-run]                     Township / county lookup for every project address not yet checked; lists mismatches
+ *   monitor:poll [--vendor=X] [--force] [--dry-run]
+ *                                             Inverter monitoring collector (run every 15 minutes from cron). Pulls each
+ *                                             vendor only when due and inside its limits; --dry-run reports what is due
+ *                                             without calling any vendor; --force pulls even when not due
  */
 
 require dirname(__DIR__) . '/src/bootstrap.php';
@@ -133,6 +137,17 @@ try {
 			out($dry ? 'DRY RUN: nothing saved. Run again without --dry-run to apply.' : 'Done.');
 			break;
 
+		case 'monitor:poll':
+			$vendor = null;
+			foreach ($args as $a) {
+				if (str_starts_with($a, '--vendor=')) { $vendor = substr($a, 9); }
+			}
+			if ($vendor !== null && !isset(App\MonitorCollector::VENDORS[$vendor])) {
+				fail('Unknown vendor. Use one of: ' . implode(', ', array_keys(App\MonitorCollector::VENDORS)));
+			}
+			foreach (App\MonitorCollector::run(in_array('--force', $args, true), $vendor, in_array('--dry-run', $args, true)) as $line) { out($line); }
+			break;
+
 		case 'geo:check':
 			$dry = in_array('--dry-run', $args, true);
 			foreach (App\Geo::checkAll($dry) as $line) { out($line); }
@@ -159,7 +174,7 @@ try {
 			break;
 
 		default:
-			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run]');
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());
