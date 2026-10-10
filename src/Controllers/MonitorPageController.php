@@ -40,6 +40,18 @@ final class MonitorPageController
 			$sums[(int) $r['site_id']] = $r;
 		}
 
+		// Months filled by monitor:backfill count toward the year only where no daily values exist.
+		$monthly = [];
+		foreach (Db::all(
+			"SELECT m.site_id, SUM(m.wh) AS wh, MIN(m.month) AS first_month FROM monitor_monthly m
+			WHERE m.month >= ? AND m.month < ?
+				AND NOT EXISTS (SELECT 1 FROM monitor_daily d WHERE d.site_id = m.site_id AND d.date LIKE m.month || '-%')
+			GROUP BY m.site_id",
+			[substr($year, 0, 7), substr($month, 0, 7)]
+		) as $r) {
+			$monthly[(int) $r['site_id']] = $r;
+		}
+
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
 			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'today' => null, 'week' => 0.0,
@@ -59,7 +71,13 @@ final class MonitorPageController
 			// Vendor-supplied totals when fresh (Enphase, APsystems); otherwise sum the stored days.
 			$weekWh = $fresh && $s['week_wh'] !== null ? (float) $s['week_wh'] : (float) ($d['week'] ?? 0);
 			$monthWh = $fresh && $s['month_wh'] !== null ? (float) $s['month_wh'] : (float) ($d['month'] ?? 0);
-			$yearWh = $fresh && $s['year_wh'] !== null ? (float) $s['year_wh'] : (float) ($d['year'] ?? 0);
+			$mo = $monthly[(int) $s['id']] ?? null;
+			$yearWh = $fresh && $s['year_wh'] !== null ? (float) $s['year_wh'] : (float) ($d['year'] ?? 0) + (float) ($mo['wh'] ?? 0);
+			if ($mo && ($d['first_date'] ?? null) !== null) {
+				$d['first_date'] = min((string) $d['first_date'], $mo['first_month'] . '-01');
+			} elseif ($mo) {
+				$d['first_date'] = $mo['first_month'] . '-01';
+			}
 
 			$v['systems']++;
 			$v['kw'] += (float) $s['capacity_kw'];
@@ -120,7 +138,9 @@ final class MonitorPageController
 		[$seLeft] = MonitorCollector::seBudget();
 		View::render('monitor/index', [
 			'title' => 'Monitoring',
-			'refresh' => 900,
+			// Reload about 90 seconds after the next quarter hour, when monitor:poll (cron */15) has
+			// stored its pull. Reloading never calls a vendor, so this only sets how fresh the screen is.
+			'refresh' => 900 - (time() % 900) + 90,
 			'fleet' => $fleet,
 			'vendors' => $vendors,
 			'attention' => $attention,

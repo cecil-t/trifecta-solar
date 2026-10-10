@@ -22,6 +22,11 @@ declare(strict_types=1);
  *                                             Inverter monitoring collector (run every 15 minutes from cron). Pulls each
  *                                             vendor only when due and inside its limits; --dry-run reports what is due
  *                                             without calling any vendor; --force pulls even when not due
+ *   monitor:backfill [--vendor=X] [--daily] [--dry-run] [--force]
+ *                                             One-time fill of this year's history before daily tracking began: monthly
+ *                                             totals (SolarEdge 1 credit per site), --daily adds day-by-day values
+ *                                             (1 call per site per month). Refuses when over the vendor's allowance
+ *                                             unless --force. Run --dry-run first to see the cost
  */
 
 require dirname(__DIR__) . '/src/bootstrap.php';
@@ -148,6 +153,17 @@ try {
 			foreach (App\MonitorCollector::run(in_array('--force', $args, true), $vendor, in_array('--dry-run', $args, true)) as $line) { out($line); }
 			break;
 
+		case 'monitor:backfill':
+			$vendor = null;
+			foreach ($args as $a) {
+				if (str_starts_with($a, '--vendor=')) { $vendor = substr($a, 9); }
+			}
+			if ($vendor !== null && !isset(App\MonitorCollector::VENDORS[$vendor])) {
+				fail('Unknown vendor. Use one of: ' . implode(', ', array_keys(App\MonitorCollector::VENDORS)));
+			}
+			foreach (App\MonitorCollector::backfill($vendor, in_array('--daily', $args, true), in_array('--dry-run', $args, true), in_array('--force', $args, true)) as $line) { out($line); }
+			break;
+
 		case 'geo:check':
 			$dry = in_array('--dry-run', $args, true);
 			foreach (App\Geo::checkAll($dry) as $line) { out($line); }
@@ -174,7 +190,7 @@ try {
 			break;
 
 		default:
-			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run]');
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run] | monitor:backfill [--vendor=X] [--daily] [--dry-run] [--force]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());

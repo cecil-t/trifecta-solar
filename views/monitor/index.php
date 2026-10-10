@@ -40,7 +40,7 @@ $hasSolarEdge = isset($vendors['solaredge']);
 <div class="page-head">
 	<div>
 		<h1>Monitoring</h1>
-		<p class="muted">Every inverter brand in one place. Last data <?= e($when($latestOk)) ?>; this page refreshes every 15 minutes.</p>
+		<p class="muted">Every inverter brand in one place. Last data <?= e($when($latestOk)) ?>; this page reloads a minute or two after each quarter-hour pull.</p>
 	</div>
 </div>
 

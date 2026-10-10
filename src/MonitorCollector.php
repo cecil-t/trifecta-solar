@@ -101,6 +101,141 @@ final class MonitorCollector
 		return $this->lines;
 	}
 
+	// ---- one-time history backfill ------------------------------------------------------------
+
+	/**
+	 * Fill this year's history for months before daily tracking began: monthly totals always (SolarEdge
+	 * 1 credit per site, APsystems 1 call per system), and with $daily the day-by-day values too
+	 * (1 call per site per month). Refuses when the estimate exceeds what is left of the vendor's
+	 * allowance, unless forced. Months that already have stored days are skipped.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function backfill(?string $only, bool $daily, bool $dryRun, bool $force): array
+	{
+		$lock = fopen(dirname(Db::path()) . '/.monitor.lock', 'c');
+		if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+			return [self::stamp() . ' monitor:poll is running; try again in a few minutes.'];
+		}
+		$lines = [];
+		foreach (array_keys(self::VENDORS) as $vendor) {
+			if ($only !== null && $only !== $vendor) {
+				continue;
+			}
+			$c = new self();
+			$lines = array_merge($lines, $c->backfillVendor($vendor, $daily, $dryRun, $force));
+		}
+		flock($lock, LOCK_UN);
+		return $lines;
+	}
+
+	/** @return array<int, string> */
+	private function backfillVendor(string $vendor, bool $daily, bool $dryRun, bool $force): array
+	{
+		$label = self::VENDORS[$vendor];
+		if ($vendor === 'enphase') {
+			return [self::stamp() . " $label: nothing to backfill; Enlighten gives this year's total directly."];
+		}
+		$months = [];
+		for ($m = 1; $m < (int) date('n'); $m++) {
+			$months[] = date('Y') . '-' . sprintf('%02d', $m);
+		}
+		if (!$months) {
+			return [self::stamp() . " $label: nothing to backfill in January."];
+		}
+		$sites = Db::all("SELECT * FROM monitor_sites WHERE vendor = ? AND ignored = 0 AND state != 'pending' ORDER BY id", [$vendor]);
+		if (!$sites) {
+			return [self::stamp() . " $label: no systems stored yet; run monitor:poll --vendor=$vendor --force first."];
+		}
+		$todo = [];
+		foreach ($sites as $site) {
+			$need = [];
+			foreach ($daily ? $months : [] as $month) {
+				$have = (int) Db::value('SELECT COUNT(*) FROM monitor_daily WHERE site_id = ? AND date LIKE ?', [$site['id'], $month . '-%']);
+				if ($have < (int) date('t', strtotime($month . '-01')) - 1) {
+					$need[] = $month;
+				}
+			}
+			$todo[] = [$site, $need];
+		}
+		$estimate = count($sites) + array_sum(array_map(static fn ($t) => count($t[1]), $todo));
+		$left = $vendor === 'solaredge'
+			? self::seBudget()[0]
+			: self::AP_MONTHLY_CAP - self::callsSince('apsystems', strtotime(date('Y-m-01 00:00:00')));
+		$unit = $vendor === 'solaredge' ? 'credits' : 'calls';
+		$summary = sprintf('%d systems, monthly totals %s to %s%s: about %d %s (%d left)', count($sites), $months[0], end($months),
+			$daily ? ' plus daily values' : '', $estimate, $unit, $left);
+		if ($dryRun) {
+			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
+		}
+		if ($estimate > $left && !$force) {
+			return [self::stamp() . " $label: not enough left for $summary. Use --force to run anyway."];
+		}
+
+		$runId = Db::insert('monitor_runs', ['vendor' => $vendor, 'started_at' => now_utc()]);
+		$ok = false;
+		try {
+			foreach ($todo as [$site, $need]) {
+				$vid = (string) $site['vendor_site_id'];
+				$id = (int) $site['id'];
+				if ($vendor === 'solaredge') {
+					$r = $this->seGet('/sites/' . $vid . '/energy', [
+						'from' => date('Y-m-d\TH:i:sP', strtotime($months[0] . '-01 00:00:00')),
+						'to' => date('Y-m-d\TH:i:sP', strtotime(date('Y-m-01 00:00:00')) - 1),
+						'resolution' => 'MONTH',
+					]);
+					foreach ($r['json']['values'] ?? [] as $v) {
+						if (isset($v['value']) && $v['value'] !== null) {
+							self::setMonthly($id, substr((string) $v['timestamp'], 0, 7), (float) $v['value']);
+						}
+					}
+					foreach ($need as $month) {
+						$first = strtotime($month . '-01 00:00:00');
+						$r = $this->seGet('/sites/' . $vid . '/energy', [
+							'from' => date('Y-m-d\TH:i:sP', $first),
+							'to' => date('Y-m-d\TH:i:sP', strtotime('+1 month', $first) - 1),
+							'resolution' => 'DAY',
+						]);
+						foreach ($r['json']['values'] ?? [] as $v) {
+							if (isset($v['value']) && $v['value'] !== null) {
+								self::setDaily($id, substr((string) $v['timestamp'], 0, 10), (float) $v['value']);
+							}
+						}
+					}
+				} else {
+					$list = self::apData(APsystems::request('GET', '/systems/energy/' . $vid, ['energy_level' => 'monthly', 'date_range' => date('Y')]));
+					$this->calls++;
+					foreach (is_array($list) ? array_values($list) : [] as $i => $kwh) {
+						$month = date('Y') . '-' . sprintf('%02d', $i + 1);
+						if ($kwh !== null && $kwh !== '' && in_array($month, $months, true)) {
+							self::setMonthly($id, $month, (float) $kwh * 1000);
+						}
+					}
+					foreach ($need as $month) {
+						$days = self::apData(APsystems::request('GET', '/systems/energy/' . $vid, ['energy_level' => 'daily', 'date_range' => $month]));
+						$this->calls++;
+						foreach (is_array($days) ? array_values($days) : [] as $i => $kwh) {
+							if ($kwh !== null && $kwh !== '') {
+								self::setDaily($id, $month . '-' . sprintf('%02d', $i + 1), (float) $kwh * 1000);
+							}
+						}
+					}
+				}
+			}
+			$ok = true;
+			$message = 'Backfill done: ' . $summary;
+		} catch (\Throwable $e) {
+			$message = 'Backfill stopped: ' . $e->getMessage();
+		}
+		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
+		return [self::stamp() . " $label: $message ({$this->calls} $unit used)"];
+	}
+
+	private static function setMonthly(int $siteId, string $month, float $wh): void
+	{
+		Db::run('INSERT INTO monitor_monthly (site_id, month, wh) VALUES (?, ?, ?) ON CONFLICT (site_id, month) DO UPDATE SET wh = excluded.wh', [$siteId, $month, $wh]);
+	}
+
 	// ---- schedules ---------------------------------------------------------------------------
 
 	private function enphaseDue(): array
@@ -177,9 +312,10 @@ final class MonitorCollector
 		return 2 + ($n ?: 100);
 	}
 
+	/** Last successful scheduled pull (backfill runs do not count, so they never delay one). */
 	private static function lastOk(string $vendor): ?int
 	{
-		$at = Db::value('SELECT MAX(started_at) FROM monitor_runs WHERE vendor = ? AND ok = 1', [$vendor]);
+		$at = Db::value("SELECT MAX(started_at) FROM monitor_runs WHERE vendor = ? AND ok = 1 AND COALESCE(message, '') NOT LIKE 'Backfill%'", [$vendor]);
 		return $at ? (strtotime((string) $at) ?: null) : null;
 	}
 
