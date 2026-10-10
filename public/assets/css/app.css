@@ -1095,3 +1095,6 @@ a[href^="tel:"] { white-space: nowrap; }
 	.mon-stats .stat { flex-direction: column; align-items: flex-start; }
 	.mon-stats .stat-num { font-size: 1.25rem; }
 }
+.mon-src-api { background: var(--green-50); color: var(--green-600); }
+.mon-src-signin { background: var(--orange-50); color: #9a5b00; }
+.mon-upd { margin-left: 1.15rem; }

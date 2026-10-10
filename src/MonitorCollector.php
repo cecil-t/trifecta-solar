@@ -25,6 +25,13 @@ final class MonitorCollector
 {
 	public const VENDORS = ['enphase' => 'Enphase', 'apsystems' => 'APsystems', 'solaredge' => 'SolarEdge'];
 
+	/** How each vendor's data is read: [short label, kind, detail]. kind 'api' = published API, 'signin' = portal sign-in. */
+	public const SOURCES = [
+		'enphase' => ['Sign-in', 'signin', 'Enlighten Manager, read as the installer user (not a published API)'],
+		'apsystems' => ['API', 'api', 'APsystems OpenAPI, free Lv0 plan (1,000 calls a month)'],
+		'solaredge' => ['API', 'api', 'SolarEdge Monitoring API V2, Free tier (2,000 credits a cycle)'],
+	];
+
 	private const AP_HOURS = [9, 12, 15, 18, 21];
 	private const AP_MONTHLY_CAP = 950;
 	private const SE_SAFETY = 20;

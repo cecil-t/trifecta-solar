@@ -42,7 +42,7 @@ final class MonitorPageController
 
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
-			$vendors[$key] = ['key' => $key, 'label' => $label, 'systems' => 0, 'kw' => 0.0, 'today' => null, 'week' => 0.0,
+			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'today' => null, 'week' => 0.0,
 				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null];
 		}
 		$fleet = ['systems' => 0, 'kw' => 0.0, 'today' => 0.0, 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];

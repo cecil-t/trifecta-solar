@@ -1,7 +1,7 @@
 <?php
 /**
  * @var array  $fleet       systems, kw, today, week, month, year (Wh)
- * @var array  $vendors     per manufacturer: label, systems, kw, today, week, month, year, attention, pending, first_date, run, yield_month
+ * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, today, week, month, year, attention, pending, first_date, run, yield_month
  * @var array  $attention   vendor, name, reason, offline, impact, last_production
  * @var string $yearStart
  * @var int    $seCreditsLeft
@@ -89,13 +89,13 @@ $hasSolarEdge = isset($vendors['solaredge']);
 					<th>kWh per kW, <?= e(date('M')) ?></th>
 					<th class="num"><?= e(date('Y')) ?></th>
 					<th class="num">Attention</th>
-					<th>Updated</th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php foreach ($vendors as $v): ?>
 				<tr>
-					<td><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><strong><?= e($v['label']) ?></strong></td>
+					<td><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><strong><?= e($v['label']) ?></strong> <span class="chip mon-src-<?= e($v['source'][1]) ?>" title="<?= e($v['source'][2]) ?>"><?= e($v['source'][0]) ?></span>
+						<div class="muted small mon-upd">Updated <?= e($when($v['run']['last_ok'])) ?></div><?php if ($v['run']['failed']): ?><div class="mon-fail"><?= e($v['run']['failed']) ?></div><?php endif; ?></td>
 					<td class="num"><?= (int) $v['systems'] ?><?= $v['pending'] ? ' <span class="muted small">(' . (int) $v['pending'] . ' pending)</span>' : '' ?></td>
 					<td class="mon-barcell"><?= $bar($v['kw'] / $fleetKw * 100, 'mon-fill-' . $v['key']) ?><span><?= e($power($v['kw'])) ?></span></td>
 					<td class="num"><?= $v['today'] === null ? '<span class="muted">-</span>' : e($energy($v['today'])) ?></td>
@@ -104,7 +104,6 @@ $hasSolarEdge = isset($vendors['solaredge']);
 					<td class="mon-barcell"><?php if ($v['yield_month'] !== null): ?><?= $bar($v['yield_month'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span><?= number_format($v['yield_month'], 1) ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
 					<td class="num"><?= e($energy($v['year'])) ?></td>
 					<td class="num"><?= $v['attention'] ? '<a href="#attention" class="mon-attn">' . (int) $v['attention'] . '</a>' : '<span class="muted">0</span>' ?></td>
-					<td class="small"><?= e($when($v['run']['last_ok'])) ?><?php if ($v['run']['failed']): ?><div class="mon-fail"><?= e($v['run']['failed']) ?></div><?php endif; ?></td>
 				</tr>
 			<?php endforeach; ?>
 			</tbody>
@@ -143,6 +142,7 @@ $hasSolarEdge = isset($vendors['solaredge']);
 		<?php endif; ?>
 		<p>SolarEdge data from the <a href="https://www.solaredge.com/" rel="noopener" target="_blank">SolarEdge</a> monitoring platform; <?= number_format($seCreditsLeft) ?> API credits left this cycle.</p>
 	<?php endif; ?>
+	<p>Data sources: <?php $parts = []; foreach ($vendors as $v) { $parts[] = e($v['label']) . ', ' . e($v['source'][2]); } echo implode('; ', $parts); ?>.</p>
 	<p>Flagged: anything the manufacturer reports as an alert or offline, and any system with no production on the last <?= (int) $noProductionDays ?> complete days.</p>
 </div>
 <?php endif; ?>
