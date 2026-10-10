@@ -136,7 +136,7 @@ $hasSolarEdge = isset($vendors['solaredge']);
 
 <div class="muted small mt mon-notes">
 	<?php if ($hasSolarEdge): ?>
-		<p>* Today counts the systems reported live (Enphase and APsystems). SolarEdge production is pulled once each weekday morning; weekend days appear Monday.</p>
+		<p>* Today counts Enphase (every 30 minutes) and, on weekdays, APsystems (8 AM, 11 AM, 2 PM and 5 PM). SolarEdge is pulled once each weekday at 8 AM for the days before. Weekend days for APsystems and SolarEdge fill in Monday morning.</p>
 		<?php if (!empty($vendors['solaredge']['first_date']) && $vendors['solaredge']['first_date'] > $yearStart): ?>
 			<p>** The SolarEdge share of the year total counts from <?= e($date($vendors['solaredge']['first_date'])) ?>, when the tracker started storing it.</p>
 		<?php endif; ?>

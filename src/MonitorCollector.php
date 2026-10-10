@@ -8,12 +8,15 @@ namespace App;
  * decides per vendor whether a pull is due, so every vendor stays inside its limits:
  *
  *  - Enphase (Enlighten Manager sign-in, App\Enlighten): one request returns every system with today,
- *    7-day, month, year and lifetime production. Every 30 minutes, 6 AM to 9 PM. No published limit.
- *  - APsystems (OpenAPI Lv0, 1,000 calls a month): daily energy for the month per system at 9, 12,
- *    3, 6 and 9 o'clock, plus the system list and a summary (year, lifetime) once a day. About 775
- *    calls a month for 4 systems; stops at 950 in a calendar month.
+ *    7-day, month, year and lifetime production. Every 30 minutes, 6 AM to 9 PM, every day: it costs
+ *    nothing, and the day's last pull is what becomes that day's stored total (the table only has a
+ *    running "today"), so it runs through the evening.
+ *  - APsystems (OpenAPI Lv0, 1,000 calls a month): weekdays at 8 AM, 11 AM, 2 PM and 5 PM, daily
+ *    energy for the month per system (each pull rewrites every day of the month, so Monday's first pull
+ *    completes Friday evening and the weekend), plus the system list and a summary (year, lifetime)
+ *    once a day. About 460 calls a month for 4 systems; stops at 950 in a calendar month.
  *  - SolarEdge (V2 Free tier, 2,000 credits a cycle, 1 credit a call, 10 calls a minute): once each
- *    weekday from 6 AM: site list, fleet alerts, then daily energy for each active site since its last
+ *    weekday from 8 AM: site list, fleet alerts, then daily energy for each active site since its last
  *    pull. Skips pending sites and sites with a site communication fault (nothing new to fetch; the
  *    next pull after the fault clears catches up). Skips when the cycle's remaining credits will not
  *    cover a full pull, and skips Fridays when they will not cover every weekday left (Monday's pull
@@ -32,7 +35,7 @@ final class MonitorCollector
 		'solaredge' => ['API', 'api', 'SolarEdge Monitoring API V2, Free tier (2,000 credits a cycle)'],
 	];
 
-	private const AP_HOURS = [9, 12, 15, 18, 21];
+	private const AP_HOURS = [8, 11, 14, 17];
 	private const AP_MONTHLY_CAP = 950;
 	private const SE_SAFETY = 20;
 
@@ -250,10 +253,13 @@ final class MonitorCollector
 
 	private function apDue(): array
 	{
+		if ((int) date('N') >= 6) {
+			return [false, 'weekends are filled in on Monday'];
+		}
 		$h = (int) date('G');
 		$slots = array_filter(self::AP_HOURS, static fn (int $s) => $s <= $h);
 		if (!$slots) {
-			return [false, 'first pull at 9 AM'];
+			return [false, 'first pull at 8 AM'];
 		}
 		$slotStart = strtotime(date('Y-m-d') . ' ' . max($slots) . ':00:00');
 		$last = self::lastOk('apsystems');
@@ -269,8 +275,8 @@ final class MonitorCollector
 		if ((int) date('N') >= 6) {
 			return [false, 'weekends are fetched on Monday'];
 		}
-		if ((int) date('G') < 6) {
-			return [false, 'pulls from 6 AM'];
+		if ((int) date('G') < 8) {
+			return [false, 'pulls from 8 AM'];
 		}
 		$last = self::lastOk('solaredge');
 		if ($last !== null && date('Y-m-d', $last) === date('Y-m-d')) {
