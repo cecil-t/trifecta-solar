@@ -18,7 +18,11 @@ final class Enlighten
 	public const BASE = 'https://enlighten.enphaseenergy.com';
 
 	/** Columns of the Enlighten Manager systems table, as the web app requests them. */
-	public const COLUMNS = ['name', 'id', 'status', 'status_since', 'city', 'state', 'today_production', 'lifetime_production', 'connection_type', 'issue_count'];
+	public const COLUMNS = [
+		'name', 'id', 'status', 'status_since', 'issue_count', 'capacity', 'last_report_date', 'current_power',
+		'today_production', 'last_7_days_production', 'month_to_date_production', 'yearly_production', 'lifetime_production',
+		'connection_type',
+	];
 
 	public static function configured(): bool
 	{

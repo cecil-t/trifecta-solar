@@ -154,7 +154,7 @@ $buttons = static function (array $keys) use ($calls): string {
 		<section class="card card-flush mt">
 			<div class="card-head"><h2>Returned: <?= count($rows) ?></h2></div>
 			<table class="table">
-				<thead><tr><th>ID</th><th>Name</th><th>Size or today (Wh)</th><th>Status</th></tr></thead>
+				<thead><tr><th>ID</th><th>Name</th><th>Size</th><th>Status</th></tr></thead>
 				<tbody>
 				<?php foreach ($rows as $row): ?>
 					<tr>

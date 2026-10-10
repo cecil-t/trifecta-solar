@@ -209,7 +209,7 @@ final class MonitorController
 					$rows[] = [
 						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['id'] ?? ''),
 						'name' => $cell($s['name'] ?? ''),
-						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['today_production'] ?? ''),
+						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['capacity'] ?? ''),
 						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? ''),
 					];
 				}
