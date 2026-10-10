@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\APsystems;
 use App\Enlighten;
 use App\Enphase;
 use App\SolarEdge;
@@ -27,6 +28,9 @@ final class MonitorController
 		'enphase_refresh' => 'Refresh the access token',
 		'enlighten_login' => 'Sign in now',
 		'enlighten_systems' => 'Systems table (all systems)',
+		'ap_systems' => 'System list (all systems)',
+		'ap_summary' => 'One system: summary',
+		'ap_energy' => 'One system: daily energy, this month',
 	];
 
 	public function test(): void
@@ -46,6 +50,7 @@ final class MonitorController
 		$now = new \DateTimeImmutable('now', $tz);
 		$today = $now->setTime(0, 0);
 		$weekAgo = $today->modify('-6 days');
+		$sid = trim((string) ($_POST['ap_sid'] ?? ''));
 		$result = match ($call) {
 			'sites' => SolarEdge::get('/sites', ['page' => 1, 'sites-in-page' => 1000]),
 			'alerts' => SolarEdge::get('/alerts', ['page' => 1, 'alerts-in-page' => 100]),
@@ -67,8 +72,12 @@ final class MonitorController
 			'enphase_refresh' => Enphase::refresh(),
 			'enlighten_login' => Enlighten::login(),
 			'enlighten_systems' => Enlighten::systems(),
+			'ap_systems' => APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]),
+			'ap_summary' => APsystems::request('GET', '/systems/summary/' . $sid),
+			'ap_energy' => APsystems::request('GET', '/systems/energy/' . $sid, ['energy_level' => 'daily', 'date_range' => $today->format('Y-m')]),
 		};
 		$result['call'] = match (true) {
+			str_starts_with($call, 'ap_') => 'APsystems: ',
 			str_starts_with($call, 'enlighten') => 'Enlighten Manager: ',
 			str_starts_with($call, 'enphase') => 'Enphase API: ',
 			default => 'SolarEdge: ',
@@ -158,6 +167,15 @@ final class MonitorController
 		if (!isset(self::CALLS[$call])) {
 			return ['', null, 'Unknown call.'];
 		}
+		if (str_starts_with($call, 'ap_')) {
+			if (!APsystems::configured()) {
+				return ['', null, 'Add APSYSTEMS_APP_ID and APSYSTEMS_APP_SECRET to the server .env file.'];
+			}
+			if ($call !== 'ap_systems' && !preg_match('/^[A-Za-z0-9]{1,40}$/', trim((string) ($_POST['ap_sid'] ?? '')))) {
+				return ['', null, 'Enter an APsystems system ID (letters and digits) for the one-system calls.'];
+			}
+			return [$call, null, null];
+		}
 		if (str_starts_with($call, 'enlighten')) {
 			if (!Enlighten::available()) {
 				return ['', null, 'The PHP curl extension is missing on this server.'];
@@ -198,7 +216,7 @@ final class MonitorController
 		$rows = [];
 		if ($result && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
 			$j = $result['json'];
-			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data'] ?? null;
+			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data']['systems'] ?? $j['data'] ?? null;
 			if (is_array($list) && array_is_list($list)) {
 				foreach ($list as $s) {
 					if (!is_array($s)) {
@@ -207,10 +225,10 @@ final class MonitorController
 					// Enlighten Manager cells are either plain values or {text, url}
 					$cell = static fn (mixed $v): string => is_array($v) ? (string) ($v['text'] ?? '') : (string) ($v ?? '');
 					$rows[] = [
-						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['id'] ?? ''),
+						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['sid'] ?? $s['id'] ?? ''),
 						'name' => $cell($s['name'] ?? ''),
 						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['capacity'] ?? ''),
-						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? ''),
+						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? (isset($s['light']) ? ['', 'Green', 'Yellow', 'Red', 'Grey'][(int) $s['light']] ?? $s['light'] : '')),
 					];
 				}
 			}
@@ -223,6 +241,8 @@ final class MonitorController
 			'enphaseStatus' => Enphase::status(),
 			'enlighten' => Enlighten::configured(),
 			'enlightenSession' => Enlighten::hasSession(),
+			'apsystems' => APsystems::configured(),
+			'apSid' => (string) ($_POST['ap_sid'] ?? ''),
 			'callbackUrl' => self::callbackUrl(),
 			'fallbackUrl' => Enphase::configured() ? Enphase::authorizeUrl(Enphase::DEFAULT_REDIRECT, 'manual') : '',
 			'result' => $result,

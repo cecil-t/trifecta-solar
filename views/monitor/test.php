@@ -5,6 +5,8 @@ use App\Csrf;
  * @var array   $calls          key => label
  * @var bool    $solaredge      SolarEdge key set
  * @var bool    $enphase        Enphase app credentials set
+ * @var bool    $apsystems       APsystems app id and secret set
+ * @var string  $apSid
  * @var bool    $enlighten       Enlighten sign-in set in .env
  * @var bool    $enlightenSession a saved Enlighten session exists
  * @var ?array  $enphaseStatus  saved token times (no tokens), from App\Enphase::status
@@ -132,6 +134,22 @@ $buttons = static function (array $keys) use ($calls): string {
 				</form>
 			<?php endif; ?>
 		</div>
+	<?php endif; ?>
+</section>
+
+<section class="card mt">
+	<h2>APsystems <span class="muted small">(OpenAPI installer endpoints, LV0: 1,000 calls a month)</span></h2>
+	<?php if (!$apsystems): ?>
+		<p class="muted">Not set up. Add <code>APSYSTEMS_APP_ID</code> and <code>APSYSTEMS_APP_SECRET</code> to the server .env file.</p>
+	<?php else: ?>
+		<form method="post" action="/admin/monitor-test" class="monitor-test-form">
+			<?= Csrf::field() ?>
+			<label>APsystems system ID <span class="muted small">(only for the one-system calls)</span>
+				<input type="text" name="ap_sid" value="<?= e($apSid) ?>" pattern="[A-Za-z0-9]{1,40}" autocomplete="off">
+			</label>
+			<div class="monitor-test-buttons"><?= $buttons(['ap_systems', 'ap_summary', 'ap_energy']) ?></div>
+		</form>
+		<p class="muted small mt-sm">Replies carry their own code: 0 is success, 2001 to 2004 mean the app id, secret or signature was not accepted, 2005 means this month's calls are used up.</p>
 	<?php endif; ?>
 </section>
 
