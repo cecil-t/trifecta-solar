@@ -5,6 +5,8 @@ use App\Csrf;
  * @var array   $calls          key => label
  * @var bool    $solaredge      SolarEdge key set
  * @var bool    $enphase        Enphase app credentials set
+ * @var bool    $enlighten       Enlighten sign-in set in .env
+ * @var bool    $enlightenSession a saved Enlighten session exists
  * @var ?array  $enphaseStatus  saved token times (no tokens), from App\Enphase::status
  * @var string  $callbackUrl
  * @var string  $fallbackUrl     approval page that returns to Enphase's own code page
@@ -112,6 +114,27 @@ $buttons = static function (array $keys) use ($calls): string {
 	</section>
 </div>
 
+<section class="card mt">
+	<h2>Enphase installer data <span class="muted small">(Enlighten Manager sign-in, not an API)</span></h2>
+	<?php if (!$enlighten): ?>
+		<p class="muted">Not set up. Add <code>ENPHASE_ENLIGHTEN_EMAIL</code> and <code>ENPHASE_ENLIGHTEN_PASSWORD</code> to the server .env file.</p>
+	<?php else: ?>
+		<p class="muted small">Signs in to Enlighten as the installer user and reads the same systems table Enlighten Manager shows. Session: <?= $enlightenSession ? 'saved on this server' : 'none yet (the first call signs in)' ?>.</p>
+		<div class="monitor-test-buttons">
+			<form method="post" action="/admin/monitor-test">
+				<?= Csrf::field() ?>
+				<?= $buttons(['enlighten_systems', 'enlighten_login']) ?>
+			</form>
+			<?php if ($enlightenSession): ?>
+				<form method="post" action="/admin/monitor-test/enlighten-forget">
+					<?= Csrf::field() ?>
+					<button type="submit" class="btn btn-ghost">Forget session</button>
+				</form>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
+</section>
+
 <?php if ($result): ?>
 	<section class="card mt">
 		<h2><?= e($result['call']) ?></h2>
@@ -120,7 +143,9 @@ $buttons = static function (array $keys) use ($calls): string {
 			<dt>URL</dt><dd><code class="monitor-wrap"><?= e($result['url']) ?></code></dd>
 			<dt>HTTP status</dt><dd><?= $result['status'] ? (int) $result['status'] : 'No response' ?></dd>
 			<dt>Time</dt><dd><?= (int) $result['ms'] ?> ms</dd>
+			<?php if (!empty($result['note'])): ?><dt>Note</dt><dd><?= e($result['note']) ?></dd><?php endif; ?>
 			<?php if ($result['error']): ?><dt>Error</dt><dd><?= e($result['error']) ?></dd><?php endif; ?>
+			<?php if (isset($result['cookies'])): ?><dt>Session cookies</dt><dd><?= $result['cookies'] ? e(implode(', ', $result['cookies'])) : 'none' ?> <span class="muted small">(names only)</span></dd><?php endif; ?>
 			<dt>Body size</dt><dd><?= number_format(strlen($result['body'])) ?> bytes</dd>
 		</dl>
 	</section>
@@ -129,7 +154,7 @@ $buttons = static function (array $keys) use ($calls): string {
 		<section class="card card-flush mt">
 			<div class="card-head"><h2>Returned: <?= count($rows) ?></h2></div>
 			<table class="table">
-				<thead><tr><th>ID</th><th>Name</th><th>Size</th><th>Status</th></tr></thead>
+				<thead><tr><th>ID</th><th>Name</th><th>Size or today (Wh)</th><th>Status</th></tr></thead>
 				<tbody>
 				<?php foreach ($rows as $row): ?>
 					<tr>

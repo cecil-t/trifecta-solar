@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Enlighten;
 use App\Enphase;
 use App\SolarEdge;
 use App\View;
@@ -24,6 +25,8 @@ final class MonitorController
 		'enphase_summary' => 'One system: summary',
 		'enphase_energy' => 'One system: daily energy, last 7 days',
 		'enphase_refresh' => 'Refresh the access token',
+		'enlighten_login' => 'Sign in now',
+		'enlighten_systems' => 'Systems table (all systems)',
 	];
 
 	public function test(): void
@@ -62,8 +65,14 @@ final class MonitorController
 				'end_date' => $today->format('Y-m-d'),
 			]),
 			'enphase_refresh' => Enphase::refresh(),
+			'enlighten_login' => Enlighten::login(),
+			'enlighten_systems' => Enlighten::systems(),
 		};
-		$result['call'] = (str_starts_with($call, 'enphase') ? 'Enphase: ' : 'SolarEdge: ') . self::CALLS[$call];
+		$result['call'] = match (true) {
+			str_starts_with($call, 'enlighten') => 'Enlighten Manager: ',
+			str_starts_with($call, 'enphase') => 'Enphase API: ',
+			default => 'SolarEdge: ',
+		} . self::CALLS[$call];
 		$result['at'] = $now->format('m/d/Y g:i:s A');
 		$this->render($result, null);
 	}
@@ -121,6 +130,13 @@ final class MonitorController
 		$this->finishExchange(Enphase::exchange($code, Enphase::DEFAULT_REDIRECT));
 	}
 
+	public function enlightenForget(): void
+	{
+		Enlighten::forget();
+		flash('success', 'Enlighten session removed from this server.');
+		redirect('/admin/monitor-test');
+	}
+
 	public function enphaseDisconnect(): void
 	{
 		Enphase::disconnect();
@@ -141,6 +157,12 @@ final class MonitorController
 		$call = (string) ($_POST['call'] ?? '');
 		if (!isset(self::CALLS[$call])) {
 			return ['', null, 'Unknown call.'];
+		}
+		if (str_starts_with($call, 'enlighten')) {
+			if (!Enlighten::available()) {
+				return ['', null, 'The PHP curl extension is missing on this server.'];
+			}
+			return Enlighten::configured() ? [$call, null, null] : ['', null, 'Add ENPHASE_ENLIGHTEN_EMAIL and ENPHASE_ENLIGHTEN_PASSWORD to the server .env file.'];
 		}
 		$enphase = str_starts_with($call, 'enphase');
 		if ($enphase && !Enphase::configured()) {
@@ -176,14 +198,19 @@ final class MonitorController
 		$rows = [];
 		if ($result && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
 			$j = $result['json'];
-			$list = $j['sites']['site'] ?? $j['systems'] ?? null;
+			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data'] ?? null;
 			if (is_array($list) && array_is_list($list)) {
 				foreach ($list as $s) {
+					if (!is_array($s)) {
+						continue;
+					}
+					// Enlighten Manager cells are either plain values or {text, url}
+					$cell = static fn (mixed $v): string => is_array($v) ? (string) ($v['text'] ?? '') : (string) ($v ?? '');
 					$rows[] = [
-						'id' => (string) ($s['siteId'] ?? $s['system_id'] ?? ''),
-						'name' => (string) ($s['name'] ?? ''),
-						'size' => (string) ($s['peakPower'] ?? $s['system_size'] ?? ''),
-						'status' => (string) ($s['activationStatus'] ?? $s['status'] ?? ''),
+						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['id'] ?? ''),
+						'name' => $cell($s['name'] ?? ''),
+						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['today_production'] ?? ''),
+						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? ''),
 					];
 				}
 			}
@@ -194,6 +221,8 @@ final class MonitorController
 			'solaredge' => SolarEdge::configured(),
 			'enphase' => Enphase::configured(),
 			'enphaseStatus' => Enphase::status(),
+			'enlighten' => Enlighten::configured(),
+			'enlightenSession' => Enlighten::hasSession(),
 			'callbackUrl' => self::callbackUrl(),
 			'fallbackUrl' => Enphase::configured() ? Enphase::authorizeUrl(Enphase::DEFAULT_REDIRECT, 'manual') : '',
 			'result' => $result,
