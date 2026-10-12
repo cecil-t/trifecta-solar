@@ -127,8 +127,10 @@ final class MonitorPageController
 		usort($attention, static fn ($a, $b) => [$b['offline'], $b['impact'], $a['name']] <=> [$a['offline'], $a['impact'], $b['name']]);
 
 		foreach ($vendors as $key => &$v) {
-			$run = Db::one('SELECT * FROM monitor_runs WHERE vendor = ? ORDER BY id DESC LIMIT 1', [$key]);
-			$ok = Db::value('SELECT MAX(finished_at) FROM monitor_runs WHERE vendor = ? AND ok = 1', [$key]);
+			// Scheduled pulls only: a one-time backfill's outcome is shown by the console, not here.
+			$scheduled = "vendor = ? AND finished_at IS NOT NULL AND COALESCE(message, '') NOT LIKE 'Backfill%'";
+			$run = Db::one("SELECT * FROM monitor_runs WHERE $scheduled ORDER BY id DESC LIMIT 1", [$key]);
+			$ok = Db::value("SELECT MAX(finished_at) FROM monitor_runs WHERE $scheduled AND ok = 1", [$key]);
 			$v['run'] = ['last_ok' => $ok ? (string) $ok : null, 'failed' => $run && !$run['ok'] && $run['finished_at'] ? (string) $run['message'] : null];
 			$v['yield_month'] = $v['kw'] > 0 ? $v['month'] / 1000 / $v['kw'] : null; // kWh per kW this month
 		}

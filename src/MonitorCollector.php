@@ -525,6 +525,9 @@ final class MonitorCollector
 	private static function apData(array $r): mixed
 	{
 		$code = $r['json']['code'] ?? null;
+		if ($r['status'] === 200 && $code === 1001) {
+			return null; // "No data": e.g. a month before the system was producing
+		}
 		if ($r['status'] !== 200 || $code !== 0) {
 			throw new \RuntimeException('APsystems ' . ($r['error'] ?? 'HTTP ' . $r['status']) . ($code !== null ? ", code $code" : ''));
 		}
