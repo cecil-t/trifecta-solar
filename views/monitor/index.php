@@ -12,6 +12,9 @@ $energy = static function (?float $wh): string {
 		return '-';
 	}
 	$kwh = $wh / 1000;
+	if ($kwh >= 1000000) {
+		return number_format($kwh / 1000000, 2) . ' GWh';
+	}
 	if ($kwh >= 1000) {
 		return number_format($kwh / 1000, $kwh >= 100000 ? 0 : 1) . ' MWh';
 	}
