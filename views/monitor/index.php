@@ -55,12 +55,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 	}
 }
 ?>
-<div class="page-head">
-	<div>
-		<h1>Monitoring</h1>
-		<p class="muted">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
-	</div>
-</div>
+<h1 class="visually-hidden">Monitoring</h1>
 
 <?php if (!$vendors): ?>
 	<section class="card empty-state">
@@ -128,7 +123,9 @@ foreach (['solaredge', 'growatt'] as $k) {
 	</div>
 </section>
 
-<details class="card mt mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
+<p class="muted small mon-updated">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
+
+<details class="card mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
 	<summary><h2>Issues <span class="mon-count<?= $attentionCount ? ' mon-count-alert' : '' ?>"><?= $attentionCount ?></span></h2></summary>
 	<?php if (!$attention): ?>
 		<p class="muted">Nothing flagged: no manufacturer alerts and every system produced in the last <?= (int) $noProductionDays ?> days.</p>
