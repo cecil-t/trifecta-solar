@@ -46,6 +46,8 @@ final class MonitorCollector
 
 	private int $calls = 0;
 	private ?int $runId = null;
+	/** Pulled with --force: also redo the once-a-day parts (APsystems list and summaries). */
+	private bool $forced = false;
 	/** @var array<int, string> */
 	private array $lines = [];
 
@@ -96,6 +98,7 @@ final class MonitorCollector
 			return [self::stamp() . " $label: would pull now" . ($due ? '' : ' (forced; ' . $why . ')') . '. Dry run: no calls made.'];
 		}
 
+		$this->forced = $force;
 		$runId = Db::insert('monitor_runs', ['vendor' => $vendor, 'started_at' => now_utc()]);
 		$this->runId = $runId;
 		$ok = false;
@@ -614,7 +617,7 @@ final class MonitorCollector
 
 	private function apsystems(): string
 	{
-		$firstToday = self::lastOkOn('apsystems', date('Y-m-d')) === false;
+		$firstToday = $this->forced || self::lastOkOn('apsystems', date('Y-m-d')) === false;
 		$known = Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'apsystems'");
 		if ($firstToday || !$known) {
 			$r = APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]);

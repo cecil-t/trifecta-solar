@@ -113,7 +113,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 				<tr>
 					<td><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><strong><?= e($v['label']) ?></strong> <span class="chip mon-src-<?= e($v['source'][1]) ?>" title="<?= e($v['source'][2]) ?>"><?= e($v['source'][0]) ?></span>
 						<div class="muted small mon-upd">Updated <?= e($when($v['run']['last_ok'])) ?></div><?php if ($v['run']['failed']): ?><div class="mon-fail"><?= e($v['run']['failed']) ?></div><?php endif; ?></td>
-					<td class="num"><?= $v['pending'] ? '<span class="muted small">(' . (int) $v['pending'] . ' pending)</span> ' : '' ?><?= (int) $v['systems'] ?></td>
+					<td class="num"><?= (int) $v['systems'] ?><?php if ($v['pending']): ?><div class="muted small"><?= (int) $v['pending'] ?> pending</div><?php endif; ?></td>
 					<td class="num"><?= $v['kw'] > 0 ? e($power($v['kw'])) : ($v['kw_ac'] > 0 ? e($power($v['kw_ac'])) . ' AC' : '<span class="muted">-</span>') ?></td>
 					<td class="num"><?= $v['yesterday'] === null ? '<span class="muted">-</span>' : e($energy($v['yesterday'])) ?></td>
 					<td class="num"><?= e($energy($v['week'])) ?></td>
