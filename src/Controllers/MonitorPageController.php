@@ -208,7 +208,8 @@ final class MonitorPageController
 		$vendors = array_filter($vendors, static fn ($v) => $v['systems'] > 0 || $v['run']['last_ok'] || $v['run']['failed']);
 
 		[$seLeft] = MonitorCollector::seBudget();
-		[$months, $monthsFrom] = self::lastTwelveMonths(array_keys($vendors));
+		[$months, $monthsFrom] = self::monthTotals(array_keys($vendors));
+		$sePace = MonitorCollector::sePace();
 		View::render('monitor/index', [
 			'title' => 'Monitoring',
 			// Reload about 90 seconds after the next quarter hour, when monitor:poll (cron */15) has
@@ -222,22 +223,24 @@ final class MonitorPageController
 			'noProductionDays' => self::NO_PRODUCTION_DAYS,
 			'months' => $months,
 			'monthsFrom' => $monthsFrom,
+			'sePace' => $sePace,
 		]);
 	}
 
 	/**
-	 * Fleet production per month for the last 12 months (this month so far is the 12th). Per site, a
+	 * Fleet production per month for the last 13 months: the same month last year through this month so
+	 * far. Per site, a
 	 * whole-month total from the backfill is used where there is one, otherwise the sum of its stored days.
 	 *
 	 * @param array<int, string> $shown vendors on the page
 	 * @return array{0: array<string, float>, 1: array<string, string>} Wh by month (Y-m), and per brand label
 	 *         the first month it has data, for brands that start after the first month
 	 */
-	private static function lastTwelveMonths(array $shown): array
+	private static function monthTotals(array $shown): array
 	{
 		$start = MonitorCollector::monthsStart();
 		$months = [];
-		for ($t = strtotime($start . '-01'); count($months) < 12; $t = strtotime('+1 month', $t)) {
+		for ($t = strtotime($start . '-01'); count($months) < 13; $t = strtotime('+1 month', $t)) {
 			$months[date('Y-m', $t)] = 0.0;
 		}
 		$first = [];

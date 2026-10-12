@@ -24,12 +24,13 @@ namespace App;
  *    day: free, and the day's last pull becomes that day's stored total. Once a day, the last 35 days
  *    (one call for all plants) replace the stored days with SMA's final values, and each plant's peak
  *    power is read (one call each).
- *  - SolarEdge (V2 Free tier, 2,000 credits a cycle, 1 credit a call, 10 calls a minute): once each
- *    weekday from 8 AM: site list, fleet alerts, then daily energy for each active site since its last
- *    pull. Skips pending sites and sites with a site communication fault (nothing new to fetch; the
- *    next pull after the fault clears catches up). Skips when the cycle's remaining credits will not
- *    cover a full pull, and skips Fridays when they will not cover every weekday left (Monday's pull
- *    fills in Friday).
+ *  - SolarEdge (V2 Free tier, 2,000 credits a cycle, 1 credit a call, 10 calls a minute): weekdays from
+ *    8 AM, as often as the cycle's remaining credits allow, spread evenly over the weekdays left
+ *    (sePace: every weekday when they cover one pull per weekday, otherwise every 2, 3... weekdays,
+ *    recomputed each day). A pull is the site list, fleet alerts, then daily energy for each active
+ *    site since its last pull, so a skipped day is filled in by the next pull at no extra cost.
+ *    Skips pending sites and sites with a site communication fault (nothing new to fetch; the next
+ *    pull after the fault clears catches up).
  *
  * Every vendor call is counted in monitor_runs. The page reads only the database.
  */
@@ -155,15 +156,15 @@ final class MonitorCollector
 		return $lines;
 	}
 
-	/** First month of the "last 12 months" chart (the current month is the 12th). */
+	/** First month of the 13-month chart: the same month last year (the current month is the 13th). */
 	public static function monthsStart(): string
 	{
-		return date('Y-m', strtotime(date('Y-m-01') . ' -11 months'));
+		return date('Y-m', strtotime(date('Y-m-01') . ' -12 months'));
 	}
 
 	/**
-	 * monitor:backfill --months: whole-month totals for the last 12 months (before this one) wherever a
-	 * site has neither a month total nor (nearly) every day of that month stored, for the 12-month chart.
+	 * monitor:backfill --months: whole-month totals for the 12 months before this one wherever a site has
+	 * neither a month total nor (nearly) every day of that month stored, for the 13-month chart.
 	 * SolarEdge 1 credit per site, APsystems 1 call per system per year, SMA 1 request in all, Growatt
 	 * and Enphase 1 request per site per month (free).
 	 *
@@ -608,15 +609,44 @@ final class MonitorCollector
 		if ($last !== null && date('Y-m-d', $last) === date('Y-m-d')) {
 			return [false, 'already pulled today'];
 		}
-		[$remaining, $weekdaysLeft] = self::seBudget();
-		$needed = self::seNeeded();
-		if ($remaining < $needed) {
-			return [false, "$remaining credits left this cycle, a pull needs about $needed"];
+		$pace = self::sePace();
+		if ($pace['pulls'] < 1) {
+			return [false, $pace['remaining'] . ' credits left this cycle, a pull needs about ' . $pace['needed']];
 		}
-		if ((int) date('N') === 5 && $remaining < $needed * $weekdaysLeft) {
-			return [false, "Friday skipped to save credits ($remaining left for $weekdaysLeft weekdays); Monday catches up"];
+		$since = $last === null ? PHP_INT_MAX : self::weekdaysBetween($last, time());
+		if ($since < $pace['gap']) {
+			return [false, sprintf('pacing credits: %d left for %d weekdays, about %d pulls, so every %d weekdays (last pull %d weekdays ago)',
+				$pace['remaining'], $pace['weekdays'], $pace['pulls'], (int) ceil($pace['gap']), $since)];
 		}
 		return [true, ''];
+	}
+
+	/**
+	 * How often SolarEdge can be pulled for the rest of the cycle: remaining credits, cost of one pull,
+	 * pulls they cover, weekdays left (today included) and the gap in weekdays between pulls (1 = every
+	 * weekday). Recomputed on each check, so a backfill or a skipped day adjusts the pace.
+	 *
+	 * @return array{remaining:int, needed:int, pulls:int, weekdays:int, gap:float}
+	 */
+	public static function sePace(): array
+	{
+		[$remaining, $weekdays] = self::seBudget();
+		$needed = self::seNeeded();
+		$pulls = max(0, intdiv(max(0, $remaining), $needed));
+		$gap = $pulls >= $weekdays ? 1.0 : ($pulls > 0 ? $weekdays / $pulls : INF);
+		return ['remaining' => $remaining, 'needed' => $needed, 'pulls' => $pulls, 'weekdays' => $weekdays, 'gap' => $gap];
+	}
+
+	/** Weekdays after $from's date up to and including $to's date (Friday to Monday is 1). */
+	private static function weekdaysBetween(int $from, int $to): int
+	{
+		$n = 0;
+		for ($t = strtotime('+1 day', strtotime(date('Y-m-d', $from))); $t <= strtotime(date('Y-m-d', $to)); $t = strtotime('+1 day', $t)) {
+			if ((int) date('N', $t) < 6) {
+				$n++;
+			}
+		}
+		return $n;
 	}
 
 	/** @return array{0:int,1:int} credits left this cycle, weekdays left in the cycle including today */

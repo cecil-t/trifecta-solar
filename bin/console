@@ -28,7 +28,7 @@ declare(strict_types=1);
  *                                             (1 call per site per month). Enphase fetches each day per system: last
  *                                             month and this month, or all year with --daily. Refuses when over the
  *                                             vendor's allowance unless --force. --months instead fills whole-month
- *                                             totals for the last 12 months (the Monitor page's chart): SolarEdge 1
+ *                                             totals for the 12 months before this one (the Monitor page's chart): SolarEdge 1
  *                                             credit per site. Run --dry-run first to see the cost
  */
 

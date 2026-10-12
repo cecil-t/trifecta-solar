@@ -1,7 +1,8 @@
 <?php
 /**
  * @var array  $fleet       systems, kw, kw_ac, yesterday, yesterday_missing (vendor => true), week, d30, d30_partial (vendor => [from, left_out]), year (Wh)
- * @var array  $months      Wh by month (Y-m) for the last 12 months, this month last
+ * @var array  $months      Wh by month (Y-m) for the last 13 months, this month last
+ * @var array  $sePace      SolarEdge pacing from MonitorCollector::sePace
  * @var array  $monthsFrom  brand label => first month with data, for brands that start after the first month
  * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, d30, yield_day, yield_days, yield_ac
  * @var array  $attention   vendor, name, reason, offline, impact, last_production
@@ -131,7 +132,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 <p class="muted small mon-updated">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
 
 <section class="card">
-	<h2>Last 12 months <span class="muted small">fleet production in MWh; <?= e(date('M')) ?> so far<?= $monthsFrom ? ' &Dagger;' : '' ?></span></h2>
+	<h2>Last 13 months <span class="muted small">fleet production in MWh; <?= e(date('M')) ?> so far<?= $monthsFrom ? ' &Dagger;' : '' ?></span></h2>
 	<ol class="mon-months">
 		<?php foreach ($months as $ym => $wh): $pct = $wh > 0 ? max(1, (int) round($wh / $monthMax * 100)) : 0; $inside = $pct >= 16; $now = $ym === $thisMonth; $val = $wh > 0 ? $mwh($wh) : '-'; ?>
 			<li class="mon-month<?= $now ? ' mon-month-now' : '' ?>" title="<?= e(date('F Y', strtotime($ym . '-01')) . ': ' . ($wh > 0 ? $val . ' MWh' : 'no data') . ($now ? ' so far' : '')) ?>">
@@ -171,10 +172,10 @@ foreach (['solaredge', 'growatt'] as $k) {
 <div class="muted small mt mon-notes">
 	<?php if ($missingYesterday): ?><p>* Yesterday does not include <?= e(implode(' or ', $missingYesterday)) ?> yet<?= in_array('SolarEdge', $missingYesterday, true) ? ' (SolarEdge weekend days arrive Monday morning)' : '' ?>.</p><?php endif; ?>
 	<?php if ($partial30): ?><p>&dagger; The 30-day figures <?php $parts = []; foreach ($partial30 as $name => $p) { $parts[] = $p['left_out'] ? 'leave out ' . e($name) . ' (under a week of daily history so far)' : 'count ' . e($name) . ' from ' . e($date($p['from'])); } echo implode('; ', $parts); ?>. They fill out as the days pass or a backfill runs.</p><?php endif; ?>
-	<?php if ($monthsFrom): ?><p>&Dagger; The 12-month chart counts <?php $parts = []; foreach ($monthsFrom as $name => $from) { $parts[] = e($name) . ' from ' . e(date('M Y', strtotime($from . '-01'))); } echo implode(' and ', $parts); ?>; monitor:backfill --months fills in the earlier months.</p><?php endif; ?>
+	<?php if ($monthsFrom): ?><p>&Dagger; The 13-month chart counts <?php $parts = []; foreach ($monthsFrom as $name => $from) { $parts[] = e($name) . ' from ' . e(date('M Y', strtotime($from . '-01'))); } echo implode(' and ', $parts); ?>; monitor:backfill --months fills in the earlier months.</p><?php endif; ?>
 	<?php if ($partialYear): ?><p>** The year total counts <?php $parts = []; foreach ($partialYear as $name => $from) { $parts[] = e($name) . ' from ' . e($date($from)); } echo implode(' and ', $parts); ?>, when the tracker started storing them; the one-time backfill fills in the earlier months.</p><?php endif; ?>
 	<?php if ($hasSolarEdge): ?>
-		<p>Enphase, Growatt and SMA are read every 30 minutes and APsystems four times each weekday; SolarEdge is pulled once each weekday at 8 AM for the days before, so its weekend days fill in Monday morning.</p>
+		<p>Enphase, Growatt and SMA are read every 30 minutes and APsystems four times each weekday; SolarEdge is pulled on weekdays from 8 AM as often as this cycle's credits allow<?= $sePace['gap'] > 1 && is_finite($sePace['gap']) ? ' (now about every ' . (int) ceil($sePace['gap']) . ' weekdays)' : ($sePace['pulls'] < 1 ? ' (none left this cycle)' : ' (every weekday)') ?>; each pull fills in every day since the last one, so its weekend days arrive Monday morning.</p>
 		<p>SolarEdge data from the <a href="https://www.solaredge.com/" rel="noopener" target="_blank">SolarEdge</a> monitoring platform; <?= number_format($seCreditsLeft) ?> API credits left this cycle.</p>
 	<?php endif; ?>
 	<p>Data sources: <?php $parts = []; foreach ($vendors as $v) { $parts[] = e($v['label']) . ', ' . e($v['source'][2]); } echo implode('; ', $parts); ?>.</p>

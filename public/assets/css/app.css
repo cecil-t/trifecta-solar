@@ -1080,7 +1080,7 @@ a[href^="tel:"] { white-space: nowrap; }
 .mon-row-offline td:first-child { box-shadow: inset 4px 0 0 var(--red); }
 .mon-why { white-space: normal; min-width: 14rem; }
 .table th.mon-th-plain { text-transform: none; }
-.mon-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0 .5rem; list-style: none; margin: .75rem 0 0; padding: 0; text-align: center; }
+.mon-months { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 0 .5rem; list-style: none; margin: .75rem 0 0; padding: 0; text-align: center; }
 .mon-month-track { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 160px; border-bottom: 1px solid var(--border); }
 .mon-month-bar { display: flex; justify-content: center; align-items: flex-start; width: 78%; min-height: 2px; background: var(--blue); border-radius: 4px 4px 0 0; color: #fff; }
 .mon-month-now .mon-month-bar { background: #8db3d1; color: var(--text); }
