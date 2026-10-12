@@ -88,9 +88,9 @@ final class MonitorController
 			'gw_inverters' => Growatt::get('/web/v1/inverters/1/30?query=&filter=&username=&query_list=%5B%5D'),
 			'gw_alerts' => Growatt::get('/web/v1/inverters/alerts'),
 			'gw_overview' => Growatt::get('/web/v1/plant/overview'),
-			'gw_production' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->format('Y-m-01'), 'end' => $today->format('Y-m-d')])),
-			'gw_production_site' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->format('Y-m-01'), 'end' => $today->format('Y-m-d'), 'siteId' => $gwSite])),
-			'gw_production_year' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->format('Y-01-01'), 'end' => $today->format('Y-m-d'), 'siteId' => $gwSite])),
+			'gw_production' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->modify('first day of this month')->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339)])),
+			'gw_production_site' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->modify('first day of this month')->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339), 'siteId' => $gwSite])),
+			'gw_production_year' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->setDate((int) $today->format('Y'), 1, 1)->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339), 'siteId' => $gwSite])),
 		};
 		$result['call'] = match (true) {
 			str_starts_with($call, 'gw_') => 'Growatt: ',
