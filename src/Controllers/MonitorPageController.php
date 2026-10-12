@@ -35,7 +35,7 @@ final class MonitorPageController
 			'SELECT site_id,
 				SUM(CASE WHEN date >= ? THEN wh END) AS week,
 				SUM(CASE WHEN date >= ? THEN wh END) AS month,
-				SUM(CASE WHEN date >= ? THEN wh END) AS year,
+				SUM(CASE WHEN date >= ? AND NOT EXISTS (SELECT 1 FROM monitor_monthly m WHERE m.site_id = monitor_daily.site_id AND m.month = substr(monitor_daily.date, 1, 7)) THEN wh END) AS year,
 				MAX(CASE WHEN date >= ? AND date < ? THEN wh END) AS recent_max,
 				MAX(CASE WHEN wh > 0 THEN date END) AS last_production,
 				MAX(CASE WHEN date = ? THEN wh END) AS yesterday,
@@ -48,12 +48,13 @@ final class MonitorPageController
 			$sums[(int) $r['site_id']] = $r;
 		}
 
-		// Months filled by monitor:backfill count toward the year only where no daily values exist.
+		// Whole-month totals filled by monitor:backfill (the vendor's own month figure) count toward the
+		// year in place of that month's stored days, so a month whose days are only partly filled in
+		// does not pull the year down.
 		$monthly = [];
 		foreach (Db::all(
 			"SELECT m.site_id, SUM(m.wh) AS wh, MIN(m.month) AS first_month FROM monitor_monthly m
 			WHERE m.month >= ? AND m.month < ?
-				AND NOT EXISTS (SELECT 1 FROM monitor_daily d WHERE d.site_id = m.site_id AND d.date LIKE m.month || '-%')
 			GROUP BY m.site_id",
 			[substr($year, 0, 7), substr($month, 0, 7)]
 		) as $r) {

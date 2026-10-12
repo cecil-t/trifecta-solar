@@ -179,14 +179,21 @@ final class Growatt
 	 */
 	public static function production(string $siteId, \DateTimeInterface $start, \DateTimeInterface $end): array
 	{
-		$r = self::get('/web/v1/inverters/production?' . http_build_query([
+		$path = '/web/v1/inverters/production?' . http_build_query([
 			'start' => $start->format(DATE_RFC3339),
 			'end' => $end->format(DATE_RFC3339),
 			'siteId' => $siteId,
-		]));
+		]);
+		$r = self::get($path);
+		if ($r['status'] === 0 && !empty(self::state()['token'])) {
+			// No reply at all (timeout or dropped connection): wait a moment and try once more.
+			sleep(5);
+			$r = self::get($path);
+		}
 		$data = $r['json']['data'] ?? null;
 		if ($r['status'] !== 200 || (int) ($r['json']['code'] ?? -1) !== 0 || !is_array($data)) {
-			throw new \RuntimeException(trim(($r['note'] ?? '') . " Production for site $siteId: HTTP " . $r['status'] . ', ' . (is_string($data) ? substr($data, 0, 120) : (string) ($r['json']['msg'] ?? ''))));
+			$why = $r['error'] ?? (is_string($data) ? substr($data, 0, 120) : (string) ($r['json']['msg'] ?? ''));
+			throw new \RuntimeException(trim(($r['note'] ?? '') . " Production for site $siteId: HTTP " . $r['status'] . ($why !== '' ? ', ' . $why : '')));
 		}
 		return [
 			'kwh' => (float) ($data['eacToday'] ?? 0),
