@@ -54,10 +54,10 @@ final class MonitorPageController
 
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
-			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'today' => null, 'week' => 0.0,
+			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'today' => null, 'week' => 0.0,
 				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null];
 		}
-		$fleet = ['systems' => 0, 'kw' => 0.0, 'today' => 0.0, 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
+		$fleet = ['systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'today' => 0.0, 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
 		$attention = [];
 
 		foreach (Db::all('SELECT * FROM monitor_sites WHERE ignored = 0 ORDER BY vendor, name') as $s) {
@@ -81,6 +81,10 @@ final class MonitorPageController
 
 			$v['systems']++;
 			$v['kw'] += (float) $s['capacity_kw'];
+			// AC rating only where the vendor gives no DC size (Growatt), never added to DC.
+			$ac = (float) $s['capacity_kw'] > 0 ? 0.0 : (float) ($s['capacity_ac_kw'] ?? 0);
+			$v['kw_ac'] += $ac;
+			$fleet['kw_ac'] += $ac;
 			if ($todayWh !== null) {
 				$v['today'] = ($v['today'] ?? 0) + (float) $todayWh;
 				$fleet['today'] += (float) $todayWh;
@@ -132,7 +136,10 @@ final class MonitorPageController
 			$run = Db::one("SELECT * FROM monitor_runs WHERE $scheduled ORDER BY id DESC LIMIT 1", [$key]);
 			$ok = Db::value("SELECT MAX(finished_at) FROM monitor_runs WHERE $scheduled AND ok = 1", [$key]);
 			$v['run'] = ['last_ok' => $ok ? (string) $ok : null, 'failed' => $run && !$run['ok'] && $run['finished_at'] ? (string) $run['message'] : null];
-			$v['yield_month'] = $v['kw'] > 0 ? $v['month'] / 1000 / $v['kw'] : null; // kWh per kW this month
+			// kWh per kW this month: per kW DC where known, else per kW AC (labeled on the page)
+			$v['yield_ac'] = $v['kw'] <= 0 && $v['kw_ac'] > 0;
+			$base = $v['kw'] > 0 ? $v['kw'] : $v['kw_ac'];
+			$v['yield_month'] = $base > 0 ? $v['month'] / 1000 / $base : null;
 		}
 		unset($v);
 		$vendors = array_filter($vendors, static fn ($v) => $v['systems'] > 0 || $v['run']['last_ok'] || $v['run']['failed']);

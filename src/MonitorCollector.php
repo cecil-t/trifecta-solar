@@ -152,7 +152,7 @@ final class MonitorCollector
 			return [self::stamp() . " $label: nothing to backfill; Enlighten gives this year's total directly."];
 		}
 		if ($vendor === 'growatt') {
-			return [self::stamp() . " $label: history backfill is not built yet; totals count from the first pull."];
+			return $this->backfillGrowatt($daily, $dryRun);
 		}
 		$months = [];
 		for ($m = 1; $m < (int) date('n'); $m++) {
@@ -248,6 +248,76 @@ final class MonitorCollector
 		}
 		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
 		return [self::stamp() . " $label: $message ({$this->calls} $unit used)"];
+	}
+
+	/**
+	 * Growatt: this year's months before this one as monthly totals per site, plus this month's days
+	 * before tracking began (so the month tile is whole); with $daily, every day of the earlier months
+	 * too. Growatt has no call limit, so there is no budget check; calls are spaced a second apart.
+	 *
+	 * @return array<int, string>
+	 */
+	private function backfillGrowatt(bool $daily, bool $dryRun): array
+	{
+		$label = self::VENDORS['growatt'];
+		$sites = Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'growatt' ORDER BY id");
+		if (!$sites) {
+			return [self::stamp() . " $label: no sites stored yet; run monitor:poll --vendor=growatt --force first."];
+		}
+		$tz = new \DateTimeZone(date_default_timezone_get());
+		$jan = new \DateTimeImmutable(date('Y') . '-01-01', $tz);
+		$thisMonth = new \DateTimeImmutable(date('Y-m-01'), $tz);
+		$yesterday = date('Y-m-d', strtotime('-1 day'));
+		$plan = [];
+		foreach ($sites as $site) {
+			$months = [];
+			$days = [];
+			for ($m = $jan; $m < $thisMonth; $m = $m->modify('+1 month')) {
+				$months[] = $m;
+				if ($daily) {
+					for ($d = $m; $d < $m->modify('+1 month'); $d = $d->modify('+1 day')) {
+						$days[] = $d;
+					}
+				}
+			}
+			for ($d = $thisMonth; $d->format('Y-m-d') <= $yesterday; $d = $d->modify('+1 day')) {
+				$days[] = $d;
+			}
+			$have = array_flip(array_column(Db::all('SELECT date FROM monitor_daily WHERE site_id = ? AND date >= ?', [$site['id'], $jan->format('Y-m-d')]), 'date'));
+			$days = array_values(array_filter($days, static fn ($d) => !isset($have[$d->format('Y-m-d')])));
+			$plan[] = [$site, $months, $days];
+		}
+		$estimate = array_sum(array_map(static fn ($p) => count($p[1]) + count($p[2]), $plan));
+		$summary = count($sites) . ' sites, monthly totals for ' . count($plan[0][1]) . ' months' . ($daily ? ' and every missing day' : " and this month's missing days") . ": about $estimate calls (no limit)";
+		if ($dryRun) {
+			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
+		}
+		$runId = Db::insert('monitor_runs', ['vendor' => 'growatt', 'started_at' => now_utc()]);
+		$this->runId = $runId;
+		$ok = false;
+		try {
+			foreach ($plan as [$site, $months, $days]) {
+				$sid = (string) $site['vendor_site_id'];
+				foreach ($months as $m) {
+					$p = Growatt::production($sid, $m, $m->modify('+1 month')->modify('-1 second'));
+					$this->tick();
+					self::setMonthly((int) $site['id'], $m->format('Y-m'), $p['kwh'] * 1000);
+					usleep(1_000_000);
+				}
+				foreach ($days as $d) {
+					$p = Growatt::production($sid, $d, $d->setTime(23, 59, 59));
+					$this->tick();
+					self::setDaily((int) $site['id'], $d->format('Y-m-d'), $p['kwh'] * 1000);
+					usleep(1_000_000);
+				}
+			}
+			$ok = true;
+			$message = 'Backfill done: ' . $summary;
+		} catch (\Throwable $e) {
+			$message = 'Backfill stopped: ' . $e->getMessage();
+		}
+		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
+		return [self::stamp() . " $label: $message ({$this->calls} calls)"];
 	}
 
 	private static function setMonthly(int $siteId, string $month, float $wh): void
@@ -445,7 +515,24 @@ final class MonitorCollector
 				self::setDaily($id, $today, $todayWh);
 			}
 		}
-		return count($sites) . " sites, $alertTotal alerts";
+		// Once a day: yesterday's exact total per site (rather than the last evening reading) and each
+		// site's inverter AC rating, from the portal's production-by-window reply.
+		$finals = 0;
+		if (!self::lastOkOn('growatt', $today)) {
+			$tz = new \DateTimeZone(date_default_timezone_get());
+			$y0 = new \DateTimeImmutable('yesterday', $tz);
+			$y1 = $y0->setTime(23, 59, 59);
+			foreach (Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'growatt'") as $row) {
+				$p = Growatt::production((string) $row['vendor_site_id'], $y0, $y1);
+				$this->tick();
+				self::setDaily((int) $row['id'], $y0->format('Y-m-d'), $p['kwh'] * 1000);
+				if ($p['pmax_w'] !== null) {
+					Db::run('UPDATE monitor_sites SET capacity_ac_kw = ? WHERE id = ?', [$p['pmax_w'] / 1000, $row['id']]);
+				}
+				$finals++;
+			}
+		}
+		return count($sites) . " sites, $alertTotal alerts" . ($finals ? ", yesterday's totals for $finals" : '');
 	}
 
 	// ---- APsystems ---------------------------------------------------------------------------

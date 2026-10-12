@@ -170,6 +170,30 @@ final class Growatt
 		return ['url' => self::BASE . preg_replace('/\?.*/', '', $path), 'note' => $note] + self::summary($r);
 	}
 
+	/**
+	 * Production for one site over a window: the reply's eacToday is the AC energy (kWh) for the whole
+	 * window despite its name, and pmax the site's total inverter AC rating (W). eacTotal changes with
+	 * the window, so it is not a lifetime figure and is not used. Without a site the portal returns zeros.
+	 *
+	 * @return array{kwh:float,pmax_w:?float}
+	 */
+	public static function production(string $siteId, \DateTimeInterface $start, \DateTimeInterface $end): array
+	{
+		$r = self::get('/web/v1/inverters/production?' . http_build_query([
+			'start' => $start->format(DATE_RFC3339),
+			'end' => $end->format(DATE_RFC3339),
+			'siteId' => $siteId,
+		]));
+		$data = $r['json']['data'] ?? null;
+		if ($r['status'] !== 200 || (int) ($r['json']['code'] ?? -1) !== 0 || !is_array($data)) {
+			throw new \RuntimeException(trim(($r['note'] ?? '') . " Production for site $siteId: HTTP " . $r['status'] . ', ' . (is_string($data) ? substr($data, 0, 120) : (string) ($r['json']['msg'] ?? ''))));
+		}
+		return [
+			'kwh' => (float) ($data['eacToday'] ?? 0),
+			'pmax_w' => isset($data['pmax']) && (float) $data['pmax'] > 0 ? (float) $data['pmax'] : null,
+		];
+	}
+
 	// ---- transport ------------------------------------------------------------------------------
 
 	private static function request(string $method, string $path, array $headers = [], string $body = ''): array

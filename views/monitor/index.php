@@ -26,7 +26,7 @@ $bar = static function (float $pct, string $class): string {
 		. '<rect class="mon-bar-track" x="0" y="0" width="100" height="10" rx="2"/>'
 		. '<rect class="' . e($class) . '" x="0" y="0" width="' . round($w, 2) . '" height="10" rx="2"/></svg>';
 };
-$fleetKw = max($fleet['kw'], 0.001);
+$fleetKw = max($fleet['kw'] + $fleet['kw_ac'], 0.001); // for shares only: DC, plus AC where DC is unknown
 $maxYield = max([0.001, ...array_values(array_map(static fn ($v) => (float) ($v['yield_month'] ?? 0), $vendors))]);
 $attentionCount = count($attention);
 $latestOk = null;
@@ -53,7 +53,7 @@ $hasSolarEdge = isset($vendors['solaredge']);
 
 <div class="stat-row mon-stats">
 	<div class="stat"><span class="stat-num"><?= (int) $fleet['systems'] ?></span><span class="stat-label">Systems</span></div>
-	<div class="stat"><span class="stat-num"><?= e($power($fleet['kw'])) ?></span><span class="stat-label">Installed (DC)</span></div>
+	<div class="stat"><span class="stat-num"><?= e($power($fleet['kw'])) ?></span><span class="stat-label">Installed (DC)<?= $fleet['kw_ac'] > 0 ? ' + ' . e($power($fleet['kw_ac'])) . ' AC' : '' ?></span></div>
 	<div class="stat stat-orange"><span class="stat-num"><?= e($energy($fleet['today'])) ?></span><span class="stat-label">Today<?= $hasSolarEdge ? ' *' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= e($energy($fleet['week'])) ?></span><span class="stat-label">Last 7 days</span></div>
 	<div class="stat"><span class="stat-num"><?= e($energy($fleet['month'])) ?></span><span class="stat-label"><?= e(date('F')) ?></span></div>
@@ -65,13 +65,13 @@ $hasSolarEdge = isset($vendors['solaredge']);
 	<h2>By manufacturer</h2>
 	<div class="mon-share" role="img" aria-label="Share of installed capacity by manufacturer">
 		<svg class="mon-share-bar" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
-			<?php $x = 0.0; foreach ($vendors as $v): $w = $v['kw'] / $fleetKw * 100; ?>
+			<?php $x = 0.0; foreach ($vendors as $v): $w = ($v['kw'] + $v['kw_ac']) / $fleetKw * 100; ?>
 				<rect class="mon-fill-<?= e($v['key']) ?>" x="<?= round($x, 2) ?>" y="0" width="<?= round($w, 2) ?>" height="6"/>
 			<?php $x += $w; endforeach; ?>
 		</svg>
 		<ul class="mon-legend">
 			<?php foreach ($vendors as $v): ?>
-				<li><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><?= e($v['label']) ?> <strong><?= number_format($v['kw'] / $fleetKw * 100, 0) ?>%</strong> <span class="muted">of capacity, <?= (int) $v['systems'] ?> <?= $v['systems'] === 1 ? 'system' : 'systems' ?></span></li>
+				<li><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><?= e($v['label']) ?> <strong><?= number_format(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 0) ?>%</strong> <span class="muted">of capacity, <?= (int) $v['systems'] ?> <?= $v['systems'] === 1 ? 'system' : 'systems' ?></span></li>
 			<?php endforeach; ?>
 		</ul>
 	</div>
@@ -97,11 +97,11 @@ $hasSolarEdge = isset($vendors['solaredge']);
 					<td><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><strong><?= e($v['label']) ?></strong> <span class="chip mon-src-<?= e($v['source'][1]) ?>" title="<?= e($v['source'][2]) ?>"><?= e($v['source'][0]) ?></span>
 						<div class="muted small mon-upd">Updated <?= e($when($v['run']['last_ok'])) ?></div><?php if ($v['run']['failed']): ?><div class="mon-fail"><?= e($v['run']['failed']) ?></div><?php endif; ?></td>
 					<td class="num"><?= (int) $v['systems'] ?><?= $v['pending'] ? ' <span class="muted small">(' . (int) $v['pending'] . ' pending)</span>' : '' ?></td>
-					<td class="mon-barcell"><?= $bar($v['kw'] / $fleetKw * 100, 'mon-fill-' . $v['key']) ?><span><?= e($power($v['kw'])) ?></span></td>
+					<td class="mon-barcell"><?= $bar(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 'mon-fill-' . $v['key']) ?><span><?= $v['kw'] > 0 ? e($power($v['kw'])) : ($v['kw_ac'] > 0 ? e($power($v['kw_ac'])) . ' AC' : '<span class="muted">-</span>') ?></span></td>
 					<td class="num"><?= $v['today'] === null ? '<span class="muted">-</span>' : e($energy($v['today'])) ?></td>
 					<td class="num"><?= e($energy($v['week'])) ?></td>
 					<td class="num"><?= e($energy($v['month'])) ?></td>
-					<td class="mon-barcell"><?php if ($v['yield_month'] !== null): ?><?= $bar($v['yield_month'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span><?= number_format($v['yield_month'], 1) ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
+					<td class="mon-barcell"><?php if ($v['yield_month'] !== null): ?><?= $bar($v['yield_month'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span><?= number_format($v['yield_month'], 1) ?><?= $v['yield_ac'] ? ' <span class="muted small">AC</span>' : '' ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
 					<td class="num"><?= e($energy($v['year'])) ?></td>
 					<td class="num"><?= $v['attention'] ? '<a href="#attention" class="mon-attn">' . (int) $v['attention'] . '</a>' : '<span class="muted">0</span>' ?></td>
 				</tr>
@@ -143,6 +143,7 @@ $hasSolarEdge = isset($vendors['solaredge']);
 		<p>SolarEdge data from the <a href="https://www.solaredge.com/" rel="noopener" target="_blank">SolarEdge</a> monitoring platform; <?= number_format($seCreditsLeft) ?> API credits left this cycle.</p>
 	<?php endif; ?>
 	<p>Data sources: <?php $parts = []; foreach ($vendors as $v) { $parts[] = e($v['label']) . ', ' . e($v['source'][2]); } echo implode('; ', $parts); ?>.</p>
+	<?php if ($fleet['kw_ac'] > 0): ?><p>Sizes are DC array sizes as each manufacturer reports them, except where marked AC: Growatt reports only its inverters' AC rating, so its size and kWh per kW are per kW AC.</p><?php endif; ?>
 	<p>Flagged: anything the manufacturer reports as an alert or offline, and any system with no production on the last <?= (int) $noProductionDays ?> complete days.</p>
 </div>
 <?php endif; ?>
