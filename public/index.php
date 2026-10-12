@@ -158,10 +158,6 @@ $r->get('/monitor', [MonitorPageController::class, 'show']);
 // Admin: monitoring API test (one call per click; Enphase OAuth connect and callback)
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
-$r->get('/admin/monitor-test/enphase-connect', [MonitorController::class, 'enphaseConnect'], 'admin');
-$r->get('/admin/monitor-test/enphase-callback', [MonitorController::class, 'enphaseCallback'], 'admin');
-$r->post('/admin/monitor-test/enphase-code', [MonitorController::class, 'enphaseCode'], 'admin');
-$r->post('/admin/monitor-test/enphase-disconnect', [MonitorController::class, 'enphaseDisconnect'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');
 $r->post('/admin/monitor-test/growatt-captcha', [MonitorController::class, 'growattCaptcha'], 'admin');
 $r->post('/admin/monitor-test/growatt-login', [MonitorController::class, 'growattLogin'], 'admin');

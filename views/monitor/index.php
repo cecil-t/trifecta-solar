@@ -58,7 +58,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 <div class="page-head">
 	<div>
 		<h1>Monitoring</h1>
-		<p class="muted">Every inverter brand in one place. Last data <?= e($when($latestOk)) ?>; this page reloads a minute or two after each quarter-hour pull.</p>
+		<p class="muted">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
 	</div>
 </div>
 

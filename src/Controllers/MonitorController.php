@@ -4,47 +4,38 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\APsystems;
+use App\Db;
 use App\Enlighten;
-use App\Enphase;
 use App\Growatt;
+use App\MonitorCollector;
 use App\Sma;
 use App\SolarEdge;
 use App\View;
 
 /**
- * Admin test page for the inverter monitoring integrations (SolarEdge, Enphase, APsystems, Growatt, SMA).
- * Each call button makes exactly one API call from the server and shows the raw response, so the
- * cost of each call can be read off the vendor's usage page. Only the Enphase OAuth tokens are kept
- * (a private file next to the database); API responses are not stored.
+ * Lists > Monitor APIs (admin): the monitoring collector's connections. Per manufacturer: whether it is
+ * set up, its last scheduled pull, the sign-in or session controls it needs (Growatt's captcha, forgetting
+ * a saved session), and one check button that makes a single list call and shows what came back.
+ * Responses are not stored.
  */
 final class MonitorController
 {
-	private const CALLS = [
-		'sites' => 'Site list (all sites)',
-		'alerts' => 'Fleet alerts (all sites)',
-		'overview' => 'One site: overview for today',
-		'energy' => 'One site: daily energy, last 7 days',
-		'enphase_systems' => 'System list (all systems)',
-		'enphase_summary' => 'One system: summary',
-		'enphase_energy' => 'One system: daily energy, last 7 days',
-		'enphase_refresh' => 'Refresh the access token',
-		'enlighten_login' => 'Sign in now',
-		'enlighten_systems' => 'Systems table (all systems)',
-		'ap_systems' => 'System list (all systems)',
-		'ap_summary' => 'One system: summary',
-		'ap_energy' => 'One system: daily energy, this month',
-		'gw_sites' => 'Site list',
-		'gw_inverters' => 'Inverter list (page 1)',
-		'gw_alerts' => 'Alerts',
-		'gw_overview' => 'All-sites overview',
-		'gw_production' => 'Production this month (all)',
-		'gw_production_site' => 'One site: production this month',
-		'gw_production_year' => 'One site: production this year',
-		'sma_plants' => 'Status list (all plants)',
-		'sma_login' => 'Sign in now',
-		'sma_plant' => 'One plant: properties',
-		'sma_days' => 'One plant: daily energy, last 7 days',
-		'sma_months' => 'One plant: monthly energy, this year',
+	/** The one check per manufacturer: [what it reads, cost note]. */
+	private const CHECKS = [
+		'enphase' => ['systems table', 'one request, free'],
+		'apsystems' => ['system list', 'one of the 1,000 calls a month'],
+		'growatt' => ['site list', 'one request, free'],
+		'sma' => ['status list', 'one request, free'],
+		'solaredge' => ['site list', 'one credit'],
+	];
+
+	/** .env names each manufacturer needs. */
+	private const ENV = [
+		'enphase' => ['ENPHASE_ENLIGHTEN_EMAIL', 'ENPHASE_ENLIGHTEN_PASSWORD'],
+		'apsystems' => ['APSYSTEMS_APP_ID', 'APSYSTEMS_APP_SECRET'],
+		'growatt' => ['GROWATT_USERNAME', 'GROWATT_PASSWORD'],
+		'sma' => ['SMA_USERNAME', 'SMA_PASSWORD'],
+		'solaredge' => ['SOLAREDGE_API_KEY'],
 	];
 
 	public function test(): void
@@ -54,125 +45,35 @@ final class MonitorController
 
 	public function run(): void
 	{
-		[$call, $id, $error] = $this->input();
-		if ($error !== null) {
-			$this->render(null, $error);
+		$vendor = (string) ($_POST['check'] ?? '');
+		if (!isset(self::CHECKS[$vendor])) {
+			$this->render(null, 'Unknown check.');
 			return;
 		}
-
-		$tz = new \DateTimeZone(date_default_timezone_get());
-		$now = new \DateTimeImmutable('now', $tz);
-		$today = $now->setTime(0, 0);
-		$weekAgo = $today->modify('-6 days');
-		$sid = trim((string) ($_POST['ap_sid'] ?? ''));
-		$gwSite = trim((string) ($_POST['gw_site'] ?? ''));
-		$smaPlant = trim((string) ($_POST['sma_plant'] ?? ''));
-		$result = match ($call) {
-			'sites' => SolarEdge::get('/sites', ['page' => 1, 'sites-in-page' => 1000]),
-			'alerts' => SolarEdge::get('/alerts', ['page' => 1, 'alerts-in-page' => 100]),
-			'overview' => SolarEdge::get('/sites/' . $id . '/overview', [
-				'from' => $today->format('Y-m-d\TH:i:sP'),
-				'to' => $now->format('Y-m-d\TH:i:sP'),
-			]),
-			'energy' => SolarEdge::get('/sites/' . $id . '/energy', [
-				'from' => $weekAgo->format('Y-m-d\TH:i:sP'),
-				'to' => $now->format('Y-m-d\TH:i:sP'),
-				'resolution' => 'DAY',
-			]),
-			'enphase_systems' => Enphase::get('/systems', ['size' => 100]),
-			'enphase_summary' => Enphase::get('/systems/' . $id . '/summary'),
-			'enphase_energy' => Enphase::get('/systems/' . $id . '/energy_lifetime', [
-				'start_date' => $weekAgo->format('Y-m-d'),
-				'end_date' => $today->format('Y-m-d'),
-			]),
-			'enphase_refresh' => Enphase::refresh(),
-			'enlighten_login' => Enlighten::login(),
-			'enlighten_systems' => Enlighten::systems(),
-			'ap_systems' => APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]),
-			'ap_summary' => APsystems::request('GET', '/systems/summary/' . $sid),
-			'ap_energy' => APsystems::request('GET', '/systems/energy/' . $sid, ['energy_level' => 'daily', 'date_range' => $today->format('Y-m')]),
-			'gw_sites' => Growatt::get('/web/v1/sites/1/10?name=&filter='),
-			'gw_inverters' => Growatt::get('/web/v1/inverters/1/30?query=&filter=&username=&query_list=%5B%5D'),
-			'gw_alerts' => Growatt::get('/web/v1/inverters/alerts'),
-			'gw_overview' => Growatt::get('/web/v1/plant/overview'),
-			'gw_production' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->modify('first day of this month')->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339)])),
-			'gw_production_site' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->modify('first day of this month')->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339), 'siteId' => $gwSite])),
-			'sma_plants' => Sma::plants(),
-			'sma_login' => Sma::login(),
-			'sma_plant' => self::smaPlant(Sma::plant($smaPlant)),
-			'sma_days' => Sma::energy([$smaPlant], 'OneDay', $weekAgo, $today->modify('+1 day'))['result'],
-			'sma_months' => Sma::energy([$smaPlant], 'OneMonth', $today->setDate((int) $today->format('Y'), 1, 1), $today->modify('first day of next month'))['result'],
-			'gw_production_year' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->setDate((int) $today->format('Y'), 1, 1)->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339), 'siteId' => $gwSite])),
+		if (!self::configured($vendor)) {
+			$this->render(null, 'Add ' . implode(' and ', self::ENV[$vendor]) . ' to the server .env file.');
+			return;
+		}
+		if ($vendor === 'growatt' && Growatt::status() === null) {
+			$this->render(null, 'Growatt is not connected yet. Click Connect Growatt first.');
+			return;
+		}
+		$result = match ($vendor) {
+			'enphase' => Enlighten::systems(),
+			'apsystems' => APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]),
+			'growatt' => Growatt::get('/web/v1/sites/1/10?name=&filter='),
+			'sma' => Sma::plants(),
+			'solaredge' => SolarEdge::get('/sites', ['page' => 1, 'sites-in-page' => 1000]),
 		};
-		$result['call'] = match (true) {
-			str_starts_with($call, 'gw_') => 'Growatt: ',
-			str_starts_with($call, 'sma_') => 'SMA: ',
-			str_starts_with($call, 'ap_') => 'APsystems: ',
-			str_starts_with($call, 'enlighten') => 'Enlighten Manager: ',
-			str_starts_with($call, 'enphase') => 'Enphase API: ',
-			default => 'SolarEdge: ',
-		} . self::CALLS[$call];
-		$result['at'] = $now->format('m/d/Y g:i:s A');
+		$result['call'] = MonitorCollector::VENDORS[$vendor] . ': ' . self::CHECKS[$vendor][0];
+		$result['at'] = date('m/d/Y g:i:s A');
 		$this->render($result, null);
-	}
-
-	/**
-	 * Start the Enphase OAuth flow: approve on Enphase's site, which returns to the callback below.
-	 * A plain link (GET), because the CSP's form-action 'self' blocks a form post that redirects off site.
-	 */
-	public function enphaseConnect(): void
-	{
-		if (!Enphase::configured()) {
-			$this->render(null, 'Enphase is not set up. Add ENPHASE_API_KEY, ENPHASE_CLIENT_ID and ENPHASE_CLIENT_SECRET to the server .env file.');
-			return;
-		}
-		$state = bin2hex(random_bytes(16));
-		$_SESSION['enphase_state'] = $state;
-		header('Location: ' . Enphase::authorizeUrl(self::callbackUrl(), $state), true, 303);
-		exit;
-	}
-
-	/** Enphase sends the browser back here with ?code= (or ?error=) after the approval screen. */
-	public function enphaseCallback(): void
-	{
-		$expected = (string) ($_SESSION['enphase_state'] ?? '');
-		unset($_SESSION['enphase_state']);
-		$state = (string) ($_GET['state'] ?? '');
-		if (isset($_GET['error'])) {
-			flash('error', 'Enphase did not approve access: ' . substr((string) $_GET['error'], 0, 200));
-			redirect('/admin/monitor-test');
-		}
-		if ($expected === '' || !hash_equals($expected, $state)) {
-			flash('error', 'The Enphase approval did not match this session. Click Connect again.');
-			redirect('/admin/monitor-test');
-		}
-		$code = (string) ($_GET['code'] ?? '');
-		if (!preg_match('/^[A-Za-z0-9._~-]{1,512}$/', $code)) {
-			flash('error', 'Enphase did not send a usable authorization code.');
-			redirect('/admin/monitor-test');
-		}
-		$this->finishExchange(Enphase::exchange($code, self::callbackUrl()));
-	}
-
-	/** Fallback: a code copied from Enphase's own landing page (their default redirect URI). */
-	public function enphaseCode(): void
-	{
-		$code = trim((string) ($_POST['code'] ?? ''));
-		if (!Enphase::configured()) {
-			$this->render(null, 'Enphase is not set up. Add ENPHASE_API_KEY, ENPHASE_CLIENT_ID and ENPHASE_CLIENT_SECRET to the server .env file.');
-			return;
-		}
-		if (!preg_match('/^[A-Za-z0-9._~-]{1,512}$/', $code)) {
-			$this->render(null, 'Paste the code exactly as Enphase showed it.');
-			return;
-		}
-		$this->finishExchange(Enphase::exchange($code, Enphase::DEFAULT_REDIRECT));
 	}
 
 	/** Growatt connect, step 1: fetch a captcha for a person to read. */
 	public function growattCaptcha(): void
 	{
-		if (!Growatt::configured() || !Growatt::available()) {
+		if (!self::configured('growatt')) {
 			$this->render(null, 'Add GROWATT_USERNAME and GROWATT_PASSWORD to the server .env file.');
 			return;
 		}
@@ -212,159 +113,81 @@ final class MonitorController
 		redirect('/admin/monitor-test');
 	}
 
-	public function smaForget(): void
-	{
-		Sma::forget();
-		flash('success', 'SMA session removed from this server.');
-		redirect('/admin/monitor-test');
-	}
-
-	/** The plant properties reply carries the owner's name, address, phone and email: keep only the plant's own fields. */
-	private static function smaPlant(array $r): array
-	{
-		if (is_array($r['json'])) {
-			$keep = array_intersect_key($r['json'], array_flip(['plantId', 'name', 'city', 'timezone', 'peakPower', 'dcPowerInputMax', 'startUpUtc', 'communicationProfile', 'hasSelfConsumption', 'isOffgrid', 'isPvGeneratorActive']));
-			$r['json'] = $keep;
-			$r['body'] = (string) json_encode($keep);
-		}
-		return $r;
-	}
-
 	public function enlightenForget(): void
 	{
 		Enlighten::forget();
-		flash('success', 'Enlighten session removed from this server.');
+		flash('success', 'Enlighten session removed from this server. The next pull signs in again.');
 		redirect('/admin/monitor-test');
 	}
 
-	public function enphaseDisconnect(): void
+	public function smaForget(): void
 	{
-		Enphase::disconnect();
-		flash('success', 'Enphase tokens removed from this server.');
+		Sma::forget();
+		flash('success', 'SMA session removed from this server. The next pull signs in again.');
 		redirect('/admin/monitor-test');
 	}
 
-	private function finishExchange(array $result): void
+	private static function configured(string $vendor): bool
 	{
-		$result['call'] = 'Enphase: connect (trade the code for tokens)';
-		$result['at'] = date('m/d/Y g:i:s A');
-		$this->render($result, $result['status'] === 200 ? null : 'Enphase did not issue tokens. The reply is below.');
-	}
-
-	/** @return array{0:string,1:?int,2:?string} call, site or system id, error */
-	private function input(): array
-	{
-		$call = (string) ($_POST['call'] ?? '');
-		if (!isset(self::CALLS[$call])) {
-			return ['', null, 'Unknown call.'];
-		}
-		if (str_starts_with($call, 'gw_')) {
-			if (!Growatt::configured() || !Growatt::available()) {
-				return ['', null, 'Add GROWATT_USERNAME and GROWATT_PASSWORD to the server .env file.'];
-			}
-			if (in_array($call, ['gw_production_site', 'gw_production_year'], true) && !preg_match('/^\d{1,12}$/', trim((string) ($_POST['gw_site'] ?? '')))) {
-				return ['', null, 'Enter a numeric Growatt site ID (from the Site list) for the one-site calls.'];
-			}
-			return Growatt::status() ? [$call, null, null] : ['', null, 'Growatt is not connected yet. Click Connect Growatt first.'];
-		}
-		if (str_starts_with($call, 'sma_')) {
-			if (!Sma::configured() || !Sma::available()) {
-				return ['', null, 'Add SMA_USERNAME and SMA_PASSWORD to the server .env file.'];
-			}
-			if (in_array($call, ['sma_plant', 'sma_days', 'sma_months'], true) && !preg_match('/^\d{1,12}$/', trim((string) ($_POST['sma_plant'] ?? '')))) {
-				return ['', null, 'Enter a numeric SMA plant ID (from the Status list) for the one-plant calls.'];
-			}
-			return [$call, null, null];
-		}
-		if (str_starts_with($call, 'ap_')) {
-			if (!APsystems::configured()) {
-				return ['', null, 'Add APSYSTEMS_APP_ID and APSYSTEMS_APP_SECRET to the server .env file.'];
-			}
-			if ($call !== 'ap_systems' && !preg_match('/^[A-Za-z0-9]{1,40}$/', trim((string) ($_POST['ap_sid'] ?? '')))) {
-				return ['', null, 'Enter an APsystems system ID (letters and digits) for the one-system calls.'];
-			}
-			return [$call, null, null];
-		}
-		if (str_starts_with($call, 'enlighten')) {
-			if (!Enlighten::available()) {
-				return ['', null, 'The PHP curl extension is missing on this server.'];
-			}
-			return Enlighten::configured() ? [$call, null, null] : ['', null, 'Add ENPHASE_ENLIGHTEN_EMAIL and ENPHASE_ENLIGHTEN_PASSWORD to the server .env file.'];
-		}
-		$enphase = str_starts_with($call, 'enphase');
-		if ($enphase && !Enphase::configured()) {
-			return ['', null, 'Enphase is not set up. Add ENPHASE_API_KEY, ENPHASE_CLIENT_ID and ENPHASE_CLIENT_SECRET to the server .env file.'];
-		}
-		if (!$enphase && !SolarEdge::configured()) {
-			return ['', null, 'No SolarEdge key is set. Add SOLAREDGE_API_KEY to the server .env file.'];
-		}
-		$id = null;
-		if (in_array($call, ['overview', 'energy', 'enphase_summary', 'enphase_energy'], true)) {
-			$field = $enphase ? 'system_id' : 'site_id';
-			$raw = trim((string) ($_POST[$field] ?? ''));
-			if (!preg_match('/^\d{1,12}$/', $raw)) {
-				return ['', null, $enphase ? 'Enter a numeric Enphase system ID for the one-system calls.' : 'Enter a numeric SolarEdge site ID for the one-site calls.'];
-			}
-			$id = (int) $raw;
-		}
-		return [$call, $id, null];
-	}
-
-	/** Where Enphase returns after approval: this server's own callback route. */
-	private static function callbackUrl(): string
-	{
-		$host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-		if (!preg_match('/^[A-Za-z0-9.-]+(:\d{1,5})?$/', $host)) {
-			$host = 'localhost';
-		}
-		return (is_https() ? 'https://' : 'http://') . $host . '/admin/monitor-test/enphase-callback';
+		return match ($vendor) {
+			'enphase' => Enlighten::configured() && Enlighten::available(),
+			'apsystems' => APsystems::configured(),
+			'growatt' => Growatt::configured() && Growatt::available(),
+			'sma' => Sma::configured() && Sma::available(),
+			'solaredge' => SolarEdge::configured(),
+			default => false,
+		};
 	}
 
 	private function render(?array $result, ?string $error, ?string $growattCaptcha = null): void
 	{
+		// The list a check returned, as id / name / size / status rows.
 		$rows = [];
 		if ($result && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
 			$j = $result['json'];
-			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data']['systems'] ?? $j['data']['list'] ?? $j['data'] ?? $j['items'] ?? null;
+			$list = $j['sites']['site'] ?? $j['data']['systems'] ?? $j['data']['list'] ?? $j['data'] ?? $j['items'] ?? null;
 			if (is_array($list) && array_is_list($list)) {
+				// Enlighten Manager cells are either plain values or {text, url}
+				$cell = static fn (mixed $v): string => is_array($v) ? (string) ($v['text'] ?? '') : (string) ($v ?? '');
 				foreach ($list as $s) {
 					if (!is_array($s)) {
 						continue;
 					}
-					// Enlighten Manager cells are either plain values or {text, url}
-					$cell = static fn (mixed $v): string => is_array($v) ? (string) ($v['text'] ?? '') : (string) ($v ?? '');
 					$rows[] = [
-						'id' => $cell($s['siteId'] ?? $s['plantId'] ?? $s['system_id'] ?? $s['sid'] ?? $s['inverter_sn'] ?? $s['id'] ?? ''),
+						'id' => $cell($s['siteId'] ?? $s['plantId'] ?? $s['sid'] ?? $s['id'] ?? ''),
 						'name' => $cell($s['alias'] ?? null ?: ($s['site']['alias'] ?? $s['name'] ?? '')),
-						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['capacity'] ?? $s['dcPowerInputMax'] ?? ''),
-						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? (isset($s['light']) ? ['', 'Green', 'Yellow', 'Red', 'Grey'][(int) $s['light']] ?? $s['light'] : '')),
+						'size' => $cell($s['peakPower'] ?? $s['capacity'] ?? $s['dcPowerInputMax'] ?? ''),
+						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? (isset($s['light']) ? ['', 'Green', 'Yellow', 'Red', 'Grey'][(int) $s['light']] ?? $s['light'] : ($s['state'] ?? ''))),
 					];
 				}
 			}
 		}
+
+		$vendors = [];
+		$scheduled = "vendor = ? AND finished_at IS NOT NULL AND COALESCE(message, '') NOT LIKE 'Backfill%'";
+		foreach (MonitorCollector::VENDORS as $key => $label) {
+			$vendors[$key] = [
+				'label' => $label,
+				'source' => MonitorCollector::SOURCES[$key][2] ?? '',
+				'configured' => self::configured($key),
+				'env' => self::ENV[$key],
+				'check' => self::CHECKS[$key],
+				'last' => Db::one("SELECT finished_at, ok, calls, message FROM monitor_runs WHERE $scheduled ORDER BY id DESC LIMIT 1", [$key]),
+				'last_ok' => Db::value("SELECT MAX(finished_at) FROM monitor_runs WHERE $scheduled AND ok = 1", [$key]),
+			];
+		}
+		[$seLeft] = MonitorCollector::seBudget();
+
 		View::render('monitor/test', [
 			'title' => 'Monitor APIs',
-			'calls' => self::CALLS,
-			'solaredge' => SolarEdge::configured(),
-			'enphase' => Enphase::configured(),
-			'enphaseStatus' => Enphase::status(),
-			'enlighten' => Enlighten::configured(),
+			'vendors' => $vendors,
 			'enlightenSession' => Enlighten::hasSession(),
-			'apsystems' => APsystems::configured(),
-			'apSid' => (string) ($_POST['ap_sid'] ?? ''),
-			'growatt' => Growatt::configured() && Growatt::available(),
 			'growattStatus' => Growatt::status(),
 			'growattCaptcha' => $growattCaptcha,
-			'gwSite' => (string) ($_POST['gw_site'] ?? ''),
-			'sma' => Sma::configured() && Sma::available(),
 			'smaStatus' => Sma::status(),
-			'smaPlant' => (string) ($_POST['sma_plant'] ?? ''),
-			'callbackUrl' => self::callbackUrl(),
-			'fallbackUrl' => Enphase::configured() ? Enphase::authorizeUrl(Enphase::DEFAULT_REDIRECT, 'manual') : '',
+			'seCreditsLeft' => $seLeft,
 			'result' => $result,
 			'error' => $error,
-			'siteId' => (string) ($_POST['site_id'] ?? ''),
-			'systemId' => (string) ($_POST['system_id'] ?? ''),
 			'rows' => $rows,
 		]);
 	}

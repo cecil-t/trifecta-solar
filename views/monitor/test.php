@@ -2,51 +2,23 @@
 use App\Csrf;
 
 /**
- * @var array   $calls          key => label
- * @var bool    $solaredge      SolarEdge key set
- * @var bool    $enphase        Enphase app credentials set
- * @var bool    $growatt         Growatt sign-in set in .env
- * @var ?array  $growattStatus   connected_at, last_ok, session_until (no token)
- * @var ?string $growattCaptcha  captcha image (data URI) while connecting
- * @var string  $gwSite
- * @var bool    $sma             SMA sign-in set in .env
- * @var ?array  $smaStatus       signed_in_at, refresh_until (no tokens)
- * @var string  $smaPlant
- * @var bool    $apsystems       APsystems app id and secret set
- * @var string  $apSid
- * @var bool    $enlighten       Enlighten sign-in set in .env
+ * @var array   $vendors          per manufacturer: label, source, configured, env, check [reads, cost], last (run row), last_ok
  * @var bool    $enlightenSession a saved Enlighten session exists
- * @var ?array  $enphaseStatus  saved token times (no tokens), from App\Enphase::status
- * @var string  $callbackUrl
- * @var string  $fallbackUrl     approval page that returns to Enphase's own code page
- * @var ?array  $result         from App\Http::request plus url, call and at
+ * @var ?array  $growattStatus    connected_at, last_ok, session_until (no token)
+ * @var ?string $growattCaptcha   captcha image (data URI) while connecting
+ * @var ?array  $smaStatus        signed_in_at, refresh_until (no tokens)
+ * @var int     $seCreditsLeft    SolarEdge credits left this cycle
+ * @var ?array  $result           a check's reply plus url, call and at
  * @var ?string $error
- * @var string  $siteId
- * @var string  $systemId
- * @var array   $rows           sites or systems parsed from a list call
+ * @var array   $rows             sites or systems parsed from the check
  */
-$pretty = '';
-if ($result) {
-	$pretty = is_array($result['json'])
-		? (string) json_encode($result['json'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-		: (string) $result['body'];
-	if (strlen($pretty) > 60000) {
-		$pretty = substr($pretty, 0, 60000) . "\n... (cut off at 60,000 characters)";
-	}
-}
 $when = static fn (int $ts): string => $ts ? date('m/d/Y g:i A', $ts) : '';
-$buttons = static function (array $keys) use ($calls): string {
-	$out = '';
-	foreach ($keys as $key) {
-		$out .= '<button type="submit" name="call" value="' . e($key) . '" class="btn btn-secondary">' . e($calls[$key]) . '</button>';
-	}
-	return $out;
-};
+$utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotime($t)) : '';
 ?>
 <div class="page-head">
 	<div>
 		<h1>Monitor APIs</h1>
-		<p class="muted">Admin test page for the inverter monitoring APIs. Each call button makes exactly <strong>one</strong> call from the server; check the vendor's usage page afterward to see what it cost. API responses are not saved.</p>
+		<p class="muted">Connections the monitoring collector uses. Each check makes one call from the server and lists what came back; nothing is saved.</p>
 	</div>
 </div>
 
@@ -54,207 +26,21 @@ $buttons = static function (array $keys) use ($calls): string {
 	<div class="flash flash-error"><?= e($error) ?></div>
 <?php endif; ?>
 
-<div class="grid-2">
-	<section class="card">
-		<h2>SolarEdge <span class="muted small">(Monitoring API V2)</span></h2>
-		<?php if (!$solaredge): ?>
-			<p class="muted">Not set up. Add <code>SOLAREDGE_API_KEY</code> to the server .env file.</p>
-		<?php else: ?>
-			<form method="post" action="/admin/monitor-test" class="monitor-test-form">
-				<?= Csrf::field() ?>
-				<label>SolarEdge site ID <span class="muted small">(only for the one-site calls)</span>
-					<input type="text" name="site_id" value="<?= e($siteId) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
-				</label>
-				<div class="monitor-test-buttons"><?= $buttons(['sites', 'alerts', 'overview', 'energy']) ?></div>
-			</form>
-		<?php endif; ?>
-	</section>
-
-	<section class="card">
-		<h2>Enphase <span class="muted small">(Enlighten API v4, Watt plan)</span></h2>
-		<?php if (!$enphase): ?>
-			<p class="muted">Not set up. Add <code>ENPHASE_API_KEY</code>, <code>ENPHASE_CLIENT_ID</code> and <code>ENPHASE_CLIENT_SECRET</code> to the server .env file.</p>
-		<?php else: ?>
-			<dl class="kv">
-				<dt>Connection</dt>
-				<dd>
-					<?php if ($enphaseStatus): ?>
-						Connected <?= e($when($enphaseStatus['connected_at'])) ?>
-						<div class="muted small">Access token good until <?= e($when($enphaseStatus['expires_at'])) ?>; last refreshed <?= e($when($enphaseStatus['refreshed_at'])) ?>. The refresh token lasts about a month from then.</div>
-					<?php else: ?>
-						Not connected
-					<?php endif; ?>
-				</dd>
-				<dt>Returns to</dt><dd><code class="monitor-wrap"><?= e($callbackUrl) ?></code></dd>
-			</dl>
-			<div class="monitor-test-buttons mt-sm">
-				<a href="/admin/monitor-test/enphase-connect" class="btn btn-primary"><?= $enphaseStatus ? 'Reconnect' : 'Connect' ?> Enphase</a>
-				<?php if ($enphaseStatus): ?>
-					<form method="post" action="/admin/monitor-test/enphase-disconnect" data-confirm="Remove the saved Enphase tokens from this server?">
-						<?= Csrf::field() ?>
-						<button type="submit" class="btn btn-ghost">Disconnect</button>
-					</form>
-				<?php endif; ?>
-			</div>
-			<p class="muted small mt-sm">Connect opens Enphase's approval page; sign in with the Enlighten account that should grant access, approve, and you come back here.</p>
-
-			<?php if ($enphaseStatus): ?>
-				<form method="post" action="/admin/monitor-test" class="monitor-test-form mt">
-					<?= Csrf::field() ?>
-					<label>Enphase system ID <span class="muted small">(only for the one-system calls)</span>
-						<input type="text" name="system_id" value="<?= e($systemId) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
-					</label>
-					<div class="monitor-test-buttons"><?= $buttons(['enphase_systems', 'enphase_summary', 'enphase_energy', 'enphase_refresh']) ?></div>
-				</form>
-			<?php endif; ?>
-
-			<details class="mt">
-				<summary class="small">Approval page cannot come back here?</summary>
-				<p class="muted small">Approve through Enphase's own landing page instead: <a href="<?= e($fallbackUrl) ?>" rel="noopener" target="_blank">open the approval page</a> (it returns to Enphase's page, which shows a code), then paste the code here.</p>
-				<form method="post" action="/admin/monitor-test/enphase-code" class="monitor-test-form">
-					<?= Csrf::field() ?>
-					<label>Authorization code
-						<input type="text" name="code" autocomplete="off" required>
-					</label>
-					<div><button type="submit" class="btn btn-secondary">Trade code for tokens</button></div>
-				</form>
-			</details>
-		<?php endif; ?>
-	</section>
-</div>
-
-<section class="card mt">
-	<h2>Enphase installer data <span class="muted small">(Enlighten Manager sign-in, not an API)</span></h2>
-	<?php if (!$enlighten): ?>
-		<p class="muted">Not set up. Add <code>ENPHASE_ENLIGHTEN_EMAIL</code> and <code>ENPHASE_ENLIGHTEN_PASSWORD</code> to the server .env file.</p>
-	<?php else: ?>
-		<p class="muted small">Signs in to Enlighten as the installer user and reads the same systems table Enlighten Manager shows. Session: <?= $enlightenSession ? 'saved on this server' : 'none yet (the first call signs in)' ?>.</p>
-		<div class="monitor-test-buttons">
-			<form method="post" action="/admin/monitor-test">
-				<?= Csrf::field() ?>
-				<?= $buttons(['enlighten_systems', 'enlighten_login']) ?>
-			</form>
-			<?php if ($enlightenSession): ?>
-				<form method="post" action="/admin/monitor-test/enlighten-forget">
-					<?= Csrf::field() ?>
-					<button type="submit" class="btn btn-ghost">Forget session</button>
-				</form>
-			<?php endif; ?>
-		</div>
-	<?php endif; ?>
-</section>
-
-<section class="card mt">
-	<h2>APsystems <span class="muted small">(OpenAPI installer endpoints, LV0: 1,000 calls a month)</span></h2>
-	<?php if (!$apsystems): ?>
-		<p class="muted">Not set up. Add <code>APSYSTEMS_APP_ID</code> and <code>APSYSTEMS_APP_SECRET</code> to the server .env file.</p>
-	<?php else: ?>
-		<form method="post" action="/admin/monitor-test" class="monitor-test-form">
-			<?= Csrf::field() ?>
-			<label>APsystems system ID <span class="muted small">(only for the one-system calls)</span>
-				<input type="text" name="ap_sid" value="<?= e($apSid) ?>" pattern="[A-Za-z0-9]{1,40}" autocomplete="off">
-			</label>
-			<div class="monitor-test-buttons"><?= $buttons(['ap_systems', 'ap_summary', 'ap_energy']) ?></div>
-		</form>
-		<p class="muted small mt-sm">Replies carry their own code: 0 is success, 2001 to 2004 mean the app id, secret or signature was not accepted, 2005 means this month's calls are used up.</p>
-	<?php endif; ?>
-</section>
-
-<section class="card mt" id="growatt">
-	<h2>Growatt <span class="muted small">(Shiner portal sign-in, not an API)</span></h2>
-	<?php if (!$growatt): ?>
-		<p class="muted">Not set up. Add <code>GROWATT_USERNAME</code> and <code>GROWATT_PASSWORD</code> to the server .env file.</p>
-	<?php else: ?>
-		<dl class="kv">
-			<dt>Connection</dt>
-			<dd>
-				<?php if ($growattStatus): ?>
-					Connected <?= e($when($growattStatus['connected_at'])) ?><?= $growattStatus['last_ok'] ? ', last good call ' . e($when($growattStatus['last_ok'])) : '' ?>
-					<?php if ($growattStatus['session_until']): ?><div class="muted small">Growatt's 30-day session cookie runs until <?= e($when($growattStatus['session_until'])) ?>; connect again before then.</div><?php endif; ?>
-				<?php else: ?>
-					Not connected
-				<?php endif; ?>
-			</dd>
-		</dl>
-		<?php if ($growattCaptcha): ?>
-			<form method="post" action="/admin/monitor-test/growatt-login" class="monitor-test-form mt-sm">
-				<?= Csrf::field() ?>
-				<img class="monitor-captcha" src="<?= e($growattCaptcha) ?>" alt="Growatt captcha">
-				<label>Type the characters in the picture
-					<input type="text" name="captcha" maxlength="8" autocomplete="off" required autofocus>
-				</label>
-				<div><button type="submit" class="btn btn-primary">Sign in to Growatt</button></div>
-			</form>
-		<?php else: ?>
-			<div class="monitor-test-buttons mt-sm">
-				<form method="post" action="/admin/monitor-test/growatt-captcha">
-					<?= Csrf::field() ?>
-					<button type="submit" class="btn btn-primary"><?= $growattStatus ? 'Reconnect' : 'Connect' ?> Growatt</button>
-				</form>
-				<?php if ($growattStatus): ?>
-					<form method="post" action="/admin/monitor-test/growatt-forget" data-confirm="Remove the saved Growatt session from this server?">
-						<?= Csrf::field() ?>
-						<button type="submit" class="btn btn-ghost">Disconnect</button>
-					</form>
-				<?php endif; ?>
-			</div>
-			<p class="muted small mt-sm">Connect shows Growatt's captcha; type it once and the session lasts about 30 days while the collector keeps polling.</p>
-			<?php if ($growattStatus): ?>
-				<form method="post" action="/admin/monitor-test" class="monitor-test-form mt">
-					<?= Csrf::field() ?>
-					<div class="monitor-test-buttons"><?= $buttons(['gw_sites', 'gw_inverters', 'gw_alerts', 'gw_overview', 'gw_production']) ?></div>
-					<label>Growatt site ID <span class="muted small">(only for the one-site calls)</span>
-						<input type="text" name="gw_site" value="<?= e($gwSite) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
-					</label>
-					<div class="monitor-test-buttons"><?= $buttons(['gw_production_site', 'gw_production_year']) ?></div>
-				</form>
-			<?php endif; ?>
-		<?php endif; ?>
-	<?php endif; ?>
-</section>
-
-<section class="card mt" id="sma">
-	<h2>SMA <span class="muted small">(Sunny Portal ennexOS sign-in, not an API)</span></h2>
-	<?php if (!$sma): ?>
-		<p class="muted">Not set up. Add <code>SMA_USERNAME</code> and <code>SMA_PASSWORD</code> to the server .env file.</p>
-	<?php else: ?>
-		<p class="muted small">Signs in with the installer SMA ID and reads the same data Sunny Portal shows. Session: <?= $smaStatus ? 'signed in ' . e($when($smaStatus['signed_in_at'])) . ', renews on its own until ' . e($when($smaStatus['refresh_until'])) . ' (then signs in again)' : 'none yet (the first call signs in)' ?>.</p>
-		<form method="post" action="/admin/monitor-test" class="monitor-test-form">
-			<?= Csrf::field() ?>
-			<div class="monitor-test-buttons"><?= $buttons(['sma_plants', 'sma_login']) ?></div>
-			<label>SMA plant ID <span class="muted small">(only for the one-plant calls)</span>
-				<input type="text" name="sma_plant" value="<?= e($smaPlant) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
-			</label>
-			<div class="monitor-test-buttons"><?= $buttons(['sma_plant', 'sma_days', 'sma_months']) ?></div>
-		</form>
-		<?php if ($smaStatus): ?>
-			<form method="post" action="/admin/monitor-test/sma-forget" class="mt-sm">
-				<?= Csrf::field() ?>
-				<button type="submit" class="btn btn-ghost">Forget session</button>
-			</form>
-		<?php endif; ?>
-		<p class="muted small mt-sm">SMA labels each energy value with the end of its interval: a day's total carries the next midnight (UTC in the reply), a month's the first of the next month.</p>
-	<?php endif; ?>
-</section>
-
 <?php if ($result): ?>
-	<section class="card mt">
-		<h2><?= e($result['call']) ?></h2>
-		<dl class="kv">
-			<dt>Called at</dt><dd><?= e($result['at']) ?></dd>
-			<dt>URL</dt><dd><code class="monitor-wrap"><?= e($result['url']) ?></code></dd>
-			<dt>HTTP status</dt><dd><?= $result['status'] ? (int) $result['status'] : 'No response' ?></dd>
-			<dt>Time</dt><dd><?= (int) $result['ms'] ?> ms</dd>
-			<?php if (!empty($result['note'])): ?><dt>Note</dt><dd><?= e($result['note']) ?></dd><?php endif; ?>
-			<?php if ($result['error']): ?><dt>Error</dt><dd><?= e($result['error']) ?></dd><?php endif; ?>
-			<?php if (isset($result['cookies'])): ?><dt>Session cookies</dt><dd><?= $result['cookies'] ? e(implode(', ', $result['cookies'])) : 'none' ?> <span class="muted small">(names only)</span></dd><?php endif; ?>
-			<dt>Body size</dt><dd><?= number_format(strlen($result['body'])) ?> bytes</dd>
-		</dl>
-	</section>
-
-	<?php if ($rows): ?>
-		<section class="card card-flush mt">
-			<div class="card-head"><h2>Returned: <?= count($rows) ?></h2></div>
+	<section class="card card-flush">
+		<div class="card-head">
+			<h2><?= e($result['call']) ?></h2>
+			<span class="muted small"><?= e($result['at']) ?></span>
+		</div>
+		<div class="monitor-result">
+			<dl class="kv">
+				<dt>Result</dt><dd><?= $result['status'] ? 'HTTP ' . (int) $result['status'] : 'No response' ?>, <?= (int) $result['ms'] ?> ms</dd>
+				<?php if (!empty($result['note'])): ?><dt>Note</dt><dd><?= e($result['note']) ?></dd><?php endif; ?>
+				<?php if ($result['error'] && $result['error'] !== ($result['note'] ?? null)): ?><dt>Error</dt><dd><?= e($result['error']) ?></dd><?php endif; ?>
+				<?php if (is_array($result['json'] ?? null) && !$rows): ?><dt>Reply</dt><dd><code class="monitor-wrap"><?= e(substr((string) json_encode($result['json'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 0, 400)) ?></code></dd><?php endif; ?>
+			</dl>
+		</div>
+		<?php if ($rows): ?>
 			<table class="table">
 				<thead><tr><th>ID</th><th>Name</th><th>Size</th><th>Status</th></tr></thead>
 				<tbody>
@@ -268,16 +54,91 @@ $buttons = static function (array $keys) use ($calls): string {
 				<?php endforeach; ?>
 				</tbody>
 			</table>
-		</section>
-	<?php endif; ?>
-
-	<section class="card mt">
-		<h2>Response headers</h2>
-		<pre class="monitor-pre"><?= e(implode("\n", $result['headers'])) ?></pre>
-	</section>
-
-	<section class="card mt">
-		<h2>Response body</h2>
-		<pre class="monitor-pre"><?= e($pretty) ?></pre>
+			<p class="muted small monitor-result"><?= count($rows) ?> returned.</p>
+		<?php endif; ?>
 	</section>
 <?php endif; ?>
+
+<div class="grid-2 mt">
+	<?php foreach ($vendors as $key => $v): ?>
+		<section class="card" id="<?= e($key) ?>">
+			<h2><span class="mon-dot mon-dot-<?= e($key) ?>"></span><?= e($v['label']) ?></h2>
+			<p class="muted small"><?= e($v['source']) ?>.</p>
+			<?php if (!$v['configured']): ?>
+				<p class="muted">Not set up. Add <?php foreach ($v['env'] as $i => $name): ?><?= $i ? ' and ' : '' ?><code><?= e($name) ?></code><?php endforeach; ?> to the server .env file.</p>
+			<?php else: ?>
+				<dl class="kv">
+					<dt>Last pull</dt>
+					<dd>
+						<?php if ($v['last']): ?>
+							<?= $v['last']['ok'] ? 'OK' : 'Failed' ?> <?= e($utc($v['last']['finished_at'])) ?>, <?= (int) $v['last']['calls'] ?> <?= (int) $v['last']['calls'] === 1 ? 'call' : 'calls' ?>
+							<?php if (!$v['last']['ok']): ?><div class="mon-fail small"><?= e((string) $v['last']['message']) ?></div><?php if ($v['last_ok']): ?><div class="muted small">Last good pull <?= e($utc((string) $v['last_ok'])) ?></div><?php endif; ?><?php endif; ?>
+						<?php else: ?>
+							None yet
+						<?php endif; ?>
+					</dd>
+					<?php if ($key === 'enphase'): ?>
+						<dt>Session</dt><dd><?= $enlightenSession ? 'Saved on this server' : 'None (the next pull signs in)' ?></dd>
+					<?php elseif ($key === 'sma'): ?>
+						<dt>Session</dt><dd><?= $smaStatus ? 'Signed in ' . e($when($smaStatus['signed_in_at'])) . '<div class="muted small">Renews on its own until ' . e($when($smaStatus['refresh_until'])) . ', then the next pull signs in again.</div>' : 'None (the next pull signs in)' ?></dd>
+					<?php elseif ($key === 'growatt'): ?>
+						<dt>Session</dt>
+						<dd>
+							<?php if ($growattStatus): ?>
+								Connected <?= e($when($growattStatus['connected_at'])) ?>
+								<?php if ($growattStatus['session_until']): ?><div class="muted small">Growatt's 30-day session runs until <?= e($when($growattStatus['session_until'])) ?>; connect again before then.</div><?php endif; ?>
+							<?php else: ?>
+								Not connected
+							<?php endif; ?>
+						</dd>
+					<?php elseif ($key === 'solaredge'): ?>
+						<dt>Credits</dt><dd><?= number_format($seCreditsLeft) ?> left this cycle</dd>
+					<?php endif; ?>
+				</dl>
+
+				<?php if ($key === 'growatt' && $growattCaptcha): ?>
+					<form method="post" action="/admin/monitor-test/growatt-login" class="monitor-test-form mt-sm">
+						<?= Csrf::field() ?>
+						<img class="monitor-captcha" src="<?= e($growattCaptcha) ?>" alt="Growatt captcha">
+						<label>Type the characters in the picture
+							<input type="text" name="captcha" maxlength="8" autocomplete="off" required autofocus>
+						</label>
+						<div><button type="submit" class="btn btn-primary">Sign in to Growatt</button></div>
+					</form>
+				<?php else: ?>
+					<div class="monitor-test-buttons mt-sm">
+						<?php if ($key === 'growatt'): ?>
+							<form method="post" action="/admin/monitor-test/growatt-captcha">
+								<?= Csrf::field() ?>
+								<button type="submit" class="btn btn-primary"><?= $growattStatus ? 'Reconnect' : 'Connect' ?> Growatt</button>
+							</form>
+						<?php endif; ?>
+						<?php if ($key !== 'growatt' || $growattStatus): ?>
+							<form method="post" action="/admin/monitor-test">
+								<?= Csrf::field() ?>
+								<button type="submit" name="check" value="<?= e($key) ?>" class="btn btn-secondary" title="<?= e(ucfirst($v['check'][1])) ?>">Check <?= e($v['check'][0]) ?></button>
+							</form>
+						<?php endif; ?>
+						<?php if ($key === 'enphase' && $enlightenSession): ?>
+							<form method="post" action="/admin/monitor-test/enlighten-forget">
+								<?= Csrf::field() ?>
+								<button type="submit" class="btn btn-ghost">Forget session</button>
+							</form>
+						<?php elseif ($key === 'sma' && $smaStatus): ?>
+							<form method="post" action="/admin/monitor-test/sma-forget">
+								<?= Csrf::field() ?>
+								<button type="submit" class="btn btn-ghost">Forget session</button>
+							</form>
+						<?php elseif ($key === 'growatt' && $growattStatus): ?>
+							<form method="post" action="/admin/monitor-test/growatt-forget" data-confirm="Remove the saved Growatt session from this server? Pulls stop until someone connects again.">
+								<?= Csrf::field() ?>
+								<button type="submit" class="btn btn-ghost">Disconnect</button>
+							</form>
+						<?php endif; ?>
+					</div>
+					<p class="muted small mt-sm">The check costs <?= e($v['check'][1]) ?>.<?= $key === 'growatt' ? ' Connect shows Growatt\'s captcha; type it once and the session lasts about 30 days.' : '' ?></p>
+				<?php endif; ?>
+			<?php endif; ?>
+		</section>
+	<?php endforeach; ?>
+</div>
