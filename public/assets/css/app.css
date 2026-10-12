@@ -1079,7 +1079,8 @@ a[href^="tel:"] { white-space: nowrap; }
 .mon-count-alert { background: var(--red-50); color: var(--red); }
 .mon-row-offline td:first-child { box-shadow: inset 4px 0 0 var(--red); }
 .mon-why { white-space: normal; min-width: 14rem; }
-.mon-notes p { margin: .25rem 0; }
+.mon-notes p { position: relative; margin: .35rem 0; padding-left: 1rem; }
+.mon-notes p::before { content: "\2022"; position: absolute; left: .15rem; top: 0; }
 .mon-table th { white-space: nowrap; }
 .mon-stats { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
 .mon-stats .stat-num { white-space: nowrap; }
