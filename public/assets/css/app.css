@@ -1079,6 +1079,7 @@ a[href^="tel:"] { white-space: nowrap; }
 .mon-count-alert { background: var(--red-50); color: var(--red); }
 .mon-row-offline td:first-child { box-shadow: inset 4px 0 0 var(--red); }
 .mon-why { white-space: normal; min-width: 14rem; }
+.table th.mon-th-plain { text-transform: none; }
 .mon-updated { margin: .75rem 0; text-align: center; }
 .mon-notes p { position: relative; margin: .35rem 0; padding-left: 1rem; }
 .mon-notes p::before { content: "\2022"; position: absolute; left: .15rem; top: 0; }

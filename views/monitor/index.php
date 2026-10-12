@@ -98,7 +98,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 					<th class="num">Yesterday</th>
 					<th class="num">7 days</th>
 					<th class="num">30 days</th>
-					<th>kWh per kW a day</th>
+					<th class="mon-th-plain" title="Average daily production per kW installed, over the last 30 days">kWh/kW/day</th>
 					<th class="num"><?= e(date('Y')) ?></th>
 					<th class="num">Issues</th>
 				</tr>
@@ -157,7 +157,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 		<p>SolarEdge data from the <a href="https://www.solaredge.com/" rel="noopener" target="_blank">SolarEdge</a> monitoring platform; <?= number_format($seCreditsLeft) ?> API credits left this cycle.</p>
 	<?php endif; ?>
 	<p>Data sources: <?php $parts = []; foreach ($vendors as $v) { $parts[] = e($v['label']) . ', ' . e($v['source'][2]); } echo implode('; ', $parts); ?>.</p>
-	<?php if ($fleet['kw_ac'] > 0): ?><p>Sizes are DC array sizes as each manufacturer reports them, except where marked AC: Growatt reports only its inverters' AC rating, so its size and kWh per kW are per kW AC, and the Installed total counts that AC rating in place of its DC size.</p><?php endif; ?>
+	<?php if ($fleet['kw_ac'] > 0): ?><p>Sizes are DC array sizes as each manufacturer reports them, except where marked AC: Growatt reports only its inverters' AC rating, so its size and kWh/kW/day are per kW AC, and the Installed total counts that AC rating in place of its DC size.</p><?php endif; ?>
 	<p>Flagged: anything the manufacturer reports as an alert or offline, and any system with no production on the last <?= (int) $noProductionDays ?> complete days.</p>
 </div>
 <?php endif; ?>
