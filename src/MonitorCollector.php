@@ -34,10 +34,10 @@ final class MonitorCollector
 
 	/** How each vendor's data is read: [short label, kind, detail]. kind 'api' = published API, 'signin' = portal sign-in. */
 	public const SOURCES = [
-		'enphase' => ['Sign-in', 'signin', 'Enlighten Manager, read as the installer user (not a published API)'],
+		'enphase' => ['Scrape', 'signin', 'Enlighten Manager, read as the installer user (not a published API)'],
 		'apsystems' => ['API', 'api', 'APsystems OpenAPI, free Lv0 plan (1,000 calls a month)'],
 		'solaredge' => ['API', 'api', 'SolarEdge Monitoring API V2, Free tier (2,000 credits a cycle)'],
-		'growatt' => ['Sign-in', 'signin', 'Growatt Shiner portal, read as the installer account (captcha typed about once a month)'],
+		'growatt' => ['Scrape', 'signin', 'Growatt Shiner portal, read as the installer account (captcha typed about once a month)'],
 	];
 
 	private const AP_HOURS = [8, 11, 14, 17];

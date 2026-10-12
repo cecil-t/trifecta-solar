@@ -70,7 +70,6 @@ foreach (['solaredge', 'growatt'] as $k) {
 	<div class="stat"><span class="stat-num"><?= $tile($power($fleet['kw'])) ?></span><span class="stat-label">Installed (DC)<?= $fleet['kw_ac'] > 0 ? ' <span class="nowrap">+ ' . e($power($fleet['kw_ac'])) . ' AC</span>' : '' ?></span></div>
 	<div class="stat stat-orange"><span class="stat-num"><?= $tile($energy($fleet['yesterday'])) ?></span><span class="stat-label">Yesterday<?= $missingYesterday ? ' *' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['week'])) ?></span><span class="stat-label">Last 7 days</span></div>
-	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['month'])) ?></span><span class="stat-label"><?= e(date('F')) ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['year'])) ?></span><span class="stat-label"><?= e(date('Y')) ?><?= $partialYear ? ' **' : '' ?></span></div>
 	<a class="stat <?= $attentionCount ? 'mon-stat-alert' : 'mon-stat-ok' ?>" href="#attention"><span class="stat-num"><?= $attentionCount ?></span><span class="stat-label">Need attention</span></a>
 </div>
