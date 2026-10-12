@@ -303,7 +303,7 @@ final class MonitorController
 			}
 		}
 		View::render('monitor/test', [
-			'title' => 'Monitoring API test',
+			'title' => 'Monitor APIs',
 			'calls' => self::CALLS,
 			'solaredge' => SolarEdge::configured(),
 			'enphase' => Enphase::configured(),

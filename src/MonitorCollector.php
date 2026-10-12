@@ -73,7 +73,7 @@ final class MonitorCollector
 	{
 		$label = self::VENDORS[$vendor];
 		if ($vendor === 'growatt' && Growatt::configured() && Growatt::available() && Growatt::status() === null) {
-			return [self::stamp() . " $label: not connected; use Connect Growatt on Lists > Monitoring API test."];
+			return [self::stamp() . " $label: not connected; use Connect Growatt on Lists > Monitor APIs."];
 		}
 		$configured = match ($vendor) {
 			'growatt' => Growatt::configured() && Growatt::available(),

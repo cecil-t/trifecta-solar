@@ -42,7 +42,7 @@ $buttons = static function (array $keys) use ($calls): string {
 ?>
 <div class="page-head">
 	<div>
-		<h1>Monitoring API test</h1>
+		<h1>Monitor APIs</h1>
 		<p class="muted">Admin test page for the inverter monitoring APIs. Each call button makes exactly <strong>one</strong> call from the server; check the vendor's usage page afterward to see what it cost. API responses are not saved.</p>
 	</div>
 </div>
