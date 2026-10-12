@@ -72,7 +72,7 @@ final class MonitorPageController
 
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
-			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => null, 'week' => 0.0, 'd30' => 0.0, 'd30c' => 0.0,
+			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => null, 'week' => 0.0, 'week_vendor_active' => 0.0, 'week_vendor_sites' => 0, 'd30' => 0.0, 'd30c' => 0.0,
 				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null,
 				'kw_active' => 0.0, 'kw_ac_active' => 0.0, 'active' => 0, 'active_with_yesterday' => 0];
 		}
@@ -107,6 +107,10 @@ final class MonitorPageController
 			// a brand's yesterday is in (most of them have a value), so a few dark sites do not flag it.
 			if (!in_array($s['state'], ['pending', 'offline'], true)) {
 				$v['active']++;
+				if ($fresh && $s['week_wh'] !== null) {
+					$v['week_vendor_active'] += (float) $s['week_wh'];
+					$v['week_vendor_sites']++;
+				}
 				$v['kw_active'] += (float) $s['capacity_kw'];
 				$v['kw_ac_active'] += $ac;
 				if (isset($d['yesterday']) && $d['yesterday'] !== null) {
@@ -175,6 +179,14 @@ final class MonitorPageController
 			$n = (int) ($days[$key]['n'] ?? 0);
 			$v['yield_days'] = $n;
 			$v['yield_day'] = $base > 0 && $n > 0 ? $v['d30c'] / 1000 / $n / $base : null;
+			// Under a week of stored days, but the brand gives its own last-7-days total for most of its
+			// producing sites (Enphase): use that, divided by 7, until the tracker has a week of its own.
+			$v['yield_from_week'] = false;
+			if ($n < 7 && $base > 0 && $v['active'] > 0 && $v['week_vendor_sites'] * 2 >= $v['active']) {
+				$v['yield_day'] = $v['week_vendor_active'] / 1000 / 7 / $base;
+				$v['yield_days'] = 7;
+				$v['yield_from_week'] = true;
+			}
 
 			// Rolling 30 days: a brand with under a week of daily history shows "-" and stays out of
 			// the fleet total; one with more but not the full window counts, with a note.

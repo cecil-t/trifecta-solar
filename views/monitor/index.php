@@ -118,7 +118,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 					<td class="num"><?= $v['yesterday'] === null ? '<span class="muted">-</span>' : e($energy($v['yesterday'])) ?></td>
 					<td class="num"><?= e($energy($v['week'])) ?></td>
 					<td class="num"><?= $v['d30_short'] ? '<span class="muted">-</span>' : e($energy($v['d30'])) ?></td>
-					<td class="mon-barcell"><?php if ($v['yield_day'] !== null): ?><?= $bar($v['yield_day'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span title="Average of <?= (int) $v['yield_days'] ?> days"><?= number_format($v['yield_day'], 2) ?><?= $v['yield_ac'] ? ' <span class="muted small">AC</span>' : '' ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
+					<td class="mon-barcell"><?php if ($v['yield_day'] !== null): ?><?= $bar($v['yield_day'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span title="<?= $v['yield_from_week'] ? 'From the brand&#39;s own last 7 days total' : 'Average of ' . (int) $v['yield_days'] . ' days' ?>"><?= number_format($v['yield_day'], 2) ?><?= $v['yield_ac'] ? ' <span class="muted small">AC</span>' : '' ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
 					<td class="num"><?= e($energy($v['year'])) ?></td>
 					<td class="num"><?= $v['attention'] ? '<a href="#attention" class="mon-attn">' . (int) $v['attention'] . '</a>' : '<span class="muted">0</span>' ?></td>
 				</tr>
