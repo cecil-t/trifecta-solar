@@ -9,6 +9,9 @@ use App\Csrf;
  * @var ?array  $growattStatus   connected_at, last_ok, session_until (no token)
  * @var ?string $growattCaptcha  captcha image (data URI) while connecting
  * @var string  $gwSite
+ * @var bool    $sma             SMA sign-in set in .env
+ * @var ?array  $smaStatus       signed_in_at, refresh_until (no tokens)
+ * @var string  $smaPlant
  * @var bool    $apsystems       APsystems app id and secret set
  * @var string  $apSid
  * @var bool    $enlighten       Enlighten sign-in set in .env
@@ -207,6 +210,30 @@ $buttons = static function (array $keys) use ($calls): string {
 				</form>
 			<?php endif; ?>
 		<?php endif; ?>
+	<?php endif; ?>
+</section>
+
+<section class="card mt" id="sma">
+	<h2>SMA <span class="muted small">(Sunny Portal ennexOS sign-in, not an API)</span></h2>
+	<?php if (!$sma): ?>
+		<p class="muted">Not set up. Add <code>SMA_USERNAME</code> and <code>SMA_PASSWORD</code> to the server .env file.</p>
+	<?php else: ?>
+		<p class="muted small">Signs in with the installer SMA ID and reads the same data Sunny Portal shows. Session: <?= $smaStatus ? 'signed in ' . e($when($smaStatus['signed_in_at'])) . ', renews on its own until ' . e($when($smaStatus['refresh_until'])) . ' (then signs in again)' : 'none yet (the first call signs in)' ?>.</p>
+		<form method="post" action="/admin/monitor-test" class="monitor-test-form">
+			<?= Csrf::field() ?>
+			<div class="monitor-test-buttons"><?= $buttons(['sma_plants', 'sma_login']) ?></div>
+			<label>SMA plant ID <span class="muted small">(only for the one-plant calls)</span>
+				<input type="text" name="sma_plant" value="<?= e($smaPlant) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
+			</label>
+			<div class="monitor-test-buttons"><?= $buttons(['sma_plant', 'sma_days', 'sma_months']) ?></div>
+		</form>
+		<?php if ($smaStatus): ?>
+			<form method="post" action="/admin/monitor-test/sma-forget" class="mt-sm">
+				<?= Csrf::field() ?>
+				<button type="submit" class="btn btn-ghost">Forget session</button>
+			</form>
+		<?php endif; ?>
+		<p class="muted small mt-sm">SMA labels each energy value with the end of its interval: a day's total carries the next midnight (UTC in the reply), a month's the first of the next month.</p>
 	<?php endif; ?>
 </section>
 

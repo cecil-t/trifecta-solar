@@ -166,6 +166,7 @@ $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enl
 $r->post('/admin/monitor-test/growatt-captcha', [MonitorController::class, 'growattCaptcha'], 'admin');
 $r->post('/admin/monitor-test/growatt-login', [MonitorController::class, 'growattLogin'], 'admin');
 $r->post('/admin/monitor-test/growatt-forget', [MonitorController::class, 'growattForget'], 'admin');
+$r->post('/admin/monitor-test/sma-forget', [MonitorController::class, 'smaForget'], 'admin');
 
 // Admin: task template
 $r->get('/admin/template', [TemplateController::class, 'index'], 'admin');

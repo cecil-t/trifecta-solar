@@ -19,6 +19,11 @@ namespace App;
  *    inverters online of total, last update), every 30 minutes 6 AM to 9 PM, every day: free, it keeps the 30-day session
  *    sliding, and the day's last pull becomes that day's stored total. Needs a person to connect it
  *    (captcha) on the test page about once a month; until then it is skipped.
+ *  - SMA (Sunny Portal sign-in, App\Sma): the status list (one call: every plant's state and today's
+ *    yield) and the year's monthly totals (one call for all plants), every 30 minutes 6 AM to 9 PM, every
+ *    day: free, and the day's last pull becomes that day's stored total. Once a day, the last 35 days
+ *    (one call for all plants) replace the stored days with SMA's final values, and each plant's peak
+ *    power is read (one call each).
  *  - SolarEdge (V2 Free tier, 2,000 credits a cycle, 1 credit a call, 10 calls a minute): once each
  *    weekday from 8 AM: site list, fleet alerts, then daily energy for each active site since its last
  *    pull. Skips pending sites and sites with a site communication fault (nothing new to fetch; the
@@ -30,7 +35,7 @@ namespace App;
  */
 final class MonitorCollector
 {
-	public const VENDORS = ['enphase' => 'Enphase', 'apsystems' => 'APsystems', 'growatt' => 'Growatt', 'solaredge' => 'SolarEdge'];
+	public const VENDORS = ['enphase' => 'Enphase', 'apsystems' => 'APsystems', 'growatt' => 'Growatt', 'sma' => 'SMA', 'solaredge' => 'SolarEdge'];
 
 	/** How each vendor's data is read: [short label, kind, detail]. kind 'api' = published API, 'signin' = portal sign-in. */
 	public const SOURCES = [
@@ -38,6 +43,7 @@ final class MonitorCollector
 		'apsystems' => ['API', 'api', 'APsystems OpenAPI, free Lv0 plan (1,000 calls a month)'],
 		'solaredge' => ['API', 'api', 'SolarEdge Monitoring API V2, Free tier (2,000 credits a cycle)'],
 		'growatt' => ['Scrape', 'signin', 'Growatt Shiner portal, read as the installer account (captcha typed about once a month)'],
+		'sma' => ['Scrape', 'signin', 'Sunny Portal (ennexOS), read as the installer SMA ID (not a published API)'],
 	];
 
 	private const AP_HOURS = [8, 11, 14, 17];
@@ -79,6 +85,7 @@ final class MonitorCollector
 		}
 		$configured = match ($vendor) {
 			'growatt' => Growatt::configured() && Growatt::available(),
+			'sma' => Sma::configured() && Sma::available(),
 			'enphase' => Enlighten::configured() && Enlighten::available(),
 			'apsystems' => APsystems::configured(),
 			'solaredge' => SolarEdge::configured(),
@@ -87,7 +94,7 @@ final class MonitorCollector
 			return [self::stamp() . " $label: not set up in .env; skipped."];
 		}
 		[$due, $why] = match ($vendor) {
-			'enphase', 'growatt' => $this->daytimeEvery30($vendor),
+			'enphase', 'growatt', 'sma' => $this->daytimeEvery30($vendor),
 			'apsystems' => $this->apDue(),
 			'solaredge' => $this->seDue(),
 		};
@@ -106,6 +113,7 @@ final class MonitorCollector
 		try {
 			$message = match ($vendor) {
 				'growatt' => $this->growatt(),
+				'sma' => $this->sma(),
 				'enphase' => $this->enphase(),
 				'apsystems' => $this->apsystems(),
 				'solaredge' => $this->solaredge(),
@@ -156,6 +164,9 @@ final class MonitorCollector
 		}
 		if ($vendor === 'growatt') {
 			return $this->backfillGrowatt($daily, $dryRun);
+		}
+		if ($vendor === 'sma') {
+			return $this->backfillSma($dryRun);
 		}
 		$months = [];
 		for ($m = 1; $m < (int) date('n'); $m++) {
@@ -538,6 +549,142 @@ final class MonitorCollector
 			}
 		}
 		return count($rows) . ' systems' . ($finals ? ", yesterday's totals for $finals" : '');
+	}
+
+	// ---- SMA ---------------------------------------------------------------------------------
+
+	/** SMA plant states (the portal's status codes) as stored: [state, text]. */
+	private const SMA_STATES = [307 => ['ok', 'OK'], 455 => ['alert', 'Warning'], 35 => ['alert', 'Error'], 303 => ['offline', 'Off']];
+
+	private function sma(): string
+	{
+		$r = Sma::plants();
+		$this->tick();
+		$list = $r['json']['items'] ?? null;
+		if ($r['status'] !== 200 || !is_array($list)) {
+			throw new \RuntimeException(trim(($r['note'] ?? '') . ' Status list: ' . ($r['error'] ?? 'HTTP ' . $r['status'])));
+		}
+		$today = date('Y-m-d');
+		$daily = $this->forced || !self::lastOkOn('sma', $today);
+		$ids = [];
+		$alerts = 0;
+		foreach ($list as $p) {
+			$pid = (string) ($p['plantId'] ?? '');
+			if (!preg_match('/^\d{1,12}$/', $pid)) {
+				continue;
+			}
+			$code = (int) ($p['state'] ?? 0);
+			[$state, $text] = self::SMA_STATES[$code] ?? ['unknown', 'State ' . $code];
+			$fields = [
+				'name' => (string) ($p['name'] ?? ''),
+				'state' => $state,
+				'status_text' => $text,
+				'alert_count' => $state === 'alert' ? 1 : 0,
+				'alert_impact' => $state === 'alert' ? ($code === 35 ? 2 : 1) : null,
+				'today_date' => $today,
+				'today_wh' => self::num($p['yieldToday'] ?? null),
+			];
+			if ($daily) {
+				// Peak power (kWp) as entered for the plant; else the inverters' maximum DC input.
+				$detail = Sma::plant($pid);
+				$this->tick();
+				$peak = self::num($detail['json']['peakPower'] ?? null) ?: self::num($p['dcPowerInputMax'] ?? null);
+				if ($peak) {
+					$fields['capacity_kw'] = $peak / 1000;
+				}
+			}
+			$siteId = self::upsertSite('sma', $pid, $fields);
+			$ids[$pid] = $siteId;
+			$alerts += $state === 'alert' ? 1 : 0;
+			if ($fields['today_wh'] !== null) {
+				self::setDaily($siteId, $today, $fields['today_wh']);
+			}
+		}
+		if (!$ids) {
+			return '0 plants';
+		}
+		$tz = new \DateTimeZone(date_default_timezone_get());
+		$midnight = new \DateTimeImmutable('today', $tz);
+		// This year's total from SMA's monthly values (the current month runs through now).
+		$months = Sma::energy(array_keys($ids), 'OneMonth', $midnight->setDate((int) $midnight->format('Y'), 1, 1), $midnight->modify('first day of next month'));
+		$this->tick();
+		if ($months['result']['status'] !== 200) {
+			throw new \RuntimeException('Monthly energy: ' . ($months['result']['error'] ?? 'HTTP ' . $months['result']['status']));
+		}
+		$year = date('Y');
+		foreach ($ids as $pid => $siteId) {
+			$sum = 0.0;
+			foreach ($months['values'][$pid] ?? [] as $month => $wh) {
+				if (str_starts_with($month, $year . '-')) {
+					$sum += $wh;
+				}
+			}
+			Db::run('UPDATE monitor_sites SET year_wh = ? WHERE id = ?', [$sum, $siteId]);
+		}
+		$finals = 0;
+		if ($daily) {
+			$finals = $this->smaDays($ids, $midnight->modify('-35 days'), $midnight);
+		}
+		return count($ids) . " plants, $alerts alerts" . ($finals ? ", final daily values for $finals days" : '');
+	}
+
+	/**
+	 * Store SMA's daily values for whole days from $from up to $to (exclusive) for the given plants
+	 * (plant id => site id), one request. @return int days stored
+	 */
+	private function smaDays(array $ids, \DateTimeImmutable $from, \DateTimeImmutable $to): int
+	{
+		$days = Sma::energy(array_map('strval', array_keys($ids)), 'OneDay', $from, $to);
+		$this->tick();
+		if ($days['result']['status'] !== 200) {
+			throw new \RuntimeException('Daily energy: ' . ($days['result']['error'] ?? 'HTTP ' . $days['result']['status']));
+		}
+		$n = 0;
+		$today = date('Y-m-d');
+		foreach ($ids as $pid => $siteId) {
+			foreach ($days['values'][(string) $pid] ?? [] as $date => $wh) {
+				if ($date < $today) {
+					self::setDaily((int) $siteId, $date, $wh);
+					$n++;
+				}
+			}
+		}
+		return $n;
+	}
+
+	/**
+	 * SMA: every day this year for every plant in one request (SMA's own year total is read on each
+	 * pull, so no monthly values are needed).
+	 *
+	 * @return array<int, string>
+	 */
+	private function backfillSma(bool $dryRun): array
+	{
+		$label = self::VENDORS['sma'];
+		$ids = [];
+		foreach (Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'sma' ORDER BY id") as $row) {
+			$ids[(string) $row['vendor_site_id']] = (int) $row['id'];
+		}
+		if (!$ids) {
+			return [self::stamp() . " $label: no plants stored yet; run monitor:poll --vendor=sma --force first."];
+		}
+		if ($dryRun) {
+			return [self::stamp() . " $label: would fetch every day this year for " . count($ids) . ' plants (1 request). Dry run: no requests made.'];
+		}
+		$runId = Db::insert('monitor_runs', ['vendor' => 'sma', 'started_at' => now_utc()]);
+		$this->runId = $runId;
+		$ok = false;
+		try {
+			$tz = new \DateTimeZone(date_default_timezone_get());
+			$midnight = new \DateTimeImmutable('today', $tz);
+			$n = $this->smaDays($ids, $midnight->setDate((int) $midnight->format('Y'), 1, 1), $midnight);
+			$ok = true;
+			$message = 'Backfill done: ' . count($ids) . " plants, $n days";
+		} catch (\Throwable $e) {
+			$message = 'Backfill stopped: ' . $e->getMessage();
+		}
+		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
+		return [self::stamp() . " $label: $message ({$this->calls} requests)"];
 	}
 
 	// ---- Growatt -----------------------------------------------------------------------------

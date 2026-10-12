@@ -7,11 +7,12 @@ use App\APsystems;
 use App\Enlighten;
 use App\Enphase;
 use App\Growatt;
+use App\Sma;
 use App\SolarEdge;
 use App\View;
 
 /**
- * Admin test page for the inverter monitoring integrations (SolarEdge, Enphase, APsystems, Growatt).
+ * Admin test page for the inverter monitoring integrations (SolarEdge, Enphase, APsystems, Growatt, SMA).
  * Each call button makes exactly one API call from the server and shows the raw response, so the
  * cost of each call can be read off the vendor's usage page. Only the Enphase OAuth tokens are kept
  * (a private file next to the database); API responses are not stored.
@@ -39,6 +40,11 @@ final class MonitorController
 		'gw_production' => 'Production this month (all)',
 		'gw_production_site' => 'One site: production this month',
 		'gw_production_year' => 'One site: production this year',
+		'sma_plants' => 'Status list (all plants)',
+		'sma_login' => 'Sign in now',
+		'sma_plant' => 'One plant: properties',
+		'sma_days' => 'One plant: daily energy, last 7 days',
+		'sma_months' => 'One plant: monthly energy, this year',
 	];
 
 	public function test(): void
@@ -60,6 +66,7 @@ final class MonitorController
 		$weekAgo = $today->modify('-6 days');
 		$sid = trim((string) ($_POST['ap_sid'] ?? ''));
 		$gwSite = trim((string) ($_POST['gw_site'] ?? ''));
+		$smaPlant = trim((string) ($_POST['sma_plant'] ?? ''));
 		$result = match ($call) {
 			'sites' => SolarEdge::get('/sites', ['page' => 1, 'sites-in-page' => 1000]),
 			'alerts' => SolarEdge::get('/alerts', ['page' => 1, 'alerts-in-page' => 100]),
@@ -90,10 +97,16 @@ final class MonitorController
 			'gw_overview' => Growatt::get('/web/v1/plant/overview'),
 			'gw_production' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->modify('first day of this month')->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339)])),
 			'gw_production_site' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->modify('first day of this month')->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339), 'siteId' => $gwSite])),
+			'sma_plants' => Sma::plants(),
+			'sma_login' => Sma::login(),
+			'sma_plant' => self::smaPlant(Sma::plant($smaPlant)),
+			'sma_days' => Sma::energy([$smaPlant], 'OneDay', $weekAgo, $today->modify('+1 day'))['result'],
+			'sma_months' => Sma::energy([$smaPlant], 'OneMonth', $today->setDate((int) $today->format('Y'), 1, 1), $today->modify('first day of next month'))['result'],
 			'gw_production_year' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->setDate((int) $today->format('Y'), 1, 1)->format(DATE_RFC3339), 'end' => $now->format(DATE_RFC3339), 'siteId' => $gwSite])),
 		};
 		$result['call'] = match (true) {
 			str_starts_with($call, 'gw_') => 'Growatt: ',
+			str_starts_with($call, 'sma_') => 'SMA: ',
 			str_starts_with($call, 'ap_') => 'APsystems: ',
 			str_starts_with($call, 'enlighten') => 'Enlighten Manager: ',
 			str_starts_with($call, 'enphase') => 'Enphase API: ',
@@ -199,6 +212,24 @@ final class MonitorController
 		redirect('/admin/monitor-test');
 	}
 
+	public function smaForget(): void
+	{
+		Sma::forget();
+		flash('success', 'SMA session removed from this server.');
+		redirect('/admin/monitor-test');
+	}
+
+	/** The plant properties reply carries the owner's name, address, phone and email: keep only the plant's own fields. */
+	private static function smaPlant(array $r): array
+	{
+		if (is_array($r['json'])) {
+			$keep = array_intersect_key($r['json'], array_flip(['plantId', 'name', 'city', 'timezone', 'peakPower', 'dcPowerInputMax', 'startUpUtc', 'communicationProfile', 'hasSelfConsumption', 'isOffgrid', 'isPvGeneratorActive']));
+			$r['json'] = $keep;
+			$r['body'] = (string) json_encode($keep);
+		}
+		return $r;
+	}
+
 	public function enlightenForget(): void
 	{
 		Enlighten::forget();
@@ -235,6 +266,15 @@ final class MonitorController
 				return ['', null, 'Enter a numeric Growatt site ID (from the Site list) for the one-site calls.'];
 			}
 			return Growatt::status() ? [$call, null, null] : ['', null, 'Growatt is not connected yet. Click Connect Growatt first.'];
+		}
+		if (str_starts_with($call, 'sma_')) {
+			if (!Sma::configured() || !Sma::available()) {
+				return ['', null, 'Add SMA_USERNAME and SMA_PASSWORD to the server .env file.'];
+			}
+			if (in_array($call, ['sma_plant', 'sma_days', 'sma_months'], true) && !preg_match('/^\d{1,12}$/', trim((string) ($_POST['sma_plant'] ?? '')))) {
+				return ['', null, 'Enter a numeric SMA plant ID (from the Status list) for the one-plant calls.'];
+			}
+			return [$call, null, null];
 		}
 		if (str_starts_with($call, 'ap_')) {
 			if (!APsystems::configured()) {
@@ -285,7 +325,7 @@ final class MonitorController
 		$rows = [];
 		if ($result && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
 			$j = $result['json'];
-			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data']['systems'] ?? $j['data']['list'] ?? $j['data'] ?? null;
+			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data']['systems'] ?? $j['data']['list'] ?? $j['data'] ?? $j['items'] ?? null;
 			if (is_array($list) && array_is_list($list)) {
 				foreach ($list as $s) {
 					if (!is_array($s)) {
@@ -294,9 +334,9 @@ final class MonitorController
 					// Enlighten Manager cells are either plain values or {text, url}
 					$cell = static fn (mixed $v): string => is_array($v) ? (string) ($v['text'] ?? '') : (string) ($v ?? '');
 					$rows[] = [
-						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['sid'] ?? $s['inverter_sn'] ?? $s['id'] ?? ''),
+						'id' => $cell($s['siteId'] ?? $s['plantId'] ?? $s['system_id'] ?? $s['sid'] ?? $s['inverter_sn'] ?? $s['id'] ?? ''),
 						'name' => $cell($s['alias'] ?? null ?: ($s['site']['alias'] ?? $s['name'] ?? '')),
-						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['capacity'] ?? ''),
+						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['capacity'] ?? $s['dcPowerInputMax'] ?? ''),
 						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? (isset($s['light']) ? ['', 'Green', 'Yellow', 'Red', 'Grey'][(int) $s['light']] ?? $s['light'] : '')),
 					];
 				}
@@ -316,6 +356,9 @@ final class MonitorController
 			'growattStatus' => Growatt::status(),
 			'growattCaptcha' => $growattCaptcha,
 			'gwSite' => (string) ($_POST['gw_site'] ?? ''),
+			'sma' => Sma::configured() && Sma::available(),
+			'smaStatus' => Sma::status(),
+			'smaPlant' => (string) ($_POST['sma_plant'] ?? ''),
 			'callbackUrl' => self::callbackUrl(),
 			'fallbackUrl' => Enphase::configured() ? Enphase::authorizeUrl(Enphase::DEFAULT_REDIRECT, 'manual') : '',
 			'result' => $result,
