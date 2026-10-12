@@ -15,6 +15,10 @@ namespace App;
  *    energy for the month per system (each pull rewrites every day of the month, so Monday's first pull
  *    completes Friday evening and the weekend), plus the system list and a summary (year, lifetime)
  *    once a day. About 460 calls a month for 4 systems; stops at 950 in a calendar month.
+ *  - Growatt (Shiner portal sign-in, App\Growatt): the inverter list (today's kWh, online flag, site)
+ *    and fleet alerts, every 30 minutes 6 AM to 9 PM, every day: free, it keeps the 30-day session
+ *    sliding, and the day's last pull becomes that day's stored total. Needs a person to connect it
+ *    (captcha) on the test page about once a month; until then it is skipped.
  *  - SolarEdge (V2 Free tier, 2,000 credits a cycle, 1 credit a call, 10 calls a minute): once each
  *    weekday from 8 AM: site list, fleet alerts, then daily energy for each active site since its last
  *    pull. Skips pending sites and sites with a site communication fault (nothing new to fetch; the
@@ -26,13 +30,14 @@ namespace App;
  */
 final class MonitorCollector
 {
-	public const VENDORS = ['enphase' => 'Enphase', 'apsystems' => 'APsystems', 'solaredge' => 'SolarEdge'];
+	public const VENDORS = ['enphase' => 'Enphase', 'apsystems' => 'APsystems', 'growatt' => 'Growatt', 'solaredge' => 'SolarEdge'];
 
 	/** How each vendor's data is read: [short label, kind, detail]. kind 'api' = published API, 'signin' = portal sign-in. */
 	public const SOURCES = [
 		'enphase' => ['Sign-in', 'signin', 'Enlighten Manager, read as the installer user (not a published API)'],
 		'apsystems' => ['API', 'api', 'APsystems OpenAPI, free Lv0 plan (1,000 calls a month)'],
 		'solaredge' => ['API', 'api', 'SolarEdge Monitoring API V2, Free tier (2,000 credits a cycle)'],
+		'growatt' => ['Sign-in', 'signin', 'Growatt Shiner portal, read as the installer account (captcha typed about once a month)'],
 	];
 
 	private const AP_HOURS = [8, 11, 14, 17];
@@ -66,7 +71,11 @@ final class MonitorCollector
 	private function vendor(string $vendor, bool $force, bool $dryRun): array
 	{
 		$label = self::VENDORS[$vendor];
+		if ($vendor === 'growatt' && Growatt::configured() && Growatt::available() && Growatt::status() === null) {
+			return [self::stamp() . " $label: not connected; use Connect Growatt on Lists > Monitoring API test."];
+		}
 		$configured = match ($vendor) {
+			'growatt' => Growatt::configured() && Growatt::available(),
 			'enphase' => Enlighten::configured() && Enlighten::available(),
 			'apsystems' => APsystems::configured(),
 			'solaredge' => SolarEdge::configured(),
@@ -75,7 +84,7 @@ final class MonitorCollector
 			return [self::stamp() . " $label: not set up in .env; skipped."];
 		}
 		[$due, $why] = match ($vendor) {
-			'enphase' => $this->enphaseDue(),
+			'enphase', 'growatt' => $this->daytimeEvery30($vendor),
 			'apsystems' => $this->apDue(),
 			'solaredge' => $this->seDue(),
 		};
@@ -91,6 +100,7 @@ final class MonitorCollector
 		$message = '';
 		try {
 			$message = match ($vendor) {
+				'growatt' => $this->growatt(),
 				'enphase' => $this->enphase(),
 				'apsystems' => $this->apsystems(),
 				'solaredge' => $this->solaredge(),
@@ -138,6 +148,9 @@ final class MonitorCollector
 		$label = self::VENDORS[$vendor];
 		if ($vendor === 'enphase') {
 			return [self::stamp() . " $label: nothing to backfill; Enlighten gives this year's total directly."];
+		}
+		if ($vendor === 'growatt') {
+			return [self::stamp() . " $label: history backfill is not built yet; totals count from the first pull."];
 		}
 		$months = [];
 		for ($m = 1; $m < (int) date('n'); $m++) {
@@ -241,13 +254,13 @@ final class MonitorCollector
 
 	// ---- schedules ---------------------------------------------------------------------------
 
-	private function enphaseDue(): array
+	private function daytimeEvery30(string $vendor): array
 	{
 		$h = (int) date('G');
 		if ($h < 6 || $h > 21) {
 			return [false, 'outside 6 AM to 9 PM'];
 		}
-		$last = self::lastOk('enphase');
+		$last = self::lastOk($vendor);
 		return $last !== null && $last > time() - 25 * 60 ? [false, 'pulled within 30 minutes'] : [true, ''];
 	}
 
@@ -374,6 +387,81 @@ final class MonitorCollector
 			}
 		}
 		return count($rows) . ' systems';
+	}
+
+	// ---- Growatt -----------------------------------------------------------------------------
+
+	private function growatt(): string
+	{
+		$inverters = Growatt::inverters($this->calls);
+		$sites = [];
+		$snToSite = [];
+		foreach ($inverters as $inv) {
+			$sid = (string) ($inv['site']['id'] ?? $inv['plant']['id'] ?? '');
+			if ($sid === '') {
+				continue;
+			}
+			$site = &$sites[$sid];
+			$site ??= ['name' => '', 'today' => 0.0, 'has_today' => false, 'count' => 0, 'offline' => 0, 'last' => null];
+			$site['name'] = $site['name'] ?: (string) (($inv['site']['alias'] ?? '') ?: ($inv['site']['name'] ?? ''));
+			$site['count']++;
+			if (isset($inv['eacToday']) && is_numeric($inv['eacToday'])) {
+				$site['today'] += (float) $inv['eacToday'] * 1000;
+				$site['has_today'] = true;
+			}
+			if ((int) ($inv['is_online'] ?? 1) === 0) {
+				$site['offline']++;
+			}
+			$flow = (string) ($inv['flow_time'] ?? '');
+			if ($flow !== '' && ($site['last'] === null || $flow > $site['last'])) {
+				$site['last'] = $flow;
+			}
+			unset($site);
+			foreach (['inverter_sn', 'gateway'] as $k) {
+				if (!empty($inv[$k])) {
+					$snToSite[(string) $inv[$k]] = $sid;
+				}
+			}
+		}
+
+		$alerts = [];
+		$a = Growatt::get('/web/v1/inverters/alerts');
+		$this->calls++;
+		foreach (is_array($a['json']['data']['alerts'] ?? null) ? $a['json']['data']['alerts'] : [] as $al) {
+			$sid = (string) ($al['site']['id'] ?? $al['siteId'] ?? $al['site_id'] ?? '');
+			if ($sid === '') {
+				$sid = $snToSite[(string) ($al['inverter_sn'] ?? $al['sn'] ?? $al['gateway'] ?? '')] ?? '';
+			}
+			if ($sid !== '') {
+				$alerts[$sid][] = $al;
+			}
+		}
+
+		$today = date('Y-m-d');
+		foreach ($sites as $sid => $site) {
+			$mine = $alerts[$sid] ?? [];
+			$parts = [];
+			if ($site['offline']) {
+				$parts[] = $site['offline'] . ' of ' . $site['count'] . ' inverters offline';
+			}
+			if ($mine) {
+				$parts[] = count($mine) . ' ' . (count($mine) === 1 ? 'alert' : 'alerts');
+			}
+			$id = self::upsertSite('growatt', (string) $sid, [
+				'name' => $site['name'],
+				'state' => $site['offline'] && $site['offline'] === $site['count'] ? 'offline' : ($parts ? 'alert' : 'ok'),
+				'status_text' => $parts ? implode(', ', $parts) : 'Online',
+				'alert_count' => count($mine) + $site['offline'],
+				'alert_impact' => $mine ? max(array_map(static fn ($al) => (int) ($al['level'] ?? 0), $mine)) : null,
+				'last_report_at' => $site['last'],
+				'today_date' => $today,
+				'today_wh' => $site['has_today'] ? $site['today'] : null,
+			]);
+			if ($site['has_today']) {
+				self::setDaily($id, $today, $site['today']);
+			}
+		}
+		return count($sites) . ' sites, ' . count($inverters) . ' inverters, ' . array_sum(array_map('count', $alerts)) . ' alerts';
 	}
 
 	// ---- APsystems ---------------------------------------------------------------------------

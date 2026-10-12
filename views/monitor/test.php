@@ -5,6 +5,9 @@ use App\Csrf;
  * @var array   $calls          key => label
  * @var bool    $solaredge      SolarEdge key set
  * @var bool    $enphase        Enphase app credentials set
+ * @var bool    $growatt         Growatt sign-in set in .env
+ * @var ?array  $growattStatus   connected_at, last_ok, session_until (no token)
+ * @var ?string $growattCaptcha  captcha image (data URI) while connecting
  * @var bool    $apsystems       APsystems app id and secret set
  * @var string  $apSid
  * @var bool    $enlighten       Enlighten sign-in set in .env
@@ -150,6 +153,55 @@ $buttons = static function (array $keys) use ($calls): string {
 			<div class="monitor-test-buttons"><?= $buttons(['ap_systems', 'ap_summary', 'ap_energy']) ?></div>
 		</form>
 		<p class="muted small mt-sm">Replies carry their own code: 0 is success, 2001 to 2004 mean the app id, secret or signature was not accepted, 2005 means this month's calls are used up.</p>
+	<?php endif; ?>
+</section>
+
+<section class="card mt" id="growatt">
+	<h2>Growatt <span class="muted small">(Shiner portal sign-in, not an API)</span></h2>
+	<?php if (!$growatt): ?>
+		<p class="muted">Not set up. Add <code>GROWATT_USERNAME</code> and <code>GROWATT_PASSWORD</code> to the server .env file.</p>
+	<?php else: ?>
+		<dl class="kv">
+			<dt>Connection</dt>
+			<dd>
+				<?php if ($growattStatus): ?>
+					Connected <?= e($when($growattStatus['connected_at'])) ?><?= $growattStatus['last_ok'] ? ', last good call ' . e($when($growattStatus['last_ok'])) : '' ?>
+					<?php if ($growattStatus['session_until']): ?><div class="muted small">Growatt's 30-day session cookie runs until <?= e($when($growattStatus['session_until'])) ?>; connect again before then.</div><?php endif; ?>
+				<?php else: ?>
+					Not connected
+				<?php endif; ?>
+			</dd>
+		</dl>
+		<?php if ($growattCaptcha): ?>
+			<form method="post" action="/admin/monitor-test/growatt-login" class="monitor-test-form mt-sm">
+				<?= Csrf::field() ?>
+				<img class="monitor-captcha" src="<?= e($growattCaptcha) ?>" alt="Growatt captcha">
+				<label>Type the characters in the picture
+					<input type="text" name="captcha" maxlength="8" autocomplete="off" required autofocus>
+				</label>
+				<div><button type="submit" class="btn btn-primary">Sign in to Growatt</button></div>
+			</form>
+		<?php else: ?>
+			<div class="monitor-test-buttons mt-sm">
+				<form method="post" action="/admin/monitor-test/growatt-captcha">
+					<?= Csrf::field() ?>
+					<button type="submit" class="btn btn-primary"><?= $growattStatus ? 'Reconnect' : 'Connect' ?> Growatt</button>
+				</form>
+				<?php if ($growattStatus): ?>
+					<form method="post" action="/admin/monitor-test/growatt-forget" data-confirm="Remove the saved Growatt session from this server?">
+						<?= Csrf::field() ?>
+						<button type="submit" class="btn btn-ghost">Disconnect</button>
+					</form>
+				<?php endif; ?>
+			</div>
+			<p class="muted small mt-sm">Connect shows Growatt's captcha; type it once and the session lasts about 30 days while the collector keeps polling.</p>
+			<?php if ($growattStatus): ?>
+				<form method="post" action="/admin/monitor-test" class="mt">
+					<?= Csrf::field() ?>
+					<div class="monitor-test-buttons"><?= $buttons(['gw_sites', 'gw_inverters', 'gw_alerts', 'gw_overview']) ?></div>
+				</form>
+			<?php endif; ?>
+		<?php endif; ?>
 	<?php endif; ?>
 </section>
 

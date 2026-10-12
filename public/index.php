@@ -163,6 +163,9 @@ $r->get('/admin/monitor-test/enphase-callback', [MonitorController::class, 'enph
 $r->post('/admin/monitor-test/enphase-code', [MonitorController::class, 'enphaseCode'], 'admin');
 $r->post('/admin/monitor-test/enphase-disconnect', [MonitorController::class, 'enphaseDisconnect'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');
+$r->post('/admin/monitor-test/growatt-captcha', [MonitorController::class, 'growattCaptcha'], 'admin');
+$r->post('/admin/monitor-test/growatt-login', [MonitorController::class, 'growattLogin'], 'admin');
+$r->post('/admin/monitor-test/growatt-forget', [MonitorController::class, 'growattForget'], 'admin');
 
 // Admin: task template
 $r->get('/admin/template', [TemplateController::class, 'index'], 'admin');

@@ -6,11 +6,12 @@ namespace App\Controllers;
 use App\APsystems;
 use App\Enlighten;
 use App\Enphase;
+use App\Growatt;
 use App\SolarEdge;
 use App\View;
 
 /**
- * Admin test page for the inverter monitoring integrations (SolarEdge V2 and Enphase v4).
+ * Admin test page for the inverter monitoring integrations (SolarEdge, Enphase, APsystems, Growatt).
  * Each call button makes exactly one API call from the server and shows the raw response, so the
  * cost of each call can be read off the vendor's usage page. Only the Enphase OAuth tokens are kept
  * (a private file next to the database); API responses are not stored.
@@ -31,6 +32,10 @@ final class MonitorController
 		'ap_systems' => 'System list (all systems)',
 		'ap_summary' => 'One system: summary',
 		'ap_energy' => 'One system: daily energy, this month',
+		'gw_sites' => 'Site list',
+		'gw_inverters' => 'Inverter list (page 1)',
+		'gw_alerts' => 'Alerts',
+		'gw_overview' => 'All-sites overview',
 	];
 
 	public function test(): void
@@ -75,8 +80,13 @@ final class MonitorController
 			'ap_systems' => APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]),
 			'ap_summary' => APsystems::request('GET', '/systems/summary/' . $sid),
 			'ap_energy' => APsystems::request('GET', '/systems/energy/' . $sid, ['energy_level' => 'daily', 'date_range' => $today->format('Y-m')]),
+			'gw_sites' => Growatt::get('/web/v1/sites/1/10?name=&filter='),
+			'gw_inverters' => Growatt::get('/web/v1/inverters/1/30?query=&filter=&username=&query_list=%5B%5D'),
+			'gw_alerts' => Growatt::get('/web/v1/inverters/alerts'),
+			'gw_overview' => Growatt::get('/web/v1/plant/overview'),
 		};
 		$result['call'] = match (true) {
+			str_starts_with($call, 'gw_') => 'Growatt: ',
 			str_starts_with($call, 'ap_') => 'APsystems: ',
 			str_starts_with($call, 'enlighten') => 'Enlighten Manager: ',
 			str_starts_with($call, 'enphase') => 'Enphase API: ',
@@ -139,6 +149,49 @@ final class MonitorController
 		$this->finishExchange(Enphase::exchange($code, Enphase::DEFAULT_REDIRECT));
 	}
 
+	/** Growatt connect, step 1: fetch a captcha for a person to read. */
+	public function growattCaptcha(): void
+	{
+		if (!Growatt::configured() || !Growatt::available()) {
+			$this->render(null, 'Add GROWATT_USERNAME and GROWATT_PASSWORD to the server .env file.');
+			return;
+		}
+		$c = Growatt::captcha();
+		if ($c['error'] !== null) {
+			$this->render(null, $c['error']);
+			return;
+		}
+		$_SESSION['growatt_captcha_key'] = $c['key'];
+		$this->render(null, null, $c['image']);
+	}
+
+	/** Growatt connect, step 2: sign in with the code the person typed. */
+	public function growattLogin(): void
+	{
+		$key = (string) ($_SESSION['growatt_captcha_key'] ?? '');
+		unset($_SESSION['growatt_captcha_key']);
+		$code = trim((string) ($_POST['captcha'] ?? ''));
+		if ($key === '') {
+			$this->render(null, 'The captcha expired. Click Connect Growatt again.');
+			return;
+		}
+		if (!preg_match('/^[A-Za-z0-9]{3,8}$/', $code)) {
+			$this->render(null, 'Type the characters shown in the captcha.');
+			return;
+		}
+		$result = Growatt::login($code, $key);
+		$result['call'] = 'Growatt: connect (sign in)';
+		$result['at'] = date('m/d/Y g:i:s A');
+		$this->render($result, str_starts_with((string) $result['note'], 'Signed in') ? null : 'Growatt did not sign in. Click Connect Growatt for a new captcha and try again.');
+	}
+
+	public function growattForget(): void
+	{
+		Growatt::forget();
+		flash('success', 'Growatt session removed from this server.');
+		redirect('/admin/monitor-test');
+	}
+
 	public function enlightenForget(): void
 	{
 		Enlighten::forget();
@@ -166,6 +219,12 @@ final class MonitorController
 		$call = (string) ($_POST['call'] ?? '');
 		if (!isset(self::CALLS[$call])) {
 			return ['', null, 'Unknown call.'];
+		}
+		if (str_starts_with($call, 'gw_')) {
+			if (!Growatt::configured() || !Growatt::available()) {
+				return ['', null, 'Add GROWATT_USERNAME and GROWATT_PASSWORD to the server .env file.'];
+			}
+			return Growatt::status() ? [$call, null, null] : ['', null, 'Growatt is not connected yet. Click Connect Growatt first.'];
 		}
 		if (str_starts_with($call, 'ap_')) {
 			if (!APsystems::configured()) {
@@ -211,12 +270,12 @@ final class MonitorController
 		return (is_https() ? 'https://' : 'http://') . $host . '/admin/monitor-test/enphase-callback';
 	}
 
-	private function render(?array $result, ?string $error): void
+	private function render(?array $result, ?string $error, ?string $growattCaptcha = null): void
 	{
 		$rows = [];
 		if ($result && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
 			$j = $result['json'];
-			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data']['systems'] ?? $j['data'] ?? null;
+			$list = $j['sites']['site'] ?? $j['systems'] ?? $j['data']['systems'] ?? $j['data']['list'] ?? $j['data'] ?? null;
 			if (is_array($list) && array_is_list($list)) {
 				foreach ($list as $s) {
 					if (!is_array($s)) {
@@ -225,8 +284,8 @@ final class MonitorController
 					// Enlighten Manager cells are either plain values or {text, url}
 					$cell = static fn (mixed $v): string => is_array($v) ? (string) ($v['text'] ?? '') : (string) ($v ?? '');
 					$rows[] = [
-						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['sid'] ?? $s['id'] ?? ''),
-						'name' => $cell($s['name'] ?? ''),
+						'id' => $cell($s['siteId'] ?? $s['system_id'] ?? $s['sid'] ?? $s['inverter_sn'] ?? $s['id'] ?? ''),
+						'name' => $cell($s['alias'] ?? null ?: ($s['site']['alias'] ?? $s['name'] ?? '')),
 						'size' => $cell($s['peakPower'] ?? $s['system_size'] ?? $s['capacity'] ?? ''),
 						'status' => $cell($s['activationStatus'] ?? $s['status'] ?? (isset($s['light']) ? ['', 'Green', 'Yellow', 'Red', 'Grey'][(int) $s['light']] ?? $s['light'] : '')),
 					];
@@ -243,6 +302,9 @@ final class MonitorController
 			'enlightenSession' => Enlighten::hasSession(),
 			'apsystems' => APsystems::configured(),
 			'apSid' => (string) ($_POST['ap_sid'] ?? ''),
+			'growatt' => Growatt::configured() && Growatt::available(),
+			'growattStatus' => Growatt::status(),
+			'growattCaptcha' => $growattCaptcha,
 			'callbackUrl' => self::callbackUrl(),
 			'fallbackUrl' => Enphase::configured() ? Enphase::authorizeUrl(Enphase::DEFAULT_REDIRECT, 'manual') : '',
 			'result' => $result,
