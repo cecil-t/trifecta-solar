@@ -1099,3 +1099,9 @@ a[href^="tel:"] { white-space: nowrap; }
 .mon-src-signin { background: var(--orange-50); color: #9a5b00; }
 .mon-upd { margin-left: 1.15rem; }
 .monitor-captcha { display: block; align-self: flex-start; height: 3rem; width: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; }
+.mon-stats .stat { padding: .8rem .75rem .8rem .85rem; }
+.mon-stats .stat-unit { font-size: .7em; font-weight: 650; }
+.mon-stats .stat-label .nowrap { display: inline-block; }
+@media (max-width: 700px) {
+	.mon-stats .stat-label { white-space: normal; }
+}

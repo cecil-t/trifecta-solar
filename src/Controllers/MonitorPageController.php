@@ -33,9 +33,10 @@ final class MonitorPageController
 				SUM(CASE WHEN date >= ? THEN wh END) AS year,
 				MAX(CASE WHEN date >= ? AND date < ? THEN wh END) AS recent_max,
 				MAX(CASE WHEN wh > 0 THEN date END) AS last_production,
+				MAX(CASE WHEN date = ? THEN wh END) AS yesterday,
 				MIN(date) AS first_date
 			FROM monitor_daily GROUP BY site_id',
-			[$week, $month, $year, $recent, $today]
+			[$week, $month, $year, $recent, $today, date('Y-m-d', strtotime('-1 day'))]
 		) as $r) {
 			$sums[(int) $r['site_id']] = $r;
 		}
@@ -54,10 +55,10 @@ final class MonitorPageController
 
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
-			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'today' => null, 'week' => 0.0,
+			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => null, 'week' => 0.0,
 				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null];
 		}
-		$fleet = ['systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'today' => 0.0, 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
+		$fleet = ['systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => 0.0, 'yesterday_missing' => [], 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
 		$attention = [];
 
 		foreach (Db::all('SELECT * FROM monitor_sites WHERE ignored = 0 ORDER BY vendor, name') as $s) {
@@ -67,7 +68,6 @@ final class MonitorPageController
 			$v = &$vendors[$s['vendor']];
 			$d = $sums[(int) $s['id']] ?? [];
 			$fresh = $s['today_date'] === $today;
-			$todayWh = $fresh ? $s['today_wh'] : null;
 			// Vendor-supplied totals when fresh (Enphase, APsystems); otherwise sum the stored days.
 			$weekWh = $fresh && $s['week_wh'] !== null ? (float) $s['week_wh'] : (float) ($d['week'] ?? 0);
 			$monthWh = $fresh && $s['month_wh'] !== null ? (float) $s['month_wh'] : (float) ($d['month'] ?? 0);
@@ -85,9 +85,12 @@ final class MonitorPageController
 			$ac = (float) $s['capacity_kw'] > 0 ? 0.0 : (float) ($s['capacity_ac_kw'] ?? 0);
 			$v['kw_ac'] += $ac;
 			$fleet['kw_ac'] += $ac;
-			if ($todayWh !== null) {
-				$v['today'] = ($v['today'] ?? 0) + (float) $todayWh;
-				$fleet['today'] += (float) $todayWh;
+			// Yesterday: a complete day for every brand (SolarEdge's weekend days arrive Monday morning).
+			if (isset($d['yesterday']) && $d['yesterday'] !== null) {
+				$v['yesterday'] = ($v['yesterday'] ?? 0) + (float) $d['yesterday'];
+				$fleet['yesterday'] += (float) $d['yesterday'];
+			} elseif ($s['state'] !== 'pending') {
+				$fleet['yesterday_missing'][$v['label']] = true;
 			}
 			$v['week'] += $weekWh;
 			$v['month'] += $monthWh;
