@@ -236,10 +236,9 @@ final class MonitorCollector
 				}
 				foreach ($ids as $pid => [$siteId, $need]) {
 					foreach ($need as $month) {
-						if (isset($e['values'][$pid][$month])) {
-							self::setMonthly($siteId, $month, $e['values'][$pid][$month]);
-							$stored++;
-						}
+						// A month SMA reports nothing for is stored as zero: the plant was not producing yet.
+						self::setMonthly($siteId, $month, (float) ($e['values'][$pid][$month] ?? 0));
+						$stored++;
 					}
 				}
 			}
@@ -252,21 +251,32 @@ final class MonitorCollector
 						'to' => date('Y-m-d\TH:i:sP', strtotime('+1 month', strtotime(end($need) . '-01 00:00:00')) - 1),
 						'resolution' => 'MONTH',
 					]);
+					$got = [];
 					foreach ($r['json']['values'] ?? [] as $v) {
 						$month = substr((string) ($v['timestamp'] ?? ''), 0, 7);
 						if (isset($v['value']) && $v['value'] !== null && in_array($month, $need, true)) {
-							self::setMonthly($id, $month, (float) $v['value']);
-							$stored++;
+							$got[$month] = (float) $v['value'];
 						}
+					}
+					// Months the reply has no value for are stored as zero: the site was not producing yet.
+					foreach ($need as $month) {
+						self::setMonthly($id, $month, $got[$month] ?? 0.0);
+						$stored++;
 					}
 				} elseif ($vendor === 'apsystems') {
 					foreach (array_unique(array_map(static fn ($m) => substr($m, 0, 4), $need)) as $year) {
 						$list = self::apData(APsystems::request('GET', '/systems/energy/' . $vid, ['energy_level' => 'monthly', 'date_range' => $year]));
 						$this->tick();
+						$got = [];
 						foreach (is_array($list) ? array_values($list) : [] as $i => $kwh) {
-							$month = $year . '-' . sprintf('%02d', $i + 1);
-							if ($kwh !== null && $kwh !== '' && in_array($month, $need, true)) {
-								self::setMonthly($id, $month, (float) $kwh * 1000);
+							if ($kwh !== null && $kwh !== '') {
+								$got[$year . '-' . sprintf('%02d', $i + 1)] = (float) $kwh * 1000;
+							}
+						}
+						// Months with no value ("no data" for the year included) are stored as zero.
+						foreach ($need as $month) {
+							if (str_starts_with($month, $year . '-')) {
+								self::setMonthly($id, $month, $got[$month] ?? 0.0);
 								$stored++;
 							}
 						}
@@ -285,10 +295,8 @@ final class MonitorCollector
 							$got = $p['micros'] > 0;
 						}
 						$this->tick();
-						if ($got) {
-							self::setMonthly($id, $month, $wh);
-							$stored++;
-						}
+						self::setMonthly($id, $month, $got ? $wh : 0.0);
+						$stored++;
 						usleep(2_000_000);
 					}
 				}

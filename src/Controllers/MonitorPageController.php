@@ -234,7 +234,7 @@ final class MonitorPageController
 	 *
 	 * @param array<int, string> $shown vendors on the page
 	 * @return array{0: array<string, float>, 1: array<string, string>} Wh by month (Y-m), and per brand label
-	 *         the first month it has data, for brands that start after the first month
+	 *         the first month with anything stored, for brands whose earlier months are missing
 	 */
 	private static function monthTotals(array $shown): array
 	{
@@ -243,6 +243,8 @@ final class MonitorPageController
 		for ($t = strtotime($start . '-01'); count($months) < 13; $t = strtotime('+1 month', $t)) {
 			$months[date('Y-m', $t)] = 0.0;
 		}
+		// Per brand, the first month with any stored value (zero included: a month the brand reported
+		// nothing for, because its systems were not producing yet, is not missing).
 		$first = [];
 		$add = static function (array $rows) use (&$months, &$first): void {
 			foreach ($rows as $r) {
@@ -250,7 +252,7 @@ final class MonitorPageController
 					continue;
 				}
 				$months[$r['month']] += (float) $r['wh'];
-				if ((float) $r['wh'] > 0 && (!isset($first[$r['vendor']]) || $r['month'] < $first[$r['vendor']])) {
+				if (!isset($first[$r['vendor']]) || $r['month'] < $first[$r['vendor']]) {
 					$first[$r['vendor']] = $r['month'];
 				}
 			}
