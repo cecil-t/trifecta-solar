@@ -89,7 +89,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 		</svg>
 		<ul class="mon-legend">
 			<?php foreach ($vendors as $v): ?>
-				<li><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><?= e($v['label']) ?> <strong><?= number_format(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 0) ?>%</strong> <span class="muted"><?= (int) $v['systems'] ?> <?= $v['systems'] === 1 ? 'system' : 'systems' ?></span></li>
+				<li><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><?= e($v['label']) ?> <strong><?= number_format(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 0) ?>%</strong> <span class="muted">(<?= (int) $v['systems'] ?> <?= $v['systems'] === 1 ? 'system' : 'systems' ?>)</span></li>
 			<?php endforeach; ?>
 		</ul>
 	</div>
