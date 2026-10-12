@@ -79,7 +79,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 </div>
 
 <section class="card mt">
-	<h2>By manufacturer</h2>
+	<h2>By manufacturer <span class="muted small">share of installed capacity</span></h2>
 	<div class="mon-share" role="img" aria-label="Share of installed capacity by manufacturer">
 		<svg class="mon-share-bar" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
 			<?php $x = 0.0; foreach ($vendors as $v): $w = ($v['kw'] + $v['kw_ac']) / $fleetKw * 100; ?>
@@ -88,7 +88,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 		</svg>
 		<ul class="mon-legend">
 			<?php foreach ($vendors as $v): ?>
-				<li><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><?= e($v['label']) ?> <strong><?= number_format(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 0) ?>%</strong> <span class="muted">of capacity, <?= (int) $v['systems'] ?> <?= $v['systems'] === 1 ? 'system' : 'systems' ?></span></li>
+				<li><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><?= e($v['label']) ?> <strong><?= number_format(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 0) ?>%</strong> <span class="muted"><?= (int) $v['systems'] ?> <?= $v['systems'] === 1 ? 'system' : 'systems' ?></span></li>
 			<?php endforeach; ?>
 		</ul>
 	</div>
