@@ -274,7 +274,7 @@ final class MonitorCollector
 	private function backfillGrowatt(bool $daily, bool $dryRun): array
 	{
 		$label = self::VENDORS['growatt'];
-		$sites = Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'growatt' ORDER BY id");
+		$sites = Db::all("SELECT id, vendor_site_id, name FROM monitor_sites WHERE vendor = 'growatt' ORDER BY id");
 		if (!$sites) {
 			return [self::stamp() . " $label: no sites stored yet; run monitor:poll --vendor=growatt --force first."];
 		}
@@ -286,8 +286,12 @@ final class MonitorCollector
 		foreach ($sites as $site) {
 			$months = [];
 			$days = [];
+			$haveMonths = array_flip(array_column(Db::all('SELECT month FROM monitor_monthly WHERE site_id = ? AND wh > 0', [$site['id']]), 'month'));
 			for ($m = $jan; $m < $thisMonth; $m = $m->modify('+1 month')) {
-				$months[] = $m;
+				// Month totals already stored are not fetched again.
+				if (!isset($haveMonths[$m->format('Y-m')])) {
+					$months[] = $m;
+				}
 				if ($daily) {
 					for ($d = $m; $d < $m->modify('+1 month'); $d = $d->modify('+1 day')) {
 						$days[] = $d;
@@ -300,12 +304,13 @@ final class MonitorCollector
 					$days[] = $d;
 				}
 			}
-			$have = array_flip(array_column(Db::all('SELECT date FROM monitor_daily WHERE site_id = ? AND date >= ?', [$site['id'], $jan->format('Y-m-d')]), 'date'));
+			// Days stored as zero are fetched again: when Growatt is busy it can answer a day with zeros.
+			$have = array_flip(array_column(Db::all('SELECT date FROM monitor_daily WHERE site_id = ? AND date >= ? AND wh > 0', [$site['id'], $jan->format('Y-m-d')]), 'date'));
 			$days = array_values(array_filter($days, static fn ($d) => !isset($have[$d->format('Y-m-d')])));
 			$plan[] = [$site, $months, $days];
 		}
 		$estimate = array_sum(array_map(static fn ($p) => count($p[1]) + count($p[2]), $plan));
-		$summary = count($sites) . ' sites, monthly totals for ' . count($plan[0][1]) . ' months' . ($daily ? ' and every missing day' : " and the missing days of last month and this one") . ": about $estimate calls (no limit)";
+		$summary = count($sites) . ' sites, missing monthly totals and ' . ($daily ? 'every missing or zero day' : 'the missing or zero days of last month and this one') . ": about $estimate calls (no limit)";
 		if ($dryRun) {
 			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
 		}
@@ -325,11 +330,24 @@ final class MonitorCollector
 					$p = Growatt::production($sid, $d, $d->setTime(23, 59, 59));
 					$this->tick();
 					self::setDaily((int) $site['id'], $d->format('Y-m-d'), $p['kwh'] * 1000);
-					usleep(1_000_000);
+					usleep(2_000_000);
 				}
 			}
 			$ok = true;
 			$message = 'Backfill done: ' . $summary;
+			// Check: last month's days against Growatt's own total for that month, per site.
+			$last = $thisMonth->modify('-1 month')->format('Y-m');
+			$short = [];
+			foreach ($plan as [$site]) {
+				$month = (float) Db::value('SELECT wh FROM monitor_monthly WHERE site_id = ? AND month = ?', [$site['id'], $last]);
+				$days = (float) Db::value('SELECT COALESCE(SUM(wh), 0) FROM monitor_daily WHERE site_id = ? AND date LIKE ?', [$site['id'], $last . '-%']);
+				if ($month > 0 && $days < $month * 0.9) {
+					$short[] = ($site['name'] ?: $site['vendor_site_id']) . ' ' . round($days / 1000) . ' of ' . round($month / 1000) . ' kWh';
+				}
+			}
+			if ($short) {
+				$message .= ". $last days short of the month total (run it again): " . implode(', ', $short);
+			}
 		} catch (\Throwable $e) {
 			$message = 'Backfill stopped: ' . $e->getMessage();
 		}
