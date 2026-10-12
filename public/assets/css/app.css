@@ -1106,7 +1106,6 @@ a[href^="tel:"] { white-space: nowrap; }
 	.mon-month-name { font-size: .62rem; }
 	.mon-month-year { display: none; }
 }
-}
 .mon-updated { margin: .75rem 0; text-align: center; }
 .mon-notes p { position: relative; margin: .35rem 0; padding-left: 1rem; }
 .mon-notes p::before { content: "\2022"; position: absolute; left: .15rem; top: 0; }
