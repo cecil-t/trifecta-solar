@@ -137,7 +137,7 @@ final class MonitorCollector
 	 *
 	 * @return array<int, string>
 	 */
-	public static function backfill(?string $only, bool $daily, bool $dryRun, bool $force): array
+	public static function backfill(?string $only, bool $daily, bool $dryRun, bool $force, bool $months = false): array
 	{
 		$lock = fopen(dirname(Db::path()) . '/.monitor.lock', 'c');
 		if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
@@ -149,10 +149,156 @@ final class MonitorCollector
 				continue;
 			}
 			$c = new self();
-			$lines = array_merge($lines, $c->backfillVendor($vendor, $daily, $dryRun, $force));
+			$lines = array_merge($lines, $months ? $c->backfillMonths($vendor, $dryRun, $force) : $c->backfillVendor($vendor, $daily, $dryRun, $force));
 		}
 		flock($lock, LOCK_UN);
 		return $lines;
+	}
+
+	/** First month of the "last 12 months" chart (the current month is the 12th). */
+	public static function monthsStart(): string
+	{
+		return date('Y-m', strtotime(date('Y-m-01') . ' -11 months'));
+	}
+
+	/**
+	 * monitor:backfill --months: whole-month totals for the last 12 months (before this one) wherever a
+	 * site has neither a month total nor (nearly) every day of that month stored, for the 12-month chart.
+	 * SolarEdge 1 credit per site, APsystems 1 call per system per year, SMA 1 request in all, Growatt
+	 * and Enphase 1 request per site per month (free).
+	 *
+	 * @return array<int, string>
+	 */
+	private function backfillMonths(string $vendor, bool $dryRun, bool $force): array
+	{
+		$label = self::VENDORS[$vendor];
+		$window = [];
+		for ($t = strtotime(self::monthsStart() . '-01'); $t < strtotime(date('Y-m-01')); $t = strtotime('+1 month', $t)) {
+			$window[] = date('Y-m', $t);
+		}
+		$sites = Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = ? AND ignored = 0 AND state != 'pending' ORDER BY id", [$vendor]);
+		if (!$sites) {
+			return [self::stamp() . " $label: no systems stored yet; run monitor:poll --vendor=$vendor --force first."];
+		}
+		$todo = [];
+		foreach ($sites as $site) {
+			$need = [];
+			foreach ($window as $month) {
+				$hasMonth = Db::value('SELECT 1 FROM monitor_monthly WHERE site_id = ? AND month = ?', [$site['id'], $month]);
+				$days = (int) Db::value('SELECT COUNT(*) FROM monitor_daily WHERE site_id = ? AND date LIKE ?', [$site['id'], $month . '-%']);
+				if (!$hasMonth && $days < (int) date('t', strtotime($month . '-01')) - 1) {
+					$need[] = $month;
+				}
+			}
+			if ($need) {
+				$todo[] = [$site, $need];
+			}
+		}
+		if (!$todo) {
+			return [self::stamp() . " $label: every month from " . $window[0] . ' is already stored.'];
+		}
+		$estimate = match ($vendor) {
+			'solaredge' => count($todo),
+			'apsystems' => array_sum(array_map(static fn ($t) => count(array_unique(array_map(static fn ($m) => substr($m, 0, 4), $t[1]))), $todo)),
+			'sma' => 1,
+			default => array_sum(array_map(static fn ($t) => count($t[1]), $todo)),
+		};
+		$unit = $vendor === 'solaredge' ? 'credits' : 'calls';
+		$summary = count($todo) . " systems missing months from {$window[0]}: about $estimate $unit";
+		if ($vendor === 'solaredge') {
+			$summary .= ' (' . self::seBudget()[0] . ' left)';
+		}
+		if ($dryRun) {
+			return [self::stamp() . " $label: would fill $summary. Dry run: no calls made."];
+		}
+		if ($vendor === 'solaredge' && $estimate > self::seBudget()[0] && !$force) {
+			return [self::stamp() . " $label: not enough credits left for $summary. Use --force to run anyway."];
+		}
+
+		$runId = Db::insert('monitor_runs', ['vendor' => $vendor, 'started_at' => now_utc()]);
+		$this->runId = $runId;
+		$ok = false;
+		$tz = new \DateTimeZone(date_default_timezone_get());
+		$stored = 0;
+		try {
+			if ($vendor === 'sma') {
+				$ids = [];
+				$from = $window[count($window) - 1];
+				foreach ($todo as [$site, $need]) {
+					$ids[(string) $site['vendor_site_id']] = [(int) $site['id'], $need];
+					$from = min($from, $need[0]);
+				}
+				$e = Sma::energy(array_map('strval', array_keys($ids)), 'OneMonth', new \DateTimeImmutable($from . '-01', $tz), new \DateTimeImmutable(date('Y-m-01'), $tz));
+				$this->tick();
+				if ($e['result']['status'] !== 200) {
+					throw new \RuntimeException('Monthly energy: ' . ($e['result']['error'] ?? 'HTTP ' . $e['result']['status']));
+				}
+				foreach ($ids as $pid => [$siteId, $need]) {
+					foreach ($need as $month) {
+						if (isset($e['values'][$pid][$month])) {
+							self::setMonthly($siteId, $month, $e['values'][$pid][$month]);
+							$stored++;
+						}
+					}
+				}
+			}
+			foreach ($vendor === 'sma' ? [] : $todo as [$site, $need]) {
+				$vid = (string) $site['vendor_site_id'];
+				$id = (int) $site['id'];
+				if ($vendor === 'solaredge') {
+					$r = $this->seGet('/sites/' . $vid . '/energy', [
+						'from' => date('Y-m-d\TH:i:sP', strtotime($need[0] . '-01 00:00:00')),
+						'to' => date('Y-m-d\TH:i:sP', strtotime('+1 month', strtotime(end($need) . '-01 00:00:00')) - 1),
+						'resolution' => 'MONTH',
+					]);
+					foreach ($r['json']['values'] ?? [] as $v) {
+						$month = substr((string) ($v['timestamp'] ?? ''), 0, 7);
+						if (isset($v['value']) && $v['value'] !== null && in_array($month, $need, true)) {
+							self::setMonthly($id, $month, (float) $v['value']);
+							$stored++;
+						}
+					}
+				} elseif ($vendor === 'apsystems') {
+					foreach (array_unique(array_map(static fn ($m) => substr($m, 0, 4), $need)) as $year) {
+						$list = self::apData(APsystems::request('GET', '/systems/energy/' . $vid, ['energy_level' => 'monthly', 'date_range' => $year]));
+						$this->tick();
+						foreach (is_array($list) ? array_values($list) : [] as $i => $kwh) {
+							$month = $year . '-' . sprintf('%02d', $i + 1);
+							if ($kwh !== null && $kwh !== '' && in_array($month, $need, true)) {
+								self::setMonthly($id, $month, (float) $kwh * 1000);
+								$stored++;
+							}
+						}
+					}
+				} else {
+					foreach ($need as $month) {
+						$first = new \DateTimeImmutable($month . '-01', $tz);
+						$last = $first->modify('last day of this month');
+						if ($vendor === 'growatt') {
+							$p = Growatt::production($vid, $first, $last->setTime(23, 59, 59));
+							$wh = $p['kwh'] * 1000;
+							$got = true;
+						} else {
+							$p = Enlighten::energy($vid, $first->format('Y-m-d'), $last->format('Y-m-d'));
+							$wh = $p['wh'];
+							$got = $p['micros'] > 0;
+						}
+						$this->tick();
+						if ($got) {
+							self::setMonthly($id, $month, $wh);
+							$stored++;
+						}
+						usleep(2_000_000);
+					}
+				}
+			}
+			$ok = true;
+			$message = "Backfill done: $summary; $stored month totals stored";
+		} catch (\Throwable $e) {
+			$message = "Backfill stopped: " . $e->getMessage() . " ($stored month totals stored)";
+		}
+		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
+		return [self::stamp() . " $label: $message ({$this->calls} $unit used)"];
 	}
 
 	/** @return array<int, string> */

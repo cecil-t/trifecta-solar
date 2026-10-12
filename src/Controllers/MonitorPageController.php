@@ -208,6 +208,7 @@ final class MonitorPageController
 		$vendors = array_filter($vendors, static fn ($v) => $v['systems'] > 0 || $v['run']['last_ok'] || $v['run']['failed']);
 
 		[$seLeft] = MonitorCollector::seBudget();
+		[$months, $monthsFrom] = self::lastTwelveMonths(array_keys($vendors));
 		View::render('monitor/index', [
 			'title' => 'Monitoring',
 			// Reload about 90 seconds after the next quarter hour, when monitor:poll (cron */15) has
@@ -219,6 +220,57 @@ final class MonitorPageController
 			'yearStart' => $year,
 			'seCreditsLeft' => $seLeft,
 			'noProductionDays' => self::NO_PRODUCTION_DAYS,
+			'months' => $months,
+			'monthsFrom' => $monthsFrom,
 		]);
+	}
+
+	/**
+	 * Fleet production per month for the last 12 months (this month so far is the 12th). Per site, a
+	 * whole-month total from the backfill is used where there is one, otherwise the sum of its stored days.
+	 *
+	 * @param array<int, string> $shown vendors on the page
+	 * @return array{0: array<string, float>, 1: array<string, string>} Wh by month (Y-m), and per brand label
+	 *         the first month it has data, for brands that start after the first month
+	 */
+	private static function lastTwelveMonths(array $shown): array
+	{
+		$start = MonitorCollector::monthsStart();
+		$months = [];
+		for ($t = strtotime($start . '-01'); count($months) < 12; $t = strtotime('+1 month', $t)) {
+			$months[date('Y-m', $t)] = 0.0;
+		}
+		$first = [];
+		$add = static function (array $rows) use (&$months, &$first): void {
+			foreach ($rows as $r) {
+				if (!array_key_exists($r['month'], $months)) {
+					continue;
+				}
+				$months[$r['month']] += (float) $r['wh'];
+				if ((float) $r['wh'] > 0 && (!isset($first[$r['vendor']]) || $r['month'] < $first[$r['vendor']])) {
+					$first[$r['vendor']] = $r['month'];
+				}
+			}
+		};
+		$add(Db::all(
+			'SELECT s.vendor, m.month, SUM(m.wh) AS wh FROM monitor_monthly m JOIN monitor_sites s ON s.id = m.site_id
+			WHERE s.ignored = 0 AND m.month >= ? GROUP BY s.vendor, m.month',
+			[$start]
+		));
+		$add(Db::all(
+			'SELECT s.vendor, substr(d.date, 1, 7) AS month, SUM(d.wh) AS wh FROM monitor_daily d JOIN monitor_sites s ON s.id = d.site_id
+			WHERE s.ignored = 0 AND d.date >= ?
+				AND NOT EXISTS (SELECT 1 FROM monitor_monthly m WHERE m.site_id = d.site_id AND m.month = substr(d.date, 1, 7))
+			GROUP BY s.vendor, month',
+			[$start . '-01']
+		));
+		$late = [];
+		foreach ($shown as $vendor) {
+			$from = $first[$vendor] ?? null;
+			if ($from !== null && $from > $start) {
+				$late[MonitorCollector::VENDORS[$vendor]] = $from;
+			}
+		}
+		return [$months, $late];
 	}
 }

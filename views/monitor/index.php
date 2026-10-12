@@ -1,6 +1,8 @@
 <?php
 /**
  * @var array  $fleet       systems, kw, kw_ac, yesterday, yesterday_missing (vendor => true), week, d30, d30_partial (vendor => [from, left_out]), year (Wh)
+ * @var array  $months      Wh by month (Y-m) for the last 12 months, this month last
+ * @var array  $monthsFrom  brand label => first month with data, for brands that start after the first month
  * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, d30, yield_day, yield_days, yield_ac
  * @var array  $attention   vendor, name, reason, offline, impact, last_production
  * @var string $yearStart
@@ -48,6 +50,9 @@ $missingYesterday = array_keys($fleet['yesterday_missing']);
 $partial30 = $fleet['d30_partial'];
 // Brands whose year total is built from stored history (no year figure from the vendor) and whose
 // history starts after January 1: their share of the year is partial until monitor:backfill runs.
+$monthMax = max([1.0, ...array_values($months)]);
+$thisMonth = date('Y-m');
+$mwh = static fn (float $wh): string => number_format($wh / 1e6, $wh >= 1e8 ? 0 : 1);
 $partialYear = [];
 foreach (['solaredge', 'growatt'] as $k) {
 	if (!empty($vendors[$k]['first_date']) && $vendors[$k]['first_date'] > $yearStart) {
@@ -123,6 +128,26 @@ foreach (['solaredge', 'growatt'] as $k) {
 	</div>
 </section>
 
+<section class="card mt">
+	<h2>Last 12 months <span class="muted small">fleet production in MWh; <?= e(date('M')) ?> so far<?= $monthsFrom ? ' &Dagger;' : '' ?></span></h2>
+	<div class="mon-months">
+		<svg class="mon-months-bars" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">
+			<?php $i = 0; foreach ($months as $ym => $wh): $h = $wh > 0 ? max(0.6, $wh / $monthMax * 96) : 0; $label = date('F Y', strtotime($ym . '-01')) . ': ' . $mwh($wh) . ' MWh' . ($ym === $thisMonth ? ' so far' : ''); ?>
+				<g>
+					<title><?= e($label) ?></title>
+					<rect class="mon-month-hit" x="<?= $i * 10 ?>" y="0" width="10" height="100"/>
+					<rect class="mon-month-bar<?= $ym === $thisMonth ? ' mon-month-partial' : '' ?>" x="<?= $i * 10 + 1.5 ?>" y="<?= round(100 - $h, 2) ?>" width="7" height="<?= round($h, 2) ?>"/>
+				</g>
+			<?php $i++; endforeach; ?>
+		</svg>
+		<ol class="mon-months-labels">
+			<?php foreach ($months as $ym => $wh): ?>
+				<li<?= $ym === $thisMonth ? ' class="mon-month-now"' : '' ?>><span class="mon-month-name"><?= e(date('M', strtotime($ym . '-01'))) ?><?php if (substr($ym, 5) === '01' || $ym === array_key_first($months)): ?> <span class="mon-month-year"><?= e(substr($ym, 0, 4)) ?></span><?php endif; ?></span><span class="mon-month-val"><?= $wh > 0 ? e($mwh($wh)) : '-' ?></span></li>
+			<?php endforeach; ?>
+		</ol>
+	</div>
+</section>
+
 <p class="muted small mon-updated">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
 
 <details class="card mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
@@ -151,6 +176,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 <div class="muted small mt mon-notes">
 	<?php if ($missingYesterday): ?><p>* Yesterday does not include <?= e(implode(' or ', $missingYesterday)) ?> yet<?= in_array('SolarEdge', $missingYesterday, true) ? ' (SolarEdge weekend days arrive Monday morning)' : '' ?>.</p><?php endif; ?>
 	<?php if ($partial30): ?><p>&dagger; The 30-day figures <?php $parts = []; foreach ($partial30 as $name => $p) { $parts[] = $p['left_out'] ? 'leave out ' . e($name) . ' (under a week of daily history so far)' : 'count ' . e($name) . ' from ' . e($date($p['from'])); } echo implode('; ', $parts); ?>. They fill out as the days pass or a backfill runs.</p><?php endif; ?>
+	<?php if ($monthsFrom): ?><p>&Dagger; The 12-month chart counts <?php $parts = []; foreach ($monthsFrom as $name => $from) { $parts[] = e($name) . ' from ' . e(date('M Y', strtotime($from . '-01'))); } echo implode(' and ', $parts); ?>; monitor:backfill --months fills in the earlier months.</p><?php endif; ?>
 	<?php if ($partialYear): ?><p>** The year total counts <?php $parts = []; foreach ($partialYear as $name => $from) { $parts[] = e($name) . ' from ' . e($date($from)); } echo implode(' and ', $parts); ?>, when the tracker started storing them; the one-time backfill fills in the earlier months.</p><?php endif; ?>
 	<?php if ($hasSolarEdge): ?>
 		<p>Enphase, Growatt and SMA are read every 30 minutes and APsystems four times each weekday; SolarEdge is pulled once each weekday at 8 AM for the days before, so its weekend days fill in Monday morning.</p>
