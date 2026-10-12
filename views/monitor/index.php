@@ -1,6 +1,6 @@
 <?php
 /**
- * @var array  $fleet       systems, kw, kw_ac, yesterday, yesterday_missing (vendor => true), week, d30, d30_partial (vendor => first date), year (Wh)
+ * @var array  $fleet       systems, kw, kw_ac, yesterday, yesterday_missing (vendor => true), week, d30, d30_partial (vendor => [from, left_out]), year (Wh)
  * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, d30, yield_day, yield_days, yield_ac
  * @var array  $attention   vendor, name, reason, offline, impact, last_production
  * @var string $yearStart
@@ -99,7 +99,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 				<tr>
 					<th>Manufacturer</th>
 					<th class="num">Systems</th>
-					<th>Installed</th>
+					<th class="num">Installed</th>
 					<th class="num">Yesterday</th>
 					<th class="num">7 days</th>
 					<th class="num">30 days</th>
@@ -113,11 +113,11 @@ foreach (['solaredge', 'growatt'] as $k) {
 				<tr>
 					<td><span class="mon-dot mon-dot-<?= e($v['key']) ?>"></span><strong><?= e($v['label']) ?></strong> <span class="chip mon-src-<?= e($v['source'][1]) ?>" title="<?= e($v['source'][2]) ?>"><?= e($v['source'][0]) ?></span>
 						<div class="muted small mon-upd">Updated <?= e($when($v['run']['last_ok'])) ?></div><?php if ($v['run']['failed']): ?><div class="mon-fail"><?= e($v['run']['failed']) ?></div><?php endif; ?></td>
-					<td class="num"><?= (int) $v['systems'] ?><?= $v['pending'] ? ' <span class="muted small">(' . (int) $v['pending'] . ' pending)</span>' : '' ?></td>
-					<td class="mon-barcell"><?= $bar(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 'mon-fill-' . $v['key']) ?><span><?= $v['kw'] > 0 ? e($power($v['kw'])) : ($v['kw_ac'] > 0 ? e($power($v['kw_ac'])) . ' AC' : '<span class="muted">-</span>') ?></span></td>
+					<td class="num"><?= $v['pending'] ? '<span class="muted small">(' . (int) $v['pending'] . ' pending)</span> ' : '' ?><?= (int) $v['systems'] ?></td>
+					<td class="num"><?= $v['kw'] > 0 ? e($power($v['kw'])) : ($v['kw_ac'] > 0 ? e($power($v['kw_ac'])) . ' AC' : '<span class="muted">-</span>') ?></td>
 					<td class="num"><?= $v['yesterday'] === null ? '<span class="muted">-</span>' : e($energy($v['yesterday'])) ?></td>
 					<td class="num"><?= e($energy($v['week'])) ?></td>
-					<td class="num"><?= e($energy($v['d30'])) ?></td>
+					<td class="num"><?= $v['d30_short'] ? '<span class="muted">-</span>' : e($energy($v['d30'])) ?></td>
 					<td class="mon-barcell"><?php if ($v['yield_day'] !== null): ?><?= $bar($v['yield_day'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span title="Average of <?= (int) $v['yield_days'] ?> days"><?= number_format($v['yield_day'], 2) ?><?= $v['yield_ac'] ? ' <span class="muted small">AC</span>' : '' ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
 					<td class="num"><?= e($energy($v['year'])) ?></td>
 					<td class="num"><?= $v['attention'] ? '<a href="#attention" class="mon-attn">' . (int) $v['attention'] . '</a>' : '<span class="muted">0</span>' ?></td>
@@ -153,7 +153,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 
 <div class="muted small mt mon-notes">
 	<?php if ($missingYesterday): ?><p>* Yesterday does not include <?= e(implode(' or ', $missingYesterday)) ?> yet<?= in_array('SolarEdge', $missingYesterday, true) ? ' (SolarEdge weekend days arrive Monday morning)' : '' ?>.</p><?php endif; ?>
-	<?php if ($partial30): ?><p>&dagger; The 30-day figures count <?php $parts = []; foreach ($partial30 as $name => $from) { $parts[] = e($name) . ($from ? ' from ' . e($date($from)) : ' not yet'); } echo implode(', ', $parts); ?>, when the tracker started storing daily values; they fill out as the days pass or the backfill runs.</p><?php endif; ?>
+	<?php if ($partial30): ?><p>&dagger; The 30-day figures <?php $parts = []; foreach ($partial30 as $name => $p) { $parts[] = $p['left_out'] ? 'leave out ' . e($name) . ' (under a week of daily history so far)' : 'count ' . e($name) . ' from ' . e($date($p['from'])); } echo implode('; ', $parts); ?>. They fill out as the days pass or a backfill runs.</p><?php endif; ?>
 	<?php if ($partialYear): ?><p>** The year total counts <?php $parts = []; foreach ($partialYear as $name => $from) { $parts[] = e($name) . ' from ' . e($date($from)); } echo implode(' and ', $parts); ?>, when the tracker started storing them; the one-time backfill fills in the earlier months.</p><?php endif; ?>
 	<?php if ($hasSolarEdge): ?>
 		<p>Enphase and Growatt are read every 30 minutes and APsystems four times each weekday; SolarEdge is pulled once each weekday at 8 AM for the days before, so its weekend days fill in Monday morning.</p>

@@ -1108,3 +1108,10 @@ a[href^="tel:"] { white-space: nowrap; }
 .mon-stats .mon-num-plain { color: var(--blue); }
 .mon-stats .mon-issues { color: var(--red); font-weight: 700; }
 .mon-stats .mon-no-issues { color: var(--green-600); }
+/* six tiles: 6 across, else 3, else 2, never a lone tile on its own row */
+.mon-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1180px) { .mon-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .mon-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mon-table th, .mon-table td { padding-left: .6rem; padding-right: .6rem; }
+.mon-table th:first-child, .mon-table td:first-child { padding-left: 1rem; }
+.mon-fail { max-width: 13rem; }

@@ -73,7 +73,8 @@ final class MonitorPageController
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
 			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => null, 'week' => 0.0, 'd30' => 0.0, 'd30c' => 0.0,
-				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null];
+				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null,
+				'kw_active' => 0.0, 'kw_ac_active' => 0.0, 'active' => 0, 'active_with_yesterday' => 0];
 		}
 		$fleet = ['systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => 0.0, 'yesterday_missing' => [], 'd30' => 0.0, 'd30_partial' => [], 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
 		$attention = [];
@@ -102,18 +103,25 @@ final class MonitorPageController
 			$ac = (float) $s['capacity_kw'] > 0 ? 0.0 : (float) ($s['capacity_ac_kw'] ?? 0);
 			$v['kw_ac'] += $ac;
 			$fleet['kw_ac'] += $ac;
+			// Producing sites (not pending, not offline): the base for kWh per kW, and for judging whether
+			// a brand's yesterday is in (most of them have a value), so a few dark sites do not flag it.
+			if (!in_array($s['state'], ['pending', 'offline'], true)) {
+				$v['active']++;
+				$v['kw_active'] += (float) $s['capacity_kw'];
+				$v['kw_ac_active'] += $ac;
+				if (isset($d['yesterday']) && $d['yesterday'] !== null) {
+					$v['active_with_yesterday']++;
+				}
+			}
 			// Yesterday: a complete day for every brand (SolarEdge's weekend days arrive Monday morning).
 			if (isset($d['yesterday']) && $d['yesterday'] !== null) {
 				$v['yesterday'] = ($v['yesterday'] ?? 0) + (float) $d['yesterday'];
 				$fleet['yesterday'] += (float) $d['yesterday'];
-			} elseif ($s['state'] !== 'pending') {
-				$fleet['yesterday_missing'][$v['label']] = true;
 			}
 			$v['week'] += $weekWh;
 			$v['month'] += $monthWh;
 			$v['d30'] += (float) ($d['d30'] ?? 0);
 			$v['d30c'] += (float) ($d['d30c'] ?? 0);
-			$fleet['d30'] += (float) ($d['d30'] ?? 0);
 			$v['year'] += $yearWh;
 			if ($s['state'] === 'pending') {
 				$v['pending']++;
@@ -161,14 +169,26 @@ final class MonitorPageController
 			$v['run'] = ['last_ok' => $ok ? (string) $ok : null, 'failed' => $run && !$run['ok'] && $run['finished_at'] ? (string) $run['message'] : null];
 			// kWh per kW per day, averaged over the days with data among the last 30 complete days:
 			// per kW DC where known, else per kW AC (labeled on the page).
-			$v['yield_ac'] = $v['kw'] <= 0 && $v['kw_ac'] > 0;
-			$base = $v['kw'] > 0 ? $v['kw'] : $v['kw_ac'];
+			// Pending and offline sites are left out of the base: they are not producing.
+			$v['yield_ac'] = $v['kw_active'] <= 0 && $v['kw_ac_active'] > 0;
+			$base = $v['kw_active'] > 0 ? $v['kw_active'] : $v['kw_ac_active'];
 			$n = (int) ($days[$key]['n'] ?? 0);
 			$v['yield_days'] = $n;
 			$v['yield_day'] = $base > 0 && $n > 0 ? $v['d30c'] / 1000 / $n / $base : null;
+
+			// Rolling 30 days: a brand with under a week of daily history shows "-" and stays out of
+			// the fleet total; one with more but not the full window counts, with a note.
 			$first = $days[$key]['first'] ?? null;
+			$v['d30_short'] = $v['systems'] > 0 && ($first === null || $first > date('Y-m-d', strtotime('-6 days')));
 			if ($v['systems'] > 0 && ($first === null || $first > $d30)) {
-				$fleet['d30_partial'][$v['label']] = $first;
+				$fleet['d30_partial'][$v['label']] = ['from' => $first, 'left_out' => $v['d30_short']];
+			}
+			if (!$v['d30_short']) {
+				$fleet['d30'] += $v['d30'];
+			}
+
+			if ($v['active'] > 0 && $v['active_with_yesterday'] * 2 < $v['active']) {
+				$fleet['yesterday_missing'][$v['label']] = true;
 			}
 		}
 		unset($v);

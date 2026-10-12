@@ -251,9 +251,9 @@ final class MonitorCollector
 	}
 
 	/**
-	 * Growatt: this year's months before this one as monthly totals per site, plus this month's days
-	 * before tracking began (so the month tile is whole); with $daily, every day of the earlier months
-	 * too. Growatt has no call limit, so there is no budget check; calls are spaced a second apart.
+	 * Growatt: this year's months before this one as monthly totals per site, plus the days of last
+	 * month and this one before tracking began (so the rolling 30 days is whole); with $daily, every day
+	 * of the earlier months too. Growatt has no call limit, so there is no budget check; calls are spaced a second apart.
 	 *
 	 * @return array<int, string>
 	 */
@@ -280,15 +280,18 @@ final class MonitorCollector
 					}
 				}
 			}
-			for ($d = $thisMonth; $d->format('Y-m-d') <= $yesterday; $d = $d->modify('+1 day')) {
-				$days[] = $d;
+			// Last month's and this month's days always, so the rolling 30 days is whole.
+			for ($d = $daily ? $thisMonth : $thisMonth->modify('-1 month'); $d->format('Y-m-d') <= $yesterday; $d = $d->modify('+1 day')) {
+				if (!in_array($d, $days, false)) {
+					$days[] = $d;
+				}
 			}
 			$have = array_flip(array_column(Db::all('SELECT date FROM monitor_daily WHERE site_id = ? AND date >= ?', [$site['id'], $jan->format('Y-m-d')]), 'date'));
 			$days = array_values(array_filter($days, static fn ($d) => !isset($have[$d->format('Y-m-d')])));
 			$plan[] = [$site, $months, $days];
 		}
 		$estimate = array_sum(array_map(static fn ($p) => count($p[1]) + count($p[2]), $plan));
-		$summary = count($sites) . ' sites, monthly totals for ' . count($plan[0][1]) . ' months' . ($daily ? ' and every missing day' : " and this month's missing days") . ": about $estimate calls (no limit)";
+		$summary = count($sites) . ' sites, monthly totals for ' . count($plan[0][1]) . ' months' . ($daily ? ' and every missing day' : " and the missing days of last month and this one") . ": about $estimate calls (no limit)";
 		if ($dryRun) {
 			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
 		}
