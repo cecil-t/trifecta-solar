@@ -128,7 +128,9 @@ foreach (['solaredge', 'growatt'] as $k) {
 	</div>
 </section>
 
-<section class="card mt">
+<p class="muted small mon-updated">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
+
+<section class="card">
 	<h2>Last 12 months <span class="muted small">fleet production in MWh; <?= e(date('M')) ?> so far<?= $monthsFrom ? ' &Dagger;' : '' ?></span></h2>
 	<div class="mon-months">
 		<svg class="mon-months-bars" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">
@@ -148,9 +150,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 	</div>
 </section>
 
-<p class="muted small mon-updated">Last data <?= e($when($latestOk)) ?>; this page auto-reloads 90 seconds after each quarter-hour pull.</p>
-
-<details class="card mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
+<details class="card mt mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
 	<summary><h2>Issues <span class="mon-count<?= $attentionCount ? ' mon-count-alert' : '' ?>"><?= $attentionCount ?></span></h2></summary>
 	<?php if (!$attention): ?>
 		<p class="muted">Nothing flagged: no manufacturer alerts and every system produced in the last <?= (int) $noProductionDays ?> days.</p>
