@@ -25,8 +25,9 @@ declare(strict_types=1);
  *   monitor:backfill [--vendor=X] [--daily] [--dry-run] [--force]
  *                                             One-time fill of this year's history before daily tracking began: monthly
  *                                             totals (SolarEdge 1 credit per site), --daily adds day-by-day values
- *                                             (1 call per site per month). Refuses when over the vendor's allowance
- *                                             unless --force. Run --dry-run first to see the cost
+ *                                             (1 call per site per month). Enphase fetches each day per system: last
+ *                                             month and this month, or all year with --daily. Refuses when over the
+ *                                             vendor's allowance unless --force. Run --dry-run first to see the cost
  */
 
 require dirname(__DIR__) . '/src/bootstrap.php';

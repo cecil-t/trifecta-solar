@@ -149,7 +149,7 @@ final class MonitorCollector
 	{
 		$label = self::VENDORS[$vendor];
 		if ($vendor === 'enphase') {
-			return [self::stamp() . " $label: nothing to backfill; Enlighten gives this year's total directly."];
+			return $this->backfillEnphase($daily, $dryRun);
 		}
 		if ($vendor === 'growatt') {
 			return $this->backfillGrowatt($daily, $dryRun);
@@ -323,6 +323,65 @@ final class MonitorCollector
 		return [self::stamp() . " $label: $message ({$this->calls} calls)"];
 	}
 
+	/**
+	 * Enphase: exact daily totals per system for last month and this month (so the rolling 30 days is
+	 * whole), or with $daily every day this year. One request per system per day, spaced a second apart.
+	 * No monthly totals are needed because Enlighten gives each system's year total directly.
+	 *
+	 * @return array<int, string>
+	 */
+	private function backfillEnphase(bool $daily, bool $dryRun): array
+	{
+		$label = self::VENDORS['enphase'];
+		$sites = Db::all("SELECT id, vendor_site_id, first_seen_at FROM monitor_sites WHERE vendor = 'enphase' ORDER BY id");
+		if (!$sites) {
+			return [self::stamp() . " $label: no systems stored yet; run monitor:poll --vendor=enphase --force first."];
+		}
+		$from = $daily ? date('Y-01-01') : date('Y-m-01', strtotime('first day of last month'));
+		$yesterday = date('Y-m-d', strtotime('-1 day'));
+		$plan = [];
+		foreach ($sites as $site) {
+			// Days the poll stored since the system was first seen hold its last running "today" reading,
+			// so they are fetched again. Earlier days can only have come from a backfill, so they are kept
+			// (a stopped backfill picks up where it left off).
+			$seen = $site['first_seen_at'] ? date('Y-m-d', strtotime((string) $site['first_seen_at'])) : $yesterday;
+			$have = array_flip(array_column(Db::all('SELECT date FROM monitor_daily WHERE site_id = ? AND date >= ? AND date < ?', [$site['id'], $from, $seen]), 'date'));
+			$days = [];
+			for ($t = strtotime($from); date('Y-m-d', $t) <= $yesterday; $t = strtotime('+1 day', $t)) {
+				if (!isset($have[date('Y-m-d', $t)])) {
+					$days[] = date('Y-m-d', $t);
+				}
+			}
+			$plan[] = [$site, $days];
+		}
+		$estimate = array_sum(array_map(static fn ($p) => count($p[1]), $plan));
+		$summary = count($sites) . " systems, days from $from: $estimate requests";
+		if ($dryRun) {
+			return [self::stamp() . " $label: would backfill $summary. Dry run: no requests made."];
+		}
+		$runId = Db::insert('monitor_runs', ['vendor' => 'enphase', 'started_at' => now_utc()]);
+		$this->runId = $runId;
+		$ok = false;
+		try {
+			foreach ($plan as [$site, $days]) {
+				foreach ($days as $day) {
+					$e = Enlighten::energy((string) $site['vendor_site_id'], $day, $day);
+					$this->tick();
+					if ($e['micros'] > 0) {
+						self::setDaily((int) $site['id'], $day, $e['wh']);
+					}
+					usleep(1_000_000);
+				}
+			}
+			$ok = true;
+			$message = 'Backfill done: ' . $summary;
+		} catch (\Throwable $e) {
+			$message = 'Backfill stopped: ' . $e->getMessage();
+		}
+		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
+		return [self::stamp() . " $label: $message ({$this->calls} requests)"];
+	}
+
 	private static function setMonthly(int $siteId, string $month, float $wh): void
 	{
 		Db::run('INSERT INTO monitor_monthly (site_id, month, wh) VALUES (?, ?, ?) ON CONFLICT (site_id, month) DO UPDATE SET wh = excluded.wh', [$siteId, $month, $wh]);
@@ -462,7 +521,20 @@ final class MonitorCollector
 				self::setDaily($siteId, $today, $wh);
 			}
 		}
-		return count($rows) . ' systems';
+		// Once a day: yesterday's exact total per system (the systems table only has a running "today").
+		$finals = 0;
+		if (!self::lastOkOn('enphase', $today)) {
+			$yesterday = date('Y-m-d', strtotime('-1 day'));
+			foreach (Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'enphase'") as $row) {
+				$e = Enlighten::energy((string) $row['vendor_site_id'], $yesterday, $yesterday);
+				$this->tick();
+				if ($e['micros'] > 0) {
+					self::setDaily((int) $row['id'], $yesterday, $e['wh']);
+					$finals++;
+				}
+			}
+		}
+		return count($rows) . ' systems' . ($finals ? ", yesterday's totals for $finals" : '');
 	}
 
 	// ---- Growatt -----------------------------------------------------------------------------

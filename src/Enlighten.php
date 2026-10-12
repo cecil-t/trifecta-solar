@@ -95,6 +95,26 @@ final class Enlighten
 		return self::serviceCall('POST', '/service/site_search/sites/search/data?locale=en', (string) $body);
 	}
 
+	/**
+	 * One system's production for a window of whole days, from the system page's energy view: the reply
+	 * lists each microinverter's Wh for the whole window (not per day), so the system total is their sum.
+	 * One request per system per day gives daily values.
+	 *
+	 * @return array{wh:float,micros:int}
+	 */
+	public static function energy(string $systemId, string $startDate, string $endDate): array
+	{
+		if (!preg_match('/^\d{1,12}$/', $systemId) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+			throw new \InvalidArgumentException('Bad system id or date');
+		}
+		$r = self::serviceCall('GET', '/systems/' . $systemId . '/inverter_data_x/energy.json?' . http_build_query(['start_date' => $startDate, 'end_date' => $endDate]), '');
+		$prod = $r['json']['production'] ?? null;
+		if ($r['status'] !== 200 || !is_array($prod)) {
+			throw new \RuntimeException(trim(($r['note'] ?? '') . " Energy for system $systemId: HTTP " . $r['status'] . ($r['error'] ? ' ' . $r['error'] : '')));
+		}
+		return ['wh' => (float) array_sum(array_map('floatval', $prod)), 'micros' => count($prod)];
+	}
+
 	/** A service call with the saved session, signing in first (or again) when there is none or it ended. */
 	private static function serviceCall(string $method, string $path, string $body): array
 	{
