@@ -45,6 +45,7 @@ final class MonitorCollector
 	private const SE_SAFETY = 20;
 
 	private int $calls = 0;
+	private ?int $runId = null;
 	/** @var array<int, string> */
 	private array $lines = [];
 
@@ -96,6 +97,7 @@ final class MonitorCollector
 		}
 
 		$runId = Db::insert('monitor_runs', ['vendor' => $vendor, 'started_at' => now_utc()]);
+		$this->runId = $runId;
 		$ok = false;
 		$message = '';
 		try {
@@ -189,6 +191,7 @@ final class MonitorCollector
 		}
 
 		$runId = Db::insert('monitor_runs', ['vendor' => $vendor, 'started_at' => now_utc()]);
+		$this->runId = $runId;
 		$ok = false;
 		try {
 			foreach ($todo as [$site, $need]) {
@@ -220,7 +223,7 @@ final class MonitorCollector
 					}
 				} else {
 					$list = self::apData(APsystems::request('GET', '/systems/energy/' . $vid, ['energy_level' => 'monthly', 'date_range' => date('Y')]));
-					$this->calls++;
+					$this->tick();
 					foreach (is_array($list) ? array_values($list) : [] as $i => $kwh) {
 						$month = date('Y') . '-' . sprintf('%02d', $i + 1);
 						if ($kwh !== null && $kwh !== '' && in_array($month, $months, true)) {
@@ -229,7 +232,7 @@ final class MonitorCollector
 					}
 					foreach ($need as $month) {
 						$days = self::apData(APsystems::request('GET', '/systems/energy/' . $vid, ['energy_level' => 'daily', 'date_range' => $month]));
-						$this->calls++;
+						$this->tick();
 						foreach (is_array($days) ? array_values($days) : [] as $i => $kwh) {
 							if ($kwh !== null && $kwh !== '') {
 								self::setDaily($id, $month . '-' . sprintf('%02d', $i + 1), (float) $kwh * 1000);
@@ -426,7 +429,7 @@ final class MonitorCollector
 
 		$alerts = [];
 		$a = Growatt::get('/web/v1/inverters/alerts');
-		$this->calls++;
+		$this->tick();
 		foreach (is_array($a['json']['data']['alerts'] ?? null) ? $a['json']['data']['alerts'] : [] as $al) {
 			$sid = (string) ($al['site']['id'] ?? $al['siteId'] ?? $al['site_id'] ?? '');
 			if ($sid === '') {
@@ -472,7 +475,7 @@ final class MonitorCollector
 		$known = Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'apsystems'");
 		if ($firstToday || !$known) {
 			$r = APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]);
-			$this->calls++;
+			$this->tick();
 			$list = self::apData($r)['systems'] ?? [];
 			foreach ($list as $s) {
 				$light = (int) ($s['light'] ?? 0);
@@ -491,7 +494,7 @@ final class MonitorCollector
 		foreach ($known as $site) {
 			$sid = (string) $site['vendor_site_id'];
 			$r = APsystems::request('GET', '/systems/energy/' . $sid, ['energy_level' => 'daily', 'date_range' => $month]);
-			$this->calls++;
+			$this->tick();
 			$days = self::apData($r);
 			$monthWh = 0.0;
 			$todayWh = null;
@@ -510,7 +513,7 @@ final class MonitorCollector
 			$fields = ['today_date' => $today, 'today_wh' => $todayWh, 'month_wh' => $monthWh];
 			if ($firstToday) {
 				$sum = self::apData(APsystems::request('GET', '/systems/summary/' . $sid));
-				$this->calls++;
+				$this->tick();
 				$fields['year_wh'] = isset($sum['year']) ? (float) $sum['year'] * 1000 : null;
 				$fields['lifetime_wh'] = isset($sum['lifetime']) ? (float) $sum['lifetime'] * 1000 : null;
 			}
@@ -615,7 +618,7 @@ final class MonitorCollector
 			usleep(6_200_000);
 		}
 		$r = SolarEdge::get($path, $query);
-		$this->calls++;
+		$this->tick();
 		if ($r['status'] === 429) {
 			throw new \RuntimeException('SolarEdge 429: ' . substr((string) ($r['json']['detail'] ?? $r['json']['message'] ?? 'limit reached'), 0, 120));
 		}
@@ -628,6 +631,15 @@ final class MonitorCollector
 	private static function humanType(string $type): string
 	{
 		return ucfirst(strtolower(str_replace('_', ' ', $type)));
+	}
+
+	/** Count one vendor call and save the count right away, so a run that is stopped midway still counts. */
+	private function tick(): void
+	{
+		$this->calls++;
+		if ($this->runId !== null) {
+			Db::run('UPDATE monitor_runs SET calls = ? WHERE id = ?', [$this->calls, $this->runId]);
+		}
 	}
 
 	// ---- storage -----------------------------------------------------------------------------
