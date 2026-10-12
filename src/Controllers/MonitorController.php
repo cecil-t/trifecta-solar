@@ -36,6 +36,9 @@ final class MonitorController
 		'gw_inverters' => 'Inverter list (page 1)',
 		'gw_alerts' => 'Alerts',
 		'gw_overview' => 'All-sites overview',
+		'gw_production' => 'Production this month (all)',
+		'gw_production_site' => 'One site: production this month',
+		'gw_production_year' => 'One site: production this year',
 	];
 
 	public function test(): void
@@ -56,6 +59,7 @@ final class MonitorController
 		$today = $now->setTime(0, 0);
 		$weekAgo = $today->modify('-6 days');
 		$sid = trim((string) ($_POST['ap_sid'] ?? ''));
+		$gwSite = trim((string) ($_POST['gw_site'] ?? ''));
 		$result = match ($call) {
 			'sites' => SolarEdge::get('/sites', ['page' => 1, 'sites-in-page' => 1000]),
 			'alerts' => SolarEdge::get('/alerts', ['page' => 1, 'alerts-in-page' => 100]),
@@ -84,6 +88,9 @@ final class MonitorController
 			'gw_inverters' => Growatt::get('/web/v1/inverters/1/30?query=&filter=&username=&query_list=%5B%5D'),
 			'gw_alerts' => Growatt::get('/web/v1/inverters/alerts'),
 			'gw_overview' => Growatt::get('/web/v1/plant/overview'),
+			'gw_production' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->format('Y-m-01'), 'end' => $today->format('Y-m-d')])),
+			'gw_production_site' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->format('Y-m-01'), 'end' => $today->format('Y-m-d'), 'siteId' => $gwSite])),
+			'gw_production_year' => Growatt::get('/web/v1/inverters/production?' . http_build_query(['start' => $today->format('Y-01-01'), 'end' => $today->format('Y-m-d'), 'siteId' => $gwSite])),
 		};
 		$result['call'] = match (true) {
 			str_starts_with($call, 'gw_') => 'Growatt: ',
@@ -224,6 +231,9 @@ final class MonitorController
 			if (!Growatt::configured() || !Growatt::available()) {
 				return ['', null, 'Add GROWATT_USERNAME and GROWATT_PASSWORD to the server .env file.'];
 			}
+			if (in_array($call, ['gw_production_site', 'gw_production_year'], true) && !preg_match('/^\d{1,12}$/', trim((string) ($_POST['gw_site'] ?? '')))) {
+				return ['', null, 'Enter a numeric Growatt site ID (from the Site list) for the one-site calls.'];
+			}
 			return Growatt::status() ? [$call, null, null] : ['', null, 'Growatt is not connected yet. Click Connect Growatt first.'];
 		}
 		if (str_starts_with($call, 'ap_')) {
@@ -305,6 +315,7 @@ final class MonitorController
 			'growatt' => Growatt::configured() && Growatt::available(),
 			'growattStatus' => Growatt::status(),
 			'growattCaptcha' => $growattCaptcha,
+			'gwSite' => (string) ($_POST['gw_site'] ?? ''),
 			'callbackUrl' => self::callbackUrl(),
 			'fallbackUrl' => Enphase::configured() ? Enphase::authorizeUrl(Enphase::DEFAULT_REDIRECT, 'manual') : '',
 			'result' => $result,

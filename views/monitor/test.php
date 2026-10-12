@@ -8,6 +8,7 @@ use App\Csrf;
  * @var bool    $growatt         Growatt sign-in set in .env
  * @var ?array  $growattStatus   connected_at, last_ok, session_until (no token)
  * @var ?string $growattCaptcha  captcha image (data URI) while connecting
+ * @var string  $gwSite
  * @var bool    $apsystems       APsystems app id and secret set
  * @var string  $apSid
  * @var bool    $enlighten       Enlighten sign-in set in .env
@@ -196,9 +197,13 @@ $buttons = static function (array $keys) use ($calls): string {
 			</div>
 			<p class="muted small mt-sm">Connect shows Growatt's captcha; type it once and the session lasts about 30 days while the collector keeps polling.</p>
 			<?php if ($growattStatus): ?>
-				<form method="post" action="/admin/monitor-test" class="mt">
+				<form method="post" action="/admin/monitor-test" class="monitor-test-form mt">
 					<?= Csrf::field() ?>
-					<div class="monitor-test-buttons"><?= $buttons(['gw_sites', 'gw_inverters', 'gw_alerts', 'gw_overview']) ?></div>
+					<div class="monitor-test-buttons"><?= $buttons(['gw_sites', 'gw_inverters', 'gw_alerts', 'gw_overview', 'gw_production']) ?></div>
+					<label>Growatt site ID <span class="muted small">(only for the one-site calls)</span>
+						<input type="text" name="gw_site" value="<?= e($gwSite) ?>" inputmode="numeric" pattern="\d{1,12}" autocomplete="off">
+					</label>
+					<div class="monitor-test-buttons"><?= $buttons(['gw_production_site', 'gw_production_year']) ?></div>
 				</form>
 			<?php endif; ?>
 		<?php endif; ?>
