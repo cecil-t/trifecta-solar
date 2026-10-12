@@ -398,7 +398,7 @@ final class MonitorCollector
 	{
 		$sites = [];
 		for ($page = 1; $page <= 10; $page++) {
-			$r = Growatt::get('/web/v1/sites/' . $page . '/50?name=&filter=');
+			$r = Growatt::get('/web/v1/sites/' . $page . '/10?name=&filter=');
 			$this->tick();
 			$list = $r['json']['data']['list'] ?? null;
 			if ($r['status'] !== 200 || !is_array($list)) {
