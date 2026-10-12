@@ -1105,3 +1105,6 @@ a[href^="tel:"] { white-space: nowrap; }
 @media (max-width: 700px) {
 	.mon-stats .stat-label { white-space: normal; }
 }
+.mon-stats .mon-num-plain { color: var(--blue); }
+.mon-stats .mon-issues { color: var(--red); font-weight: 700; }
+.mon-stats .mon-no-issues { color: var(--green-600); }

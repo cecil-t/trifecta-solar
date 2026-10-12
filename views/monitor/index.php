@@ -1,7 +1,7 @@
 <?php
 /**
- * @var array  $fleet       systems, kw, kw_ac, yesterday, yesterday_missing (vendor => true), week, month, year (Wh)
- * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, yield_month
+ * @var array  $fleet       systems, kw, kw_ac, yesterday, yesterday_missing (vendor => true), week, d30, d30_partial (vendor => first date), year (Wh)
+ * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, d30, yield_day, yield_days, yield_ac
  * @var array  $attention   vendor, name, reason, offline, impact, last_production
  * @var string $yearStart
  * @var int    $seCreditsLeft
@@ -32,7 +32,7 @@ $tile = static function (string $v): string {
 	return $i === false ? e($v) : e(substr($v, 0, $i)) . ' <span class="stat-unit">' . e(substr($v, $i + 1)) . '</span>';
 };
 $fleetKw = max($fleet['kw'] + $fleet['kw_ac'], 0.001); // for shares only: DC, plus AC where DC is unknown
-$maxYield = max([0.001, ...array_values(array_map(static fn ($v) => (float) ($v['yield_month'] ?? 0), $vendors))]);
+$maxYield = max([0.001, ...array_values(array_map(static fn ($v) => (float) ($v['yield_day'] ?? 0), $vendors))]);
 $attentionCount = count($attention);
 $latestOk = null;
 foreach ($vendors as $v) {
@@ -42,6 +42,7 @@ foreach ($vendors as $v) {
 }
 $hasSolarEdge = isset($vendors['solaredge']);
 $missingYesterday = array_keys($fleet['yesterday_missing']);
+$partial30 = $fleet['d30_partial'];
 // Brands whose year total is built from stored history (no year figure from the vendor) and whose
 // history starts after January 1: their share of the year is partial until monitor:backfill runs.
 $partialYear = [];
@@ -66,12 +67,12 @@ foreach (['solaredge', 'growatt'] as $k) {
 <?php else: ?>
 
 <div class="stat-row mon-stats">
-	<div class="stat"><span class="stat-num"><?= (int) $fleet['systems'] ?></span><span class="stat-label">Systems</span></div>
+	<a class="stat <?= $attentionCount ? 'mon-stat-alert' : 'mon-stat-ok' ?>" href="#attention"><span class="stat-num mon-num-plain"><?= (int) $fleet['systems'] ?> <span class="stat-unit">systems</span></span><span class="stat-label <?= $attentionCount ? 'mon-issues' : 'mon-no-issues' ?>"><?= $attentionCount ?> <?= $attentionCount === 1 ? 'issue' : 'issues' ?></span></a>
 	<div class="stat"><span class="stat-num"><?= $tile($power($fleet['kw'])) ?></span><span class="stat-label">Installed (DC)<?= $fleet['kw_ac'] > 0 ? ' <span class="nowrap">+ ' . e($power($fleet['kw_ac'])) . ' AC</span>' : '' ?></span></div>
 	<div class="stat stat-orange"><span class="stat-num"><?= $tile($energy($fleet['yesterday'])) ?></span><span class="stat-label">Yesterday<?= $missingYesterday ? ' *' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['week'])) ?></span><span class="stat-label">Last 7 days</span></div>
+	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['d30'])) ?></span><span class="stat-label">Last 30 days<?= $partial30 ? ' &dagger;' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['year'])) ?></span><span class="stat-label"><?= e(date('Y')) ?><?= $partialYear ? ' **' : '' ?></span></div>
-	<a class="stat <?= $attentionCount ? 'mon-stat-alert' : 'mon-stat-ok' ?>" href="#attention"><span class="stat-num"><?= $attentionCount ?></span><span class="stat-label">Need attention</span></a>
 </div>
 
 <section class="card mt">
@@ -98,10 +99,10 @@ foreach (['solaredge', 'growatt'] as $k) {
 					<th>Installed</th>
 					<th class="num">Yesterday</th>
 					<th class="num">7 days</th>
-					<th class="num"><?= e(date('F')) ?></th>
-					<th>kWh per kW, <?= e(date('M')) ?></th>
+					<th class="num">30 days</th>
+					<th>kWh per kW a day</th>
 					<th class="num"><?= e(date('Y')) ?></th>
-					<th class="num">Attention</th>
+					<th class="num">Issues</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -113,8 +114,8 @@ foreach (['solaredge', 'growatt'] as $k) {
 					<td class="mon-barcell"><?= $bar(($v['kw'] + $v['kw_ac']) / $fleetKw * 100, 'mon-fill-' . $v['key']) ?><span><?= $v['kw'] > 0 ? e($power($v['kw'])) : ($v['kw_ac'] > 0 ? e($power($v['kw_ac'])) . ' AC' : '<span class="muted">-</span>') ?></span></td>
 					<td class="num"><?= $v['yesterday'] === null ? '<span class="muted">-</span>' : e($energy($v['yesterday'])) ?></td>
 					<td class="num"><?= e($energy($v['week'])) ?></td>
-					<td class="num"><?= e($energy($v['month'])) ?></td>
-					<td class="mon-barcell"><?php if ($v['yield_month'] !== null): ?><?= $bar($v['yield_month'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span><?= number_format($v['yield_month'], 1) ?><?= $v['yield_ac'] ? ' <span class="muted small">AC</span>' : '' ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
+					<td class="num"><?= e($energy($v['d30'])) ?></td>
+					<td class="mon-barcell"><?php if ($v['yield_day'] !== null): ?><?= $bar($v['yield_day'] / $maxYield * 100, 'mon-fill-' . $v['key']) ?><span title="Average of <?= (int) $v['yield_days'] ?> days"><?= number_format($v['yield_day'], 2) ?><?= $v['yield_ac'] ? ' <span class="muted small">AC</span>' : '' ?></span><?php else: ?><span class="muted">-</span><?php endif; ?></td>
 					<td class="num"><?= e($energy($v['year'])) ?></td>
 					<td class="num"><?= $v['attention'] ? '<a href="#attention" class="mon-attn">' . (int) $v['attention'] . '</a>' : '<span class="muted">0</span>' ?></td>
 				</tr>
@@ -125,7 +126,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 </section>
 
 <details class="card mt mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
-	<summary><h2>Need attention <span class="mon-count<?= $attentionCount ? ' mon-count-alert' : '' ?>"><?= $attentionCount ?></span></h2></summary>
+	<summary><h2>Issues <span class="mon-count<?= $attentionCount ? ' mon-count-alert' : '' ?>"><?= $attentionCount ?></span></h2></summary>
 	<?php if (!$attention): ?>
 		<p class="muted">Nothing flagged: no manufacturer alerts and every system produced in the last <?= (int) $noProductionDays ?> days.</p>
 	<?php else: ?>
@@ -148,8 +149,9 @@ foreach (['solaredge', 'growatt'] as $k) {
 </details>
 
 <div class="muted small mt mon-notes">
-	<?php if ($partialYear): ?><p>** The year total counts <?php $parts = []; foreach ($partialYear as $name => $from) { $parts[] = e($name) . ' from ' . e($date($from)); } echo implode(' and ', $parts); ?>, when the tracker started storing them; the one-time backfill fills in the earlier months.</p><?php endif; ?>
 	<?php if ($missingYesterday): ?><p>* Yesterday does not include <?= e(implode(' or ', $missingYesterday)) ?> yet<?= in_array('SolarEdge', $missingYesterday, true) ? ' (SolarEdge weekend days arrive Monday morning)' : '' ?>.</p><?php endif; ?>
+	<?php if ($partial30): ?><p>&dagger; The 30-day figures count <?php $parts = []; foreach ($partial30 as $name => $from) { $parts[] = e($name) . ($from ? ' from ' . e($date($from)) : ' not yet'); } echo implode(', ', $parts); ?>, when the tracker started storing daily values; they fill out as the days pass or the backfill runs.</p><?php endif; ?>
+	<?php if ($partialYear): ?><p>** The year total counts <?php $parts = []; foreach ($partialYear as $name => $from) { $parts[] = e($name) . ' from ' . e($date($from)); } echo implode(' and ', $parts); ?>, when the tracker started storing them; the one-time backfill fills in the earlier months.</p><?php endif; ?>
 	<?php if ($hasSolarEdge): ?>
 		<p>Enphase and Growatt are read every 30 minutes and APsystems four times each weekday; SolarEdge is pulled once each weekday at 8 AM for the days before, so its weekend days fill in Monday morning.</p>
 		<p>SolarEdge data from the <a href="https://www.solaredge.com/" rel="noopener" target="_blank">SolarEdge</a> monitoring platform; <?= number_format($seCreditsLeft) ?> API credits left this cycle.</p>

@@ -17,6 +17,9 @@ final class MonitorPageController
 	/** A site with no production on any of the last N complete days is flagged. */
 	public const NO_PRODUCTION_DAYS = 3;
 
+	/** Rolling window for the "Last 30 days" totals and the kWh per kW daily average. */
+	public const ROLLING_DAYS = 30;
+
 	public function show(): void
 	{
 		$today = date('Y-m-d');
@@ -24,6 +27,8 @@ final class MonitorPageController
 		$month = date('Y-m-01');
 		$year = date('Y-01-01');
 		$recent = date('Y-m-d', strtotime('-' . self::NO_PRODUCTION_DAYS . ' days'));
+		$d30 = date('Y-m-d', strtotime('-' . (self::ROLLING_DAYS - 1) . ' days')); // rolling window, today included
+		$d30c = date('Y-m-d', strtotime('-' . self::ROLLING_DAYS . ' days'));      // last 30 complete days
 
 		$sums = [];
 		foreach (Db::all(
@@ -34,9 +39,11 @@ final class MonitorPageController
 				MAX(CASE WHEN date >= ? AND date < ? THEN wh END) AS recent_max,
 				MAX(CASE WHEN wh > 0 THEN date END) AS last_production,
 				MAX(CASE WHEN date = ? THEN wh END) AS yesterday,
+				SUM(CASE WHEN date >= ? THEN wh END) AS d30,
+				SUM(CASE WHEN date >= ? AND date < ? THEN wh END) AS d30c,
 				MIN(date) AS first_date
 			FROM monitor_daily GROUP BY site_id',
-			[$week, $month, $year, $recent, $today, date('Y-m-d', strtotime('-1 day'))]
+			[$week, $month, $year, $recent, $today, date('Y-m-d', strtotime('-1 day')), $d30, $d30c, $today]
 		) as $r) {
 			$sums[(int) $r['site_id']] = $r;
 		}
@@ -53,12 +60,22 @@ final class MonitorPageController
 			$monthly[(int) $r['site_id']] = $r;
 		}
 
+		// Per brand: days with data among the last 30 complete days, and where its daily history starts.
+		$days = [];
+		foreach (Db::all(
+			'SELECT s.vendor, COUNT(DISTINCT CASE WHEN d.date >= ? AND d.date < ? THEN d.date END) AS n, MIN(d.date) AS first
+			FROM monitor_daily d JOIN monitor_sites s ON s.id = d.site_id WHERE s.ignored = 0 GROUP BY s.vendor',
+			[$d30c, $today]
+		) as $r) {
+			$days[$r['vendor']] = $r;
+		}
+
 		$vendors = [];
 		foreach (MonitorCollector::VENDORS as $key => $label) {
-			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => null, 'week' => 0.0,
+			$vendors[$key] = ['key' => $key, 'label' => $label, 'source' => MonitorCollector::SOURCES[$key] ?? ['', '', ''], 'systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => null, 'week' => 0.0, 'd30' => 0.0, 'd30c' => 0.0,
 				'month' => 0.0, 'year' => 0.0, 'attention' => 0, 'pending' => 0, 'first_date' => null, 'run' => null];
 		}
-		$fleet = ['systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => 0.0, 'yesterday_missing' => [], 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
+		$fleet = ['systems' => 0, 'kw' => 0.0, 'kw_ac' => 0.0, 'yesterday' => 0.0, 'yesterday_missing' => [], 'd30' => 0.0, 'd30_partial' => [], 'week' => 0.0, 'month' => 0.0, 'year' => 0.0];
 		$attention = [];
 
 		foreach (Db::all('SELECT * FROM monitor_sites WHERE ignored = 0 ORDER BY vendor, name') as $s) {
@@ -94,6 +111,9 @@ final class MonitorPageController
 			}
 			$v['week'] += $weekWh;
 			$v['month'] += $monthWh;
+			$v['d30'] += (float) ($d['d30'] ?? 0);
+			$v['d30c'] += (float) ($d['d30c'] ?? 0);
+			$fleet['d30'] += (float) ($d['d30'] ?? 0);
 			$v['year'] += $yearWh;
 			if ($s['state'] === 'pending') {
 				$v['pending']++;
@@ -139,10 +159,17 @@ final class MonitorPageController
 			$run = Db::one("SELECT * FROM monitor_runs WHERE $scheduled ORDER BY id DESC LIMIT 1", [$key]);
 			$ok = Db::value("SELECT MAX(finished_at) FROM monitor_runs WHERE $scheduled AND ok = 1", [$key]);
 			$v['run'] = ['last_ok' => $ok ? (string) $ok : null, 'failed' => $run && !$run['ok'] && $run['finished_at'] ? (string) $run['message'] : null];
-			// kWh per kW this month: per kW DC where known, else per kW AC (labeled on the page)
+			// kWh per kW per day, averaged over the days with data among the last 30 complete days:
+			// per kW DC where known, else per kW AC (labeled on the page).
 			$v['yield_ac'] = $v['kw'] <= 0 && $v['kw_ac'] > 0;
 			$base = $v['kw'] > 0 ? $v['kw'] : $v['kw_ac'];
-			$v['yield_month'] = $base > 0 ? $v['month'] / 1000 / $base : null;
+			$n = (int) ($days[$key]['n'] ?? 0);
+			$v['yield_days'] = $n;
+			$v['yield_day'] = $base > 0 && $n > 0 ? $v['d30c'] / 1000 / $n / $base : null;
+			$first = $days[$key]['first'] ?? null;
+			if ($v['systems'] > 0 && ($first === null || $first > $d30)) {
+				$fleet['d30_partial'][$v['label']] = $first;
+			}
 		}
 		unset($v);
 		$vendors = array_filter($vendors, static fn ($v) => $v['systems'] > 0 || $v['run']['last_ok'] || $v['run']['failed']);
