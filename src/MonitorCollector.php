@@ -15,8 +15,8 @@ namespace App;
  *    energy for the month per system (each pull rewrites every day of the month, so Monday's first pull
  *    completes Friday evening and the weekend), plus the system list and a summary (year, lifetime)
  *    once a day. About 460 calls a month for 4 systems; stops at 950 in a calendar month.
- *  - Growatt (Shiner portal sign-in, App\Growatt): the inverter list (today's kWh, online flag, site)
- *    and fleet alerts, every 30 minutes 6 AM to 9 PM, every day: free, it keeps the 30-day session
+ *  - Growatt (Shiner portal sign-in, App\Growatt): the site list (one call: today's kWh, alert count,
+ *    inverters online of total, last update), every 30 minutes 6 AM to 9 PM, every day: free, it keeps the 30-day session
  *    sliding, and the day's last pull becomes that day's stored total. Needs a person to connect it
  *    (captcha) on the test page about once a month; until then it is skipped.
  *  - SolarEdge (V2 Free tier, 2,000 credits a cycle, 1 credit a call, 10 calls a minute): once each
@@ -396,75 +396,56 @@ final class MonitorCollector
 
 	private function growatt(): string
 	{
-		$inverters = Growatt::inverters($this->calls);
 		$sites = [];
-		$snToSite = [];
-		foreach ($inverters as $inv) {
-			$sid = (string) ($inv['site']['id'] ?? $inv['plant']['id'] ?? '');
-			if ($sid === '') {
-				continue;
+		for ($page = 1; $page <= 10; $page++) {
+			$r = Growatt::get('/web/v1/sites/' . $page . '/50?name=&filter=');
+			$this->tick();
+			$list = $r['json']['data']['list'] ?? null;
+			if ($r['status'] !== 200 || !is_array($list)) {
+				throw new \RuntimeException(trim(($r['note'] ?? '') . ' Site list: HTTP ' . $r['status'] . ($r['error'] ? ' ' . $r['error'] : '')));
 			}
-			$site = &$sites[$sid];
-			$site ??= ['name' => '', 'today' => 0.0, 'has_today' => false, 'count' => 0, 'offline' => 0, 'last' => null];
-			$site['name'] = $site['name'] ?: (string) (($inv['site']['alias'] ?? '') ?: ($inv['site']['name'] ?? ''));
-			$site['count']++;
-			if (isset($inv['eacToday']) && is_numeric($inv['eacToday'])) {
-				$site['today'] += (float) $inv['eacToday'] * 1000;
-				$site['has_today'] = true;
-			}
-			if ((int) ($inv['is_online'] ?? 1) === 0) {
-				$site['offline']++;
-			}
-			$flow = (string) ($inv['flow_time'] ?? '');
-			if ($flow !== '' && ($site['last'] === null || $flow > $site['last'])) {
-				$site['last'] = $flow;
-			}
-			unset($site);
-			foreach (['inverter_sn', 'gateway'] as $k) {
-				if (!empty($inv[$k])) {
-					$snToSite[(string) $inv[$k]] = $sid;
-				}
-			}
-		}
-
-		$alerts = [];
-		$a = Growatt::get('/web/v1/inverters/alerts');
-		$this->tick();
-		foreach (is_array($a['json']['data']['alerts'] ?? null) ? $a['json']['data']['alerts'] : [] as $al) {
-			$sid = (string) ($al['site']['id'] ?? $al['siteId'] ?? $al['site_id'] ?? '');
-			if ($sid === '') {
-				$sid = $snToSite[(string) ($al['inverter_sn'] ?? $al['sn'] ?? $al['gateway'] ?? '')] ?? '';
-			}
-			if ($sid !== '') {
-				$alerts[$sid][] = $al;
+			$sites = array_merge($sites, $list);
+			if (empty($r['json']['data']['page']['nextPage'])) {
+				break;
 			}
 		}
 
 		$today = date('Y-m-d');
-		foreach ($sites as $sid => $site) {
-			$mine = $alerts[$sid] ?? [];
+		$alertTotal = 0;
+		foreach ($sites as $s) {
+			$sid = (string) ($s['id'] ?? '');
+			if ($sid === '') {
+				continue;
+			}
+			$total = (int) ($s['total'] ?? 0);
+			$online = (int) ($s['online'] ?? $total);
+			$alerts = (int) ($s['alerts'] ?? 0);
+			$alertTotal += $alerts;
+			$offline = max(0, $total - $online);
 			$parts = [];
-			if ($site['offline']) {
-				$parts[] = $site['offline'] . ' of ' . $site['count'] . ' inverters offline';
+			if ($offline) {
+				$parts[] = "$offline of $total inverters offline";
 			}
-			if ($mine) {
-				$parts[] = count($mine) . ' ' . (count($mine) === 1 ? 'alert' : 'alerts');
+			if ($alerts) {
+				$parts[] = $alerts . ' ' . ($alerts === 1 ? 'alert' : 'alerts');
 			}
-			$id = self::upsertSite('growatt', (string) $sid, [
-				'name' => $site['name'],
-				'state' => $site['offline'] && $site['offline'] === $site['count'] ? 'offline' : ($parts ? 'alert' : 'ok'),
-				'status_text' => $parts ? implode(', ', $parts) : 'Online',
-				'alert_count' => count($mine) + $site['offline'],
-				'alert_impact' => $mine ? max(array_map(static fn ($al) => (int) ($al['level'] ?? 0), $mine)) : null,
-				'last_report_at' => $site['last'],
+			$todayWh = isset($s['energy_today']) && is_numeric($s['energy_today']) ? (float) $s['energy_today'] * 1000 : null;
+			// "capacity" is whatever was typed into Shiner (often blank or 1), so it is not used.
+			$id = self::upsertSite('growatt', $sid, [
+				'name' => (string) (($s['alias'] ?? '') ?: ($s['name'] ?? '')),
+				'state' => $total > 0 && $online === 0 ? 'offline' : ($parts ? 'alert' : 'ok'),
+				'status_text' => $parts ? implode(', ', $parts) : "Online ($online of $total inverters)",
+				'alert_count' => $alerts + $offline,
+				'alert_impact' => null,
+				'last_report_at' => ($s['update_time'] ?? '') ?: null,
 				'today_date' => $today,
-				'today_wh' => $site['has_today'] ? $site['today'] : null,
+				'today_wh' => $todayWh,
 			]);
-			if ($site['has_today']) {
-				self::setDaily($id, $today, $site['today']);
+			if ($todayWh !== null) {
+				self::setDaily($id, $today, $todayWh);
 			}
 		}
-		return count($sites) . ' sites, ' . count($inverters) . ' inverters, ' . array_sum(array_map('count', $alerts)) . ' alerts';
+		return count($sites) . " sites, $alertTotal alerts";
 	}
 
 	// ---- APsystems ---------------------------------------------------------------------------

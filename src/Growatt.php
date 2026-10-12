@@ -170,24 +170,6 @@ final class Growatt
 		return ['url' => self::BASE . preg_replace('/\?.*/', '', $path), 'note' => $note] + self::summary($r);
 	}
 
-	/** Every inverter the account sees, all pages (30 per page, as the portal asks). */
-	public static function inverters(int &$calls): array
-	{
-		$all = [];
-		for ($page = 1; $page <= 10; $page++) {
-			$r = self::get('/web/v1/inverters/' . $page . '/30?query=&filter=&username=&query_list=%5B%5D');
-			$calls++;
-			if ($r['status'] !== 200 || !is_array($r['json']['data']['list'] ?? null)) {
-				throw new \RuntimeException(trim(($r['note'] ?? '') . ' Inverter list: HTTP ' . $r['status'] . ($r['error'] ? ' ' . $r['error'] : '')));
-			}
-			$all = array_merge($all, $r['json']['data']['list']);
-			if (empty($r['json']['data']['page']['nextPage'])) {
-				break;
-			}
-		}
-		return $all;
-	}
-
 	// ---- transport ------------------------------------------------------------------------------
 
 	private static function request(string $method, string $path, array $headers = [], string $body = ''): array
