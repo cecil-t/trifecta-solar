@@ -68,7 +68,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 
 <div class="stat-row mon-stats">
 	<a class="stat <?= $attentionCount ? 'mon-stat-alert' : 'mon-stat-ok' ?>" href="#attention"><span class="stat-num mon-num-plain"><?= (int) $fleet['systems'] ?> <span class="stat-unit">systems</span></span><span class="stat-label <?= $attentionCount ? 'mon-issues' : 'mon-no-issues' ?>"><?= $attentionCount ?> <?= $attentionCount === 1 ? 'issue' : 'issues' ?></span></a>
-	<div class="stat"><span class="stat-num"><?= $tile($power($fleet['kw'])) ?></span><span class="stat-label">Installed (DC)<?= $fleet['kw_ac'] > 0 ? ' <span class="nowrap">+ ' . e($power($fleet['kw_ac'])) . ' AC</span>' : '' ?></span></div>
+	<div class="stat"><span class="stat-num"><?= $tile($power($fleet['kw'] + $fleet['kw_ac'])) ?></span><span class="stat-label">Installed<?= $fleet['kw_ac'] > 0 ? ' <span class="nowrap">(incl. ' . e($power($fleet['kw_ac'])) . ' AC)</span>' : ' (DC)' ?></span></div>
 	<div class="stat stat-orange"><span class="stat-num"><?= $tile($energy($fleet['yesterday'])) ?></span><span class="stat-label">Yesterday<?= $missingYesterday ? ' *' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['week'])) ?></span><span class="stat-label">Last 7 days</span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['d30'])) ?></span><span class="stat-label">Last 30 days<?= $partial30 ? ' &dagger;' : '' ?></span></div>
@@ -157,7 +157,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 		<p>SolarEdge data from the <a href="https://www.solaredge.com/" rel="noopener" target="_blank">SolarEdge</a> monitoring platform; <?= number_format($seCreditsLeft) ?> API credits left this cycle.</p>
 	<?php endif; ?>
 	<p>Data sources: <?php $parts = []; foreach ($vendors as $v) { $parts[] = e($v['label']) . ', ' . e($v['source'][2]); } echo implode('; ', $parts); ?>.</p>
-	<?php if ($fleet['kw_ac'] > 0): ?><p>Sizes are DC array sizes as each manufacturer reports them, except where marked AC: Growatt reports only its inverters' AC rating, so its size and kWh per kW are per kW AC.</p><?php endif; ?>
+	<?php if ($fleet['kw_ac'] > 0): ?><p>Sizes are DC array sizes as each manufacturer reports them, except where marked AC: Growatt reports only its inverters' AC rating, so its size and kWh per kW are per kW AC, and the Installed total counts that AC rating in place of its DC size.</p><?php endif; ?>
 	<p>Flagged: anything the manufacturer reports as an alert or offline, and any system with no production on the last <?= (int) $noProductionDays ?> complete days.</p>
 </div>
 <?php endif; ?>
