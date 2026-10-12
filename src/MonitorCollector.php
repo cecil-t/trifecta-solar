@@ -552,9 +552,11 @@ final class MonitorCollector
 				$light = (int) ($s['light'] ?? 0);
 				self::upsertSite('apsystems', (string) $s['sid'], [
 					'capacity_kw' => self::num($s['capacity'] ?? null),
-					'state' => match ($light) { 1 => 'ok', 2, 3 => 'alert', 4 => 'offline', default => 'unknown' },
+					// Yellow is common and usually nothing (Greg, 2026-10-11): only red or grey count. A yellow
+					// system that stops producing is still caught by the page's no-production check.
+					'state' => match ($light) { 1, 2 => 'ok', 3 => 'alert', 4 => 'offline', default => 'unknown' },
 					'status_text' => match ($light) { 1 => 'Green', 2 => 'Yellow', 3 => 'Red', 4 => 'Grey (offline)', default => 'Unknown' },
-					'alert_count' => in_array($light, [2, 3], true) ? 1 : 0,
+					'alert_count' => $light === 3 ? 1 : 0,
 					'alert_impact' => $light ?: null,
 				], ['name' => 'APsystems ' . (string) $s['sid']]);
 			}
