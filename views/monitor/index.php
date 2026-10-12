@@ -132,22 +132,17 @@ foreach (['solaredge', 'growatt'] as $k) {
 
 <section class="card">
 	<h2>Last 12 months <span class="muted small">fleet production in MWh; <?= e(date('M')) ?> so far<?= $monthsFrom ? ' &Dagger;' : '' ?></span></h2>
-	<div class="mon-months">
-		<svg class="mon-months-bars" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">
-			<?php $i = 0; foreach ($months as $ym => $wh): $h = $wh > 0 ? max(0.6, $wh / $monthMax * 96) : 0; $label = date('F Y', strtotime($ym . '-01')) . ': ' . $mwh($wh) . ' MWh' . ($ym === $thisMonth ? ' so far' : ''); ?>
-				<g>
-					<title><?= e($label) ?></title>
-					<rect class="mon-month-hit" x="<?= $i * 10 ?>" y="0" width="10" height="100"/>
-					<rect class="mon-month-bar<?= $ym === $thisMonth ? ' mon-month-partial' : '' ?>" x="<?= $i * 10 + 1.5 ?>" y="<?= round(100 - $h, 2) ?>" width="7" height="<?= round($h, 2) ?>"/>
-				</g>
-			<?php $i++; endforeach; ?>
-		</svg>
-		<ol class="mon-months-labels">
-			<?php foreach ($months as $ym => $wh): ?>
-				<li<?= $ym === $thisMonth ? ' class="mon-month-now"' : '' ?>><span class="mon-month-name"><?= e(date('M', strtotime($ym . '-01'))) ?><?php if (substr($ym, 5) === '01' || $ym === array_key_first($months)): ?> <span class="mon-month-year"><?= e(substr($ym, 0, 4)) ?></span><?php endif; ?></span><span class="mon-month-val"><?= $wh > 0 ? e($mwh($wh)) : '-' ?></span></li>
-			<?php endforeach; ?>
-		</ol>
-	</div>
+	<ol class="mon-months">
+		<?php foreach ($months as $ym => $wh): $pct = $wh > 0 ? max(1, (int) round($wh / $monthMax * 100)) : 0; $inside = $pct >= 16; $now = $ym === $thisMonth; $val = $wh > 0 ? $mwh($wh) : '-'; ?>
+			<li class="mon-month<?= $now ? ' mon-month-now' : '' ?>" title="<?= e(date('F Y', strtotime($ym . '-01')) . ': ' . ($wh > 0 ? $val . ' MWh' : 'no data') . ($now ? ' so far' : '')) ?>">
+				<div class="mon-month-track">
+					<?php if (!$inside): ?><span class="mon-month-val"><?= e($val) ?></span><?php endif; ?>
+					<?php if ($pct > 0): ?><div class="mon-month-bar mon-h-<?= $pct ?>"><?php if ($inside): ?><span class="mon-month-val"><?= e($val) ?></span><?php endif; ?></div><?php endif; ?>
+				</div>
+				<span class="mon-month-name"><?= e(date('M', strtotime($ym . '-01'))) ?><?php if (substr($ym, 5) === '01' || $ym === array_key_first($months)): ?> <span class="mon-month-year"><?= e(substr($ym, 0, 4)) ?></span><?php endif; ?></span>
+			</li>
+		<?php endforeach; ?>
+	</ol>
 </section>
 
 <details class="card mt mon-attention" id="attention"<?= $attentionCount && $attentionCount <= 8 ? ' open' : '' ?>>
