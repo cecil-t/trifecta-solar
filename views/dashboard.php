@@ -36,6 +36,15 @@
 </div>
 </div>
 
+<?php if ($monitor): ?>
+<div class="stat-group mt-sm"><span class="stat-group-label">Monitor</span>
+<div class="stat-row dash-monitor">
+	<a class="stat stat-orange" href="/monitor"><span class="stat-num"><?= stat_value(fmt_energy($monitor['yesterday'])) ?></span><span class="stat-label">Yesterday<?= $monitor['yesterday_partial'] ? ' <span class="muted small">(partial)</span>' : '' ?></span></a>
+	<a class="stat" href="/monitor"><span class="stat-num"><?= stat_value(fmt_energy($monitor['week'])) ?></span><span class="stat-label">Last 7 days</span></a>
+</div>
+</div>
+<?php endif; ?>
+
 <section class="card mt" id="my-tasks">
 	<div class="card-head card-head-plain">
 		<h2>My tasks <span class="muted small">(<?= count($myTasks) ?>)</span></h2>

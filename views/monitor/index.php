@@ -11,19 +11,7 @@
  * @var int    $seCreditsLeft
  * @var int    $noProductionDays
  */
-$energy = static function (?float $wh): string {
-	if ($wh === null) {
-		return '-';
-	}
-	$kwh = $wh / 1000;
-	if ($kwh >= 1000000) {
-		return number_format($kwh / 1000000, 2) . ' GWh';
-	}
-	if ($kwh >= 1000) {
-		return number_format($kwh / 1000, $kwh >= 100000 ? 0 : 1) . ' MWh';
-	}
-	return number_format($kwh, $kwh >= 100 ? 0 : 1) . ' kWh';
-};
+$energy = static fn (?float $wh): string => fmt_energy($wh);
 $power = static fn (float $kw): string => $kw >= 1000 ? number_format($kw / 1000, 2) . ' MW' : number_format($kw, $kw >= 100 ? 0 : 1) . ' kW';
 $date = static fn (?string $ymd): string => $ymd ? date('m/d/Y', strtotime($ymd)) : '';
 $when = static fn (?string $utc): string => $utc ? fmt_dt($utc, fmt_dt($utc, 'Y-m-d') === date('Y-m-d') ? 'g:i A' : 'm/d g:i A') : 'never';
@@ -34,10 +22,7 @@ $bar = static function (float $pct, string $class): string {
 		. '<rect class="' . e($class) . '" x="0" y="0" width="' . round($w, 2) . '" height="10" rx="2"/></svg>';
 };
 // Tile value: the number at full size, its unit one step smaller (escaped here; echo as is).
-$tile = static function (string $v): string {
-	$i = strrpos($v, ' ');
-	return $i === false ? e($v) : e(substr($v, 0, $i)) . ' <span class="stat-unit">' . e(substr($v, $i + 1)) . '</span>';
-};
+$tile = static fn (string $v): string => stat_value($v);
 $fleetKw = max($fleet['kw'] + $fleet['kw_ac'], 0.001); // for shares only: DC, plus AC where DC is unknown
 $maxYield = max([0.001, ...array_values(array_map(static fn ($v) => (float) ($v['yield_day'] ?? 0), $vendors))]);
 $attentionCount = count($attention);

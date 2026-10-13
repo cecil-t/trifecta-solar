@@ -131,6 +131,29 @@ function asset(string $path): string
 	return '/' . ltrim($path, '/') . '?v=' . $version;
 }
 
+/** Energy in Wh as "766 kWh", "31.7 MWh" or "2.29 GWh" ("-" for none), as the Monitor page shows it. */
+function fmt_energy(?float $wh): string
+{
+	if ($wh === null) {
+		return '-';
+	}
+	$kwh = $wh / 1000;
+	if ($kwh >= 1000000) {
+		return number_format($kwh / 1000000, 2) . ' GWh';
+	}
+	if ($kwh >= 1000) {
+		return number_format($kwh / 1000, $kwh >= 100000 ? 0 : 1) . ' MWh';
+	}
+	return number_format($kwh, $kwh >= 100 ? 0 : 1) . ' kWh';
+}
+
+/** A tile value with its unit one step smaller: "31.7 <span class="stat-unit">MWh</span>" (escaped; echo as is). */
+function stat_value(string $v): string
+{
+	$i = strrpos($v, ' ');
+	return $i === false ? e($v) : e(substr($v, 0, $i)) . ' <span class="stat-unit">' . e(substr($v, $i + 1)) . '</span>';
+}
+
 function is_https(): bool
 {
 	if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {

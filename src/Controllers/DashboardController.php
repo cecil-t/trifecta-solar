@@ -17,6 +17,7 @@ final class DashboardController
 			'items' => Tasks::openItemsFor((int) Auth::id(), 2000),
 			'weather' => \App\Weather::forecast(),
 			'recent' => \App\Activity::recentProjects(5),
+			'monitor' => MonitorPageController::dashboardTiles(),
 		]);
 	}
 }

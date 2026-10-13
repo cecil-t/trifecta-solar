@@ -48,6 +48,21 @@ final class MonitorPageController
 		View::render('monitor/index', ['title' => 'Monitoring', 'kiosk' => true] + self::data(), 'kiosk_layout');
 	}
 
+	/**
+	 * The Dashboard's Monitor tiles: fleet production yesterday and over the last 7 days, or null while
+	 * monitoring has no systems. "yesterday_partial" when a brand's yesterday has not arrived yet.
+	 *
+	 * @return ?array{yesterday: float, week: float, yesterday_partial: bool}
+	 */
+	public static function dashboardTiles(): ?array
+	{
+		if (!(int) Db::value('SELECT COUNT(*) FROM monitor_sites WHERE ignored = 0')) {
+			return null;
+		}
+		$fleet = self::data()['fleet'];
+		return ['yesterday' => (float) $fleet['yesterday'], 'week' => (float) $fleet['week'], 'yesterday_partial' => (bool) $fleet['yesterday_missing']];
+	}
+
 	/** Everything the Monitor page shows, read from the database only. */
 	private static function data(): array
 	{
