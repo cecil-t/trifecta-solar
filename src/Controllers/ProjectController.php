@@ -624,6 +624,31 @@ final class ProjectController
 	}
 
 	/**
+	 * Printable project summary for the designer at kickoff: customer and contacts, site and
+	 * jurisdiction, contract basics, equipment, roof faces and the Notes field. No phases, steps
+	 * or dates. The contract price shows only with ?price=1, so the default printout leaves it out.
+	 */
+	public function summary(int $id): void
+	{
+		$p = $this->find($id);
+		$rows = Tasks::forProjects([$id])[$id] ?? [];
+		$status = Tasks::status($p, $rows);
+		$eq = Projects::equipment($id);
+		$showPrice = ($_GET['price'] ?? '') === '1';
+
+		View::render('projects/summary', [
+			'title' => $p['project_number'] . ' ' . $p['name'] . ' summary',
+			'p' => $p, 'eq' => $eq, 'tree' => $status['tree'],
+			'roofs' => Projects::roofs($id),
+			'totals' => Projects::totals($eq, $p['contract_price_cents'] !== null ? (int) $p['contract_price_cents'] : null),
+			'funding' => $this->fundingNames($id),
+			'customer' => $p['customer_id'] ? Db::one('SELECT * FROM organizations WHERE id = ?', [$p['customer_id']]) : null,
+			'contacts' => Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [$p['customer_id'] ?? 0]),
+			'showPrice' => $showPrice,
+		], 'print_layout');
+	}
+
+	/**
 	 * Save the project notes. The form carries the notes_updated_at it was loaded with; if someone
 	 * else saved in the meantime, nothing is overwritten and the user's text comes back as a draft
 	 * next to the saved version, so a second Save is a deliberate overwrite.

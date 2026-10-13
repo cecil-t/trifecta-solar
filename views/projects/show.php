@@ -119,6 +119,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 		<?php else: ?>
 			<a href="/projects/<?= (int) $p['id'] ?>/edit" class="btn btn-ghost">+ Add Drive folder link</a>
 		<?php endif; ?>
+		<a href="/projects/<?= (int) $p['id'] ?>/summary" class="btn btn-ghost" title="One-page summary for the designer, to print or save as PDF">Print summary</a>
 		<a href="/projects/<?= (int) $p['id'] ?>/edit" class="btn btn-primary">Edit</a>
 	</div>
 </div>

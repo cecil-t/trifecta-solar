@@ -97,6 +97,7 @@ $r->get('/geo/lookup', [ProjectController::class, 'geoLookup']);
 $r->post('/projects', [ProjectController::class, 'store']);
 $r->get('/projects/{id}', [ProjectController::class, 'show']);
 $r->get('/projects/{id}/edit', [ProjectController::class, 'edit']);
+$r->get('/projects/{id}/summary', [ProjectController::class, 'summary']);
 $r->post('/projects/{id}', [ProjectController::class, 'update']);
 $r->post('/projects/{id}/comments', [ProjectController::class, 'comment']);
 $r->post('/projects/{id}/notes', [ProjectController::class, 'saveNotes']);
