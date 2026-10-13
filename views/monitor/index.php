@@ -59,7 +59,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 <div class="stat-row mon-stats">
 	<a class="stat <?= $attentionCount ? 'mon-stat-alert' : 'mon-stat-ok' ?>" href="#attention"><span class="stat-num mon-num-plain"><?= (int) $fleet['systems'] ?> <span class="stat-unit">systems</span></span><span class="stat-label <?= $attentionCount ? 'mon-issues' : 'mon-no-issues' ?>"><?= $attentionCount ?> <?= $attentionCount === 1 ? 'issue' : 'issues' ?></span></a>
 	<div class="stat"><span class="stat-num"><?= $tile($power($fleet['kw'] + $fleet['kw_ac'])) ?></span><span class="stat-label">Installed<?= $fleet['kw_ac'] > 0 ? ' <span class="nowrap">(incl. ' . e($power($fleet['kw_ac'])) . ' AC)</span>' : ' (DC)' ?></span></div>
-	<div class="stat stat-orange"><span class="stat-num"><?= $tile($energy($fleet['yesterday'])) ?></span><span class="stat-label">Yesterday<?= $missingYesterday ? ' *' : '' ?></span></div>
+	<div class="stat stat-orange"><span class="stat-num"><?= $tile($energy($fleet['yesterday'])) ?></span><span class="stat-label">Yesterday<?= $missingYesterday ? ' <span class="muted small">(partial)</span>' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['week'])) ?></span><span class="stat-label">Last 7 days</span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['d30'])) ?></span><span class="stat-label">Last 30 days<?= $partial30 ? ' &dagger;' : '' ?></span></div>
 	<div class="stat"><span class="stat-num"><?= $tile($energy($fleet['year'])) ?></span><span class="stat-label"><?= e(date('Y')) ?><?= $partialYear ? ' **' : '' ?></span></div>
@@ -156,7 +156,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 </details>
 
 <div class="muted small mt mon-notes">
-	<?php if ($missingYesterday): ?><p>* Yesterday does not include <?= e(implode(' or ', $missingYesterday)) ?> yet<?= in_array('SolarEdge', $missingYesterday, true) ? ' (SolarEdge weekend days arrive Monday morning)' : '' ?>.</p><?php endif; ?>
+	<?php if ($missingYesterday): ?><p>Yesterday is partial: it does not include <?= e(count($missingYesterday) > 1 ? implode(', ', array_slice($missingYesterday, 0, -1)) . ' or ' . end($missingYesterday) : $missingYesterday[0]) ?> yet<?= in_array('SolarEdge', $missingYesterday, true) ? ' (SolarEdge days arrive with its next pull)' : '' ?>.</p><?php endif; ?>
 	<?php if ($partial30): ?><p>&dagger; The 30-day figures <?php $parts = []; foreach ($partial30 as $name => $p) { $parts[] = $p['left_out'] ? 'leave out ' . e($name) . ' (under a week of daily history so far)' : 'count ' . e($name) . ' from ' . e($date($p['from'])); } echo implode('; ', $parts); ?>. They fill out as the days pass or a backfill runs.</p><?php endif; ?>
 	<?php if ($monthsFrom): ?><p>&Dagger; The 13-month chart counts <?php $parts = []; foreach ($monthsFrom as $name => $from) { $parts[] = e($name) . ' from ' . e(date('M Y', strtotime($from . '-01'))); } echo implode(' and ', $parts); ?>; monitor:backfill --months fills in the earlier months.</p><?php endif; ?>
 	<?php if ($partialYear): ?><p>** The year total counts <?php $parts = []; foreach ($partialYear as $name => $from) { $parts[] = e($name) . ' from ' . e($date($from)); } echo implode(' and ', $parts); ?>, when the tracker started storing them; the one-time backfill fills in the earlier months.</p><?php endif; ?>
