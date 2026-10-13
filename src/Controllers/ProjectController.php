@@ -626,7 +626,7 @@ final class ProjectController
 	/**
 	 * Printable project summary for the designer at kickoff: customer and contacts, site and
 	 * jurisdiction, contract basics, equipment, roof faces and the Notes field. No phases, steps
-	 * or dates. The contract price shows only with ?price=1, so the default printout leaves it out.
+	 * or dates. The contract price shows unless ?price=0 hides it.
 	 */
 	public function summary(int $id): void
 	{
@@ -634,7 +634,7 @@ final class ProjectController
 		$rows = Tasks::forProjects([$id])[$id] ?? [];
 		$status = Tasks::status($p, $rows);
 		$eq = Projects::equipment($id);
-		$showPrice = ($_GET['price'] ?? '') === '1';
+		$showPrice = ($_GET['price'] ?? '') !== '0';
 
 		View::render('projects/summary', [
 			'title' => $p['project_number'] . ' ' . $p['name'] . ' summary',

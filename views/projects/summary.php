@@ -47,12 +47,12 @@ $siteAddr = trim(implode(', ', array_filter([trim((string) $p['site_street']), t
 $mailAddr = $customer ? trim(implode(', ', array_filter([trim((string) $customer['street']), trim((string) $customer['city']), trim(($customer['state'] ?? '') . ' ' . ($customer['zip'] ?? ''))]))) : '';
 $hasCoords = ($p['geo_status'] ?? '') === 'found' && $p['geo_lat'] !== null && $p['geo_lon'] !== null;
 $roofPanels = array_sum(array_map(static fn ($r) => (int) $r['panels'], $roofs));
-$priceUrl = '/projects/' . $id . '/summary' . ($showPrice ? '' : '?price=1');
+$priceUrl = '/projects/' . $id . '/summary' . ($showPrice ? '?price=0' : '');
 ?>
 <div class="sheet-tools no-print">
 	<a href="/projects/<?= $id ?>" class="back">&larr; Back to project</a>
 	<div class="sheet-tools-actions">
-		<a href="<?= e($priceUrl) ?>" class="btn btn-ghost btn-small"><?= $showPrice ? 'Hide contract price' : 'Include contract price' ?></a>
+		<a href="<?= e($priceUrl) ?>" class="btn btn-ghost btn-small"><?= $showPrice ? 'Hide contract price' : 'Show contract price' ?></a>
 		<button type="button" class="btn btn-primary btn-small" data-print>Print or save as PDF</button>
 	</div>
 </div>

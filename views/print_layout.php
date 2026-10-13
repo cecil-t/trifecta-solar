@@ -8,5 +8,6 @@
 <main class="sheet">
 	<?= $content ?>
 </main>
+<script src="<?= asset('assets/js/app.js') ?>"></script>
 </body>
 </html>
