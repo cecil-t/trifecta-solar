@@ -5,6 +5,7 @@
  * @var array  $sePace      SolarEdge pacing from MonitorCollector::sePace
  * @var array  $monthsFrom  brand label => first month with data, for brands that start after the first month
  * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, d30, yield_day, yield_days, yield_ac
+ * @var bool   $kiosk       office-screen view opened with a display key: no links into the tracker
  * @var array  $attention   vendor, name, reason, offline, impact, last_production
  * @var string $yearStart
  * @var int    $seCreditsLeft
@@ -158,7 +159,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 				<?php foreach ($attention as $a): ?>
 					<tr class="<?= $a['offline'] ? 'mon-row-offline' : '' ?>">
 						<td><?= e($a['vendor']) ?></td>
-						<td><?php if ($a['project_id']): ?><a href="/projects/<?= (int) $a['project_id'] ?>"><?= e($a['name']) ?></a><?php else: ?><?= e($a['name']) ?><?php endif; ?></td>
+						<td><?php if ($a['project_id'] && !$kiosk): ?><a href="/projects/<?= (int) $a['project_id'] ?>"><?= e($a['name']) ?></a><?php else: ?><?= e($a['name']) ?><?php endif; ?></td>
 						<td class="mon-why"><?= e($a['reason']) ?><?= $a['impact'] && $a['vendor'] === 'SolarEdge' ? ' <span class="chip">impact ' . (int) $a['impact'] . '</span>' : '' ?></td>
 						<td><?= $a['last_production'] ? e($date($a['last_production'])) : '<span class="muted">none on record</span>' ?></td>
 					</tr>

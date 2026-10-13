@@ -19,6 +19,7 @@ use App\Controllers\ActivityController;
 use App\Controllers\AuthController;
 use App\Controllers\ContactController;
 use App\Controllers\DashboardController;
+use App\Controllers\DisplayKeyController;
 use App\Controllers\HealthController;
 use App\Controllers\MonitorController;
 use App\Controllers\MonitorPageController;
@@ -154,6 +155,12 @@ $r->post('/municipalities/{id}', [MunicipalityController::class, 'update']);
 
 // Monitoring (office display; reads only what monitor:poll stored)
 $r->get('/monitor', [MonitorPageController::class, 'show']);
+// Office screens: the Monitor page with a display key instead of a sign-in (Lists > Display links)
+$r->get('/display', [MonitorPageController::class, 'display'], 'public');
+$r->get('/admin/display-links', [DisplayKeyController::class, 'index'], 'admin');
+$r->post('/admin/display-links', [DisplayKeyController::class, 'store'], 'admin');
+$r->post('/admin/display-links/{id}', [DisplayKeyController::class, 'rename'], 'admin');
+$r->post('/admin/display-links/{id}/revoke', [DisplayKeyController::class, 'revoke'], 'admin');
 
 // Admin: monitoring API test (one call per click; Enphase OAuth connect and callback)
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');

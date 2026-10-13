@@ -50,6 +50,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 					<a href="/admin/template" class="menu-admin">Task template <span class="menu-tag">Admin</span></a>
 					<a href="/users" class="menu-admin">Users <span class="menu-tag">Admin</span></a>
 					<a href="/admin/monitor-test" class="menu-admin">Monitor APIs <span class="menu-tag">Admin</span></a>
+					<a href="/admin/display-links" class="menu-admin">Display links <span class="menu-tag">Admin</span></a>
 				<?php endif; ?>
 			</div>
 		</details>

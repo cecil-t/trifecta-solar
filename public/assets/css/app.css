@@ -1107,6 +1107,19 @@ a[href^="tel:"] { white-space: nowrap; }
 	.mon-month-year { display: none; }
 }
 .mon-updated { margin: .75rem 0; text-align: center; }
+
+/* Office screen (display link): no navigation, just the logo above the Monitor page */
+.kiosk-bar { display: flex; align-items: center; max-width: 1280px; margin: 0 auto; padding: 1rem 1rem 0; }
+.kiosk-bar img { display: block; height: 42px; width: auto; }
+.kiosk .page { padding-top: 1rem; }
+
+/* Lists > Display links */
+.display-key-new { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem; }
+.display-key-new label { flex: 1 1 16rem; max-width: 24rem; }
+.display-key-rename { display: flex; gap: .4rem; align-items: center; }
+.display-key-rename input { min-width: 10rem; }
+.display-key-link { display: flex; align-items: center; gap: .6rem; }
+.display-key-url { width: 20rem; max-width: 100%; font-size: .8rem; }
 .mon-notes p { position: relative; margin: .35rem 0; padding-left: 1rem; }
 .mon-notes p::before { content: "\2022"; position: absolute; left: .15rem; top: 0; }
 .mon-table th { white-space: nowrap; }

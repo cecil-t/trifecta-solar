@@ -22,6 +22,35 @@ final class MonitorPageController
 
 	public function show(): void
 	{
+		View::render('monitor/index', ['title' => 'Monitoring', 'kiosk' => false] + self::data());
+	}
+
+	/**
+	 * The office-screen view of the same page, opened with a display key (Lists > Display links) instead
+	 * of a sign-in: no navigation, the Trifecta logo, no links into the rest of the tracker. The key opens
+	 * only this page and never creates a session.
+	 */
+	public function display(): void
+	{
+		$token = (string) ($_GET['key'] ?? '');
+		$key = preg_match('/^[A-Za-z0-9_-]{20,64}$/', $token)
+			? Db::one('SELECT * FROM display_keys WHERE token = ? AND revoked_at IS NULL', [$token])
+			: null;
+		header('X-Robots-Tag: noindex, nofollow');
+		header('Referrer-Policy: no-referrer');
+		if (!$key) {
+			View::render('errors/404', ['title' => 'Not found'], 'auth_layout', 404);
+			return;
+		}
+		if (!$key['last_used_at'] || strtotime((string) $key['last_used_at']) < time() - 600) {
+			Db::update('display_keys', (int) $key['id'], ['last_used_at' => now_utc(), 'last_used_ip' => substr(client_ip(), 0, 64)]);
+		}
+		View::render('monitor/index', ['title' => 'Monitoring', 'kiosk' => true] + self::data(), 'kiosk_layout');
+	}
+
+	/** Everything the Monitor page shows, read from the database only. */
+	private static function data(): array
+	{
 		$today = date('Y-m-d');
 		$week = date('Y-m-d', strtotime('-6 days'));
 		$month = date('Y-m-01');
@@ -210,8 +239,7 @@ final class MonitorPageController
 		[$seLeft] = MonitorCollector::seBudget();
 		[$months, $monthsFrom] = self::monthTotals(array_keys($vendors));
 		$sePace = MonitorCollector::sePace();
-		View::render('monitor/index', [
-			'title' => 'Monitoring',
+		return [
 			// Reload about 90 seconds after the next quarter hour, when monitor:poll (cron */15) has
 			// stored its pull. Reloading never calls a vendor, so this only sets how fresh the screen is.
 			'refresh' => 900 - (time() % 900) + 90,
@@ -224,7 +252,7 @@ final class MonitorPageController
 			'months' => $months,
 			'monthsFrom' => $monthsFrom,
 			'sePace' => $sePace,
-		]);
+		];
 	}
 
 	/**
