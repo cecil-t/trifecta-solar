@@ -76,6 +76,11 @@ $rules = $rules ?: [[]];
 
 	<section class="card band">
 		<h2>Contingency</h2>
+		<?php
+			$defComm = $commission[$commissionDefault] ?? ($commission[0] ?? []);
+			$factor = (1 + (float) $s('markup_default')) * (1 + (float) ($defComm['adjusted'] ?? 0) / 100);
+		?>
+		<p class="hint">Contingency is part of the job's cost. It is added before markup, so it is marked up and carries commission like any other cost. If it gets spent, the job still earns its full margin on that money; if it isn't spent, all of it becomes extra margin. That is why a modest percentage goes further than it looks: at the default markup and commission, each $1,000 of contingency adds about <?= e(Presales::money(1000 * $factor)) ?> to the price.</p>
 		<div class="grid-form">
 			<label>Cap (%) <input type="text" name="settings[contingency_cap]" value="<?= e($n($s('contingency_cap'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Minimum ($) <input type="text" name="settings[contingency_floor]" value="<?= e($n($s('contingency_floor'), 2)) ?>" inputmode="decimal" <?= $dis ?>>

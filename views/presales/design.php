@@ -431,7 +431,7 @@ $folded = [];
 
 		<section class="card band">
 			<h2>Contingency</h2>
-			<p class="hint">A cost of work, figured on internal cost before markup. Rules switch on from the build sheet itself; some can be checked by hand.</p>
+			<p class="hint">A cost of work, figured on internal cost and then marked up like any other cost, so the margin holds if it gets spent and grows if it doesn't. Rules switch on from the build sheet itself; some can be checked by hand.</p>
 			<table class="table table-rules">
 				<tbody>
 				<?php foreach ($calc['contingency_rules'] as $r): ?>
