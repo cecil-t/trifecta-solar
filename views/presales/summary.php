@@ -86,9 +86,9 @@ foreach ($lines as $i => $l) {
 		<thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Tax</th><th class="num">Cost</th><th class="num">Retail</th></tr></thead>
 		<?php foreach (Presales::CATEGORIES as $cat => [$label]): if (empty($byCat[$cat])) { continue; } $t = $calc['categories'][$cat]; ?>
 			<tbody class="sheet-keep">
-			<tr class="sheet-cat"><td colspan="6"><?= e($label) ?></td></tr>
+			<tr class="sheet-cat"><td colspan="3"><?= e($label) ?></td><td class="num"><?= $t['tax'] > 0 ? e($m($t['tax'])) : '-' ?></td><td class="num"><?= e($m($t['cost'])) ?></td><td class="num"><?= e($m($t['retail'])) ?></td></tr>
 			<?php foreach ($byCat[$cat] as $i): $l = $lines[$i]; $c = $calc['lines'][$i]; $fl = $flags['lines'][$i] ?? null; ?>
-				<tr>
+				<tr class="sheet-item">
 					<td>
 						<?= e($l['name']) ?><?= !empty($l['ext_warranty']) ? ' <span class="muted">+ ext. warranty ' . (int) $l['ext_warranty_years'] . ' yr</span>' : '' ?>
 						<?php if ($fl && ($fl['changed'] || $fl['retired'])): ?> <span class="chip chip-red">Catalog price changed</span><?php endif; ?>
@@ -102,10 +102,9 @@ foreach ($lines as $i => $l) {
 					<td class="num"><?= e($m($c['retail'])) ?></td>
 				</tr>
 			<?php endforeach; ?>
-			<tr class="sheet-sub"><td><?= e($label) ?> total</td><td></td><td></td><td class="num"><?= $t['tax'] > 0 ? e($m($t['tax'])) : '-' ?></td><td class="num"><?= e($m($t['cost'])) ?></td><td class="num"><?= e($m($t['retail'])) ?></td></tr>
 			</tbody>
 		<?php endforeach; ?>
-		<tfoot><tr><td>Equipment and materials</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td><td></td></tr></tfoot>
+		<tfoot><tr><td>Equipment and materials</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'retail')))) ?></td></tr></tfoot>
 	</table>
 </section>
 

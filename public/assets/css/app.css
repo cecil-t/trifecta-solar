@@ -1467,3 +1467,14 @@ a[href^="tel:"] { white-space: nowrap; }
 @media print {
 	.sheet-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-inside: avoid; }
 }
+/* Summary equipment table: the category row carries its totals; its lines sit indented under it */
+.sheet-table .sheet-cat td { background: var(--blue-50); color: var(--blue); font-weight: 750; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; padding: .3rem .5rem .3rem .4rem; border-bottom: 0; }
+.sheet-table .sheet-cat td.num { text-transform: none; letter-spacing: 0; font-size: .85rem; color: var(--text); }
+.sheet-table .sheet-item td { border-bottom: 0; padding-top: .2rem; padding-bottom: .2rem; }
+.sheet-table .sheet-item td:first-child { padding-left: 1rem; border-left: 3px solid var(--blue-50); }
+.sheet-table .sheet-item td.num { color: var(--muted); }
+.sheet-table tbody.sheet-keep + tbody.sheet-keep .sheet-cat td { border-top: 4px solid #fff; }
+.sheet-table tfoot td { border-top: 2px solid var(--blue); padding-top: .35rem; }
+@media print {
+	.sheet-table .sheet-cat td, .sheet-table .sheet-item td:first-child { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
