@@ -126,7 +126,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 			<?php elseif ($c['flags']['stale']): ?>
 				<span class="chip chip-orange">Check <?= (int) $c['flags']['stale'] ?> price<?= $c['flags']['stale'] > 1 ? 's' : '' ?></span>
 			<?php endif; ?>
-			<span class="muted small">Updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= $d['updated_by_name'] ? ' by ' . e($d['updated_by_name']) : '' ?></span>
+			<span class="muted small">Created <?= e(fmt_dt($d['created_at'], 'm/d/Y')) ?> &middot; Updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= $d['updated_by_name'] ? ' by ' . e($d['updated_by_name']) : '' ?></span>
 		</a>
 	<?php endforeach; ?>
 </div>

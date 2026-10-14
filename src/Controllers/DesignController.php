@@ -39,6 +39,7 @@ final class DesignController
 			'depositOptions' => Presales::depositOptions($depositClass, $calc['dc_kw']),
 			'depositClass' => $depositClass,
 			'siblings' => Db::all('SELECT id, name FROM presales_designs WHERE opportunity_id = ? ORDER BY sort_order, id', [$oppId]),
+			'who' => Db::one('SELECT cu.name AS created_name, uu.name AS updated_name FROM presales_designs d LEFT JOIN users cu ON cu.id = d.created_by LEFT JOIN users uu ON uu.id = d.updated_by WHERE d.id = ?', [$designId]),
 		]);
 	}
 
@@ -59,6 +60,7 @@ final class DesignController
 		View::render('presales/summary', [
 			'title' => $d['name'] . ' summary', 'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
 			'flags' => Designs::priceFlags($lines, $d), 'printNotes' => $notes,
+			'who' => Db::one('SELECT cu.name AS created_name, uu.name AS updated_name FROM presales_designs d LEFT JOIN users cu ON cu.id = d.created_by LEFT JOIN users uu ON uu.id = d.updated_by WHERE d.id = ?', [$designId]),
 			'depositClass' => Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']),
 		], 'print_layout');
 	}
@@ -168,6 +170,7 @@ final class DesignController
 				'overridden' => $c ? $c['overridden'] : false,
 				'override_pending' => $c ? $c['override_pending'] : false,
 				'catalog_unit' => $c ? Presales::unit($c['catalog_unit']) : '',
+				'why' => $c && $c['overridden'] ? (string) $c['override_reason'] : '',
 				'changed' => $fl['changed'] ?? false,
 				'stale' => $fl['stale'] ?? false,
 				'retired' => $fl['retired'] ?? false,

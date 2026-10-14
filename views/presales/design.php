@@ -18,6 +18,7 @@ use App\Projects;
  * @var array $templates       payment schedules
  * @var array $depositOptions  allowed deposits for this customer type and size
  * @var string $depositClass   residential | commercial (Non-Residential)
+ * @var array  $who            created_name, updated_name
  * @var array $siblings        the opportunity's build sheets
  */
 $base = '/presales/' . (int) $o['id'] . '/designs/' . (int) $d['id'];
@@ -70,9 +71,7 @@ $orient = static function (?int $az, ?float $tilt, string $mount) use ($steep, $
 };
 $lineFlag = static function (?array $f, ?array $c = null): string {
 	$h = '';
-	if ($c && $c['overridden']) {
-		$h .= '<span class="chip chip-purple" title="' . e((string) $c['override_reason']) . '">Price overridden (from ' . e(Presales::unit($c['catalog_unit'])) . ')</span>';
-	} elseif ($c && $c['override_pending']) {
+	if ($c && $c['override_pending']) {
 		$h .= '<span class="chip chip-red">Type a reason to use the override</span>';
 	}
 	if (!$f) {
@@ -89,6 +88,7 @@ $lineFlag = static function (?array $f, ?array $c = null): string {
 	}
 	return $h;
 };
+$markupFloor = Presales::num('markup_floor');
 $always = ['modules', 'inverters', 'mlpe', 'racking', 'bos', 'permits', 'interconnection'];
 $folded = [];
 ?>
@@ -102,6 +102,7 @@ $folded = [];
 			<?php if ($o['customer_type'] && $o['customer_type'] !== 'residential' && $o['customer_type'] !== 'commercial'): ?><span class="chip"><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?></span><?php endif; ?>
 			<?php if ($o['is_agricultural']): ?><span class="chip">Agricultural</span><?php endif; ?>
 		</div>
+		<p class="muted small design-dates">Created <?= e(fmt_dt($d['created_at'], 'm/d/Y g:i A')) ?><?= !empty($who['created_name']) ? ' by ' . e($who['created_name']) : '' ?> &middot; Updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= !empty($who['updated_name']) ? ' by ' . e($who['updated_name']) : '' ?></p>
 		<?php if (count($siblings) > 1): ?>
 			<nav class="tabs design-tabs" aria-label="Build sheets">
 				<?php foreach ($siblings as $s): ?>
@@ -222,9 +223,17 @@ $folded = [];
 					<?php if (!empty($flags['warranty']['changed'])): ?><small class="hint text-red">The catalog price for this program changed since this was built.</small><?php endif; ?>
 					<small class="hint">SolarInsure programs add each battery's SolarInsure cost.</small>
 				</label>
-				<label>Markup on cost (%)
-					<input type="text" name="markup" value="<?= e($pf($d['markup'] * 100, 2)) ?>" inputmode="decimal">
-				</label>
+				<div class="checkfield">
+					<label for="markup" class="field-label">Markup on cost (%)</label>
+					<span class="stepper">
+						<input type="text" name="markup" id="markup" value="<?= e(number_format((float) $d['markup'] * 100, 1, '.', '')) ?>" inputmode="decimal" data-step="0.5" data-min="<?= e(number_format($markupFloor * 100, 1, '.', '')) ?>" aria-describedby="markup-floor">
+						<span class="stepper-btns">
+							<button type="button" data-step-dir="1" aria-label="Raise markup 0.5%"><svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+							<button type="button" data-step-dir="-1" aria-label="Lower markup 0.5%"><svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+						</span>
+					</span>
+					<small class="hint" id="markup-floor">Floor <?= e(Presales::pct($markupFloor)) ?> (Rates page).</small>
+				</div>
 				<label>Commission
 					<select name="commission_rate">
 						<?php if (!$commissionKnown): ?><option value="<?= e($pf($d['commission_rate'] * 100, 2)) ?>" selected><?= e($pf($d['commission_rate'] * 100, 2)) ?>% (saved)</option><?php endif; ?>
@@ -307,21 +316,22 @@ $folded = [];
 										<summary>Details</summary>
 										<p class="pl-notes-text"><?= nl2br(e((string) $notes)) ?></p>
 									</details>
-									<details class="pl-override" <?= $l && !$isCustom ? '' : 'hidden' ?> <?= $l && $l['price_override'] !== null ? 'open' : '' ?>>
-										<summary>Override price</summary>
-										<div class="pl-override-fields">
-											<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override]" value="<?= e($l && $l['price_override'] !== null ? $pf((float) $l['price_override']) : '') ?>" placeholder="Unit cost" inputmode="decimal" aria-label="Override unit cost" class="input-short">
-											<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override_reason]" value="<?= e((string) ($l['override_reason'] ?? '')) ?>" placeholder="Reason (required)" maxlength="200" aria-label="Override reason">
-										</div>
-										<p class="pl-notes-text">Replaces the catalog cost per unit, shipping included. Extended warranty and SolarInsure still add.</p>
-									</details>
 									<span class="pl-flags"><?= $lineFlag($fl, $c) ?></span>
 								</div>
 								<div class="pl-qty">
 									<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][qty]" value="<?= e($l && $l['qty'] !== null ? $pf((float) $l['qty'], 2) : '') ?>" inputmode="decimal" aria-label="Quantity" class="pl-qty-input" <?= $rule === 'manual' ? '' : 'hidden' ?>>
 									<span class="pl-qty-auto muted" <?= $rule === 'manual' ? 'hidden' : '' ?> title="Automatic quantity"><span data-l="qty"><?= $c ? e(Presales::field($c['qty_resolved'], 2)) : '' ?></span> <?= $rule === 'dc_watts' ? 'W' : 'auto' ?></span>
 								</div>
-								<span class="num" data-l="unit"><?= $c ? e(Presales::unit($c['unit_total'])) : '' ?></span>
+								<div class="num pl-unit<?= $c && $c['overridden'] ? ' is-overridden' : '' ?>">
+									<span class="pl-unit-row"><span data-l="unit"<?= $c && $c['overridden'] ? ' title="Catalog ' . e(Presales::unit($c['catalog_unit'])) . '"' : '' ?>><?= $c ? e(Presales::unit($c['unit_total'])) : '' ?></span><button type="button" class="pl-pencil" title="Override this price" aria-label="Override price" <?= $l && !$isCustom ? '' : 'hidden' ?>><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M11.3 1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1L5.6 13.4 2 14l.6-3.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button></span>
+									<small class="pl-ovr-why" data-l="why"><?= $c && $c['overridden'] ? e((string) $c['override_reason']) : '' ?></small>
+									<div class="pl-ovr-pop" hidden>
+										<label>Unit cost <input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override]" value="<?= e($l && $l['price_override'] !== null ? $pf((float) $l['price_override']) : '') ?>" inputmode="decimal" class="pl-ovr-price"></label>
+										<label>Reason <input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override_reason]" value="<?= e((string) ($l['override_reason'] ?? '')) ?>" maxlength="200" class="pl-ovr-reason" placeholder="Required"></label>
+										<p class="pl-ovr-help">Replaces the catalog cost per unit, shipping included. Extended warranty and SolarInsure still add.</p>
+										<div class="pl-ovr-actions"><button type="button" class="btn btn-primary btn-small pl-ovr-done">Done</button><button type="button" class="btn btn-ghost btn-small pl-ovr-clear">Use catalog price</button></div>
+									</div>
+								</div>
 								<span class="num muted" data-l="tax"><?= $c ? ($c['tax'] > 0 ? e($m($c['tax'])) : '-') : '' ?></span>
 								<span class="num" data-l="cost"><?= $c ? e($m($c['cost'])) : '' ?></span>
 								<span class="num" data-l="retail"><?= $c ? e($m($c['retail'])) : '' ?></span>

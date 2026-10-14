@@ -37,7 +37,7 @@ foreach ($lines as $i => $l) {
 	<div class="sheet-title">
 		<div class="sheet-kicker">Build sheet &middot; internal</div>
 		<h1><?= e($d['name']) ?></h1>
-		<div class="muted small"><?= e($o['name']) ?> &middot; saved <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?></div>
+		<div class="muted small"><?= e($o['name']) ?> &middot; created <?= e(fmt_dt($d['created_at'], 'm/d/Y g:i A')) ?><?= !empty($who['created_name']) ? ' by ' . e($who['created_name']) : '' ?> &middot; updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= !empty($who['updated_name']) ? ' by ' . e($who['updated_name']) : '' ?></div>
 	</div>
 </header>
 
@@ -93,13 +93,12 @@ foreach ($lines as $i => $l) {
 				<tr class="sheet-item">
 					<td>
 						<?= e($l['name']) ?><?= !empty($l['ext_warranty']) ? ' <span class="muted">+ ext. warranty ' . (int) $l['ext_warranty_years'] . ' yr</span>' : '' ?>
-						<?php if ($c['overridden']): ?> <span class="chip chip-purple">Price overridden</span><div class="muted small">From <?= e(Presales::unit($c['catalog_unit'])) ?>: <?= e((string) $l['override_reason']) ?></div><?php endif; ?>
 						<?php if ($fl && ($fl['changed'] || $fl['retired'])): ?> <span class="chip chip-red">Catalog price changed</span><?php endif; ?>
 						<?php if ($fl && $fl['stale'] && !$fl['retired']): ?> <span class="chip chip-orange">Check price</span><?php endif; ?>
 						<?php if ($l['catalog_item_id'] && isset($printNotes[(int) $l['catalog_item_id']])): ?><div class="muted small"><?= nl2br(e($printNotes[(int) $l['catalog_item_id']])) ?></div><?php endif; ?>
 					</td>
 					<td class="num"><?= e(Presales::field($c['qty_resolved'], 2)) ?><?= $l['qty_rule'] === 'dc_watts' ? ' W' : '' ?></td>
-					<td class="num"><?= e(Presales::unit($c['unit_total'])) ?></td>
+					<td class="num"><?php if ($c['overridden']): ?><span class="unit-overridden"><?= e(Presales::unit($c['unit_total'])) ?></span><div class="override-why"><?= e((string) $l['override_reason']) ?></div><?php else: ?><?= e(Presales::unit($c['unit_total'])) ?><?php endif; ?></td>
 					<td class="num"><?= $c['tax'] > 0 ? e($m($c['tax'])) : '-' ?></td>
 					<td class="num"><?= e($m($c['cost'])) ?></td>
 					<td class="num"><?= e($m($c['retail'])) ?></td>

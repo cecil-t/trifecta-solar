@@ -60,6 +60,7 @@ final class Presales
 		'tax_rate'               => ['0.06', 'Sales tax rate'],
 		'tax_note'               => ['PA Tax', 'Tax note'],
 		'markup_default'         => ['0', 'Default markup'],
+		'markup_floor'           => ['0.25', 'Markup floor (lowest markup a build sheet can save)'],
 		'labor_default'          => ['', 'Default labor price ($ per watt)'],
 		'labor_rate'             => ['0', 'Labor rate ($ per man-hour)'],
 		'lodging_rate'           => ['0', 'Lodging ($ per person per night)'],

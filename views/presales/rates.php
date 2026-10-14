@@ -16,6 +16,7 @@ use App\Presales;
 $dis = $canEdit ? '' : 'disabled';
 $s = static fn (string $k) => $settings[$k] ?? '';
 $pct = static fn ($v) => $v === '' || $v === null ? '' : Presales::field((float) $v * 100, 4);
+$tenths = static fn ($v) => $v === '' || $v === null ? '' : number_format((float) $v * 100, 1, '.', '');
 $n = static fn ($v, $dec = 4) => $v === '' || $v === null ? '' : Presales::field((float) $v, $dec);
 $commission = $commission ?: [[]];
 $deposits = $deposits ?: [[]];
@@ -38,7 +39,10 @@ $rules = $rules ?: [[]];
 		<div class="grid-form">
 			<label>Sales tax (%) <input type="text" name="settings[tax_rate]" value="<?= e($pct($s('tax_rate'))) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Tax note <input type="text" name="settings[tax_note]" value="<?= e($s('tax_note')) ?>" maxlength="120" <?= $dis ?>></label>
-			<label>Default markup (%) <input type="text" name="settings[markup_default]" value="<?= e($pct($s('markup_default'))) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label>Default markup (%) <input type="text" name="settings[markup_default]" value="<?= e($tenths($s('markup_default'))) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label>Markup floor (%) <input type="text" name="settings[markup_floor]" value="<?= e($tenths($s('markup_floor'))) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Build sheets can't be saved below this.</small>
+			</label>
 			<label>Round final price up to ($) <input type="text" name="settings[round_to]" value="<?= e($n($s('round_to'), 0)) ?>" inputmode="numeric" <?= $dis ?>></label>
 			<label>Default labor price ($/W) <input type="text" name="settings[labor_default]" value="<?= e($n($s('labor_default'), 4)) ?>" inputmode="decimal" required <?= $dis ?>>
 				<small class="hint">New build sheets start here. Never zero.</small>

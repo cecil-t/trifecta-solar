@@ -159,6 +159,10 @@ final class Designs
 		$f['tax_rate'] = ($num($post['tax_rate'] ?? '', 'Tax rate') ?? 0) / 100;
 		$f['tax_note'] = trim((string) ($post['tax_note'] ?? '')) ?: null;
 		$f['markup'] = ($num($post['markup'] ?? '', 'Markup') ?? 0) / 100;
+		$floor = Presales::num('markup_floor');
+		if ($strict && $f['markup'] < $floor - 0.0000001) {
+			throw new \InvalidArgumentException('Markup can\'t go below ' . Presales::pct($floor) . ', the floor on the Rates page.');
+		}
 		$f['notes'] = trim((string) ($post['notes'] ?? '')) ?: null;
 
 		// Commission: one of the rates on the Rates page (its adjusted % and step-down come with it)

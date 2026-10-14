@@ -61,6 +61,8 @@
 			});
 			clone.classList.remove('has-flag', 'has-changed', 'is-steep');
 			clone.querySelectorAll('details').forEach((d) => { d.open = false; });
+			clone.querySelectorAll('.pl-ovr-pop').forEach((p) => { p.hidden = true; });
+			clone.querySelectorAll('.is-overridden').forEach((u) => u.classList.remove('is-overridden'));
 			clone.querySelectorAll('[data-l]').forEach((s) => { s.textContent = ''; });
 			clone.querySelectorAll('.pl-flags').forEach((s) => { s.textContent = ''; });
 			const key = clone.querySelector('.pl-key');
@@ -132,8 +134,8 @@
 			notes.hidden = text === '';
 			notes.querySelector('.pl-notes-text').textContent = text;
 		}
-		const ovr = row.querySelector('.pl-override');
-		if (ovr) ovr.hidden = custom || sel.value === '';
+		const pencil = row.querySelector('.pl-pencil');
+		if (pencil) pencil.hidden = custom || sel.value === '';
 		if (rule === 'manual' && !custom && sel.value !== '' && row.querySelector('.pl-qty-input').value === '') {
 			row.querySelector('.pl-qty-input').value = '1';
 		}
@@ -247,10 +249,10 @@
 		const row = e.target.closest('.pl-row');
 		if (row && e.target.classList.contains('pl-select')) {
 			// a different item starts from its catalog price
-			const ovr = row.querySelector('.pl-override');
-			if (ovr) {
-				ovr.querySelectorAll('input').forEach((i) => { i.value = ''; });
-				ovr.open = false;
+			const pop = row.querySelector('.pl-ovr-pop');
+			if (pop) {
+				pop.querySelectorAll('input').forEach((i) => { i.value = ''; });
+				closePop(pop);
 			}
 			syncLine(row);
 		}
@@ -260,6 +262,88 @@
 	form.addEventListener('input', (e) => {
 		const arr = e.target.closest('.array-row');
 		if (arr && (e.target.classList.contains('array-tilt') || e.target.classList.contains('array-az'))) syncArray(arr);
+	});
+
+	// ---- Markup stepper: 0.5% steps, never below the floor, always one decimal
+	function fmtTenths(input) {
+		const v = parseFloat(input.value.replace(/[%,\s]/g, ''));
+		if (!isNaN(v)) input.value = v.toFixed(1);
+		const min = parseFloat(input.dataset.min);
+		const hint = document.getElementById(input.getAttribute('aria-describedby'));
+		if (hint) hint.classList.toggle('text-red', !isNaN(v) && !isNaN(min) && v < min - 1e-9);
+	}
+	form.querySelectorAll('.stepper input').forEach((input) => {
+		input.addEventListener('blur', () => fmtTenths(input));
+		input.addEventListener('input', () => {
+			const v = parseFloat(input.value);
+			const min = parseFloat(input.dataset.min);
+			const hint = document.getElementById(input.getAttribute('aria-describedby'));
+			if (hint) hint.classList.toggle('text-red', !isNaN(v) && !isNaN(min) && v < min - 1e-9);
+		});
+	});
+	form.addEventListener('click', (e) => {
+		const btn = e.target.closest('.stepper [data-step-dir]');
+		if (!btn) return;
+		const input = btn.closest('.stepper').querySelector('input');
+		const step = parseFloat(input.dataset.step || '0.5');
+		const min = parseFloat(input.dataset.min);
+		let v = parseFloat(input.value.replace(/[%,\s]/g, ''));
+		if (isNaN(v)) v = isNaN(min) ? 0 : min;
+		const dir = parseInt(btn.dataset.stepDir, 10);
+		// snap to the step grid first, so 27.3 goes to 27.5 or 27.0
+		v = dir > 0 ? Math.floor(v / step + 1e-9) * step + step : Math.ceil(v / step - 1e-9) * step - step;
+		if (!isNaN(min) && v < min) v = min;
+		input.value = v.toFixed(1);
+		fmtTenths(input);
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		input.dispatchEvent(new Event('change', { bubbles: true }));
+	});
+
+	// ---- Price override: the pencil opens a small box over the unit price
+	function closePop(pop) {
+		pop.hidden = true;
+		pop.querySelectorAll('.is-invalid').forEach((i) => i.classList.remove('is-invalid'));
+	}
+	function closeAllPops(except) {
+		form.querySelectorAll('.pl-ovr-pop:not([hidden])').forEach((p) => { if (p !== except) closePop(p); });
+	}
+	form.addEventListener('click', (e) => {
+		const pencil = e.target.closest('.pl-pencil');
+		if (pencil) {
+			const pop = pencil.closest('.pl-unit').querySelector('.pl-ovr-pop');
+			closeAllPops(pop);
+			pop.hidden = !pop.hidden;
+			if (!pop.hidden) pop.querySelector('.pl-ovr-price').focus();
+			return;
+		}
+		const done = e.target.closest('.pl-ovr-done');
+		if (done) {
+			const pop = done.closest('.pl-ovr-pop');
+			const price = pop.querySelector('.pl-ovr-price');
+			const reason = pop.querySelector('.pl-ovr-reason');
+			if (price.value.trim() !== '' && reason.value.trim() === '') {
+				reason.classList.add('is-invalid');
+				reason.focus();
+				return;
+			}
+			closePop(pop);
+			return;
+		}
+		const clear = e.target.closest('.pl-ovr-clear');
+		if (clear) {
+			const pop = clear.closest('.pl-ovr-pop');
+			pop.querySelectorAll('input').forEach((i) => { i.value = ''; });
+			closePop(pop);
+			schedule();
+			return;
+		}
+		if (!e.target.closest('.pl-ovr-pop')) closeAllPops(null);
+	});
+	form.addEventListener('keydown', (e) => {
+		const pop = e.target.closest && e.target.closest('.pl-ovr-pop');
+		if (!pop) return;
+		if (e.key === 'Escape') { closePop(pop); pop.closest('.pl-unit').querySelector('.pl-pencil').focus(); }
+		if (e.key === 'Enter') { e.preventDefault(); pop.querySelector('.pl-ovr-done').click(); }
 	});
 
 	// ---- Live totals
@@ -309,14 +393,17 @@
 			const row = form.querySelector('.pl-row[data-key="' + CSS.escape(l.key) + '"]');
 			if (!row) return;
 			row.classList.remove('pl-unpriced');
-			['qty', 'unit', 'cost', 'tax', 'retail', 'rpw'].forEach((k) => {
+			['qty', 'unit', 'cost', 'tax', 'retail', 'rpw', 'why'].forEach((k) => {
 				const el = row.querySelector('[data-l="' + k + '"]');
 				if (el) setText(el, l[k]);
 			});
+			const unitBox = row.querySelector('.pl-unit');
+			if (unitBox) unitBox.classList.toggle('is-overridden', !!l.overridden);
+			const unitEl = row.querySelector('[data-l="unit"]');
+			if (unitEl) { if (l.overridden) unitEl.title = 'Catalog ' + l.catalog_unit; else unitEl.removeAttribute('title'); }
 			const flags = row.querySelector('.pl-flags');
 			flags.textContent = '';
-			if (l.overridden) flags.appendChild(chip('Price overridden (from ' + l.catalog_unit + ')', 'chip-purple'));
-			else if (l.override_pending) flags.appendChild(chip('Type a reason to use the override', 'chip-red'));
+			if (l.override_pending) flags.appendChild(chip('Type a reason to use the override', 'chip-red'));
 			if (l.retired) flags.appendChild(chip('Retired from the catalog', 'chip-red'));
 			else if (l.changed) flags.appendChild(chip('Catalog price changed', 'chip-red'));
 			if (l.stale && !l.retired) flags.appendChild(chip('Check price: ' + (l.price_date || 'never dated'), 'chip-orange'));
@@ -327,6 +414,7 @@
 		form.querySelectorAll('.pl-row.pl-unpriced').forEach((row) => {
 			row.querySelectorAll('[data-l]').forEach((el) => setText(el, ''));
 			row.querySelector('.pl-flags').textContent = '';
+			row.querySelectorAll('.is-overridden').forEach((u) => u.classList.remove('is-overridden'));
 			row.classList.remove('pl-unpriced', 'has-flag', 'has-changed');
 		});
 
