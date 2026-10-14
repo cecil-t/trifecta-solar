@@ -9,13 +9,14 @@
 <div class="card card-flush card-sticky-head scroll-x-phone">
 	<table class="table">
 		<thead>
-		<tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Devices</th><th>Last active</th></tr>
+		<tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Devices</th><th>Last active</th></tr>
 		</thead>
 		<tbody>
 		<?php foreach ($users as $u): ?>
 			<tr class="<?= $u['is_active'] ? '' : 'row-muted' ?>">
 				<td><a href="/users/<?= (int) $u['id'] ?>"><span class="avatar avatar-sm"><?= e($u['initials'] ?: mb_substr($u['name'], 0, 1)) ?></span> <?= e($u['name']) ?></a></td>
 				<td><?= e($u['email']) ?></td>
+				<td><?= e((string) ($u['phone'] ?? '')) ?></td>
 				<td><?= $u['is_admin'] ? '<span class="chip chip-blue">Admin</span>' : 'User' ?><?= !empty($u['is_sales']) ? ' <span class="chip chip-green">Sales</span>' : '' ?></td>
 				<td>
 					<?php if (!$u['is_active']): ?><span class="chip">Inactive</span>

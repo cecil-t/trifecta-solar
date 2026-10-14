@@ -15,8 +15,12 @@
 				<label>Initials
 					<input type="text" name="initials" value="<?= e($user['initials'] ?? '') ?>" maxlength="4" pattern="[A-Za-z]{1,4}" class="input-short">
 				</label>
-				<p class="hint">Shown in owner and assignee lists. Up to 4 letters. Your name and email are changed by an admin.</p>
-				<div><button class="btn btn-primary">Save initials</button></div>
+				<p class="hint">Shown in owner and assignee lists. Up to 4 letters.</p>
+				<label>Phone
+					<input type="tel" name="phone" value="<?= e((string) ($user['phone'] ?? '')) ?>" maxlength="40" autocomplete="tel">
+				</label>
+				<p class="hint">Your direct or cell number, shown on proposals for salespeople. Your name and email are changed by an admin.</p>
+				<div><button class="btn btn-primary">Save profile</button></div>
 			</form>
 		</section>
 

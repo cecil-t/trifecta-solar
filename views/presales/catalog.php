@@ -29,7 +29,7 @@ $spec = static function (array $i): string {
 		<h1>Sales catalog</h1>
 		<p class="muted">Internal cost of everything a build sheet can price. Each price carries its date and source; prices older than <?= $days ?> days show red so they get checked (quarterly).<?= $canEdit ? '' : ' Admins and salespeople can edit.' ?></p>
 	</div>
-	<?php if ($canEdit): ?><a href="/presales/catalog/new<?= $cat ? '?category=' . e(rawurlencode($cat)) : '' ?>" class="btn btn-primary">New item</a><?php endif; ?>
+	<?php if ($canEdit): ?><a href="/presales/catalog/new?<?= e(http_build_query(array_filter(['category' => $cat, 'back' => $back], static fn ($v) => $v !== ''))) ?>" class="btn btn-primary">New item</a><?php endif; ?>
 </div>
 
 <div class="tabs tabs-grouped">
@@ -64,7 +64,7 @@ $spec = static function (array $i): string {
 			<?php foreach ($items as $i): $stale = Presales::isStale($i['price_updated_at']); ?>
 				<tr id="item-<?= (int) $i['id'] ?>" class="<?= $i['is_active'] ? '' : 'row-muted' ?>">
 					<td>
-						<a href="/presales/catalog/<?= (int) $i['id'] ?>"><strong><?= e($i['name']) ?></strong></a>
+						<a href="/presales/catalog/<?= (int) $i['id'] ?><?= e(App\Controllers\CatalogController::backQuery($back)) ?>"><strong><?= e($i['name']) ?></strong></a>
 						<?php if (!$i['is_active']): ?> <span class="chip">Retired</span><?php endif; ?>
 						<?php if ($i['notes']): ?>
 							<details class="cat-notes"><summary>Details</summary><p><?= nl2br(e($i['notes'])) ?></p></details>

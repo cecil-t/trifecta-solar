@@ -13,12 +13,16 @@ $v = static fn (string $k, $d = '') => $item[$k] ?? $d;
 $sel = static fn ($a, $b) => (string) $a === (string) $b ? 'selected' : '';
 $n = static fn ($x, $dec = 4) => $x === null || $x === '' ? '' : (is_numeric($x) ? Presales::field((float) $x, $dec) : (string) $x);
 $isNew = $id === null;
+$back ??= '';
+// Where "Catalog" and Cancel return to: the list as it was left (search, category, tab), else the item's category
+$listUrl = $back !== '' ? $back . ($isNew ? '' : '#item-' . (int) $id)
+	: '/presales/catalog' . ($isNew ? '' : '?category=' . rawurlencode((string) $v('category')) . '#item-' . (int) $id);
 $canEdit ??= true;
 $dis = $canEdit ? '' : 'disabled';
 ?>
 <div class="page-head">
 	<div>
-		<a href="/presales/catalog<?= $isNew ? '' : '?category=' . e(rawurlencode((string) $v('category'))) . '#item-' . (int) $id ?>" class="back">&larr; Catalog</a>
+		<a href="<?= e($listUrl) ?>" class="back">&larr; Catalog</a>
 		<h1><?= $isNew ? 'New catalog item' : e($v('name')) ?></h1>
 		<?php if (!$isNew): ?>
 			<p class="muted">Used on <?= (int) $used ?> build sheet<?= $used === 1 ? '' : 's' ?>. Saved build sheets keep the price they were built with and show a flag when it changes here.</p>
@@ -28,6 +32,7 @@ $dis = $canEdit ? '' : 'disabled';
 
 <form method="post" action="<?= $isNew ? '/presales/catalog' : '/presales/catalog/' . (int) $id ?>" class="project-form">
 	<?= Csrf::field() ?>
+	<?php if ($back !== ''): ?><input type="hidden" name="back" value="<?= e($back) ?>"><?php endif; ?>
 	<section class="card band">
 		<h2>Item</h2>
 		<div class="grid-form">
@@ -159,7 +164,7 @@ $dis = $canEdit ? '' : 'disabled';
 	<?php if ($canEdit): ?>
 		<div class="form-actions">
 			<button class="btn btn-primary"><?= $isNew ? 'Add item' : 'Save' ?></button>
-			<a href="/presales/catalog" class="btn btn-ghost">Cancel</a>
+			<a href="<?= e($listUrl) ?>" class="btn btn-ghost">Cancel</a>
 		</div>
 	<?php endif; ?>
 </form>

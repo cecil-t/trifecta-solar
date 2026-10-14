@@ -14,7 +14,7 @@ use App\View;
 final class UserController
 {
 	private const TRACKED = [
-		'name' => 'Name', 'email' => 'Email', 'initials' => 'Initials',
+		'name' => 'Name', 'email' => 'Email', 'initials' => 'Initials', 'phone' => 'Phone',
 		'is_admin' => 'Admin', 'is_sales' => 'Sales', 'is_active' => 'Active',
 	];
 
@@ -136,6 +136,7 @@ final class UserController
 			'name'      => trim((string) ($_POST['name'] ?? '')),
 			'email'     => strtolower(trim((string) ($_POST['email'] ?? ''))),
 			'initials'  => Users::cleanInitials($_POST['initials'] ?? ''),
+			'phone'     => Users::cleanPhone($_POST['phone'] ?? ''),
 			'is_admin'  => empty($_POST['is_admin']) ? 0 : 1,
 			'is_sales'  => empty($_POST['is_sales']) ? 0 : 1,
 			'is_active' => empty($_POST['is_active']) ? 0 : 1,

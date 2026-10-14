@@ -77,7 +77,7 @@ final class CatalogController
 		$item = $_SESSION['old_catalog'] ?? ['category' => (string) ($_GET['category'] ?? 'modules'), 'qty_rule' => 'manual', 'tax_class' => 'major', 'is_active' => 1,
 			'price_updated_at' => date('Y-m-d')];
 		unset($_SESSION['old_catalog']);
-		View::render('presales/catalog_form', ['title' => 'New catalog item', 'item' => $item, 'id' => null, 'activity' => []]);
+		View::render('presales/catalog_form', ['title' => 'New catalog item', 'item' => $item, 'id' => null, 'activity' => [], 'back' => self::listBack($_GET['back'] ?? '')]);
 	}
 
 	public function edit(int $id): void
@@ -87,7 +87,7 @@ final class CatalogController
 		unset($_SESSION['old_catalog']);
 		$used = (int) Db::value('SELECT COUNT(DISTINCT design_id) FROM presales_design_lines WHERE catalog_item_id = ?', [$id]);
 		View::render('presales/catalog_form', ['title' => $saved['name'], 'item' => $item, 'id' => $id, 'used' => $used,
-			'activity' => Activity::feed('catalog_item', $id), 'canEdit' => Presales::canEdit()]);
+			'activity' => Activity::feed('catalog_item', $id), 'canEdit' => Presales::canEdit(), 'back' => self::listBack($_GET['back'] ?? '')]);
 	}
 
 	public function store(): void
@@ -102,10 +102,10 @@ final class CatalogController
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_catalog'] = $_POST;
 			flash('error', $e->getMessage());
-			redirect('/presales/catalog/new');
+			redirect('/presales/catalog/new' . self::backQuery($_POST['back'] ?? ''));
 		}
 		flash('success', '"' . $data['name'] . '" added.');
-		redirect('/presales/catalog?category=' . rawurlencode($data['category']) . '#item-' . $id);
+		redirect((self::listBack($_POST['back'] ?? '') ?: '/presales/catalog?category=' . rawurlencode($data['category'])) . '#item-' . $id);
 	}
 
 	public function update(int $id): void
@@ -120,10 +120,10 @@ final class CatalogController
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_catalog'] = $_POST + ['id' => $id];
 			flash('error', $e->getMessage());
-			redirect('/presales/catalog/' . $id);
+			redirect('/presales/catalog/' . $id . self::backQuery($_POST['back'] ?? ''));
 		}
 		flash('success', 'Saved "' . $data['name'] . '". Build sheets already using it keep their price until someone updates them.');
-		redirect('/presales/catalog?category=' . rawurlencode($data['category']) . '#item-' . $id);
+		redirect((self::listBack($_POST['back'] ?? '') ?: '/presales/catalog?category=' . rawurlencode($data['category'])) . '#item-' . $id);
 	}
 
 	/** The price was checked and is still right: date it today without changing it. */
@@ -137,6 +137,25 @@ final class CatalogController
 		flash('success', 'Price for "' . $item['name'] . '" confirmed as of today.');
 		$back = local_path((string) ($_POST['back'] ?? ''), '/presales/catalog');
 		redirect($back . '#item-' . $id);
+	}
+
+	/**
+	 * The catalog list URL the person came from (search, category and tab kept), or '' when there
+	 * is none. Only the catalog list itself is accepted, never another page, and any #fragment is
+	 * dropped so the caller can add the item's own.
+	 */
+	public static function listBack(mixed $back): string
+	{
+		$back = explode('#', is_string($back) ? $back : '', 2)[0];
+		$back = local_path($back, '');
+		return preg_match('#^/presales/catalog(\?[^/]*)?$#', $back) ? $back : '';
+	}
+
+	/** "?back=..." for links and redirects to an item page, or '' when there is no list to return to. */
+	public static function backQuery(mixed $back): string
+	{
+		$back = self::listBack($back);
+		return $back === '' ? '' : '?back=' . rawurlencode($back);
 	}
 
 	private function input(?int $id, ?array $before): array

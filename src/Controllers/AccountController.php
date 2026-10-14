@@ -19,22 +19,24 @@ final class AccountController
 			'SELECT * FROM device_sessions WHERE user_id = ? AND revoked_at IS NULL ORDER BY last_seen_at DESC',
 			[Auth::id()]
 		);
-		View::render('account', ['title' => 'My account', 'user' => Auth::user(), 'devices' => $devices]);
+		// The phone is not part of the per-request user row (Auth), so it is read here
+		$user = Auth::user() + ['phone' => Db::value('SELECT phone FROM users WHERE id = ?', [Auth::id()])];
+		View::render('account', ['title' => 'My account', 'user' => $user, 'devices' => $devices]);
 	}
 
 	public function profile(): void
 	{
 		$before = Db::one('SELECT * FROM users WHERE id = ?', [Auth::id()]);
-		$data = ['initials' => Users::cleanInitials($_POST['initials'] ?? '')];
+		$data = ['initials' => Users::cleanInitials($_POST['initials'] ?? ''), 'phone' => Users::cleanPhone($_POST['phone'] ?? '')];
 		if ($error = Users::initialsError($data['initials'], Auth::id())) {
 			flash('error', $error);
 			redirect('/account');
 		}
 		Db::transaction(function () use ($before, $data) {
 			Db::update('users', Auth::id(), $data + ['updated_at' => now_utc()]);
-			Activity::changes('user', Auth::id(), $before, $data, ['initials' => 'Initials']);
+			Activity::changes('user', Auth::id(), $before, $data, ['initials' => 'Initials', 'phone' => 'Phone']);
 		});
-		flash('success', 'Initials saved.');
+		flash('success', 'Profile saved.');
 		redirect('/account');
 	}
 
