@@ -108,6 +108,11 @@
 		if (i.matches && i.matches('input[inputmode=decimal]') && /^-?\./.test(i.value.trim())) {
 			i.value = i.value.trim().replace(/^(-?)\./, '$10.');
 		}
+		// Fixed precision where a field asks for it (per-watt prices: 0.2200)
+		if (i.dataset && i.dataset.dec !== undefined && i.value.trim() !== '') {
+			const v = parseFloat(i.value.replace(/[$,\s]/g, ''));
+			if (!isNaN(v)) i.value = v.toFixed(parseInt(i.dataset.dec, 10));
+		}
 	}, true);
 
 	if (!form) return;
@@ -263,6 +268,17 @@
 		const arr = e.target.closest('.array-row');
 		if (arr && (e.target.classList.contains('array-tilt') || e.target.classList.contains('array-az'))) syncArray(arr);
 	});
+
+	// ---- Labor price: four decimals per watt, cents for a total
+	const laborValue = document.getElementById('labor-value');
+	form.querySelectorAll('input[name=labor_mode]').forEach((r) => r.addEventListener('change', () => {
+		if (!laborValue || !r.checked) return;
+		const dec = r.value === 'total' ? 2 : 4;
+		laborValue.dataset.dec = String(dec);
+		laborValue.placeholder = dec === 2 ? '0.00' : '0.0000';
+		const v = parseFloat(laborValue.value.replace(/[$,\s]/g, ''));
+		if (!isNaN(v)) laborValue.value = v.toFixed(dec);
+	}));
 
 	// ---- Markup stepper: 0.5% steps, never below the floor, always one decimal
 	function fmtTenths(input) {

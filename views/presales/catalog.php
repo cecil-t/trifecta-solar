@@ -71,8 +71,8 @@ $spec = static function (array $i): string {
 						<?php endif; ?>
 					</td>
 					<td class="num nowrap">
-						<strong><?= e(Presales::unit((float) $i['price'])) ?></strong><?= $i['qty_rule'] === 'dc_watts' ? '/W' : ($k === 'sitework' ? '/ft' : '') ?>
-						<?php if ((float) $i['shipping'] > 0): ?><div class="muted small">+ <?= e(Presales::unit((float) $i['shipping'])) ?> shipping</div><?php endif; ?>
+						<strong><?= e(Presales::price((float) $i['price'], $i['qty_rule'])) ?></strong><?= $i['qty_rule'] === 'dc_watts' ? '/W' : ($k === 'sitework' ? '/ft' : '') ?>
+						<?php if ((float) $i['shipping'] > 0): ?><div class="muted small">+ <?= e(Presales::price((float) $i['shipping'], $i['qty_rule'])) ?> shipping</div><?php endif; ?>
 						<?php if ((float) $i['setup_cost'] > 0): ?><div class="muted small">+ <?= e(Presales::money((float) $i['setup_cost'])) ?> per line</div><?php endif; ?>
 						<?php if ($i['min_total'] !== null): ?><div class="muted small">min <?= e(Presales::money((float) $i['min_total'])) ?></div><?php endif; ?>
 						<?php if ($i['ext_warranty_cost'] !== null): ?><div class="muted small">ext. warranty +<?= e(Presales::money((float) $i['ext_warranty_cost'])) ?></div><?php endif; ?>

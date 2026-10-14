@@ -89,7 +89,7 @@ final class OpportunityReport
 			}
 			foreach (Db::all("SELECT * FROM presales_design_lines WHERE design_id = ? AND price_override IS NOT NULL AND TRIM(COALESCE(override_reason, '')) <> '' ORDER BY sort_order", [(int) $d['id']]) as $l) {
 				$list[] = ['design' => $d['name'], 'design_id' => (int) $d['id'], 'what' => $l['name'],
-					'was' => Presales::unit((float) $l['price'] + (float) $l['shipping']), 'now' => Presales::unit((float) $l['price_override']),
+					'was' => Presales::price((float) $l['price'] + (float) $l['shipping'], $l['qty_rule']), 'now' => Presales::price((float) $l['price_override'], $l['qty_rule']),
 					'reason' => (string) $l['override_reason']];
 			}
 		}

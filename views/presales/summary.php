@@ -98,7 +98,7 @@ foreach ($lines as $i => $l) {
 						<?php if ($l['catalog_item_id'] && isset($printNotes[(int) $l['catalog_item_id']])): ?><div class="muted small"><?= nl2br(e($printNotes[(int) $l['catalog_item_id']])) ?></div><?php endif; ?>
 					</td>
 					<td class="num"><?= e(Presales::field($c['qty_resolved'], 2)) ?><?= $l['qty_rule'] === 'dc_watts' ? ' W' : '' ?></td>
-					<td class="num"><?php if ($c['overridden']): ?><span class="unit-overridden"><?= e(Presales::unit($c['unit_total'])) ?></span><div class="override-why"><?= e((string) $l['override_reason']) ?></div><?php else: ?><?= e(Presales::unit($c['unit_total'])) ?><?php endif; ?></td>
+					<td class="num"><?php if ($c['overridden']): ?><span class="unit-overridden"><?= e(Presales::price($c['unit_total'], $c['qty_rule'])) ?></span><div class="override-why"><?= e((string) $l['override_reason']) ?></div><?php else: ?><?= e(Presales::price($c['unit_total'], $c['qty_rule'])) ?><?php endif; ?></td>
 					<td class="num"><?= $c['tax'] > 0 ? e($m($c['tax'])) : '-' ?></td>
 					<td class="num"><?= e($m($c['cost'])) ?></td>
 					<td class="num"><?= e($m($c['retail'])) ?></td>

@@ -111,8 +111,8 @@ final class DesignController
 			$was = $old && $old['price_override'] !== null ? [(float) $old['price_override'], (string) $old['override_reason']] : null;
 			$now = !empty($calc['lines'][$i]['overridden']) ? [(float) $l['price_override'], (string) $l['override_reason']] : null;
 			if ($now && $now !== $was) {
-				$out[] = 'price override on ' . $l['name'] . ': ' . Presales::unit($calc['lines'][$i]['catalog_unit']) . ' to '
-					. Presales::unit($calc['lines'][$i]['unit_total']) . ' (' . $now[1] . ')';
+				$out[] = 'price override on ' . $l['name'] . ': ' . Presales::price($calc['lines'][$i]['catalog_unit'], $l['qty_rule']) . ' to '
+					. Presales::price($calc['lines'][$i]['unit_total'], $l['qty_rule']) . ' (' . $now[1] . ')';
 			} elseif ($was && !$now) {
 				$out[] = 'price override removed on ' . $l['name'];
 			}
@@ -160,7 +160,7 @@ final class DesignController
 				'key' => (string) ($l['_key'] ?? ''),
 				'cat' => $l['category'],
 				'qty' => $c ? Presales::field($c['qty_resolved'], 2) : '',
-				'unit' => $c ? Presales::unit($c['unit_total']) : '',
+				'unit' => $c ? Presales::price($c['unit_total'], $c['qty_rule']) : '',
 				'subtotal' => $c ? $m($c['subtotal']) : '',
 				'tax' => $c && $c['tax'] > 0 ? $m($c['tax']) : '',
 				'cost' => $c ? $m($c['cost']) : '',
@@ -169,7 +169,7 @@ final class DesignController
 				'min' => $c ? $c['min_applied'] : false,
 				'overridden' => $c ? $c['overridden'] : false,
 				'override_pending' => $c ? $c['override_pending'] : false,
-				'catalog_unit' => $c ? Presales::unit($c['catalog_unit']) : '',
+				'catalog_unit' => $c ? Presales::price($c['catalog_unit'], $c['qty_rule']) : '',
 				'why' => $c && $c['overridden'] ? (string) $c['override_reason'] : '',
 				'changed' => $fl['changed'] ?? false,
 				'stale' => $fl['stale'] ?? false,

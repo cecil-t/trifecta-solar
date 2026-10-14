@@ -133,7 +133,7 @@ final class CatalogController
 		$item = $this->find($id);
 		$source = trim((string) ($_POST['price_source'] ?? '')) ?: $item['price_source'];
 		Db::update('catalog_items', $id, ['price_updated_at' => date('Y-m-d'), 'price_updated_by' => Auth::id(), 'price_source' => $source, 'updated_at' => now_utc()]);
-		Activity::event('catalog_item', $id, 'Price confirmed at ' . Presales::unit((float) $item['price']));
+		Activity::event('catalog_item', $id, 'Price confirmed at ' . Presales::price((float) $item['price'], $item['qty_rule']));
 		flash('success', 'Price for "' . $item['name'] . '" confirmed as of today.');
 		$back = local_path((string) ($_POST['back'] ?? ''), '/presales/catalog');
 		redirect($back . '#item-' . $id);

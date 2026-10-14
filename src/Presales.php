@@ -252,6 +252,18 @@ final class Presales
 		return $v === null ? '' : '$' . number_format($v, 4);
 	}
 
+	/** A unit price as shown: per-watt prices always to 4 decimals, others as unit(). */
+	public static function price(?float $v, ?string $qtyRule): string
+	{
+		return $qtyRule === 'dc_watts' ? self::perWatt($v) : self::unit($v);
+	}
+
+	/** A number for an input box with a fixed number of decimals (0.2200, not 0.22). */
+	public static function fixed(?float $v, int $dec): string
+	{
+		return $v === null ? '' : number_format($v, $dec, '.', '');
+	}
+
 	public static function pct(?float $v, int $dec = 1): string
 	{
 		return $v === null ? '' : number_format($v * 100, $dec) . '%';

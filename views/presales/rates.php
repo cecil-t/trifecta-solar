@@ -44,7 +44,7 @@ $rules = $rules ?: [[]];
 				<small class="hint">Build sheets can't be saved below this.</small>
 			</label>
 			<label>Round final price up to ($) <input type="text" name="settings[round_to]" value="<?= e($n($s('round_to'), 0)) ?>" inputmode="numeric" <?= $dis ?>></label>
-			<label>Default labor price ($/W) <input type="text" name="settings[labor_default]" value="<?= e($n($s('labor_default'), 4)) ?>" inputmode="decimal" required <?= $dis ?>>
+			<label>Default labor price ($/W) <input type="text" name="settings[labor_default]" value="<?= e($s('labor_default') === '' ? '' : Presales::fixed((float) $s('labor_default'), 4)) ?>" data-dec="4" inputmode="decimal" required <?= $dis ?>>
 				<small class="hint">New build sheets start here. Never zero.</small>
 			</label>
 			<label>Labor rate ($/man-hour) <input type="text" name="settings[labor_rate]" value="<?= e($n($s('labor_rate'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>

@@ -54,7 +54,7 @@ $dis = $canEdit ? '' : 'disabled';
 		<h2>Price</h2>
 		<div class="grid-form">
 			<label>Cost to us
-				<input type="text" name="price" value="<?= e($n($v('price'))) ?>" inputmode="decimal" required <?= $dis ?>>
+				<input type="text" name="price" value="<?= e($v('qty_rule') === 'dc_watts' && $v('price') !== '' && $v('price') !== null ? Presales::fixed((float) $v('price'), 4) : $n($v('price'))) ?>" inputmode="decimal" required <?= $dis ?>>
 				<small class="hint">Per unit, per watt or per foot (see Quantity). Up to 4 decimals: 0.1851.</small>
 			</label>
 			<label>Quantity
