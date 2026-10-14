@@ -73,11 +73,16 @@ final class DesignController
 			$merged = array_merge($d, $f);
 			$calc = Designs::calc($merged, $lines, $arrays);
 			$this->checkDeposit($oppId, $merged, $calc);
+			$before = [];
+			foreach (Designs::lines($id) as $l) {
+				$before[(int) $l['id']] = $l;
+			}
 			Designs::save($d, $f, $lines, $arrays, $calc);
 			$changes = [];
 			if (abs((float) $d['price_total'] - $calc['price']) > 0.5) {
 				$changes[] = 'price ' . Presales::money((float) $d['price_total']) . ' to ' . Presales::money($calc['price']);
 			}
+			$changes = [...$changes, ...self::overrideChanges($before, $lines, $calc)];
 			Activity::event('presales', $oppId, 'Build sheet "' . $f['name'] . '" saved' . ($changes ? ': ' . implode(', ', $changes) : ''));
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['design_failed'][$id] = $_POST;
@@ -86,6 +91,36 @@ final class DesignController
 		}
 		flash('success', 'Build sheet saved. Final price ' . Presales::money($calc['price']) . '.');
 		redirect('/presales/' . $oppId . '/designs/' . $id);
+	}
+
+	/** Log lines for price overrides that were added, changed or removed in this save. */
+	private static function overrideChanges(array $before, array $lines, array $calc): array
+	{
+		$out = [];
+		$seen = [];
+		foreach ($lines as $i => $l) {
+			if ($l['category'] === 'extra') {
+				continue;
+			}
+			$old = $l['id'] ? ($before[(int) $l['id']] ?? null) : null;
+			if ($old) {
+				$seen[(int) $l['id']] = true;
+			}
+			$was = $old && $old['price_override'] !== null ? [(float) $old['price_override'], (string) $old['override_reason']] : null;
+			$now = !empty($calc['lines'][$i]['overridden']) ? [(float) $l['price_override'], (string) $l['override_reason']] : null;
+			if ($now && $now !== $was) {
+				$out[] = 'price override on ' . $l['name'] . ': ' . Presales::unit($calc['lines'][$i]['catalog_unit']) . ' to '
+					. Presales::unit($calc['lines'][$i]['unit_total']) . ' (' . $now[1] . ')';
+			} elseif ($was && !$now) {
+				$out[] = 'price override removed on ' . $l['name'];
+			}
+		}
+		foreach ($before as $id => $old) {
+			if (!isset($seen[$id]) && $old['price_override'] !== null) {
+				$out[] = 'line with a price override removed: ' . $old['name'];
+			}
+		}
+		return $out;
 	}
 
 	/** Live calculation for the editor: reads the form as it stands, saves nothing, returns JSON. */
@@ -130,6 +165,9 @@ final class DesignController
 				'retail' => $c ? $m($c['retail']) : '',
 				'rpw' => $c && $c['retail_per_watt'] !== null ? Presales::perWatt($c['retail_per_watt']) : '',
 				'min' => $c ? $c['min_applied'] : false,
+				'overridden' => $c ? $c['overridden'] : false,
+				'override_pending' => $c ? $c['override_pending'] : false,
+				'catalog_unit' => $c ? Presales::unit($c['catalog_unit']) : '',
 				'changed' => $fl['changed'] ?? false,
 				'stale' => $fl['stale'] ?? false,
 				'retired' => $fl['retired'] ?? false,

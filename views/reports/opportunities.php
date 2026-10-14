@@ -4,6 +4,7 @@
  * @var array $total
  * @var array $cold   open opportunities with no change in 30+ days
  * @var array $lost   lost reasons grouped
+ * @var array $overrides  every contingency and line price override, with its reason
  * @var bool  $admin
  */
 use App\OpportunityReport;
@@ -35,12 +36,33 @@ $row = static function (array $r, bool $foot = false) use ($pct, $m): string {
 	<h2 class="sub report-sub">By salesperson</h2>
 	<div class="table-wrap">
 		<table class="table table-opps">
-			<thead><tr><th>Salesperson</th><th class="num">Opps</th><th class="num">Open</th><th class="num">Sold</th><th class="num">Lost</th><th class="num">Win rate</th><th class="num">Open $</th><th class="num">Sold $</th><th class="num">Avg price</th><th class="num">Avg $/W</th><th class="num">Avg kW</th><th class="num">Days to close</th><th class="num">Avg margin</th><th class="num">Avg markup</th><th class="num" title="Build sheets with the contingency overridden">Overrides</th></tr></thead>
+			<thead><tr><th>Salesperson</th><th class="num">Opps</th><th class="num">Open</th><th class="num">Sold</th><th class="num">Lost</th><th class="num">Win rate</th><th class="num">Open $</th><th class="num">Sold $</th><th class="num">Avg price</th><th class="num">Avg $/W</th><th class="num">Avg kW</th><th class="num">Days to close</th><th class="num">Avg margin</th><th class="num">Avg markup</th><th class="num" title="Contingency and line price overrides on any build sheet">Overrides</th></tr></thead>
 			<tbody>
 			<?php if (!$rows): ?><tr><td colspan="15" class="empty">No opportunities in this range.</td></tr><?php endif; ?>
 			<?php foreach ($rows as $r): ?><?= $row($r) ?><?php endforeach; ?>
 			</tbody>
 			<?php if (count($rows) > 1): ?><tfoot><?= $row($total, true) ?></tfoot><?php endif; ?>
+		</table>
+	</div>
+
+	<h2 class="sub report-sub">Overrides <span class="muted small">(contingency and line prices, on any build sheet)</span></h2>
+	<div class="table-wrap">
+		<table class="table table-overrides">
+			<thead><tr><th>Opportunity</th><th>Build sheet</th><th>Salesperson</th><th>Override</th><th class="num">Was</th><th class="num">Now</th><th>Reason</th></tr></thead>
+			<tbody>
+			<?php if (!$overrides): ?><tr><td colspan="7" class="empty">No overrides in this range.</td></tr><?php endif; ?>
+			<?php foreach ($overrides as $ov): ?>
+				<tr data-href="/presales/<?= (int) $ov['o']['id'] ?>/designs/<?= (int) $ov['design_id'] ?>">
+					<td><a href="/presales/<?= (int) $ov['o']['id'] ?>"><?= e($ov['o']['name']) ?></a></td>
+					<td><a href="/presales/<?= (int) $ov['o']['id'] ?>/designs/<?= (int) $ov['design_id'] ?>"><?= e($ov['design']) ?></a></td>
+					<td><?= e($ov['o']['salesperson_name'] ?? '') ?></td>
+					<td class="cell-desc"><?= e($ov['what']) ?></td>
+					<td class="num"><?= e($ov['was']) ?></td>
+					<td class="num"><?= e($ov['now']) ?></td>
+					<td class="cell-desc"><?= e($ov['reason']) ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
 		</table>
 	</div>
 

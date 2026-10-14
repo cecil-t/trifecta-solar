@@ -93,6 +93,7 @@ foreach ($lines as $i => $l) {
 				<tr class="sheet-item">
 					<td>
 						<?= e($l['name']) ?><?= !empty($l['ext_warranty']) ? ' <span class="muted">+ ext. warranty ' . (int) $l['ext_warranty_years'] . ' yr</span>' : '' ?>
+						<?php if ($c['overridden']): ?> <span class="chip chip-purple">Price overridden</span><div class="muted small">From <?= e(Presales::unit($c['catalog_unit'])) ?>: <?= e((string) $l['override_reason']) ?></div><?php endif; ?>
 						<?php if ($fl && ($fl['changed'] || $fl['retired'])): ?> <span class="chip chip-red">Catalog price changed</span><?php endif; ?>
 						<?php if ($fl && $fl['stale'] && !$fl['retired']): ?> <span class="chip chip-orange">Check price</span><?php endif; ?>
 						<?php if ($l['catalog_item_id'] && isset($printNotes[(int) $l['catalog_item_id']])): ?><div class="muted small"><?= nl2br(e($printNotes[(int) $l['catalog_item_id']])) ?></div><?php endif; ?>

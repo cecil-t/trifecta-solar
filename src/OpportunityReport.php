@@ -9,7 +9,8 @@ namespace App;
  * An opportunity's value is its sold build sheet once sold, otherwise the average of its build
  * sheets (only one will close, so adding them up would overstate the pipeline). Opportunities are
  * dated by when they were created. "Going cold" is every open opportunity whose latest change
- * (an edit, a build sheet save, a status change or a log note) is 30 or more days old.
+ * (an edit, a build sheet save, a status change or a log note) is 30 or more days old. Overrides
+ * are every contingency or line price override, with its reason, on any of the opportunity's build sheets.
  */
 final class OpportunityReport
 {
@@ -31,6 +32,7 @@ final class OpportunityReport
 		$total = self::blank('Total');
 		$cold = [];
 		$lost = [];
+		$overrides = [];
 		foreach ($opps as $o) {
 			if ($class !== '' && Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']) !== $class) {
 				continue;
@@ -56,6 +58,9 @@ final class OpportunityReport
 				self::add($r, $o, $v);
 			}
 			unset($r);
+			foreach ($v['override_list'] as $ov) {
+				$overrides[] = $ov + ['o' => $o];
+			}
 			if ($o['status'] === 'lost') {
 				$reason = trim((string) $o['lost_reason']);
 				$k = $reason === '' ? '' : mb_strtolower($reason);
@@ -68,22 +73,33 @@ final class OpportunityReport
 		uasort($rows, static fn ($a, $b) => strcmp($a['name'], $b['name']));
 		usort($cold, static fn ($a, $b) => $b['days'] <=> $a['days']);
 		uasort($lost, static fn ($a, $b) => $b['count'] <=> $a['count']);
-		return ['rows' => $rows, 'total' => self::finish($total), 'cold' => $cold, 'lost' => array_values($lost)];
+		return ['rows' => $rows, 'total' => self::finish($total), 'cold' => $cold, 'lost' => array_values($lost), 'overrides' => $overrides];
 	}
 
 	/** Price, kW, $/W, margin, markup and overrides for one opportunity (sold sheet, else the average). */
 	public static function value(array $o): array
 	{
 		$designs = Db::all('SELECT * FROM presales_designs WHERE opportunity_id = ?', [(int) $o['id']]);
+		// Overrides count on every build sheet, sold or not: each one was a price someone quoted
+		$list = [];
+		foreach ($designs as $d) {
+			if ($d['contingency_override'] !== null && trim((string) $d['contingency_reason']) !== '') {
+				$list[] = ['design' => $d['name'], 'design_id' => (int) $d['id'], 'what' => 'Contingency', 'was' => 'Rules',
+					'now' => Presales::pct((float) $d['contingency_override'] / 100), 'reason' => (string) $d['contingency_reason']];
+			}
+			foreach (Db::all("SELECT * FROM presales_design_lines WHERE design_id = ? AND price_override IS NOT NULL AND TRIM(COALESCE(override_reason, '')) <> '' ORDER BY sort_order", [(int) $d['id']]) as $l) {
+				$list[] = ['design' => $d['name'], 'design_id' => (int) $d['id'], 'what' => $l['name'],
+					'was' => Presales::unit((float) $l['price'] + (float) $l['shipping']), 'now' => Presales::unit((float) $l['price_override']),
+					'reason' => (string) $l['override_reason']];
+			}
+		}
 		if ($o['status'] === 'sold' && $o['sold_design_id']) {
 			$designs = array_values(array_filter($designs, static fn ($d) => (int) $d['id'] === (int) $o['sold_design_id'])) ?: $designs;
 		}
 		$n = 0;
 		$sum = ['price' => 0.0, 'kw' => 0.0, 'margin' => 0.0, 'markup' => 0.0];
 		$marginN = 0;
-		$overrides = 0;
 		foreach ($designs as $d) {
-			$overrides += $d['contingency_override'] !== null ? 1 : 0;
 			if ((float) $d['price_total'] <= 0) {
 				continue;
 			}
@@ -103,7 +119,8 @@ final class OpportunityReport
 			'kw' => $n ? $sum['kw'] / $n : 0.0,
 			'margin' => $marginN ? $sum['margin'] / $marginN : null,
 			'markup' => $n ? $sum['markup'] / $n : null,
-			'overrides' => $overrides,
+			'overrides' => count($list),
+			'override_list' => $list,
 		];
 	}
 

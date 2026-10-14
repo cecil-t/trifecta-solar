@@ -274,7 +274,17 @@ final class Designs
 					$snap = self::snapshot($catalog[$itemId]);
 				}
 				$snap['category'] = $cat;
+				$ovr = $num($r['override'] ?? '', 'Price override for ' . $snap['name']);
+				$why = trim((string) ($r['override_reason'] ?? ''));
+				if ($ovr !== null && $strict && $why === '') {
+					throw new \InvalidArgumentException('Type a reason for the price override on ' . $snap['name'] . '.');
+				}
+				if ($ovr !== null && $strict && $ovr < 0) {
+					throw new \InvalidArgumentException('The price override on ' . $snap['name'] . ' can\'t be below zero.');
+				}
 				$lines[] = $snap + [
+					'price_override' => $ovr,
+					'override_reason' => $ovr !== null ? ($why ?: null) : null,
 					'id' => $old ? $lineId : null,
 					'qty' => $snap['qty_rule'] === 'manual' ? ($qty ?? 0) : null,
 					'ext_warranty' => !empty($r['ext']) && $snap['ext_warranty_cost'] !== null ? 1 : 0,

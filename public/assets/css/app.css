@@ -1518,3 +1518,10 @@ a[href^="tel:"] { white-space: nowrap; }
 .table-opps th { overflow-wrap: normal; word-break: keep-all; hyphens: none; min-width: 3.2rem; }
 .table-opps th:first-child { min-width: 8rem; }
 .table-opps th, .table-opps td { padding-left: 0.45rem; padding-right: 0.45rem; }
+.pl-override summary { cursor: pointer; color: var(--blue); font-size: .8rem; font-weight: 600; }
+.pl-override-fields { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .3rem; }
+.pl-override-fields input[type=text]:last-child { flex: 1 1 160px; }
+.pl-override-fields .input-short { width: 90px; }
+.pl-override .pl-notes-text { margin: .3rem 0 0; font-size: .78rem; color: var(--muted); }
+.table-overrides td.cell-desc { min-width: 12rem; }
+.table-overrides th { overflow-wrap: normal; word-break: keep-all; }

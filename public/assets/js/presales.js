@@ -60,6 +60,7 @@
 				if (i.dataset.defaultChecked) i.checked = true;
 			});
 			clone.classList.remove('has-flag', 'has-changed', 'is-steep');
+			clone.querySelectorAll('details').forEach((d) => { d.open = false; });
 			clone.querySelectorAll('[data-l]').forEach((s) => { s.textContent = ''; });
 			clone.querySelectorAll('.pl-flags').forEach((s) => { s.textContent = ''; });
 			const key = clone.querySelector('.pl-key');
@@ -131,6 +132,8 @@
 			notes.hidden = text === '';
 			notes.querySelector('.pl-notes-text').textContent = text;
 		}
+		const ovr = row.querySelector('.pl-override');
+		if (ovr) ovr.hidden = custom || sel.value === '';
 		if (rule === 'manual' && !custom && sel.value !== '' && row.querySelector('.pl-qty-input').value === '') {
 			row.querySelector('.pl-qty-input').value = '1';
 		}
@@ -242,7 +245,15 @@
 	form.querySelectorAll('.array-row').forEach(syncArray);
 	form.addEventListener('change', (e) => {
 		const row = e.target.closest('.pl-row');
-		if (row && e.target.classList.contains('pl-select')) syncLine(row);
+		if (row && e.target.classList.contains('pl-select')) {
+			// a different item starts from its catalog price
+			const ovr = row.querySelector('.pl-override');
+			if (ovr) {
+				ovr.querySelectorAll('input').forEach((i) => { i.value = ''; });
+				ovr.open = false;
+			}
+			syncLine(row);
+		}
 		const arr = e.target.closest('.array-row');
 		if (arr) syncArray(arr);
 	});
@@ -304,6 +315,8 @@
 			});
 			const flags = row.querySelector('.pl-flags');
 			flags.textContent = '';
+			if (l.overridden) flags.appendChild(chip('Price overridden (from ' + l.catalog_unit + ')', 'chip-purple'));
+			else if (l.override_pending) flags.appendChild(chip('Type a reason to use the override', 'chip-red'));
 			if (l.retired) flags.appendChild(chip('Retired from the catalog', 'chip-red'));
 			else if (l.changed) flags.appendChild(chip('Catalog price changed', 'chip-red'));
 			if (l.stale && !l.retired) flags.appendChild(chip('Check price: ' + (l.price_date || 'never dated'), 'chip-orange'));

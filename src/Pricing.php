@@ -9,6 +9,8 @@ namespace App;
  * price (up to the next $100) and the payment milestones; displays round for reading only.
  *
  * Order of operations (same as the old Master Buildsheet, with its known slips fixed):
+ *   unit             = catalog cost (price + shipping), or a price override that has a reason,
+ *                      plus the extended warranty and SolarInsure add-ons when they apply
  *   line cost        = max(unit x qty + setup, minimum) + tax (6% on BOS always, on major
  *                      equipment unless the job is tax exempt; "tax included" and fees untaxed)
  *   base cost        = lines + warranty program + labor + overnight + per diem + site visit
@@ -63,6 +65,7 @@ final class Pricing
 		$taxTotal = 0.0;
 		$hasSitework = false;
 		$hasEquipmentRental = false;
+		$overrideCount = 0;
 		foreach ($lines as $i => $l) {
 			$cat = $l['category'];
 			if ($cat === 'extra') {
@@ -77,9 +80,15 @@ final class Pricing
 				'module_pairs' => (float) (int) ceil($panels / 2),
 				default        => max(0.0, (float) ($l['qty'] ?? 0)),
 			};
-			$unit = (float) ($l['price'] ?? 0) + (float) ($l['shipping'] ?? 0)
-				+ (!empty($l['ext_warranty']) ? (float) ($l['ext_warranty_cost'] ?? 0) : 0)
+			$catalogUnit = (float) ($l['price'] ?? 0) + (float) ($l['shipping'] ?? 0);
+			$ovr = $l['price_override'] ?? null;
+			$lineOverridden = $ovr !== null && $ovr !== '' && trim((string) ($l['override_reason'] ?? '')) !== '';
+			$addOns = (!empty($l['ext_warranty']) ? (float) ($l['ext_warranty_cost'] ?? 0) : 0)
 				+ ($solarInsure ? (float) ($l['siw_cost'] ?? 0) : 0);
+			$unit = ($lineOverridden ? (float) $ovr : $catalogUnit) + $addOns;
+			if ($lineOverridden) {
+				$overrideCount++;
+			}
 			$subtotal = 0.0;
 			$minApplied = false;
 			if ($qty > 0) {
@@ -111,6 +120,8 @@ final class Pricing
 			}
 			$out[$i] = $l + [
 				'qty_resolved' => $qty, 'unit_total' => $unit, 'subtotal' => $subtotal, 'min_applied' => $minApplied,
+				'overridden' => $lineOverridden, 'catalog_unit' => $catalogUnit + $addOns,
+				'override_pending' => !$lineOverridden && $ovr !== null && $ovr !== '',
 				'taxable' => $taxable, 'tax' => $tax, 'cost' => $cost,
 			];
 		}
@@ -290,6 +301,7 @@ final class Pricing
 			'contingency_floor_applied' => $floorApplied && !$overridden,
 			'contingency_rule_amount' => max($ruleAmount, $baseCost > 0 ? $floor : 0),
 			'contingency_overridden' => $overridden,
+			'price_overrides' => $overrideCount,
 			'cost_total' => $costTotal,
 			'marked_up' => $markedUp,
 			'markup_amount' => $markedUp - $costTotal,

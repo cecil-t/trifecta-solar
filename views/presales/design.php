@@ -68,11 +68,16 @@ $orient = static function (?int $az, ?float $tilt, string $mount) use ($steep, $
 	}
 	return $h . '<span class="pitch-label">' . e(implode(' · ', $label)) . '</span>';
 };
-$lineFlag = static function (?array $f): string {
-	if (!$f) {
-		return '';
-	}
+$lineFlag = static function (?array $f, ?array $c = null): string {
 	$h = '';
+	if ($c && $c['overridden']) {
+		$h .= '<span class="chip chip-purple" title="' . e((string) $c['override_reason']) . '">Price overridden (from ' . e(Presales::unit($c['catalog_unit'])) . ')</span>';
+	} elseif ($c && $c['override_pending']) {
+		$h .= '<span class="chip chip-red">Type a reason to use the override</span>';
+	}
+	if (!$f) {
+		return $h;
+	}
 	if ($f['retired']) {
 		$h .= '<span class="chip chip-red">Retired from the catalog</span>';
 	} elseif ($f['changed']) {
@@ -302,7 +307,15 @@ $folded = [];
 										<summary>Details</summary>
 										<p class="pl-notes-text"><?= nl2br(e((string) $notes)) ?></p>
 									</details>
-									<span class="pl-flags"><?= $lineFlag($fl) ?></span>
+									<details class="pl-override" <?= $l && !$isCustom ? '' : 'hidden' ?> <?= $l && $l['price_override'] !== null ? 'open' : '' ?>>
+										<summary>Override price</summary>
+										<div class="pl-override-fields">
+											<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override]" value="<?= e($l && $l['price_override'] !== null ? $pf((float) $l['price_override']) : '') ?>" placeholder="Unit cost" inputmode="decimal" aria-label="Override unit cost" class="input-short">
+											<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override_reason]" value="<?= e((string) ($l['override_reason'] ?? '')) ?>" placeholder="Reason (required)" maxlength="200" aria-label="Override reason">
+										</div>
+										<p class="pl-notes-text">Replaces the catalog cost per unit, shipping included. Extended warranty and SolarInsure still add.</p>
+									</details>
+									<span class="pl-flags"><?= $lineFlag($fl, $c) ?></span>
 								</div>
 								<div class="pl-qty">
 									<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][qty]" value="<?= e($l && $l['qty'] !== null ? $pf((float) $l['qty'], 2) : '') ?>" inputmode="decimal" aria-label="Quantity" class="pl-qty-input" <?= $rule === 'manual' ? '' : 'hidden' ?>>

@@ -26,7 +26,7 @@ final class ReportController
 		'projection' => ['Projection', 'Next 12 months at the pace of the last quarter, this year, and rolling 12 and 24 months.'],
 		'time' => ['Project time', 'Days from contract signed to PTO, with an in-progress list.'],
 		'service' => ['Service', 'Tickets, trips, man-hours and amounts billed by coverage and month.'],
-		'opportunities' => ['Opportunities', 'Sales pipeline by salesperson: open, sold and lost quotes, win rate, pricing, and quotes going cold.'],
+		'opportunities' => ['Opportunities', 'Sales pipeline by salesperson: open, sold and lost quotes, win rate, pricing, overrides, and quotes going cold.'],
 	];
 
 	/** The reports this user may open (Opportunities is for salespeople and admins). */
