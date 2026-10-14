@@ -172,7 +172,7 @@ $folded = [];
 				<div class="dt-markup">Markup <strong data-v="markup_pct"><?= e(Presales::pct((float) $d['markup'])) ?></strong></div>
 				<div class="dt-margin-main"><span data-v="gross_margin_pct"><?= $calc['gross_margin_pct'] === null ? '-' : e(Presales::pct($calc['gross_margin_pct'])) ?></span> <small>gross margin</small> <span class="dt-margin-amt" data-v="gross_margin"><?= e($m($calc['gross_margin'])) ?></span></div>
 				<div class="small">If the contingency isn't used: <strong data-v="margin_if_unused_pct"><?= $calc['margin_if_unused_pct'] === null ? '-' : e(Presales::pct($calc['margin_if_unused_pct'])) ?></strong></div>
-				<div class="small" title="Commission plus the site visit">Salesperson total: <strong data-v="to_salesperson"><?= e($m($calc['to_salesperson'])) ?></strong> <span class="muted small">commission + visit</span></div>
+				<div class="small" title="Commission plus the site visit">Salesperson total: <strong data-v="to_salesperson"><?= e($m($calc['to_salesperson'])) ?></strong></div>
 				<div class="small">Domestic content: <strong data-v="domestic_short"><?= $calc['domestic_content_pct'] === null ? 'unknown' : e(Presales::pct($calc['domestic_content_pct'])) ?></strong></div>
 				<p class="hint mt-xs dt-explain">Gross margin = (retail price - extras without markup) - internal cost (including contingency) - commission, as a share of the retail price less extras. Extras are pass-through, so they are left out.</p>
 			</div>

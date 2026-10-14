@@ -1494,3 +1494,12 @@ a[href^="tel:"] { white-space: nowrap; }
 	.sheet-compact .sheet-step td, .sheet-compact .sheet-final td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	.sheet-lower { break-inside: avoid; }
 }
+/* Build sheet: Save floats at the bottom like the other edit forms (phones and tablets use the price bar) */
+@media (min-width: 1101px) {
+	.design-main .form-actions {
+		position: sticky; bottom: 0; z-index: 15; width: fit-content; margin: 0 0 1rem; padding: .6rem .9rem;
+		background: rgba(255, 255, 255, .96); border: 1px solid var(--border); border-radius: var(--radius);
+		box-shadow: 0 -4px 16px rgba(16, 32, 40, .08); backdrop-filter: blur(4px);
+	}
+}
+.table-rules td.num { white-space: nowrap; width: 4.5rem; }

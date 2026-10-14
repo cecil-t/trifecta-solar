@@ -154,12 +154,11 @@ final class PresalesController
 		View::render('presales/show', [
 			'title' => $o['name'], 'o' => $o, 'cards' => $cards, 'contacts' => $contacts, 'otherOpps' => $otherOpps,
 			'customerProjects' => $customerProjects,
-			'projects' => Db::all('SELECT id, project_number, name FROM projects ORDER BY project_number DESC'),
 			'activity' => Activity::feed('presales', $id),
 		]);
 	}
 
-	/** Open / Sold / Lost. Sold names the build sheet sold (and optionally the project); Lost takes an optional reason. */
+	/** Open / Sold / Lost. Sold names the build sheet sold; Lost takes an optional reason. */
 	public function status(int $id): void
 	{
 		$o = $this->find($id);
@@ -182,10 +181,8 @@ final class PresalesController
 				redirect('/presales/' . $id);
 			}
 			$data['sold_design_id'] = $did;
-			$pid = (int) ($_POST['project_id'] ?? 0);
-			$data['project_id'] = $pid && Db::value('SELECT 1 FROM projects WHERE id = ?', [$pid]) ? $pid : null;
 			$data['lost_reason'] = null;
-			$msg .= ' with "' . $design['name'] . '"' . ($data['project_id'] ? ', project ' . Db::value('SELECT project_number FROM projects WHERE id = ?', [$data['project_id']]) : '');
+			$msg .= ' with "' . $design['name'] . '"';
 		} else {
 			$data['lost_reason'] = null;
 			$data['sold_design_id'] = null;

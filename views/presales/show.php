@@ -9,7 +9,6 @@ use App\Projects;
  * @var array $contacts          customer contacts
  * @var array $otherOpps         the customer's other opportunities
  * @var array $customerProjects  the customer's projects
- * @var array $projects          all projects, for linking a sold opportunity
  * @var array $activity
  */
 $siteAddr = trim(implode(', ', array_filter([$o['site_street'], $o['site_city'], trim(($o['site_state'] ?? '') . ' ' . ($o['site_zip'] ?? ''))])));
@@ -89,13 +88,6 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 							<?php foreach ($cards as $c): ?><option value="<?= (int) $c['d']['id'] ?>"><?= e($c['d']['name']) ?> (<?= e(Presales::money($c['calc']['price'])) ?>)</option><?php endforeach; ?>
 						</select>
 					</label>
-					<label>Already in Projects? (optional)
-						<select name="project_id">
-							<option value="">No project yet</option>
-							<?php foreach ($projects as $pr): ?><option value="<?= (int) $pr['id'] ?>"><?= e($pr['project_number'] . ' ' . $pr['name']) ?></option><?php endforeach; ?>
-						</select>
-					</label>
-					<small class="hint">Only for a job someone already set up in Projects by hand. It links the two records; it isn't a change order. Creating the project from the sold build sheet comes later.</small>
 					<button class="btn btn-secondary btn-small">Mark sold</button>
 				</form>
 			<?php endif; ?>
