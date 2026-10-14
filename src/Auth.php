@@ -42,7 +42,7 @@ final class Auth
 		return self::$deviceId;
 	}
 
-	private const USER_SQL = 'SELECT u.id, u.email, u.name, u.initials, u.is_admin, u.is_active,
+	private const USER_SQL = 'SELECT u.id, u.email, u.name, u.initials, u.is_admin, u.is_sales, u.is_active,
 			d.id AS device_id, d.last_seen_at
 		FROM device_sessions d JOIN users u ON u.id = d.user_id
 		WHERE d.revoked_at IS NULL AND u.is_active = 1 AND u.password_hash IS NOT NULL';

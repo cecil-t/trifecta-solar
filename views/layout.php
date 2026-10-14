@@ -6,6 +6,7 @@ $user = Auth::user();
 $path = current_path();
 $nav = [
 	['/', 'Dashboard', true],
+	['/presales', 'Pre-Sales', true],
 	['/projects', 'Projects', true],
 	['/service', 'Service', true],
 	['/tasks', 'Tasks', true],
@@ -46,6 +47,8 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 				<a href="/customers">Customers</a>
 				<a href="/municipalities">Municipalities</a>
 				<a href="/directory">Directory (third parties)</a>
+				<a href="/presales/catalog">Pre-Sales catalog</a>
+				<a href="/presales/rates">Buildsheet rates</a>
 				<?php if (Auth::isAdmin()): ?>
 					<a href="/admin/template" class="menu-admin">Task template <span class="menu-tag">Admin</span></a>
 					<a href="/users" class="menu-admin">Users <span class="menu-tag">Admin</span></a>

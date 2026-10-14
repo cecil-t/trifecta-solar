@@ -17,14 +17,18 @@ use App\Controllers\AboutController;
 use App\Controllers\AccountController;
 use App\Controllers\ActivityController;
 use App\Controllers\AuthController;
+use App\Controllers\CatalogController;
 use App\Controllers\ContactController;
 use App\Controllers\DashboardController;
+use App\Controllers\DesignController;
 use App\Controllers\DisplayKeyController;
 use App\Controllers\HealthController;
 use App\Controllers\MonitorController;
 use App\Controllers\MonitorPageController;
 use App\Controllers\MunicipalityController;
 use App\Controllers\OrganizationController;
+use App\Controllers\PresalesController;
+use App\Controllers\PresalesRatesController;
 use App\Controllers\ProjectController;
 use App\Controllers\SearchController;
 use App\Controllers\SetupController;
@@ -89,6 +93,31 @@ $r->post('/users/{id}/revoke-devices', [UserController::class, 'revokeDevices'],
 
 // Search (top bar)
 $r->get('/search', [SearchController::class, 'index']);
+
+// Pre-Sales: opportunities and their build sheets, the price catalog and the buildsheet rates
+$r->get('/presales', [PresalesController::class, 'index']);
+$r->get('/presales/new', [PresalesController::class, 'create']);
+$r->post('/presales', [PresalesController::class, 'store']);
+$r->get('/presales/catalog', [CatalogController::class, 'index']);
+$r->get('/presales/catalog/new', [CatalogController::class, 'create']);
+$r->post('/presales/catalog', [CatalogController::class, 'store']);
+$r->get('/presales/catalog/{id}', [CatalogController::class, 'edit']);
+$r->post('/presales/catalog/{id}', [CatalogController::class, 'update']);
+$r->post('/presales/catalog/{id}/confirm', [CatalogController::class, 'confirm']);
+$r->get('/presales/rates', [PresalesRatesController::class, 'show']);
+$r->post('/presales/rates', [PresalesRatesController::class, 'save']);
+$r->get('/presales/{id}', [PresalesController::class, 'show']);
+$r->get('/presales/{id}/edit', [PresalesController::class, 'edit']);
+$r->post('/presales/{id}', [PresalesController::class, 'update']);
+$r->post('/presales/{id}/status', [PresalesController::class, 'status']);
+$r->post('/presales/{id}/comments', [PresalesController::class, 'comment']);
+$r->post('/presales/{id}/designs', [DesignController::class, 'create']);
+$r->get('/presales/{id}/designs/{designId}', [DesignController::class, 'show']);
+$r->post('/presales/{id}/designs/{designId}', [DesignController::class, 'save']);
+$r->post('/presales/{id}/designs/{designId}/calc', [DesignController::class, 'calc']);
+$r->post('/presales/{id}/designs/{designId}/duplicate', [DesignController::class, 'duplicate']);
+$r->post('/presales/{id}/designs/{designId}/reprice', [DesignController::class, 'reprice']);
+$r->post('/presales/{id}/designs/{designId}/delete', [DesignController::class, 'delete']);
 
 // Projects
 $r->get('/projects', [ProjectController::class, 'index']);

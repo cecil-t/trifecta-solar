@@ -15,7 +15,7 @@ final class UserController
 {
 	private const TRACKED = [
 		'name' => 'Name', 'email' => 'Email', 'initials' => 'Initials',
-		'is_admin' => 'Admin', 'is_active' => 'Active',
+		'is_admin' => 'Admin', 'is_sales' => 'Sales', 'is_active' => 'Active',
 	];
 
 	public function index(): void
@@ -81,7 +81,7 @@ final class UserController
 		$yesNo = static fn ($v) => $v ? 'Yes' : 'No';
 		Db::transaction(function () use ($id, $before, $data, $yesNo) {
 			Db::update('users', $id, $data + ['updated_at' => now_utc()]);
-			Activity::changes('user', $id, $before, $data, self::TRACKED, ['is_admin' => $yesNo, 'is_active' => $yesNo]);
+			Activity::changes('user', $id, $before, $data, self::TRACKED, ['is_admin' => $yesNo, 'is_sales' => $yesNo, 'is_active' => $yesNo]);
 			if ($before['is_active'] && !$data['is_active']) {
 				Auth::revokeAllForUser($id);
 				Activity::event('user', $id, 'Deactivated; all devices signed out');
@@ -137,6 +137,7 @@ final class UserController
 			'email'     => strtolower(trim((string) ($_POST['email'] ?? ''))),
 			'initials'  => Users::cleanInitials($_POST['initials'] ?? ''),
 			'is_admin'  => empty($_POST['is_admin']) ? 0 : 1,
+			'is_sales'  => empty($_POST['is_sales']) ? 0 : 1,
 			'is_active' => empty($_POST['is_active']) ? 0 : 1,
 		];
 	}

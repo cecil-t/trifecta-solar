@@ -14,6 +14,7 @@ declare(strict_types=1);
  *   import:service <file.json> [--dry-run]    Add service tickets (never changes existing ones)
  *   import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
  *   import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
+ *   import:presales <file.json> [--dry-run]   Add Pre-Sales catalog items and buildsheet rates (never changes existing ones)
  *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
@@ -113,6 +114,16 @@ try {
 				fail('This is a record-only import: it only adds projects and never replaces. Run it without --replace.');
 			}
 			$res = (new App\Importer($dry, in_array('--replace', $args, true)))->run($data);
+			foreach ($res['log'] as $line) { out($line); }
+			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+			break;
+
+		case 'import:presales':
+			$file = $args[1] ?? fail('Usage: import:presales <file.json> [--dry-run]');
+			if (!is_file($file)) { fail("No such file: $file"); }
+			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+			$dry = in_array('--dry-run', $args, true);
+			$res = (new App\PresalesImporter($dry))->run($data);
 			foreach ($res['log'] as $line) { out($line); }
 			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
 			break;
