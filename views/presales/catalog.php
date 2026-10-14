@@ -8,6 +8,7 @@ use App\Presales;
  * @var string $cat
  * @var string $show        active | stale | retired | all
  * @var int    $staleCount
+ * @var array  $counts      active, retired
  * @var bool   $canEdit
  */
 $days = (int) Presales::num('stale_days');
@@ -31,11 +32,13 @@ $spec = static function (array $i): string {
 	<?php if ($canEdit): ?><a href="/presales/catalog/new<?= $cat ? '?category=' . e(rawurlencode($cat)) : '' ?>" class="btn btn-primary">New item</a><?php endif; ?>
 </div>
 
-<div class="tabs">
-	<a href="<?= e($qs(['show' => 'active'])) ?>" class="tab <?= $show === 'active' ? 'active' : '' ?>">Active</a>
-	<a href="<?= e($qs(['show' => 'stale'])) ?>" class="tab <?= $show === 'stale' ? 'active' : '' ?>">Needs a price check <span class="tab-count"><?= (int) $staleCount ?></span></a>
-	<a href="<?= e($qs(['show' => 'retired'])) ?>" class="tab <?= $show === 'retired' ? 'active' : '' ?>">Retired</a>
-	<a href="<?= e($qs(['show' => 'all'])) ?>" class="tab <?= $show === 'all' ? 'active' : '' ?>">All</a>
+<div class="tabs tabs-grouped">
+	<div class="tab-group" title="Needs a price check is part of Active">
+		<a href="<?= e($qs(['show' => 'active'])) ?>" class="tab <?= $show === 'active' ? 'active' : '' ?>">Active <span class="tab-count"><?= (int) $counts['active'] ?></span></a>
+		<a href="<?= e($qs(['show' => 'stale'])) ?>" class="tab <?= $show === 'stale' ? 'active' : '' ?>">Needs a price check <span class="tab-count"><?= (int) $staleCount ?></span></a>
+	</div>
+	<a href="<?= e($qs(['show' => 'retired'])) ?>" class="tab <?= $show === 'retired' ? 'active' : '' ?>">Retired <span class="tab-count"><?= (int) $counts['retired'] ?></span></a>
+	<a href="<?= e($qs(['show' => 'all'])) ?>" class="tab <?= $show === 'all' ? 'active' : '' ?>">All <span class="tab-count"><?= (int) $counts['active'] + (int) $counts['retired'] ?></span></a>
 </div>
 
 <form class="filters" method="get" action="/presales/catalog">

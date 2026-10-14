@@ -67,7 +67,8 @@ final class CatalogController
 			$staleCount += Presales::isStale($r['price_updated_at']) ? 1 : 0;
 		}
 		View::render('presales/catalog', ['title' => 'Catalog', 'groups' => $ordered, 'q' => $q, 'cat' => $cat, 'show' => $show,
-			'staleCount' => $staleCount, 'canEdit' => Presales::canEdit()]);
+			'staleCount' => $staleCount, 'canEdit' => Presales::canEdit(),
+			'counts' => ['active' => (int) Db::value('SELECT COUNT(*) FROM catalog_items WHERE is_active = 1'), 'retired' => (int) Db::value('SELECT COUNT(*) FROM catalog_items WHERE is_active = 0')]]);
 	}
 
 	public function create(): void
