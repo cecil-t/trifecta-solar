@@ -59,7 +59,7 @@
 				else i.value = '';
 				if (i.dataset.defaultChecked) i.checked = true;
 			});
-			clone.classList.remove('has-flag', 'is-steep');
+			clone.classList.remove('has-flag', 'has-changed', 'is-steep');
 			clone.querySelectorAll('[data-l]').forEach((s) => { s.textContent = ''; });
 			clone.querySelectorAll('.pl-flags').forEach((s) => { s.textContent = ''; });
 			const key = clone.querySelector('.pl-key');
@@ -300,15 +300,16 @@
 			const flags = row.querySelector('.pl-flags');
 			flags.textContent = '';
 			if (l.retired) flags.appendChild(chip('Retired from the catalog', 'chip-red'));
-			else if (l.changed) flags.appendChild(chip('Catalog price changed', 'chip-orange'));
-			if (l.stale && !l.retired) flags.appendChild(chip('Check price: ' + (l.price_date || 'never dated'), 'chip-red'));
+			else if (l.changed) flags.appendChild(chip('Catalog price changed', 'chip-red'));
+			if (l.stale && !l.retired) flags.appendChild(chip('Check price: ' + (l.price_date || 'never dated'), 'chip-orange'));
 			if (l.min) flags.appendChild(chip('Minimum applies', 'chip-blue'));
-			row.classList.toggle('has-flag', l.retired || l.changed || l.stale);
+			row.classList.toggle('has-changed', l.retired || l.changed);
+			row.classList.toggle('has-flag', !(l.retired || l.changed) && l.stale);
 		});
 		form.querySelectorAll('.pl-row.pl-unpriced').forEach((row) => {
 			row.querySelectorAll('[data-l]').forEach((el) => setText(el, ''));
 			row.querySelector('.pl-flags').textContent = '';
-			row.classList.remove('pl-unpriced', 'has-flag');
+			row.classList.remove('pl-unpriced', 'has-flag', 'has-changed');
 		});
 
 		// Category totals

@@ -76,11 +76,11 @@ $lineFlag = static function (?array $f): string {
 	if ($f['retired']) {
 		$h .= '<span class="chip chip-red">Retired from the catalog</span>';
 	} elseif ($f['changed']) {
-		$h .= '<span class="chip chip-orange" title="The catalog price is different now. This line keeps the price it was built with.">Catalog price changed</span>';
+		$h .= '<span class="chip chip-red" title="The catalog price is different now. This line keeps the price it was built with.">Catalog price changed</span>';
 	}
 	if ($f['stale'] && !$f['retired']) {
 		$date = $f['catalog']['price_updated_at'] ?? null;
-		$h .= '<span class="chip chip-red" title="The catalog price was last checked longer ago than the stale setting allows.">Check price: ' . ($date ? e(fmt_date($date)) : 'never dated') . '</span>';
+		$h .= '<span class="chip chip-orange" title="The catalog price was last checked longer ago than the stale setting allows; it may still be right.">Check price: ' . ($date ? e(fmt_date($date)) : 'never dated') . '</span>';
 	}
 	return $h;
 };
@@ -90,6 +90,7 @@ $folded = [];
 <div class="project-head">
 	<div>
 		<a href="/presales/<?= (int) $o['id'] ?>" class="back">&larr; <?= e($o['name']) ?></a>
+		<div class="page-kicker">Build sheet</div>
 		<h1><?= e($d['name']) ?></h1>
 		<div class="badges">
 			<span class="chip chip-blue"><?= e($classLabel) ?></span>
@@ -118,7 +119,7 @@ $folded = [];
 </div>
 
 <?php if ($flags['changed'] || $flags['retired']): ?>
-	<div class="flash flash-info design-banner">
+	<div class="flash flash-error design-banner">
 		<div><strong>Catalog price changed:</strong> <?= (int) ($flags['changed'] + $flags['retired']) ?> line<?= $flags['changed'] + $flags['retired'] > 1 ? 's are' : ' is' ?> priced differently in the catalog now. This build sheet keeps the prices it was built with.</div>
 		<form method="post" action="<?= $base ?>/reprice">
 			<?= Csrf::field() ?>
@@ -127,7 +128,7 @@ $folded = [];
 	</div>
 <?php endif; ?>
 <?php if ($flags['stale']): ?>
-	<div class="flash flash-error design-banner">
+	<div class="flash flash-warn design-banner">
 		<div><strong>Check price:</strong> <?= (int) $flags['stale'] ?> line<?= $flags['stale'] > 1 ? 's use catalog prices' : ' uses a catalog price' ?> last checked more than <?= (int) Presales::num('stale_days') ?> days ago. Confirm or update <?= $flags['stale'] > 1 ? 'them' : 'it' ?> in the <a href="/presales/catalog?show=stale">catalog</a> before quoting.</div>
 	</div>
 <?php endif; ?>
@@ -168,11 +169,11 @@ $folded = [];
 				</tbody>
 			</table>
 			<div class="dt-margin">
+				<div class="dt-markup">Markup <strong data-v="markup_pct"><?= e(Presales::pct((float) $d['markup'])) ?></strong> <span class="muted">&middot; after rounding <span data-v="effective_markup"><?= $calc['effective_markup'] === null ? '-' : e(Presales::pct($calc['effective_markup'])) ?></span></span></div>
 				<div class="dt-margin-main"><span data-v="gross_margin_pct"><?= $calc['gross_margin_pct'] === null ? '-' : e(Presales::pct($calc['gross_margin_pct'])) ?></span> <small>gross margin</small> <span class="dt-margin-amt" data-v="gross_margin"><?= e($m($calc['gross_margin'])) ?></span></div>
 				<div class="small">If the contingency isn't used: <strong data-v="margin_if_unused_pct"><?= $calc['margin_if_unused_pct'] === null ? '-' : e(Presales::pct($calc['margin_if_unused_pct'])) ?></strong></div>
-				<div class="small">Effective markup on cost: <strong data-v="effective_markup"><?= $calc['effective_markup'] === null ? '-' : e(Presales::pct($calc['effective_markup'])) ?></strong></div>
 				<div class="small">Total to salesperson: <strong data-v="to_salesperson"><?= e($m($calc['to_salesperson'])) ?></strong> <span class="muted">(commission + site visit)</span></div>
-				<p class="hint mt-xs">Gross margin = (retail price - extras without markup) - internal cost (including contingency) - commission, as a share of the retail price less extras. Extras are pass-through, so they are left out.</p>
+				<p class="hint mt-xs">Markup is what you entered, applied to internal cost. After rounding is what it came to once the price rounded up to $100 and commission was taken out. Gross margin = (retail price - extras without markup) - internal cost (including contingency) - commission, as a share of the retail price less extras. Extras are pass-through, so they are left out.</p>
 			</div>
 			<p class="dt-error" id="calc-error" hidden></p>
 			<button class="btn btn-primary btn-block">Save build sheet</button>
@@ -262,7 +263,7 @@ $folded = [];
 							$notes = $current['notes'] ?? ($fl['catalog']['notes'] ?? null);
 							$key = $l ? 'l' . (int) ($l['id'] ?? $idx) : 'n-' . $cat . '-' . $k;
 						?>
-							<div class="pl-row<?= $fl && ($fl['changed'] || $fl['stale'] || $fl['retired']) ? ' has-flag' : '' ?>" data-key="<?= e($key) ?>">
+							<div class="pl-row<?= $fl && ($fl['changed'] || $fl['retired']) ? ' has-changed' : ($fl && $fl['stale'] ? ' has-flag' : '') ?>" data-key="<?= e($key) ?>">
 								<input type="hidden" name="lines[<?= e($cat) ?>][<?= $k ?>][id]" value="<?= $l ? (int) ($l['id'] ?? 0) : '' ?>">
 								<input type="hidden" name="lines[<?= e($cat) ?>][<?= $k ?>][key]" value="<?= e($key) ?>" class="pl-key">
 								<div class="pl-item">

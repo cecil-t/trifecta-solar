@@ -88,8 +88,8 @@ foreach ($lines as $i => $l) {
 				<tr>
 					<td>
 						<?= e($l['name']) ?><?= !empty($l['ext_warranty']) ? ' <span class="muted">+ ext. warranty ' . (int) $l['ext_warranty_years'] . ' yr</span>' : '' ?>
-						<?php if ($fl && ($fl['changed'] || $fl['retired'])): ?> <span class="chip chip-orange">Catalog price changed</span><?php endif; ?>
-						<?php if ($fl && $fl['stale'] && !$fl['retired']): ?> <span class="chip chip-red">Check price</span><?php endif; ?>
+						<?php if ($fl && ($fl['changed'] || $fl['retired'])): ?> <span class="chip chip-red">Catalog price changed</span><?php endif; ?>
+						<?php if ($fl && $fl['stale'] && !$fl['retired']): ?> <span class="chip chip-orange">Check price</span><?php endif; ?>
 						<?php if ($l['catalog_item_id'] && isset($printNotes[(int) $l['catalog_item_id']])): ?><div class="muted small"><?= nl2br(e($printNotes[(int) $l['catalog_item_id']])) ?></div><?php endif; ?>
 					</td>
 					<td class="num"><?= e(Presales::field($c['qty_resolved'], 2)) ?><?= $l['qty_rule'] === 'dc_watts' ? ' W' : '' ?></td>

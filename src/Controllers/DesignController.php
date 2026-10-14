@@ -185,6 +185,7 @@ final class DesignController
 				'gross_margin' => $m($c['gross_margin']),
 				'gross_margin_pct' => $c['gross_margin_pct'] === null ? '-' : Presales::pct($c['gross_margin_pct']),
 				'margin_if_unused_pct' => $c['margin_if_unused_pct'] === null ? '-' : Presales::pct($c['margin_if_unused_pct']),
+				'markup_pct' => Presales::pct((float) $d['markup']),
 				'effective_markup' => $c['effective_markup'] === null ? '-' : Presales::pct($c['effective_markup']),
 				'net_revenue' => $m($c['net_revenue']),
 				'milestone_pct' => rtrim(rtrim(number_format($c['milestone_pct'], 2), '0'), '.') . '%',

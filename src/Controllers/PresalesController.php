@@ -205,9 +205,6 @@ final class PresalesController
 	private function input(?int $id): array
 	{
 		$name = trim((string) ($_POST['name'] ?? ''));
-		if ($name === '') {
-			throw new \InvalidArgumentException('Give the opportunity a name, such as the customer and site.');
-		}
 		$customerId = null;
 		if (($_POST['customer_id'] ?? '') === 'new') {
 			$cname = trim((string) ($_POST['new_customer_name'] ?? ''));
@@ -226,6 +223,13 @@ final class PresalesController
 			}
 		} elseif ((int) ($_POST['customer_id'] ?? 0)) {
 			$customerId = (int) Db::value("SELECT id FROM organizations WHERE id = ? AND type = 'customer'", [(int) $_POST['customer_id']]) ?: null;
+		}
+		// The name defaults to the customer's name
+		if ($name === '' && $customerId) {
+			$name = (string) Db::value('SELECT name FROM organizations WHERE id = ?', [(int) $customerId]);
+		}
+		if ($name === '') {
+			throw new \InvalidArgumentException('Pick the customer or type a name for the opportunity.');
 		}
 		$drive = trim((string) ($_POST['drive_url'] ?? ''));
 		if ($err = link_error('The Drive folder link', $drive)) {

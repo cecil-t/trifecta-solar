@@ -26,7 +26,8 @@ $isNew = $id === null;
 		<h2>Customer</h2>
 		<div class="grid-form">
 			<label class="span-2">Opportunity name
-				<input type="text" name="name" value="<?= e($v('name')) ?>" required placeholder="e.g. Smith residence, Main St barn">
+				<input type="text" name="name" value="<?= e($v('name')) ?>" placeholder="Leave blank to use the customer's name">
+				<small class="hint">Add the site when a customer has more than one (e.g. "Smith, Main St barn").</small>
 			</label>
 			<label>Salesperson
 				<select name="salesperson_id">
