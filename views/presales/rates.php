@@ -24,9 +24,9 @@ $rules = $rules ?: [[]];
 ?>
 <div class="page-head">
 	<div>
-		<a href="/presales" class="back">&larr; Pre-Sales</a>
+		<?php if (App\Presales::canUse()): ?><a href="/presales" class="back">&larr; Pre-Sales</a><?php endif; ?>
 		<h1>Buildsheet rates</h1>
-		<p class="muted">New build sheets copy these in when they are created. Saved build sheets keep their own copy, so changing a rate here never changes a quote already made.<?= $canEdit ? '' : ' Admins and salespeople can edit.' ?></p>
+		<p class="muted">New build sheets copy these in when they are created. Saved build sheets keep their own copy, so changing a rate here never changes a quote already made.<?= $canEdit ? '' : ' Only admins can change them.' ?></p>
 	</div>
 </div>
 

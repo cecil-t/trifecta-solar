@@ -99,7 +99,44 @@ final class Presales
 		self::$settings = null;
 	}
 
-	/** Admins and salespeople edit the catalog and the rates. */
+	/** Pre-Sales opportunities are for salespeople (their own) and admins (all). */
+	public static function canUse(): bool
+	{
+		$u = Auth::user();
+		return Auth::isAdmin() || !empty($u['is_sales']);
+	}
+
+	public static function requireUse(): void
+	{
+		if (!self::canUse()) {
+			View::render('errors/403', ['title' => 'Not allowed'], 'layout', 403);
+			exit;
+		}
+	}
+
+	/** A salesperson sees an opportunity they are the salesperson on or created; admins see all. */
+	public static function canSee(array $o): bool
+	{
+		if (Auth::isAdmin()) {
+			return true;
+		}
+		$u = Auth::user();
+		return !empty($u['is_sales']) && in_array(Auth::id(), [(int) $o['salesperson_id'], (int) $o['created_by']], true);
+	}
+
+	/** SQL condition (on alias o) limiting a list to what the current user may see, with its parameters. */
+	public static function visibleWhere(): array
+	{
+		return Auth::isAdmin() ? ['1 = 1', []] : ['(o.salesperson_id = ? OR o.created_by = ?)', [Auth::id(), Auth::id()]];
+	}
+
+	/** Only admins change the buildsheet rates. */
+	public static function canEditRates(): bool
+	{
+		return Auth::isAdmin();
+	}
+
+	/** Admins and salespeople edit the catalog. */
 	public static function canEdit(): bool
 	{
 		$u = Auth::user();

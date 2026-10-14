@@ -6,7 +6,7 @@ $user = Auth::user();
 $path = current_path();
 $nav = [
 	['/', 'Dashboard', true],
-	['/presales', 'Pre-Sales', true],
+	...(App\Presales::canUse() ? [['/presales', 'Pre-Sales', true]] : []),
 	['/projects', 'Projects', true],
 	['/service', 'Service', true],
 	['/tasks', 'Tasks', true],

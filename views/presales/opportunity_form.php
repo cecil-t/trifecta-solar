@@ -6,7 +6,8 @@ use App\Projects;
  * @var array    $o          opportunity row or the form as typed
  * @var int|null $id
  * @var array    $customers  id, name
- * @var array    $users      id, name
+ * @var array    $users      salespeople and admins: id, name
+ * @var bool     $canAssign  admins pick the salesperson; a salesperson's opportunities are their own
  */
 $v = static fn (string $k, $d = '') => $o[$k] ?? $d;
 $sel = static fn ($a, $b) => (string) $a === (string) $b && (string) $a !== '' ? 'selected' : '';
@@ -29,14 +30,23 @@ $isNew = $id === null;
 				<input type="text" name="name" value="<?= e($v('name')) ?>" placeholder="Leave blank to use the customer's name">
 				<small class="hint">Add the site when a customer has more than one (e.g. "Smith, Main St barn").</small>
 			</label>
-			<label>Salesperson
-				<select name="salesperson_id">
-					<option value="">Choose</option>
-					<?php foreach ($users as $u): ?>
-						<option value="<?= (int) $u['id'] ?>" <?= $sel($v('salesperson_id'), $u['id']) ?>><?= e($u['name']) ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
+			<?php if ($canAssign): ?>
+				<label>Salesperson
+					<select name="salesperson_id">
+						<option value="">Choose</option>
+						<?php foreach ($users as $u): ?>
+							<option value="<?= (int) $u['id'] ?>" <?= $sel($v('salesperson_id'), $u['id']) ?>><?= e($u['name']) ?></option>
+						<?php endforeach; ?>
+					</select>
+					<small class="hint">Only that salesperson and admins see this opportunity.</small>
+				</label>
+			<?php else: ?>
+				<div class="checkfield">
+					<span class="field-label">Salesperson</span>
+					<span class="boxwrap"><?php foreach ($users as $u) { if ((int) $u['id'] === (int) $v('salesperson_id', App\Auth::id())) { echo e($u['name']); } } ?></span>
+					<small class="hint">Only you and admins see this opportunity. Admins can reassign it.</small>
+				</div>
+			<?php endif; ?>
 			<label class="span-2">Customer
 				<select name="customer_id" data-reveal="new" data-target="#new-customer">
 					<option value="">Choose</option>

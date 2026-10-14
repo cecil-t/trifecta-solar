@@ -37,14 +37,17 @@ final class PresalesRatesController
 				return $t;
 			}, Presales::paymentTemplates()),
 			'rules' => $old['rules'] ?? Presales::contingencyRules(false),
-			'canEdit' => Presales::canEdit(),
+			'canEdit' => Presales::canEditRates(),
 			'activity' => Activity::feed('presales_rates', 1),
 		]);
 	}
 
 	public function save(): void
 	{
-		Presales::requireEdit();
+		if (!Presales::canEditRates()) {
+			View::render('errors/403', ['title' => 'Not allowed'], 'layout', 403);
+			return;
+		}
 		try {
 			$changes = Db::transaction(fn () => $this->apply());
 		} catch (\InvalidArgumentException $e) {

@@ -308,7 +308,7 @@ final class DesignController
 	private function opp(int $oppId): array
 	{
 		$o = Db::one('SELECT * FROM presales_opportunities WHERE id = ?', [$oppId]);
-		if (!$o) {
+		if (!$o || !Presales::canSee($o)) {
 			View::render('errors/404', ['title' => 'Not found'], 'layout', 404);
 			exit;
 		}

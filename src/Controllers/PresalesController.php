@@ -28,6 +28,7 @@ final class PresalesController
 
 	public function index(): void
 	{
+		Presales::requireUse();
 		$status = (string) ($_GET['status'] ?? 'open');
 		if (!in_array($status, ['open', 'sold', 'lost', 'all'], true)) {
 			$status = 'open';
@@ -36,8 +37,8 @@ final class PresalesController
 		if ($q !== '') {
 			$status = 'all';
 		}
-		$where = [];
-		$params = [];
+		[$vis, $params] = Presales::visibleWhere();
+		$where = [$vis];
 		if ($status !== 'all') {
 			$where[] = 'o.status = ?';
 			$params[] = $status;
@@ -61,7 +62,7 @@ final class PresalesController
 			$params
 		);
 		$counts = ['all' => 0];
-		foreach (Db::all('SELECT status, COUNT(*) AS n FROM presales_opportunities GROUP BY status') as $r) {
+		foreach (Db::all('SELECT status, COUNT(*) AS n FROM presales_opportunities o WHERE ' . $vis . ' GROUP BY status', Presales::visibleWhere()[1]) as $r) {
 			$counts[$r['status']] = (int) $r['n'];
 			$counts['all'] += (int) $r['n'];
 		}
@@ -70,6 +71,7 @@ final class PresalesController
 
 	public function create(): void
 	{
+		Presales::requireUse();
 		$o = $_SESSION['old_presales'] ?? ['salesperson_id' => Auth::id(), 'site_state' => 'PA', 'customer_type' => 'residential'];
 		unset($_SESSION['old_presales']);
 		$this->form($o, null);
@@ -86,12 +88,15 @@ final class PresalesController
 	{
 		View::render('presales/opportunity_form', [
 			'title' => $id ? 'Edit ' . $o['name'] : 'New opportunity', 'o' => $o, 'id' => $id,
-			'customers' => Projects::orgs('customer'), 'users' => Projects::users(), 'utilities' => Projects::utilities(),
+			'customers' => Projects::orgs('customer'), 'utilities' => Projects::utilities(),
+			'users' => Db::all('SELECT id, name, initials FROM users WHERE is_active = 1 AND (is_sales = 1 OR is_admin = 1) ORDER BY name'),
+			'canAssign' => Auth::isAdmin(),
 		]);
 	}
 
 	public function store(): void
 	{
+		Presales::requireUse();
 		try {
 			$data = $this->input(null);
 			$data['created_by'] = Auth::id();
@@ -140,6 +145,9 @@ final class PresalesController
 			 LEFT JOIN utilities ut ON ut.id = o.utility_id
 			 WHERE o.id = ?', [$id]
 		) ?? $this->notFound();
+		if (!Presales::canSee($o)) {
+			$this->notFound();
+		}
 		$designs = Db::all('SELECT d.*, u.name AS updated_by_name FROM presales_designs d LEFT JOIN users u ON u.id = d.updated_by
 			WHERE d.opportunity_id = ? ORDER BY d.sort_order, d.id', [$id]);
 		$cards = [];
@@ -149,7 +157,8 @@ final class PresalesController
 			$cards[] = ['d' => $d, 'calc' => $calc, 'flags' => Designs::priceFlags($lines, $d)];
 		}
 		$contacts = $o['customer_id'] ? Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [$o['customer_id']]) : [];
-		$otherOpps = $o['customer_id'] ? Db::all('SELECT id, name, status FROM presales_opportunities WHERE customer_id = ? AND id <> ? ORDER BY updated_at DESC', [$o['customer_id'], $id]) : [];
+		[$vis, $vp] = Presales::visibleWhere();
+		$otherOpps = $o['customer_id'] ? Db::all('SELECT o.id, o.name, o.status FROM presales_opportunities o WHERE o.customer_id = ? AND o.id <> ? AND ' . $vis . ' ORDER BY o.updated_at DESC', [$o['customer_id'], $id, ...$vp]) : [];
 		$customerProjects = $o['customer_id'] ? Db::all('SELECT id, project_number, name FROM projects WHERE customer_id = ? ORDER BY project_number DESC', [$o['customer_id']]) : [];
 		View::render('presales/show', [
 			'title' => $o['name'], 'o' => $o, 'cards' => $cards, 'contacts' => $contacts, 'otherOpps' => $otherOpps,
@@ -243,6 +252,10 @@ final class PresalesController
 		}
 		$usage = $usage === null ? null : (int) round($usage);
 		$sales = (int) ($_POST['salesperson_id'] ?? 0);
+		// Only admins assign or reassign the salesperson; a salesperson's own opportunities stay theirs
+		if (!Auth::isAdmin()) {
+			$sales = $id ? (int) Db::value('SELECT salesperson_id FROM presales_opportunities WHERE id = ?', [$id]) : (int) Auth::id();
+		}
 		$type = (string) ($_POST['customer_type'] ?? '');
 		return [
 			'name' => $name,
@@ -268,7 +281,8 @@ final class PresalesController
 
 	private function find(int $id): array
 	{
-		return Db::one('SELECT * FROM presales_opportunities WHERE id = ?', [$id]) ?? $this->notFound();
+		$o = Db::one('SELECT * FROM presales_opportunities WHERE id = ?', [$id]) ?? $this->notFound();
+		return Presales::canSee($o) ? $o : $this->notFound();
 	}
 
 	private function notFound(): never
