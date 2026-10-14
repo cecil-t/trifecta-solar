@@ -54,7 +54,8 @@ final class PresalesController
 			 LEFT JOIN organizations c ON c.id = o.customer_id
 			 LEFT JOIN users u ON u.id = o.salesperson_id
 			 LEFT JOIN projects p ON p.id = o.project_id'
-			. ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY o.updated_at DESC'
+			. ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY o.updated_at DESC',
+			$params
 		);
 		$counts = ['all' => 0];
 		foreach (Db::all('SELECT status, COUNT(*) AS n FROM presales_opportunities GROUP BY status') as $r) {
@@ -93,7 +94,7 @@ final class PresalesController
 			$data['created_by'] = Auth::id();
 			$id = Db::insert('presales_opportunities', $data);
 			Activity::event('presales', $id, 'Opportunity created');
-			$designId = Designs::create($id, 'Build sheet 1');
+			$designId = Designs::create($id, Designs::defaultName($id));
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_presales'] = $_POST;
 			flash('error', $e->getMessage());

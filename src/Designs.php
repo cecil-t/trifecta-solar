@@ -11,7 +11,7 @@ final class Designs
 {
 	/** Fields copied from a catalog item into a line (the line's snapshot). */
 	public const SNAPSHOT = ['name', 'qty_rule', 'price', 'shipping', 'setup_cost', 'min_total', 'tax_class', 'watts', 'ac_kw',
-		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text'];
+		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok'];
 	/** The fields that make a line's price differ from the catalog today. */
 	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class'];
 
@@ -28,6 +28,18 @@ final class Designs
 	public static function arrays(int $designId): array
 	{
 		return Db::all('SELECT * FROM presales_design_arrays WHERE design_id = ? ORDER BY sort_order, id', [$designId]);
+	}
+
+	/** "<Opportunity name> Solar Project", numbered when the opportunity already has one. */
+	public static function defaultName(int $oppId): string
+	{
+		$base = Db::value('SELECT name FROM presales_opportunities WHERE id = ?', [$oppId]) . ' Solar Project';
+		$name = $base;
+		$i = 2;
+		while (Db::value('SELECT 1 FROM presales_designs WHERE opportunity_id = ? AND name = ?', [$oppId, $name])) {
+			$name = $base . ' ' . $i++;
+		}
+		return $name;
 	}
 
 	/** A new build sheet with today's rates copied in. */
@@ -50,7 +62,11 @@ final class Designs
 			'warranty_price' => $warranty ? (float) $warranty['price'] : null,
 			'warranty_name' => $warranty['name'] ?? null,
 			'warranty_is_solarinsure' => (int) ($warranty['is_solarinsure'] ?? 0),
+			'labor_mode' => 'per_watt',
+			'labor_value' => Presales::num('labor_default'),
 			'labor_rate' => Presales::num('labor_rate'),
+			'lodging_rate' => Presales::num('lodging_rate'),
+			'per_diem_rate' => Presales::num('per_diem_rate'),
 			'site_visit' => Presales::num('site_visit'),
 			'contingency_cap' => Presales::num('contingency_cap'),
 			'contingency_floor' => Presales::num('contingency_floor'),
@@ -181,10 +197,18 @@ final class Designs
 
 		$f['labor_mode'] = ($post['labor_mode'] ?? '') === 'total' ? 'total' : 'per_watt';
 		$f['labor_value'] = $num($post['labor_value'] ?? '', 'Labor price') ?? 0;
+		if ($strict && $f['labor_value'] <= 0) {
+			throw new \InvalidArgumentException('Labor price can\'t be zero. The default per watt is on the Rates page.');
+		}
 		$f['labor_rate'] = $num($post['labor_rate'] ?? '', 'Labor rate') ?? 0;
 		$f['site_visit'] = $num($post['site_visit'] ?? '', 'Site visit') ?? 0;
-		$f['overnight'] = $num($post['overnight'] ?? '', 'Overnight expenses') ?? 0;
-		$f['per_diem'] = $num($post['per_diem'] ?? '', 'Per diem') ?? 0;
+		// Travel: lodging for every night away, per diem for every day away (nights + 1)
+		$f['trip_nights'] = max(0, (int) ($num($post['trip_nights'] ?? '', 'Nights away') ?? 0));
+		$f['trip_crew'] = max(0, (int) ($num($post['trip_crew'] ?? '', 'Crew traveling') ?? 0));
+		$f['lodging_rate'] = $num($post['lodging_rate'] ?? '', 'Lodging rate') ?? 0;
+		$f['per_diem_rate'] = $num($post['per_diem_rate'] ?? '', 'Per diem rate') ?? 0;
+		$f['overnight'] = $f['trip_nights'] * $f['trip_crew'] * $f['lodging_rate'];
+		$f['per_diem'] = ($f['trip_nights'] > 0 ? $f['trip_nights'] + 1 : 0) * $f['trip_crew'] * $f['per_diem_rate'];
 
 		$manual = array_values(array_unique(array_map('intval', (array) ($post['contingency_manual'] ?? []))));
 		$f['contingency_manual'] = json_encode($manual);

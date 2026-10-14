@@ -78,7 +78,8 @@ class Catalog:
 			'shipping': 0.0, 'setup_cost': 0.0, 'min_total': None, 'qty_rule': 'manual', 'tax_class': 'major',
 			'watts': None, 'ac_kw': None, 'kwh': None, 'kw': None, 'warranty_text': None,
 			'ext_warranty_years': None, 'ext_warranty_cost': None, 'siw_cost': None, 'is_solarinsure': 0,
-			'notes': None, 'print_notes': 0,
+			'notes': None, 'print_notes': 0, 'segment': None, 'mounts': None,
+			'domestic_content_pct': None, 'feoc_ok': None,
 			'price_updated_at': self.sheet_date, 'price_source': self.sheet_label,
 			'sort_order': len(self.items) + 1,
 		}
@@ -91,6 +92,36 @@ class Catalog:
 def notes_join(*parts) -> str | None:
 	out = [clean(p) for p in parts if clean(p)]
 	return '\n'.join(out) or None
+
+
+def classify(it: dict) -> None:
+	"""Which jobs an item is offered on (segment) and which install types it fits (mounts), from
+	its category, name and the sheet section it came from. Blank = everywhere. Equipment (modules,
+	inverters, MLPE, monitoring) is never limited: residential jobs use "commercial" modules and farms
+	use residential inverters. Only the lines priced by job type are: BOS, structural, permits,
+	interconnection."""
+	cat, name = it['category'], it['name']
+	low = name.lower()
+	notes = (it['notes'] or '').lower()
+	if it['segment'] is None:
+		if cat in ('bos', 'structural', 'permits', 'interconnection'):
+			if 'residential' in low:
+				it['segment'] = 'residential'
+			elif 'commercial' in low:
+				it['segment'] = 'commercial'
+			elif cat in ('structural', 'permits') and re.search(r'\bkw\b|opt out', low):
+				it['segment'] = 'commercial'
+		elif cat == 'electrical' and 'feeder protection' in low:
+			it['segment'] = 'commercial'
+	if cat == 'racking':
+		if 'flush roof' in notes or 'flat roof' in notes:
+			it['mounts'] = 'ground' if 'compactground' in low else 'roof'
+		elif 'tracker' in notes or 'tracker' in low:
+			it['mounts'] = 'tracker'
+		elif re.search(r'ground mount|carport', notes):
+			it['mounts'] = 'ground'
+	elif cat == 'foundation':
+		it['mounts'] = 'tracker' if 'tracker' in low or 'mechatron' in low else 'ground'
 
 
 def build(xlsx: Path, policy: dict) -> dict:
@@ -256,7 +287,7 @@ def build(xlsx: Path, policy: dict) -> dict:
 		on = begin_at is None
 		for r in range(start, ws.max_row + 1):
 			name, price = clean(ws.cell(r, 1).value), num(ws.cell(r, 2).value)
-			if begin_at and name.startswith(begin_at):
+			if begin_at and name == begin_at:
 				on = True
 				continue
 			if stop_at and name.startswith(stop_at):
@@ -336,6 +367,8 @@ def build(xlsx: Path, policy: dict) -> dict:
 			commission.append({'rate': rate, 'adjusted': adj, 'step_down': step or 0.0,
 				'is_default': 1 if abs(rate - (num(bs['C12'].value) or -1)) < 1e-9 else 0})
 
+	for it in cat.items:
+		classify(it)
 	settings.update({k: str(v) for k, v in (policy.get('settings') or {}).items()})
 	return {
 		'kind': 'presales',

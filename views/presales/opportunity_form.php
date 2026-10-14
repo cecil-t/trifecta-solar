@@ -22,7 +22,7 @@ $isNew = $id === null;
 
 <form method="post" action="<?= $isNew ? '/presales' : '/presales/' . (int) $id ?>" class="project-form">
 	<?= Csrf::field() ?>
-	<section class="card">
+	<section class="card band">
 		<h2>Customer</h2>
 		<div class="grid-form">
 			<label class="span-2">Opportunity name
@@ -52,7 +52,7 @@ $isNew = $id === null;
 						<option value="<?= $k ?>" <?= $sel($v('customer_type', 'residential'), $k) ?>><?= e($label) ?></option>
 					<?php endforeach; ?>
 				</select>
-				<small class="hint">Residential or not decides the deposit choices.</small>
+				<small class="hint">Commercial, agricultural, government and non-profit jobs are all Non-Residential: that decides the deposit and which BOS, permit and interconnection items show.</small>
 			</label>
 		</div>
 		<div id="new-customer" class="grid-form reveal" hidden>
@@ -68,7 +68,7 @@ $isNew = $id === null;
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Site</h2>
 		<div class="grid-form">
 			<label class="span-2">Street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>"></label>

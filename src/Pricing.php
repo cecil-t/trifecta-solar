@@ -223,6 +223,45 @@ final class Pricing
 
 		$arraysPanels = array_sum(array_map(static fn ($a) => (int) ($a['panels'] ?? 0), $arrays));
 
+		// Subtotals per category (cost, tax, retail)
+		$cats = [];
+		foreach ($out as $l) {
+			$c = &$cats[$l['category']];
+			$c ??= ['subtotal' => 0.0, 'tax' => 0.0, 'cost' => 0.0, 'retail' => 0.0];
+			$c['subtotal'] += $l['subtotal'];
+			$c['tax'] += $l['tax'];
+			$c['cost'] += $l['cost'];
+			$c['retail'] += $l['retail'];
+			unset($c);
+		}
+
+		// Domestic content and FEOC, over the major equipment on the build sheet. Domestic content is
+		// cost-weighted across the lines that have a percentage; lines without one are counted.
+		$dcCost = 0.0;
+		$dcUs = 0.0;
+		$dcUnknown = [];
+		$feocNo = [];
+		$feocUnknown = [];
+		foreach ($out as $l) {
+			if (!in_array($l['category'], self::EQUIPMENT_CATS, true) || $l['subtotal'] <= 0) {
+				continue;
+			}
+			if ($l['domestic_content_pct'] ?? null) {
+				$dcCost += $l['subtotal'];
+				$dcUs += $l['subtotal'] * (float) $l['domestic_content_pct'] / 100;
+			} elseif (($l['domestic_content_pct'] ?? null) === null || $l['domestic_content_pct'] === '') {
+				$dcUnknown[] = $l['name'];
+			} else {
+				$dcCost += $l['subtotal'];
+			}
+			$feoc = $l['feoc_ok'] ?? null;
+			if ($feoc === null || $feoc === '') {
+				$feocUnknown[] = $l['name'];
+			} elseif (!(int) $feoc) {
+				$feocNo[] = $l['name'];
+			}
+		}
+
 		return [
 			'lines' => $out,
 			'extras' => $extras,
@@ -272,7 +311,12 @@ final class Pricing
 			'milestone_pct' => $milestonePct,
 			'steep_arrays' => $steepArrays,
 			'arrays_panels' => $arraysPanels,
-			'panels_mismatch' => $arrays && $arraysPanels !== $panels,
+			'panels_mismatch' => $arraysPanels > 0 && $panels > 0 && $arraysPanels !== $panels,
+			'categories' => $cats,
+			'domestic_content_pct' => $dcCost > 0 ? $dcUs / $dcCost : null,
+			'domestic_unknown' => $dcUnknown,
+			'feoc_no' => $feocNo,
+			'feoc_unknown' => $feocUnknown,
 		];
 	}
 

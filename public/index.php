@@ -114,6 +114,7 @@ $r->post('/presales/{id}/comments', [PresalesController::class, 'comment']);
 $r->post('/presales/{id}/designs', [DesignController::class, 'create']);
 $r->get('/presales/{id}/designs/{designId}', [DesignController::class, 'show']);
 $r->post('/presales/{id}/designs/{designId}', [DesignController::class, 'save']);
+$r->get('/presales/{id}/designs/{designId}/summary', [DesignController::class, 'summary']);
 $r->post('/presales/{id}/designs/{designId}/calc', [DesignController::class, 'calc']);
 $r->post('/presales/{id}/designs/{designId}/duplicate', [DesignController::class, 'duplicate']);
 $r->post('/presales/{id}/designs/{designId}/reprice', [DesignController::class, 'reprice']);

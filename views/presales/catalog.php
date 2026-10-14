@@ -54,10 +54,9 @@ $spec = static function (array $i): string {
 	<p class="muted">Nothing here<?= $q !== '' ? ' for that search' : '' ?>.</p>
 <?php endif; ?>
 <?php foreach ($groups as $k => $items): ?>
-	<section class="card card-flush mt-sm scroll-x-phone">
-		<div class="card-head"><h2><?= e(Presales::categoryLabel($k)) ?></h2><span class="muted small"><?= count($items) ?> item<?= count($items) === 1 ? '' : 's' ?></span></div>
-		<table class="table table-catalog">
-			<thead><tr><th>Item</th><th class="num">Cost</th><th>Priced</th><th>Tax</th><th>Specs and warranty</th><th>Price date and source</th><th></th></tr></thead>
+	<section class="card card-flush card-sticky-head scroll-x-phone cat-card">
+		<table class="table table-catalog table-tight">
+			<thead><tr><th><?= e(Presales::categoryLabel($k)) ?> <span class="th-count"><?= count($items) ?></span></th><th class="num">Cost</th><th>Priced</th><th>Tax</th><th>Fits</th><th>Specs and warranty</th><th>Price date and source</th><th></th></tr></thead>
 			<tbody>
 			<?php foreach ($items as $i): $stale = Presales::isStale($i['price_updated_at']); ?>
 				<tr id="item-<?= (int) $i['id'] ?>" class="<?= $i['is_active'] ? '' : 'row-muted' ?>">
@@ -76,13 +75,14 @@ $spec = static function (array $i): string {
 						<?php if ($i['ext_warranty_cost'] !== null): ?><div class="muted small">ext. warranty +<?= e(Presales::money((float) $i['ext_warranty_cost'])) ?></div><?php endif; ?>
 						<?php if ($i['siw_cost'] !== null): ?><div class="muted small">SolarInsure +<?= e(Presales::money((float) $i['siw_cost'])) ?></div><?php endif; ?>
 					</td>
-					<td class="small"><?= e(Presales::QTY_RULES[$i['qty_rule']] ?? '') ?></td>
+					<td class="small nowrap"><?= e(Presales::QTY_SHORT[$i['qty_rule']] ?? '') ?><?= $k === 'sitework' && $i['qty_rule'] === 'manual' ? ' foot' : '' ?></td>
 					<td><span class="chip chip-tax-<?= e($i['tax_class']) ?>"><?= e(Presales::TAX_SHORT[$i['tax_class']] ?? '') ?></span></td>
-					<td class="small cell-wrap"><?= $spec($i) ?><?= $i['warranty_text'] ? '<div class="muted">' . e($i['warranty_text']) . '</div>' : '' ?><?= $i['ext_warranty_years'] ? '<div class="muted">Extendable to ' . (int) $i['ext_warranty_years'] . ' years</div>' : '' ?></td>
+					<td class="small"><?= $i['segment'] ? e(Presales::CLASS_LABELS[$i['segment']]) : '' ?><?= $i['segment'] && $i['mounts'] ? '<br>' : '' ?><?= $i['mounts'] ? e(implode(', ', array_map(static fn ($x) => Presales::MOUNT_FILTERS[$x] ?? $x, explode(',', $i['mounts'])))) : '' ?><?= !$i['segment'] && !$i['mounts'] ? '<span class="muted">Any</span>' : '' ?></td>
+					<td class="small cell-wrap"><?= $spec($i) ?><?= $i['domestic_content_pct'] !== null ? '<div>Domestic ' . e(Presales::field((float) $i['domestic_content_pct'], 1)) . '%</div>' : '' ?><?= $i['feoc_ok'] !== null ? '<div>' . ((int) $i['feoc_ok'] ? 'FEOC compliant' : '<span class="text-red">Not FEOC compliant</span>') . '</div>' : '' ?><?= $i['warranty_text'] ? '<div class="muted">' . e($i['warranty_text']) . '</div>' : '' ?><?= $i['ext_warranty_years'] ? '<div class="muted">Extendable to ' . (int) $i['ext_warranty_years'] . ' years</div>' : '' ?></td>
 					<td class="small cell-wrap">
 						<span class="<?= $stale ? 'price-stale' : '' ?>"><?= $i['price_updated_at'] ? e(fmt_date($i['price_updated_at'])) : 'No date' ?></span>
 						<?= $i['updated_by_name'] ? '<span class="muted"> &middot; ' . e($i['updated_by_name']) . '</span>' : '' ?>
-						<?= $i['price_source'] ? '<div class="muted">' . e($i['price_source']) . '</div>' : '' ?>
+						<?= $i['price_source'] ? '<div class="muted cat-src" title="' . e($i['price_source']) . '">' . e($i['price_source']) . '</div>' : '' ?>
 					</td>
 					<td class="nowrap">
 						<?php if ($canEdit && $i['is_active']): ?>

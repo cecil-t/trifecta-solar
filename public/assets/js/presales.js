@@ -71,6 +71,8 @@
 			last.after(clone);
 			renumber(box);
 			if (form && clone.classList.contains('pl-row')) syncLine(clone);
+			const srcSel = last.querySelector('.pl-select');
+			if (form && srcSel && masters.has(srcSel)) masters.set(clone.querySelector('.pl-select'), masters.get(srcSel));
 			if (form && clone.classList.contains('array-row')) syncArray(clone);
 			const first = clone.querySelector('select, input[type=text]');
 			if (first) first.focus();
@@ -96,6 +98,14 @@
 			if (form) schedule();
 		}
 	});
+
+	// Decimal fields: ".22" becomes "0.22" when the field is left
+	document.addEventListener('change', (e) => {
+		const i = e.target;
+		if (i.matches && i.matches('input[inputmode=decimal]') && /^-?\./.test(i.value.trim())) {
+			i.value = i.value.trim().replace(/^(-?)\./, '$10.');
+		}
+	}, true);
 
 	if (!form) return;
 
@@ -137,39 +147,75 @@
 		const n = parseFloat(raw);
 		return isNaN(n) ? null : n;
 	}
+	const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+	const r1 = (n) => (Math.round(n * 10) / 10).toString();
+	function svgEl(tag, attrs) {
+		const el = document.createElementNS(NS, tag);
+		Object.keys(attrs).forEach((k) => el.setAttribute(k, attrs[k]));
+		return el;
+	}
+	// Compass (azimuth, north up) beside the tilt drawn as a roof line; red past the steep threshold
 	function syncArray(row) {
 		const mount = row.querySelector('.array-mount').value;
 		row.dataset.mount = mount;
 		row.querySelectorAll('.array-fixed-only').forEach((i) => { i.disabled = mount === 'tracker'; });
 		row.querySelectorAll('.array-roof-only').forEach((i) => { i.disabled = mount !== 'roof'; });
 		const tilt = mount === 'tracker' ? null : parseTilt(row.querySelector('.array-tilt').value);
+		const azRaw = row.querySelector('.array-az').value.trim();
+		const az = mount === 'tracker' || azRaw === '' || isNaN(parseFloat(azRaw)) ? null : ((parseFloat(azRaw) % 360) + 360) % 360;
 		const t = tilt === null ? 0 : Math.max(0, Math.min(90, tilt));
 		const wrap = row.querySelector('.array-pitch');
-		let svg = wrap.querySelector('svg');
-		if (!svg) {
-			svg = document.createElementNS(NS, 'svg');
-			svg.setAttribute('viewBox', '0 0 44 30');
-			svg.setAttribute('width', '44');
-			svg.setAttribute('height', '30');
-			svg.setAttribute('class', 'pitch');
-			['pitch-base', 'pitch-roof'].forEach((c) => { const l = document.createElementNS(NS, 'line'); l.setAttribute('class', c); svg.appendChild(l); });
-			wrap.prepend(svg);
+		wrap.textContent = '';
+		const compass = svgEl('svg', { viewBox: '0 0 30 30', width: '30', height: '30', class: 'compass', 'aria-hidden': 'true' });
+		compass.appendChild(svgEl('circle', { cx: '15', cy: '15', r: '13' }));
+		const n = svgEl('text', { x: '15', y: '8.5' });
+		n.textContent = 'N';
+		compass.appendChild(n);
+		if (az !== null) {
+			compass.appendChild(svgEl('line', { class: 'compass-needle', x1: '15', y1: '15',
+				x2: (15 + 11 * Math.sin(az * Math.PI / 180)).toFixed(2), y2: (15 - 11 * Math.cos(az * Math.PI / 180)).toFixed(2) }));
 		}
-		const [base, roof] = svg.querySelectorAll('line');
-		base.setAttribute('x1', '2'); base.setAttribute('y1', '26'); base.setAttribute('x2', '42'); base.setAttribute('y2', '26');
-		roof.setAttribute('x1', '4'); roof.setAttribute('y1', '26');
-		roof.setAttribute('x2', (4 + 36 * Math.cos(t * Math.PI / 180)).toFixed(2));
-		roof.setAttribute('y2', Math.max(1, 26 - 36 * Math.sin(t * Math.PI / 180)).toFixed(2));
 		const isSteep = tilt !== null && tilt > steep;
-		svg.setAttribute('class', 'pitch' + (isSteep ? ' is-steep' : ''));
+		const pitch = svgEl('svg', { viewBox: '0 0 44 30', width: '40', height: '27', class: 'pitch' + (isSteep ? ' is-steep' : ''), 'aria-hidden': 'true' });
+		pitch.appendChild(svgEl('line', { class: 'pitch-base', x1: '2', y1: '26', x2: '42', y2: '26' }));
+		pitch.appendChild(svgEl('line', { class: 'pitch-roof', x1: '4', y1: '26',
+			x2: (4 + 36 * Math.cos(t * Math.PI / 180)).toFixed(2), y2: Math.max(1, 26 - 36 * Math.sin(t * Math.PI / 180)).toFixed(2) }));
 		row.classList.toggle('is-steep', isSteep);
-		const label = wrap.querySelector('.pitch-label');
-		if (tilt === null) {
-			label.textContent = mount === 'tracker' ? 'tracks' : '';
-		} else {
-			const r = (n) => (Math.round(n * 10) / 10).toString();
-			label.textContent = r(tilt) + '° (' + r(12 * Math.tan(Math.min(tilt, 89) * Math.PI / 180)) + '/12)';
-		}
+		const label = document.createElement('span');
+		label.className = 'pitch-label';
+		const parts = [];
+		if (mount === 'tracker') parts.push('tracks');
+		if (az !== null) parts.push(Math.round(az) + '° ' + COMPASS[Math.round(az / 22.5) % 16]);
+		if (tilt !== null) parts.push(r1(tilt) + '° (' + r1(12 * Math.tan(Math.min(tilt, 89) * Math.PI / 180)) + '/12)');
+		label.textContent = parts.join(' · ');
+		wrap.append(compass, pitch, label);
+	}
+
+	// ---- Install type limits racking and foundations; other options stay. Options are rebuilt
+	// from a saved copy because a hidden <option> still shows on iPhones.
+	const installSel = document.getElementById('install-type');
+	const masters = new Map();
+	function filterOptions(sel) {
+		if (!masters.has(sel)) masters.set(sel, Array.from(sel.options).map((o) => o.cloneNode(true)));
+		const type = installSel ? installSel.value : '';
+		const cur = sel.value;
+		const keep = masters.get(sel).filter((o) => !type || !o.dataset.mounts || o.dataset.mounts.split(',').includes(type) || o.value === cur);
+		if (keep.length === sel.options.length) return;
+		sel.textContent = '';
+		keep.forEach((o) => sel.appendChild(o.cloneNode(true)));
+		sel.value = cur;
+	}
+	const filterAll = () => form.querySelectorAll('.pl-block[data-cat="racking"] .pl-select, .pl-block[data-cat="foundation"] .pl-select').forEach(filterOptions);
+	if (installSel) installSel.addEventListener('change', filterAll);
+	filterAll();
+
+	// ---- Tax exempt: the rate is locked (BOS still uses it) and the note clears
+	const exempt = document.getElementById('tax-exempt');
+	if (exempt) {
+		exempt.addEventListener('change', () => {
+			document.getElementById('tax-rate').readOnly = exempt.checked;
+			if (exempt.checked) document.getElementById('tax-note').value = '';
+		});
 	}
 
 	// Folded categories open from the "Add a line for" buttons
@@ -197,7 +243,7 @@
 	});
 	form.addEventListener('input', (e) => {
 		const arr = e.target.closest('.array-row');
-		if (arr && e.target.classList.contains('array-tilt')) syncArray(arr);
+		if (arr && (e.target.classList.contains('array-tilt') || e.target.classList.contains('array-az'))) syncArray(arr);
 	});
 
 	// ---- Live totals
@@ -255,7 +301,7 @@
 			flags.textContent = '';
 			if (l.retired) flags.appendChild(chip('Retired from the catalog', 'chip-red'));
 			else if (l.changed) flags.appendChild(chip('Catalog price changed', 'chip-orange'));
-			if (l.stale && !l.retired) flags.appendChild(chip('Old price', 'chip-red'));
+			if (l.stale && !l.retired) flags.appendChild(chip('Check price: ' + (l.price_date || 'never dated'), 'chip-red'));
 			if (l.min) flags.appendChild(chip('Minimum applies', 'chip-blue'));
 			row.classList.toggle('has-flag', l.retired || l.changed || l.stale);
 		});
@@ -263,6 +309,13 @@
 			row.querySelectorAll('[data-l]').forEach((el) => setText(el, ''));
 			row.querySelector('.pl-flags').textContent = '';
 			row.classList.remove('pl-unpriced', 'has-flag');
+		});
+
+		// Category totals
+		form.querySelectorAll('[data-cat-total]').forEach((row) => {
+			const t = res.cats[row.dataset.catTotal] || { cost: '', tax: '', retail: '' };
+			row.hidden = !res.cats[row.dataset.catTotal];
+			['cost', 'tax', 'retail'].forEach((k) => setText(row.querySelector('[data-t="' + k + '"]'), t[k]));
 		});
 
 		// Contingency rules

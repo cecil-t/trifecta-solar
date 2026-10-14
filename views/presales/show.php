@@ -39,7 +39,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 </div>
 
 <div class="presales-top">
-	<section class="card">
+	<section class="card band">
 		<h2>Customer</h2>
 		<dl class="kv">
 			<dt>Customer</dt><dd><?= $o['customer_id'] ? '<a href="/organizations/' . (int) $o['customer_id'] . '">' . e($o['customer_name']) . '</a>' : '<span class="muted">Not set</span>' ?></dd>
@@ -51,7 +51,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 				<dt>Contact</dt><dd><?= e($o['customer_phone']) ?><?= $o['customer_phone'] && $o['customer_email'] ? '<br>' : '' ?><?= $o['customer_email'] ? '<a href="mailto:' . e($o['customer_email']) . '" class="small">' . e($o['customer_email']) . '</a>' : '' ?></dd>
 			<?php endif; ?>
 			<dt>Site</dt><dd><?= $siteAddr !== '' ? maps_link($siteAddr) : '<span class="muted">Not set</span>' ?></dd>
-			<dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?><?= $o['is_agricultural'] ? ' &middot; Agricultural' : '' ?></dd>
+			<dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?><?= $o['is_agricultural'] ? ' &middot; Agricultural' : '' ?> <span class="muted small">(<?= e(Presales::CLASS_LABELS[Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural'])]) ?>)</span></dd>
 			<dt>Salesperson</dt><dd><?= e($o['salesperson_name'] ?? '') ?></dd>
 			<?php if ($customerProjects): ?>
 				<dt>Projects</dt><dd><?php foreach ($customerProjects as $cp): ?><div><a href="/projects/<?= (int) $cp['id'] ?>"><?= e($cp['project_number'] . ' ' . $cp['name']) ?></a></div><?php endforeach; ?></dd>
@@ -63,7 +63,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 		<?php if ($o['notes']): ?><p class="mt-sm desc-text"><?= nl2br(e($o['notes'])) ?></p><?php endif; ?>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Status</h2>
 		<?php if ($o['status'] !== 'open'): ?>
 			<p class="muted small">Marked <?= e(Presales::STATUSES[$o['status']]) ?> <?= e(fmt_dt((string) $o['status_at'], 'm/d/Y')) ?>.</p>
@@ -78,7 +78,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 					<?= Csrf::field() ?>
 					<input type="hidden" name="status" value="sold">
 					<label>Sold build sheet
-						<select name="sold_design_id" required>
+						<select name="sold_design_id">
 							<?php foreach ($cards as $c): ?><option value="<?= (int) $c['d']['id'] ?>"><?= e($c['d']['name']) ?> (<?= e(Presales::money($c['calc']['price'])) ?>)</option><?php endforeach; ?>
 						</select>
 					</label>
@@ -94,7 +94,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 			<form method="post" action="/presales/<?= (int) $o['id'] ?>/status" class="stack-sm mt-sm">
 				<?= Csrf::field() ?>
 				<input type="hidden" name="status" value="lost">
-				<label>Reason (optional)
+				<label>Lost reason (optional)
 					<input type="text" name="lost_reason" maxlength="200" placeholder="e.g. Went with another installer, decided not to proceed">
 				</label>
 				<button class="btn btn-ghost btn-small">Mark lost</button>
@@ -131,7 +131,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 	<?php endforeach; ?>
 </div>
 
-<section class="card mt" id="log">
+<section class="card band mt" id="log">
 	<h2>Log</h2>
 	<form method="post" action="/presales/<?= (int) $o['id'] ?>/comments" class="comment-form">
 		<?= Csrf::field() ?>

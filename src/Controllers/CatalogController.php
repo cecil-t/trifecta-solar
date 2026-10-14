@@ -21,7 +21,8 @@ final class CatalogController
 		'kwh' => 'kWh', 'kw' => 'Battery kW', 'warranty_text' => 'Warranty', 'ext_warranty_years' => 'Extended warranty years',
 		'ext_warranty_cost' => 'Extended warranty cost', 'siw_cost' => 'SolarInsure cost', 'is_solarinsure' => 'SolarInsure program',
 		'price_source' => 'Price source', 'price_updated_at' => 'Price date', 'notes' => 'Notes', 'print_notes' => 'Print notes',
-		'is_active' => 'Active',
+		'is_active' => 'Active', 'segment' => 'Jobs', 'mounts' => 'Install types',
+		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant',
 	];
 
 	public function index(): void
@@ -185,7 +186,14 @@ final class CatalogController
 			'notes' => trim((string) ($p['notes'] ?? '')) ?: null,
 			'print_notes' => empty($p['print_notes']) ? 0 : 1,
 			'is_active' => empty($p['is_active']) ? 0 : 1,
+			'segment' => in_array($p['segment'] ?? '', ['residential', 'commercial'], true) ? $p['segment'] : null,
+			'mounts' => implode(',', array_values(array_intersect(array_keys(Presales::MOUNT_FILTERS), (array) ($p['mounts'] ?? [])))) ?: null,
+			'domestic_content_pct' => $num('domestic_content_pct', 'Domestic content'),
+			'feoc_ok' => ($p['feoc_ok'] ?? '') === '' ? null : ((string) $p['feoc_ok'] === '1' ? 1 : 0),
 		];
+		if ($data['domestic_content_pct'] !== null && $data['domestic_content_pct'] > 100) {
+			throw new \InvalidArgumentException('Domestic content is a percent, 0 to 100.');
+		}
 		if ($cat === 'modules' && !$data['watts']) {
 			throw new \InvalidArgumentException('Modules need their watts (the build sheet sizes the system from them).');
 		}

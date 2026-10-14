@@ -76,9 +76,12 @@ final class PresalesRatesController
 
 		// Single values. Percent fields are typed as percents (6 = 6%).
 		$percent = ['tax_rate' => true, 'markup_default' => true];
-		$numeric = ['tax_rate', 'markup_default', 'labor_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to'];
+		$numeric = ['tax_rate', 'markup_default', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to'];
 		foreach (Presales::SETTINGS as $k => [$default, $label]) {
 			$raw = (string) ($_POST['settings'][$k] ?? '');
+			if ($k === 'labor_default' && ($num($raw, $label) ?? 0) <= 0) {
+				throw new \InvalidArgumentException('The default labor price can\'t be zero.');
+			}
 			if (in_array($k, $numeric, true)) {
 				$v = $num($raw, $label);
 				$value = isset($percent[$k]) ? (string) round($v / 100, 6) : (string) $v;

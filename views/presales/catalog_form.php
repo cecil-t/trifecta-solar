@@ -28,7 +28,7 @@ $dis = $canEdit ? '' : 'disabled';
 
 <form method="post" action="<?= $isNew ? '/presales/catalog' : '/presales/catalog/' . (int) $id ?>" class="project-form">
 	<?= Csrf::field() ?>
-	<section class="card">
+	<section class="card band">
 		<h2>Item</h2>
 		<div class="grid-form">
 			<label>Category
@@ -50,7 +50,7 @@ $dis = $canEdit ? '' : 'disabled';
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Price</h2>
 		<div class="grid-form">
 			<label>Cost to us
@@ -88,7 +88,30 @@ $dis = $canEdit ? '' : 'disabled';
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
+		<h2>Where it's offered</h2>
+		<div class="grid-form">
+			<label>Jobs
+				<select name="segment" <?= $dis ?>>
+					<?php foreach (Presales::SEGMENT_LABELS as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $sel((string) $v('segment'), $k) ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">Non-Residential = commercial, agricultural, government, non-profit.</small>
+			</label>
+			<div class="checkfield span-2">
+				<span class="field-label">Install types (none checked = any)</span>
+				<div class="boxrow">
+					<?php $mounts = array_filter(explode(',', (string) $v('mounts'))); ?>
+					<?php foreach (Presales::MOUNT_FILTERS as $k => $label): ?>
+						<label class="boxwrap"><input type="checkbox" name="mounts[]" value="<?= $k ?>" <?= in_array($k, $mounts, true) ? 'checked' : '' ?> <?= $dis ?>> <?= e($label) ?></label>
+					<?php endforeach; ?>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="card band">
 		<h2>Specs and warranty</h2>
 		<div class="grid-form">
 			<label>Module watts <input type="text" name="watts" value="<?= e($n($v('watts'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
@@ -105,6 +128,17 @@ $dis = $canEdit ? '' : 'disabled';
 				<input type="text" name="siw_cost" value="<?= e($n($v('siw_cost'), 2)) ?>" inputmode="decimal" placeholder="None" <?= $dis ?>>
 				<small class="hint">Batteries: added only when the build sheet uses SolarInsure.</small>
 			</label>
+			<label>Domestic content (%)
+				<input type="text" name="domestic_content_pct" value="<?= e($n($v('domestic_content_pct'), 2)) ?>" inputmode="decimal" placeholder="Unknown" <?= $dis ?>>
+				<small class="hint">Share of this item's cost that counts as US content.</small>
+			</label>
+			<label>FEOC
+				<select name="feoc_ok" <?= $dis ?>>
+					<option value="" <?= (string) $v('feoc_ok') === '' ? 'selected' : '' ?>>Unknown</option>
+					<option value="1" <?= (string) $v('feoc_ok') === '1' ? 'selected' : '' ?>>Compliant (no prohibited foreign entity)</option>
+					<option value="0" <?= (string) $v('feoc_ok') === '0' ? 'selected' : '' ?>>Not compliant</option>
+				</select>
+			</label>
 			<div class="checkfield">
 				<span class="field-label">Warranty programs</span>
 				<label class="boxwrap"><input type="checkbox" name="is_solarinsure" value="1" <?= $v('is_solarinsure') ? 'checked' : '' ?> <?= $dis ?>> This program is SolarInsure</label>
@@ -112,7 +146,7 @@ $dis = $canEdit ? '' : 'disabled';
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Notes</h2>
 		<textarea name="notes" rows="5" data-autogrow aria-label="Notes" <?= $dis ?>><?= e($v('notes')) ?></textarea>
 		<label class="boxwrap mt-sm"><input type="checkbox" name="print_notes" value="1" <?= $v('print_notes') ? 'checked' : '' ?> <?= $dis ?>> Show these notes on printed build sheets (printing is not built yet)</label>
@@ -127,7 +161,7 @@ $dis = $canEdit ? '' : 'disabled';
 </form>
 
 <?php if (!$isNew): ?>
-	<section class="card">
+	<section class="card band">
 		<h2>History</h2>
 		<?= App\View::partial('partials/activity', ['entries' => $activity]) ?>
 	</section>

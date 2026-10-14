@@ -33,8 +33,8 @@ $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>
 
-<div class="card card-flush scroll-x-phone">
-	<table class="table table-presales">
+<div class="card card-flush card-sticky-head scroll-x-phone">
+	<table class="table table-presales table-tight">
 		<thead>
 		<tr><th>Opportunity</th><th>Sales</th><th>Type</th><th class="num">Build sheets</th><th class="num">kW DC</th><th class="num">Price</th><th>Status</th><th>Updated</th></tr>
 		</thead>

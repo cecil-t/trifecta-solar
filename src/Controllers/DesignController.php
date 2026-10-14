@@ -28,7 +28,7 @@ final class DesignController
 			$arrays = Designs::arrays($id);
 		}
 		$calc = Designs::calc($d, $lines, $arrays);
-		$depositClass = Presales::depositClass($o['customer_type']);
+		$depositClass = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']);
 		View::render('presales/design', [
 			'title' => $d['name'] . ' - ' . $o['name'],
 			'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
@@ -40,6 +40,27 @@ final class DesignController
 			'depositClass' => $depositClass,
 			'siblings' => Db::all('SELECT id, name FROM presales_designs WHERE opportunity_id = ? ORDER BY sort_order, id', [$oppId]),
 		]);
+	}
+
+	/** Everything on one printable sheet (saved values). */
+	public function summary(int $id, int $designId): void
+	{
+		[$o, $d] = $this->find($id, $designId);
+		$o = Db::one('SELECT o.*, c.name AS customer_name, u.name AS salesperson_name FROM presales_opportunities o
+			LEFT JOIN organizations c ON c.id = o.customer_id LEFT JOIN users u ON u.id = o.salesperson_id WHERE o.id = ?', [$id]);
+		$lines = Designs::lines($designId);
+		$arrays = Designs::arrays($designId);
+		$calc = Designs::calc($d, $lines, $arrays);
+		$notes = [];
+		foreach (Db::all('SELECT i.id, i.notes FROM catalog_items i JOIN presales_design_lines l ON l.catalog_item_id = i.id
+			WHERE l.design_id = ? AND i.print_notes = 1 AND i.notes IS NOT NULL', [$designId]) as $r) {
+			$notes[(int) $r['id']] = $r['notes'];
+		}
+		View::render('presales/summary', [
+			'title' => $d['name'] . ' summary', 'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
+			'flags' => Designs::priceFlags($lines, $d), 'printNotes' => $notes,
+			'depositClass' => Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']),
+		], 'print_layout');
 	}
 
 	public function save(int $id, int $designId): void
@@ -83,7 +104,7 @@ final class DesignController
 		$merged = array_merge($d, $f);
 		$calc = Designs::calc($merged, $lines, $arrays);
 		$flags = Designs::priceFlags($lines, $merged);
-		$depositOptions = Presales::depositOptions(Presales::depositClass($o['customer_type']), $calc['dc_kw']);
+		$depositOptions = Presales::depositOptions(Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']), $calc['dc_kw']);
 		echo json_encode(self::payload($calc, $flags, $lines, $depositOptions, $merged));
 	}
 
@@ -112,6 +133,7 @@ final class DesignController
 				'changed' => $fl['changed'] ?? false,
 				'stale' => $fl['stale'] ?? false,
 				'retired' => $fl['retired'] ?? false,
+				'price_date' => !empty($fl['catalog']['price_updated_at']) ? fmt_date($fl['catalog']['price_updated_at']) : '',
 			];
 		}
 		$rules = [];
@@ -144,6 +166,10 @@ final class DesignController
 				'man_hours' => $c['man_hours'] === null ? '-' : number_format($c['man_hours'], 1) . ' man-hours',
 				'site_visit' => $m($c['site_visit']),
 				'expenses' => $m($c['overnight'] + $c['per_diem']),
+				'overnight' => $m($c['overnight']),
+				'per_diem' => $m($c['per_diem']),
+				'domestic' => self::domesticText($c),
+				'feoc' => self::feocText($c),
 				'base_cost' => $m($c['base_cost']),
 				'contingency' => $m($c['contingency']),
 				'contingency_pct' => $c['contingency_pct'] === null ? '-' : Presales::pct($c['contingency_pct']),
@@ -180,7 +206,28 @@ final class DesignController
 			'steep' => $c['steep_arrays'],
 			'deposit_options' => array_map(static fn ($a) => ['value' => Presales::field($a, 2), 'label' => $m($a)], $depositOptions),
 			'warranty_summary' => $c['warranty_summary'],
+			'cats' => array_map(static fn ($t) => ['cost' => $m($t['cost']), 'tax' => $t['tax'] > 0 ? $m($t['tax']) : '-', 'retail' => $m($t['retail'])], $c['categories']),
 		];
+	}
+
+	/** "Domestic content about 12% of major equipment cost (2 items unknown)". */
+	public static function domesticText(array $c): string
+	{
+		$unknown = count($c['domestic_unknown']);
+		if ($c['domestic_content_pct'] === null) {
+			return $unknown ? 'Unknown: no domestic content % on ' . $unknown . ' major equipment item' . ($unknown > 1 ? 's' : '') : 'No major equipment yet';
+		}
+		return Presales::pct($c['domestic_content_pct']) . ' of major equipment cost' . ($unknown ? ' (' . $unknown . ' item' . ($unknown > 1 ? 's' : '') . ' unknown, left out)' : '');
+	}
+
+	public static function feocText(array $c): string
+	{
+		$no = count($c['feoc_no']);
+		$unknown = count($c['feoc_unknown']);
+		if (!$no && !$unknown) {
+			return 'All major equipment marked FEOC compliant';
+		}
+		return trim(($no ? $no . ' not compliant' : '') . ($no && $unknown ? ', ' : '') . ($unknown ? $unknown . ' unknown' : ''));
 	}
 
 	/** The deposit must be one the Rates page allows for this customer type and size. */
@@ -189,11 +236,11 @@ final class DesignController
 		if ($d['deposit'] === null) {
 			return;
 		}
-		$o = Db::one('SELECT customer_type FROM presales_opportunities WHERE id = ?', [$oppId]);
-		$class = Presales::depositClass($o['customer_type'] ?? null);
+		$o = Db::one('SELECT customer_type, is_agricultural FROM presales_opportunities WHERE id = ?', [$oppId]);
+		$class = Presales::depositClass($o['customer_type'] ?? null, (bool) ($o['is_agricultural'] ?? 0));
 		$allowed = Presales::depositOptions($class, $calc['dc_kw']);
 		if ($allowed && !in_array(round((float) $d['deposit'], 2), array_map(static fn ($a) => round($a, 2), $allowed), true)) {
-			throw new \InvalidArgumentException('A ' . Presales::money((float) $d['deposit']) . ' deposit is not allowed for a ' . $class . ' system of '
+			throw new \InvalidArgumentException('A ' . Presales::money((float) $d['deposit']) . ' deposit is not allowed for a ' . strtolower(Presales::CLASS_LABELS[$class]) . ' system of '
 				. number_format($calc['dc_kw'], 1) . ' kW. Allowed: ' . implode(', ', array_map([Presales::class, 'money'], $allowed)) . '.');
 		}
 	}
@@ -202,8 +249,7 @@ final class DesignController
 	{
 		$oppId = $id;
 		$this->opp($oppId);
-		$n = (int) Db::value('SELECT COUNT(*) FROM presales_designs WHERE opportunity_id = ?', [$oppId]) + 1;
-		$id = Designs::create($oppId, 'Build sheet ' . $n);
+		$id = Designs::create($oppId, Designs::defaultName($oppId));
 		redirect('/presales/' . $oppId . '/designs/' . $id);
 	}
 

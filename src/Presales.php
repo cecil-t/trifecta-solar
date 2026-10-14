@@ -41,6 +41,8 @@ final class Presales
 		'module_pairs' => 'One per two modules (automatic)',
 	];
 
+	public const QTY_SHORT = ['manual' => 'Each', 'dc_watts' => 'Per DC watt', 'modules' => 'Per module', 'module_pairs' => 'Per 2 modules'];
+
 	public const STATUSES = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost'];
 
 	public const MOUNTS = ['roof' => 'Roof', 'ground' => 'Ground', 'carport' => 'Carport', 'pole' => 'Pole', 'tracker' => 'Tracker'];
@@ -58,7 +60,10 @@ final class Presales
 		'tax_rate'               => ['0.06', 'Sales tax rate'],
 		'tax_note'               => ['PA Tax', 'Tax note'],
 		'markup_default'         => ['0', 'Default markup'],
+		'labor_default'          => ['', 'Default labor price ($ per watt)'],
 		'labor_rate'             => ['0', 'Labor rate ($ per man-hour)'],
+		'lodging_rate'           => ['0', 'Lodging ($ per person per night)'],
+		'per_diem_rate'          => ['0', 'Per diem ($ per person per day)'],
 		'labor_guideline'        => ['', 'Labor guideline (shown beside the labor price)'],
 		'site_visit'             => ['0', 'Site visit (paid to the salesperson)'],
 		'contingency_cap'        => ['15', 'Contingency cap (%)'],
@@ -155,11 +160,19 @@ final class Presales
 		return Db::all('SELECT * FROM presales_deposit_tiers ORDER BY class DESC, min_kw, sort_order');
 	}
 
-	/** Residential stays residential; commercial, nonprofit and government use the commercial tiers. */
-	public static function depositClass(?string $customerType): string
+	/**
+	 * Residential or Non-Residential (stored as 'commercial'): commercial, agricultural, municipal and
+	 * non-profit jobs are all Non-Residential. Decides deposit tiers and which BOS, structural, permit
+	 * and interconnection items a build sheet offers.
+	 */
+	public static function depositClass(?string $customerType, bool $agricultural = false): string
 	{
-		return ($customerType ?? 'residential') === 'residential' ? 'residential' : 'commercial';
+		return ($customerType ?? 'residential') === 'residential' && !$agricultural ? 'residential' : 'commercial';
 	}
+
+	public const CLASS_LABELS = ['residential' => 'Residential', 'commercial' => 'Non-Residential'];
+	public const SEGMENT_LABELS = ['' => 'All jobs', 'residential' => 'Residential only', 'commercial' => 'Non-Residential only'];
+	public const MOUNT_FILTERS = ['roof' => 'Rooftop', 'ground' => 'Ground mount', 'tracker' => 'Tracker'];
 
 	/** Deposit amounts allowed for a class and DC size; the first is the default. */
 	public static function depositOptions(string $class, float $dcKw): array
