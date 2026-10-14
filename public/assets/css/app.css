@@ -1478,3 +1478,19 @@ a[href^="tel:"] { white-space: nowrap; }
 @media print {
 	.sheet-table .sheet-cat td, .sheet-table .sheet-item td:first-child { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+/* Summary lower half: boxed groups, rows without rules, steps shaded */
+.sheet-stack { display: flex; flex-direction: column; gap: .7rem; min-width: 0; }
+.sheet-compact td, .sheet-compact th { border-bottom: 0; padding: .12rem .4rem .12rem 0; }
+.sheet-compact thead th { border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+.sheet-compact .sheet-step td, .sheet-compact .sheet-final td { font-weight: 750; padding-top: .25rem; padding-bottom: .25rem; }
+.sheet-compact .sheet-step td { background: var(--blue-50); }
+.sheet-compact .sheet-final td { background: var(--green-50); color: #2f5f1a; }
+.sheet-compact .sheet-step td:first-child, .sheet-compact .sheet-final td:first-child { padding-left: .4rem; border-radius: 4px 0 0 4px; }
+.sheet-compact .sheet-step td:last-child, .sheet-compact .sheet-final td:last-child { padding-right: .4rem; border-radius: 0 4px 4px 0; }
+.sheet-compact tr.sheet-step + tr td { padding-top: .3rem; }
+.sheet-arrays td { vertical-align: top; }
+.sheet-lower .sheet-box h2 { margin-bottom: .3rem; }
+@media print {
+	.sheet-compact .sheet-step td, .sheet-compact .sheet-final td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.sheet-lower { break-inside: avoid; }
+}

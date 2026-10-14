@@ -108,53 +108,57 @@ foreach ($lines as $i => $l) {
 	</table>
 </section>
 
-<div class="sheet-grid sheet-wide">
-	<section class="sheet-sec">
+<div class="sheet-grid sheet-wide sheet-lower">
+	<section class="sheet-sec sheet-box sheet-box-blue">
 		<h2>Cost to price</h2>
-		<table class="sheet-table">
+		<table class="sheet-table sheet-compact">
 			<tbody>
-			<tr><td>Equipment and materials (with tax)</td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td></tr>
+			<tr><td>Equipment and materials <span class="muted">(with tax)</span></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td></tr>
 			<tr><td>Warranty program</td><td class="num"><?= e($m($calc['warranty_cost'])) ?></td></tr>
-			<tr><td>Labor<?= $calc['man_hours'] !== null ? ' (' . e(number_format($calc['man_hours'], 1)) . ' man-hours)' : '' ?></td><td class="num"><?= e($m($calc['labor'])) ?></td></tr>
+			<tr><td>Labor<?= $calc['man_hours'] !== null ? ' <span class="muted">(' . e(number_format($calc['man_hours'], 1)) . ' man-hours)</span>' : '' ?></td><td class="num"><?= e($m($calc['labor'])) ?></td></tr>
 			<tr><td>Site visit</td><td class="num"><?= e($m($calc['site_visit'])) ?></td></tr>
-			<?php if ($calc['overnight'] + $calc['per_diem'] > 0): ?><tr><td>Travel: <?= (int) $d['trip_nights'] ?> nights, <?= (int) $d['trip_crew'] ?> crew</td><td class="num"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></td></tr><?php endif; ?>
-			<tr><td>Contingency (<?= $calc['contingency_pct'] !== null ? e(Presales::pct($calc['contingency_pct'])) : '-' ?><?= $calc['contingency_overridden'] ? ', overridden: ' . e((string) $d['contingency_reason']) : '' ?>)</td><td class="num"><?= e($m($calc['contingency'])) ?></td></tr>
-			<tr class="sheet-sub"><td>Internal cost</td><td class="num"><?= e($m($calc['cost_total'])) ?></td></tr>
-			<tr><td>Markup</td><td class="num"><?= e($m($calc['markup_amount'])) ?></td></tr>
-			<tr><td>Commission (<?= e(Presales::pct((float) $d['commission_rate'])) ?>)</td><td class="num"><?= e($m($calc['commission'])) ?></td></tr>
-			<?php foreach ($calc['extras'] as $x): ?><tr><td>Extra without markup: <?= e($x['name']) ?></td><td class="num"><?= e($m($x['amount'])) ?></td></tr><?php endforeach; ?>
+			<?php if ($calc['overnight'] + $calc['per_diem'] > 0): ?><tr><td>Travel <span class="muted">(<?= (int) $d['trip_nights'] ?> nights, <?= (int) $d['trip_crew'] ?> crew)</span></td><td class="num"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></td></tr><?php endif; ?>
+			<tr><td>Contingency <span class="muted">(<?= $calc['contingency_pct'] !== null ? e(Presales::pct($calc['contingency_pct'])) : '-' ?><?= $calc['contingency_overridden'] ? ', overridden: ' . e((string) $d['contingency_reason']) : '' ?>)</span></td><td class="num"><?= e($m($calc['contingency'])) ?></td></tr>
+			<tr class="sheet-step"><td>Internal cost</td><td class="num"><?= e($m($calc['cost_total'])) ?></td></tr>
+			<tr><td>Markup <span class="muted">(<?= e(Presales::pct((float) $d['markup'])) ?>)</span></td><td class="num"><?= e($m($calc['markup_amount'])) ?></td></tr>
+			<tr><td>Commission <span class="muted">(<?= e(Presales::pct((float) $d['commission_rate'])) ?>)</span></td><td class="num"><?= e($m($calc['commission'])) ?></td></tr>
+			<?php foreach ($calc['extras'] as $x): ?><tr><td>Extra, no markup: <?= e($x['name']) ?></td><td class="num"><?= e($m($x['amount'])) ?></td></tr><?php endforeach; ?>
 			<tr><td>Rounded up</td><td class="num"><?= e($m($calc['rounding'])) ?></td></tr>
+			<tr class="sheet-final"><td>Retail price</td><td class="num"><?= e($m($calc['price'])) ?></td></tr>
 			</tbody>
-			<tfoot><tr><td>Retail price</td><td class="num"><?= e($m($calc['price'])) ?></td></tr></tfoot>
 		</table>
 	</section>
-	<section class="sheet-sec">
-		<h2>Payments</h2>
-		<table class="sheet-table">
-			<tbody>
-			<?php foreach ($calc['payments'] as $p): ?>
-				<tr><td><?= e($p['label']) ?></td><td class="num"><?= e($m($p['amount'])) ?></td><td class="num muted"><?= $p['pct_total'] !== null ? e(Presales::pct($p['pct_total'])) : '' ?></td></tr>
-			<?php endforeach; ?>
-			</tbody>
-		</table>
-		<?php if ($arrays): ?>
-			<h2 class="mt-sm">Arrays</h2>
-			<table class="sheet-table">
-				<thead><tr><th>Array</th><th>Mount</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th></tr></thead>
+	<div class="sheet-stack">
+		<section class="sheet-sec sheet-box sheet-box-green">
+			<h2>Payments</h2>
+			<table class="sheet-table sheet-compact">
 				<tbody>
-				<?php foreach ($arrays as $a): ?>
-					<tr class="<?= $a['tilt'] !== null && (float) $a['tilt'] > (float) $d['steep_deg'] ? 'text-red' : '' ?>">
-						<td><?= e($a['name'] ?? '') ?></td>
-						<td><?= e(Presales::MOUNTS[$a['mount']] ?? '') ?><?= $a['material'] ? ', ' . e(Projects::ROOF_MATERIALS[$a['material']] ?? '') : '' ?></td>
-						<td class="num"><?= $a['azimuth'] !== null ? (int) $a['azimuth'] . '° ' . e(Projects::compass((int) $a['azimuth'])) : '' ?></td>
-						<td class="num"><?= $a['tilt'] !== null ? e($deg((float) $a['tilt'])) . '°' : '' ?></td>
-						<td class="num"><?= $a['panels'] !== null ? (int) $a['panels'] : '' ?></td>
-					</tr>
+				<?php foreach ($calc['payments'] as $p): ?>
+					<tr><td><?= e($p['label']) ?></td><td class="num"><?= e($m($p['amount'])) ?></td><td class="num muted"><?= $p['pct_total'] !== null ? e(Presales::pct($p['pct_total'])) : '' ?></td></tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table>
+		</section>
+		<?php if ($arrays): ?>
+			<section class="sheet-sec sheet-box sheet-box-yellow">
+				<h2>Arrays</h2>
+				<table class="sheet-table sheet-compact sheet-arrays">
+					<thead><tr><th>Array</th><th>Mount</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th></tr></thead>
+					<tbody>
+					<?php foreach ($arrays as $a): ?>
+						<tr class="<?= $a['tilt'] !== null && (float) $a['tilt'] > (float) $d['steep_deg'] ? 'text-red' : '' ?>">
+							<td><?= e($a['name'] ?? '') ?></td>
+							<td class="nowrap" title="<?= e(Projects::ROOF_MATERIALS[$a['material'] ?? ''] ?? '') ?>"><?= e(Presales::MOUNTS[$a['mount']] ?? '') ?></td>
+							<td class="num"><?= $a['azimuth'] !== null ? (int) $a['azimuth'] . '° ' . e(Projects::compass((int) $a['azimuth'])) : '' ?></td>
+							<td class="num"><?= $a['tilt'] !== null ? e($deg((float) $a['tilt'])) . '°' : '' ?></td>
+							<td class="num"><?= $a['panels'] !== null ? (int) $a['panels'] : '' ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
 		<?php endif; ?>
-	</section>
+	</div>
 </div>
 
 <section class="sheet-sec sheet-wide sheet-keep">
