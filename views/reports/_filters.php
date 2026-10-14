@@ -1,6 +1,6 @@
 <?php
 /**
- * Report header: title, filter bar (preset / From / To / Salesperson), report tabs, and a
+ * Report header: title, filter bar (preset / From / To / Salesperson) and a
  * one-line summary that is all that prints of the filters.
  * @var string $report
  * @var array  $f
@@ -28,12 +28,6 @@ if (!empty($f['class'])) {
 	</div>
 	<button type="button" class="btn btn-secondary no-print" data-print>Print</button>
 </div>
-
-<nav class="tabs no-print">
-	<?php foreach (ReportController::visibleReports() as $key => [$label]): ?>
-		<a href="/reports/<?= $key ?>?<?= e(http_build_query(array_filter(['preset' => $f['asof'] ? null : $f['preset'], 'from' => $f['preset'] === 'custom' ? $f['from'] : null, 'to' => $f['preset'] === 'custom' ? $f['to'] : null, 'sales' => $f['sales'] ?: null]))) ?>" class="tab <?= $key === $report ? 'active' : '' ?>"><?= e($label) ?></a>
-	<?php endforeach; ?>
-</nav>
 
 <form class="filters report-filters no-print" method="get" action="/reports/<?= $report ?>" id="report-filters">
 	<?php if ($f['asof']): ?>
