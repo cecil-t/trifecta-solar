@@ -12,11 +12,11 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 - **Sign-in:** email and password (Argon2id, 8+ characters with upper, lower, number and symbol). Logins are per device and never expire; users sign out their own devices, admins can sign out anyone. First-run setup page, admin user management, and My account (initials, password, devices).
 - **Dashboard:** phase counts, my Tasks, "My open items" (project steps you own that are actionable now, grouped by project) and a 5-day forecast (Open-Meteo) for the location set in `.env`.
 - **Search:** a box in the top bar finds projects and service tickets together (names, customer, numbers, municipality, ticket problem and address). One match opens it directly; back links return to the results.
-- **Pre-Sales** (draft, replacing the Master Buildsheet spreadsheet):
+- **Sales** (draft, replacing the Master Buildsheet spreadsheet; code and URLs say presales):
   - Opportunities (a customer and a site being quoted): Open, Sold (names the build sheet that sold and optionally its project) or Lost (with an optional reason), with a log.
   - Any number of build sheets per opportunity, copied to try other designs. A build sheet keeps the prices it was built with; lines whose catalog price changed since, or whose catalog price is older than the stale setting, are flagged, and "Copy at today's prices" makes a repriced copy while the original stays.
   - Build sheet editor: arrays (roof, ground, carport, pole, tracker; tilt drawn, red when steep), catalog lines by category with automatic per-watt and per-module quantities, extended warranty switch, custom lines, labor priced per watt or total (with man-hours), extras without markup, contingency rules with a cap, a minimum and an override that needs a reason, tax exempt (major equipment only; BOS always taxed), deposit by class and size, payment schedule, warranty summary to copy, and cost, retail, margin and $/W figures that update as you type (`App\Pricing`).
-  - Who sees what: a salesperson (Users: Sales) sees only the opportunities they are the salesperson on or created; admins see all and reassign the salesperson; other users don't see Pre-Sales. Everyone can view the catalog; admins and salespeople edit it; only admins edit the buildsheet rates.
+  - Who sees what: a salesperson (Users: Sales) sees only the opportunities they are the salesperson on or created; admins see all and reassign the salesperson; other users don't see Sales. Everyone can view the catalog; admins and salespeople edit it; only admins edit the buildsheet rates.
   - Catalog (Lists): internal cost per item with shipping, per-line adder, minimum, tax class, specs, warranty, price date and source; stale prices flagged; Confirm price dates a checked price. Admins and users marked Sales edit it.
 - **Projects:**
   - List with phase tabs (Active = Pre-Install, Installation and Closeout; Clear to install; On hold; Completed; Cancelled; All), salesperson filter (remembered per user) and search. Completed and Cancelled fold earlier years under a header.
@@ -78,7 +78,7 @@ import:projects <file.json> [--dry-run]   Add projects (skips project numbers th
 import:service <file.json> [--dry-run]    Add service tickets (never changes existing ones)
 import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
 import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
-import:presales <file.json> [--dry-run]   Add Pre-Sales catalog items and buildsheet rates (never changes existing ones)
+import:presales <file.json> [--dry-run]   Add Sales catalog items and buildsheet rates (never changes existing ones)
 fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
 fix:completed-payments [--dry-run]        Mark open payments received on Completed projects
 fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known

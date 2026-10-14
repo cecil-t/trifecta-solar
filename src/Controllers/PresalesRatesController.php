@@ -23,7 +23,7 @@ final class PresalesRatesController
 			$settings[$k] = $old['settings'][$k] ?? Presales::setting($k);
 		}
 		View::render('presales/rates', [
-			'title' => 'Buildsheet rates',
+			'title' => 'Sales rates',
 			'settings' => $settings,
 			'commission' => $old['commission'] ?? array_map(static fn ($c) => [
 				'rate' => Presales::field((float) $c['rate'] * 100, 4), 'adjusted' => Presales::field((float) $c['adjusted'] * 100, 4),

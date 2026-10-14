@@ -66,7 +66,7 @@ final class PresalesController
 			$counts[$r['status']] = (int) $r['n'];
 			$counts['all'] += (int) $r['n'];
 		}
-		View::render('presales/index', ['title' => 'Pre-Sales', 'rows' => $rows, 'status' => $status, 'q' => $q, 'counts' => $counts]);
+		View::render('presales/index', ['title' => 'Sales', 'rows' => $rows, 'status' => $status, 'q' => $q, 'counts' => $counts]);
 	}
 
 	public function create(): void
@@ -230,7 +230,7 @@ final class PresalesController
 				'created_by' => Auth::id(),
 			]);
 			if (!$dupe) {
-				Activity::event('organization', (int) $customerId, 'Customer added from Pre-Sales');
+				Activity::event('organization', (int) $customerId, 'Customer added from Sales');
 			}
 		} elseif ((int) ($_POST['customer_id'] ?? 0)) {
 			$customerId = (int) Db::value("SELECT id FROM organizations WHERE id = ? AND type = 'customer'", [(int) $_POST['customer_id']]) ?: null;

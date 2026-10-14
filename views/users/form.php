@@ -26,7 +26,7 @@ $val = static fn (string $k, $default = '') => $isNew ? old($k, $default) : ($u[
 				<input type="text" name="initials" value="<?= e($val('initials')) ?>" maxlength="4" pattern="[A-Za-z]{1,4}" class="input-short">
 			</label>
 			<label class="check"><input type="checkbox" name="is_admin" value="1" <?= $val('is_admin', 0) ? 'checked' : '' ?>> Admin</label>
-			<label class="check"><input type="checkbox" name="is_sales" value="1" <?= $val('is_sales', 0) ? 'checked' : '' ?>> Sales (can edit the Pre-Sales catalog and rates)</label>
+			<label class="check"><input type="checkbox" name="is_sales" value="1" <?= $val('is_sales', 0) ? 'checked' : '' ?>> Sales (sees their own Sales opportunities and edits the Sales catalog)</label>
 			<label class="check"><input type="checkbox" name="is_active" value="1" <?= $val('is_active', 1) ? 'checked' : '' ?>> Active (can sign in)</label>
 			<div><button class="btn btn-primary"><?= $isNew ? 'Add user' : 'Save changes' ?></button></div>
 		</form>

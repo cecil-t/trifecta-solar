@@ -25,8 +25,8 @@ $spec = static function (array $i): string {
 ?>
 <div class="page-head">
 	<div>
-		<?php if (App\Presales::canUse()): ?><a href="/presales" class="back">&larr; Pre-Sales</a><?php endif; ?>
-		<h1>Catalog</h1>
+		<?php if (App\Presales::canUse()): ?><a href="/presales" class="back">&larr; Sales</a><?php endif; ?>
+		<h1>Sales catalog</h1>
 		<p class="muted">Internal cost of everything a build sheet can price. Each price carries its date and source; prices older than <?= $days ?> days show red so they get checked (quarterly).<?= $canEdit ? '' : ' Admins and salespeople can edit.' ?></p>
 	</div>
 	<?php if ($canEdit): ?><a href="/presales/catalog/new<?= $cat ? '?category=' . e(rawurlencode($cat)) : '' ?>" class="btn btn-primary">New item</a><?php endif; ?>

@@ -16,7 +16,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 ?>
 <div class="project-head">
 	<div>
-		<a href="/presales?status=<?= e($o['status']) ?>#opp-<?= (int) $o['id'] ?>" class="back">&larr; Pre-Sales</a>
+		<a href="/presales?status=<?= e($o['status']) ?>#opp-<?= (int) $o['id'] ?>" class="back">&larr; Sales</a>
 		<div class="page-kicker">Opportunity</div>
 		<h1><?= e($o['name']) ?></h1>
 		<div class="badges">
