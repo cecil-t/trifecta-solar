@@ -71,7 +71,7 @@ foreach ($lines as $i => $l) {
 			<dt>Retail</dt><dd><strong><?= e($m($calc['price'])) ?></strong><?= $calc['price_per_watt'] !== null ? ' &middot; ' . e(Presales::perWatt($calc['price_per_watt'])) . '/W' : '' ?></dd>
 			<dt>Cost</dt><dd><?= e($m($calc['cost_total'])) ?><?= $calc['cost_per_watt'] !== null ? ' &middot; ' . e(Presales::perWatt($calc['cost_per_watt'])) . '/W' : '' ?></dd>
 			<dt>Margin</dt><dd><?= $calc['gross_margin_pct'] !== null ? e(Presales::pct($calc['gross_margin_pct'])) . ' (' . e($m($calc['gross_margin'])) . ')' : '-' ?></dd>
-			<dt>Markup</dt><dd><?= e(Presales::pct((float) $d['markup'])) ?> entered, <?= $calc['effective_markup'] !== null ? e(Presales::pct($calc['effective_markup'])) : '-' ?> effective</dd>
+			<dt>Markup</dt><dd><?= e(Presales::pct((float) $d['markup'])) ?> entered, <?= $calc['effective_markup'] !== null ? e(Presales::pct($calc['effective_markup'])) : '-' ?> after rounding</dd>
 			<dt>Tax</dt><dd><?= $d['tax_exempt'] ? 'Tax exempt (BOS taxed)' : e(Presales::pct((float) $d['tax_rate'], 2)) . ($d['tax_note'] ? ' ' . e($d['tax_note']) : '') ?></dd>
 		</dl>
 	</section>

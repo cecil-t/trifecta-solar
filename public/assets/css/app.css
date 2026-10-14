@@ -1450,3 +1450,11 @@ a[href^="tel:"] { white-space: nowrap; }
 .flash-warn { background: var(--orange-50); border-color: #f3d7a6; color: #8a4f06; }
 .pl-row.has-changed { background: var(--red-50); border-radius: var(--radius-sm); box-shadow: 0 0 0 4px var(--red-50); }
 .dt-markup { font-size: .9rem; margin-bottom: .25rem; }
+/* Print is narrower than the phone breakpoint (Letter at default margins is about 720px), so the
+   phone rules above also apply on paper; put the desktop sheet layout back for print. */
+@media print {
+	.sheet-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem 1.2rem; }
+	.sheet-head { flex-direction: row; align-items: flex-end; }
+	.sheet-title { text-align: right; }
+	.sheet .chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
