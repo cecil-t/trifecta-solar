@@ -31,7 +31,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 		<?php if ($drive = safe_url($o['drive_url'])): ?>
 			<a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Google Drive folder &#8599;</a>
 		<?php endif; ?>
-		<a href="/presales/<?= (int) $o['id'] ?>/edit" class="btn btn-ghost">Edit</a>
+		<a href="/presales/<?= (int) $o['id'] ?>/edit" class="btn btn-ghost" title="Customer, site and utility bill">Edit opportunity</a>
 		<form method="post" action="/presales/<?= (int) $o['id'] ?>/designs">
 			<?= Csrf::field() ?>
 			<button class="btn btn-primary">New build sheet</button>
@@ -54,6 +54,12 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 			<dt>Site</dt><dd><?= $siteAddr !== '' ? maps_link($siteAddr) : '<span class="muted">Not set</span>' ?></dd>
 			<dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?><?= $o['is_agricultural'] ? ' &middot; Agricultural' : '' ?><?php $cls = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']); ?><?= $cls === 'commercial' ? ' <span class="muted small">(Non-Residential)</span>' : '' ?></dd>
 			<dt>Salesperson</dt><dd><?= e($o['salesperson_name'] ?? '') ?></dd>
+			<dt>Utility bill</dt><dd><?php if ($o['bill_name'] || $o['utility_id'] || $o['utility_account'] || $o['annual_usage_kwh']): ?>
+				<?= implode(' &middot; ', array_map('e', array_filter([$o['bill_name'], $o['utility_name']]))) ?>
+				<?php if ($o['annual_usage_kwh']): ?><div><?= number_format((int) $o['annual_usage_kwh']) ?> kWh, last 12 months</div><?php endif; ?>
+				<?php if ($o['utility_account'] || $o['utility_meter']): ?><div class="small muted"><?= $o['utility_account'] ? 'Account ' . e($o['utility_account']) : '' ?><?= $o['utility_account'] && $o['utility_meter'] ? ' &middot; ' : '' ?><?= $o['utility_meter'] ? 'Meter ' . e($o['utility_meter']) : '' ?><?= $o['utility_tariff'] ? ' &middot; Rate ' . e($o['utility_tariff']) : '' ?></div><?php endif; ?>
+				<?php if ($o['service_address']): ?><div class="small muted">Service address <?= e($o['service_address']) ?></div><?php endif; ?>
+			<?php else: ?><a href="/presales/<?= (int) $o['id'] ?>/edit" class="small">Add from the electric bill</a><?php endif; ?></dd>
 			<?php if ($customerProjects): ?>
 				<dt>Projects</dt><dd><?php foreach ($customerProjects as $cp): ?><div><a href="/projects/<?= (int) $cp['id'] ?>"><?= e($cp['project_number'] . ' ' . $cp['name']) ?></a></div><?php endforeach; ?></dd>
 			<?php endif; ?>

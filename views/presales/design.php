@@ -169,11 +169,12 @@ $folded = [];
 				</tbody>
 			</table>
 			<div class="dt-margin">
-				<div class="dt-markup">Markup <strong data-v="markup_pct"><?= e(Presales::pct((float) $d['markup'])) ?></strong> <span class="muted">&middot; after rounding <span data-v="effective_markup"><?= $calc['effective_markup'] === null ? '-' : e(Presales::pct($calc['effective_markup'])) ?></span></span></div>
+				<div class="dt-markup">Markup <strong data-v="markup_pct"><?= e(Presales::pct((float) $d['markup'])) ?></strong></div>
 				<div class="dt-margin-main"><span data-v="gross_margin_pct"><?= $calc['gross_margin_pct'] === null ? '-' : e(Presales::pct($calc['gross_margin_pct'])) ?></span> <small>gross margin</small> <span class="dt-margin-amt" data-v="gross_margin"><?= e($m($calc['gross_margin'])) ?></span></div>
 				<div class="small">If the contingency isn't used: <strong data-v="margin_if_unused_pct"><?= $calc['margin_if_unused_pct'] === null ? '-' : e(Presales::pct($calc['margin_if_unused_pct'])) ?></strong></div>
 				<div class="small">Total to salesperson: <strong data-v="to_salesperson"><?= e($m($calc['to_salesperson'])) ?></strong> <span class="muted">(commission + site visit)</span></div>
-				<p class="hint mt-xs">Markup is what you entered, applied to internal cost. After rounding is what it came to once the price rounded up to $100 and commission was taken out. Gross margin = (retail price - extras without markup) - internal cost (including contingency) - commission, as a share of the retail price less extras. Extras are pass-through, so they are left out.</p>
+				<div class="small">Domestic content: <strong data-v="domestic_short"><?= $calc['domestic_content_pct'] === null ? 'unknown' : e(Presales::pct($calc['domestic_content_pct'])) ?></strong></div>
+				<p class="hint mt-xs dt-explain">Gross margin = (retail price - extras without markup) - internal cost (including contingency) - commission, as a share of the retail price less extras. Extras are pass-through, so they are left out.</p>
 			</div>
 			<p class="dt-error" id="calc-error" hidden></p>
 			<button class="btn btn-primary btn-block">Save build sheet</button>

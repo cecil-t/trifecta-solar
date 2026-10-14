@@ -1458,3 +1458,12 @@ a[href^="tel:"] { white-space: nowrap; }
 	.sheet-title { text-align: right; }
 	.sheet .chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.dt-explain { font-size: .68rem; line-height: 1.35; }
+.sheet-box { border: 1px solid var(--border); border-left: 4px solid var(--blue); border-radius: var(--radius-sm); padding: .5rem .65rem .55rem; }
+.sheet-box-blue { border-left-color: var(--blue); }
+.sheet-box-yellow { border-left-color: var(--orange); }
+.sheet-box-green { border-left-color: var(--green); }
+.sheet-box h2 { border-bottom: 0; padding-bottom: 0; margin-bottom: .35rem; }
+@media print {
+	.sheet-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-inside: avoid; }
+}

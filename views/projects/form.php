@@ -140,6 +140,12 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 					<?php endforeach; ?>
 				</select>
 			</label>
+			<label>Name on utility bill <input type="text" name="bill_name" value="<?= e($v('bill_name')) ?>"></label>
+			<label>Utility account # <input type="text" name="utility_account" value="<?= e($v('utility_account')) ?>"></label>
+			<label>Meter # <input type="text" name="utility_meter" value="<?= e($v('utility_meter')) ?>"></label>
+			<label>Last 12 months usage (kWh) <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric"></label>
+			<label>Utility rate (optional) <input type="text" name="utility_tariff" value="<?= e($v('utility_tariff')) ?>" placeholder="e.g. RS"></label>
+			<label class="span-2">Service address, if not the site <input type="text" name="service_address" value="<?= e($v('service_address')) ?>"></label>
 			<label class="span-2">Municipality (AHJ)
 				<select name="municipality_id" data-reveal="new" data-target="#new-muni">
 					<option value="">Choose</option>

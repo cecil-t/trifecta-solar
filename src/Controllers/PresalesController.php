@@ -21,6 +21,9 @@ final class PresalesController
 		'name' => 'Name', 'customer_id' => 'Customer', 'salesperson_id' => 'Salesperson', 'customer_type' => 'Customer type',
 		'is_agricultural' => 'Agricultural', 'site_street' => 'Street', 'site_city' => 'City', 'site_state' => 'State',
 		'site_zip' => 'ZIP', 'drive_url' => 'Drive folder', 'notes' => 'Notes',
+		'utility_id' => 'Utility', 'bill_name' => 'Name on utility bill', 'utility_account' => 'Utility account #',
+		'utility_meter' => 'Meter #', 'utility_tariff' => 'Utility rate', 'service_address' => 'Service address',
+		'annual_usage_kwh' => 'Last 12 months usage (kWh)',
 	];
 
 	public function index(): void
@@ -83,7 +86,7 @@ final class PresalesController
 	{
 		View::render('presales/opportunity_form', [
 			'title' => $id ? 'Edit ' . $o['name'] : 'New opportunity', 'o' => $o, 'id' => $id,
-			'customers' => Projects::orgs('customer'), 'users' => Projects::users(),
+			'customers' => Projects::orgs('customer'), 'users' => Projects::users(), 'utilities' => Projects::utilities(),
 		]);
 	}
 
@@ -113,6 +116,7 @@ final class PresalesController
 			Activity::changes('presales', $id, $before, $data, self::TRACKED, [
 				'customer_id' => static fn ($v) => Db::value('SELECT name FROM organizations WHERE id = ?', [$v]) ?? $v,
 				'salesperson_id' => static fn ($v) => Db::value('SELECT name FROM users WHERE id = ?', [$v]) ?? $v,
+				'utility_id' => static fn ($v) => Db::value('SELECT name FROM utilities WHERE id = ?', [$v]) ?? $v,
 				'is_agricultural' => static fn ($v) => $v ? 'Yes' : 'No',
 			]);
 		} catch (\InvalidArgumentException $e) {
@@ -128,11 +132,12 @@ final class PresalesController
 	{
 		$o = Db::one(
 			'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
-				u.name AS salesperson_name, p.project_number, p.name AS project_name
+				u.name AS salesperson_name, p.project_number, p.name AS project_name, ut.name AS utility_name
 			 FROM presales_opportunities o
 			 LEFT JOIN organizations c ON c.id = o.customer_id
 			 LEFT JOIN users u ON u.id = o.salesperson_id
 			 LEFT JOIN projects p ON p.id = o.project_id
+			 LEFT JOIN utilities ut ON ut.id = o.utility_id
 			 WHERE o.id = ?', [$id]
 		) ?? $this->notFound();
 		$designs = Db::all('SELECT d.*, u.name AS updated_by_name FROM presales_designs d LEFT JOIN users u ON u.id = d.updated_by
@@ -235,6 +240,11 @@ final class PresalesController
 		if ($err = link_error('The Drive folder link', $drive)) {
 			throw new \InvalidArgumentException($err);
 		}
+		$usage = Projects::parseNumber($_POST['annual_usage_kwh'] ?? '');
+		if ($usage === null && trim((string) ($_POST['annual_usage_kwh'] ?? '')) !== '') {
+			throw new \InvalidArgumentException('Last 12 months usage must be a number of kWh.');
+		}
+		$usage = $usage === null ? null : (int) round($usage);
 		$sales = (int) ($_POST['salesperson_id'] ?? 0);
 		$type = (string) ($_POST['customer_type'] ?? '');
 		return [
@@ -249,6 +259,13 @@ final class PresalesController
 			'site_zip' => trim((string) ($_POST['site_zip'] ?? '')) ?: null,
 			'drive_url' => $drive ?: null,
 			'notes' => trim((string) ($_POST['notes'] ?? '')) ?: null,
+			'utility_id' => ($u = (int) ($_POST['utility_id'] ?? 0)) && Db::value('SELECT 1 FROM utilities WHERE id = ?', [$u]) ? $u : null,
+			'bill_name' => trim((string) ($_POST['bill_name'] ?? '')) ?: null,
+			'utility_account' => trim((string) ($_POST['utility_account'] ?? '')) ?: null,
+			'utility_meter' => trim((string) ($_POST['utility_meter'] ?? '')) ?: null,
+			'utility_tariff' => trim((string) ($_POST['utility_tariff'] ?? '')) ?: null,
+			'service_address' => trim((string) ($_POST['service_address'] ?? '')) ?: null,
+			'annual_usage_kwh' => $usage,
 		];
 	}
 

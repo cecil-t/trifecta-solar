@@ -46,16 +46,17 @@ foreach ($lines as $i => $l) {
 <?php endif; ?>
 
 <div class="sheet-grid sheet-grid-3">
-	<section class="sheet-sec">
+	<section class="sheet-sec sheet-box sheet-box-blue">
 		<h2>Customer</h2>
 		<dl class="kv">
 			<dt>Customer</dt><dd><?= e($o['customer_name'] ?? '') ?></dd>
 			<dt>Site</dt><dd><?= e($siteAddr) ?></dd>
 			<dt>Type</dt><dd><?= e(Presales::CLASS_LABELS[$depositClass]) ?><?= $o['is_agricultural'] ? ', agricultural' : '' ?></dd>
 			<dt>Sales</dt><dd><?= e($o['salesperson_name'] ?? '') ?></dd>
+			<?php if ($o['annual_usage_kwh']): ?><dt>Usage</dt><dd><?= number_format((int) $o['annual_usage_kwh']) ?> kWh/yr</dd><?php endif; ?>
 		</dl>
 	</section>
-	<section class="sheet-sec">
+	<section class="sheet-sec sheet-box sheet-box-yellow">
 		<h2>System</h2>
 		<dl class="kv">
 			<dt>Size</dt><dd><?= e(number_format($calc['dc_kw'], 2)) ?> kW DC &middot; <?= e(number_format($calc['ac_kw'], 2)) ?> kW AC<?= $calc['ratio'] !== null ? ' &middot; ' . e(number_format($calc['ratio'], 2)) . ' DC/AC' : '' ?></dd>
@@ -63,15 +64,17 @@ foreach ($lines as $i => $l) {
 			<dt>Install</dt><dd><?= e(Projects::INSTALL_TYPES[$d['install_type']] ?? 'Not set') ?></dd>
 			<dt>Internet</dt><dd><?= e(Projects::INVERTER_INTERNET[$d['inverter_internet']] ?? 'Not set') ?></dd>
 			<dt>Warranty</dt><dd><?= e($d['warranty_name'] ?? 'None') ?></dd>
+			<dt>Domestic</dt><dd><?= $calc['domestic_content_pct'] === null ? 'Unknown' : e(Presales::pct($calc['domestic_content_pct'])) . ' of major equipment' ?><?= $calc['domestic_unknown'] && $calc['domestic_content_pct'] !== null ? ' (' . count($calc['domestic_unknown']) . ' unknown)' : '' ?></dd>
+			<dt>FEOC</dt><dd><?= e(App\Controllers\DesignController::feocText($calc)) ?></dd>
 		</dl>
 	</section>
-	<section class="sheet-sec">
+	<section class="sheet-sec sheet-box sheet-box-green">
 		<h2>Price</h2>
 		<dl class="kv">
 			<dt>Retail</dt><dd><strong><?= e($m($calc['price'])) ?></strong><?= $calc['price_per_watt'] !== null ? ' &middot; ' . e(Presales::perWatt($calc['price_per_watt'])) . '/W' : '' ?></dd>
 			<dt>Cost</dt><dd><?= e($m($calc['cost_total'])) ?><?= $calc['cost_per_watt'] !== null ? ' &middot; ' . e(Presales::perWatt($calc['cost_per_watt'])) . '/W' : '' ?></dd>
 			<dt>Margin</dt><dd><?= $calc['gross_margin_pct'] !== null ? e(Presales::pct($calc['gross_margin_pct'])) . ' (' . e($m($calc['gross_margin'])) . ')' : '-' ?></dd>
-			<dt>Markup</dt><dd><?= e(Presales::pct((float) $d['markup'])) ?> entered, <?= $calc['effective_markup'] !== null ? e(Presales::pct($calc['effective_markup'])) : '-' ?> after rounding</dd>
+			<dt>Markup</dt><dd><?= e(Presales::pct((float) $d['markup'])) ?></dd>
 			<dt>Tax</dt><dd><?= $d['tax_exempt'] ? 'Tax exempt (BOS taxed)' : e(Presales::pct((float) $d['tax_rate'], 2)) . ($d['tax_note'] ? ' ' . e($d['tax_note']) : '') ?></dd>
 		</dl>
 	</section>

@@ -151,6 +151,10 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 				<dt><?= e($slot['label']) ?></dt><dd><?= $provider($slot) ?></dd>
 			<?php endforeach; ?>
 			<dt>Utility</dt><dd><strong><?= e($p['utility_name'] ?? '') ?></strong><?php foreach ($workOrders as $wo): ?>&nbsp;&middot; <span class="work-order"><?= e($wo) ?></span><?php endforeach; ?></dd>
+<?php if ($p['bill_name'] || $p['utility_account'] || $p['utility_meter']): ?>
+				<dt>Utility bill</dt><dd><?= e((string) $p['bill_name']) ?><?php if ($p['utility_account']): ?><div class="small">Account <?= e($p['utility_account']) ?></div><?php endif; ?><?php if ($p['utility_meter']): ?><div class="small">Meter <?= e($p['utility_meter']) ?></div><?php endif; ?><?php if ($p['utility_tariff']): ?><div class="small">Rate <?= e($p['utility_tariff']) ?></div><?php endif; ?><?php if ($p['service_address']): ?><div class="small">Service address <?= e($p['service_address']) ?></div><?php endif; ?></dd>
+			<?php endif; ?>
+			<?php if ($p['annual_usage_kwh']): ?><dt>Usage</dt><dd><?= number_format((int) $p['annual_usage_kwh']) ?> kWh, last 12 months</dd><?php endif; ?>
 			<dt>SREC</dt><dd><?= isset(Projects::SREC_PROVIDERS[$p['srec_provider'] ?? '']) ? e(Projects::SREC_PROVIDERS[$p['srec_provider']]) : '<span class="muted">Not set</span>' ?></dd>
 			<dt>Designer</dt><dd><?= e($p['designer_name'] ?? '') ?></dd>
 			<dt>Installer</dt><dd><?= e($p['installer_name'] ?? 'Trifecta (in-house)') ?></dd>

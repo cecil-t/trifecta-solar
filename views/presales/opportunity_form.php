@@ -87,6 +87,27 @@ $isNew = $id === null;
 		</div>
 	</section>
 
+	<section class="card band">
+		<h2>Utility bill</h2>
+		<p class="hint">From the customer's electric bill. It all carries into the project.</p>
+		<div class="grid-form">
+			<label class="span-2">Name on utility bill <input type="text" name="bill_name" value="<?= e($v('bill_name')) ?>"></label>
+			<label>Utility
+				<select name="utility_id">
+					<option value="">Choose</option>
+					<?php foreach ($utilities as $u): ?>
+						<option value="<?= (int) $u['id'] ?>" <?= $sel($v('utility_id'), $u['id']) ?>><?= e($u['name']) ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>Last 12 months usage (kWh) <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric" placeholder="e.g. 14,200"></label>
+			<label>Account # <input type="text" name="utility_account" value="<?= e($v('utility_account')) ?>"></label>
+			<label>Meter # <input type="text" name="utility_meter" value="<?= e($v('utility_meter')) ?>"></label>
+			<label>Rate (optional) <input type="text" name="utility_tariff" value="<?= e($v('utility_tariff')) ?>" placeholder="e.g. RS"></label>
+			<label>Service address, if not the site <input type="text" name="service_address" value="<?= e($v('service_address')) ?>"></label>
+		</div>
+	</section>
+
 	<div class="form-actions">
 		<button class="btn btn-primary"><?= $isNew ? 'Create and open build sheet' : 'Save' ?></button>
 		<a href="<?= $isNew ? '/presales' : '/presales/' . (int) $id ?>" class="btn btn-ghost">Cancel</a>

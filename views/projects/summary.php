@@ -116,6 +116,10 @@ $priceUrl = '/projects/' . $id . '/summary' . ($showPrice ? '?price=0' : '');
 			<dt>Install</dt><dd><?= e(Projects::INSTALL_TYPES[$p['install_type']] ?? '') ?: $notSet ?></dd>
 			<dt>Racking</dt><dd><?= $p['racking'] ? e($p['racking']) : $notSet ?></dd>
 			<dt>Internet</dt><dd><?= isset(Projects::INVERTER_INTERNET[$p['inverter_internet'] ?? '']) ? e(Projects::INVERTER_INTERNET[$p['inverter_internet']]) : $notSet ?></dd>
+			<?php if ($p['bill_name'] || $p['utility_account'] || $p['utility_meter']): ?>
+				<dt>Utility bill</dt><dd><?= e((string) $p['bill_name']) ?><?php if ($p['utility_account']): ?><div class="small">Account <?= e($p['utility_account']) ?></div><?php endif; ?><?php if ($p['utility_meter']): ?><div class="small">Meter <?= e($p['utility_meter']) ?></div><?php endif; ?></dd>
+			<?php endif; ?>
+			<?php if ($p['annual_usage_kwh']): ?><dt>Usage</dt><dd><?= number_format((int) $p['annual_usage_kwh']) ?> kWh, last 12 months</dd><?php endif; ?>
 			<?php if ($p['est_annual_kwh']): ?><dt>Est. annual</dt><dd><?= number_format((int) $p['est_annual_kwh']) ?> kWh</dd><?php endif; ?>
 		</dl>
 	</section>
