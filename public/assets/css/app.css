@@ -1512,3 +1512,5 @@ a[href^="tel:"] { white-space: nowrap; }
 .pl-block .pl-total { background: #f5f7f6; margin: .35rem -.6rem -.4rem; padding: .3rem .6rem; border-top: 1px solid var(--border); border-radius: 0 0 var(--radius-sm) 0; }
 .pl-rows > .row-add { padding: .15rem .6rem; font-size: .76rem; }
 .pl-more { border-top: 0; padding-top: .2rem; }
+.pl-block.row-flash { animation: row-flash 2.5s ease-out; }
+@media (prefers-reduced-motion: reduce) { .pl-block.row-flash { animation: none; } }

@@ -229,7 +229,12 @@
 			const more = form.querySelector('.pl-more');
 			if (more && !more.querySelector('[data-show-cat]')) more.remove();
 			const sel = block.querySelector('select');
-			if (sel) sel.focus();
+			// bring the opened category into view where it sits in the list, and flash it
+			block.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+			block.classList.remove('row-flash');
+			void block.offsetWidth; // restart the animation if it is opened again
+			block.classList.add('row-flash');
+			if (sel) sel.focus({ preventScroll: true });
 		}
 	});
 
