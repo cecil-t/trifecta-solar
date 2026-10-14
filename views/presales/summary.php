@@ -45,6 +45,8 @@ foreach ($lines as $i => $l) {
 	<p class="sheet-warn"><?= $flags['changed'] + $flags['retired'] ? (int) ($flags['changed'] + $flags['retired']) . ' line(s) priced differently in the catalog now. ' : '' ?><?= $flags['stale'] ? (int) $flags['stale'] . ' line(s) use prices due for a check.' : '' ?></p>
 <?php endif; ?>
 
+<?php foreach ($calc['checks'] as $msg): ?><p class="sheet-warn"><?= e($msg) ?></p><?php endforeach; ?>
+
 <div class="sheet-grid sheet-grid-3">
 	<section class="sheet-sec sheet-box sheet-box-blue">
 		<h2>Customer</h2>

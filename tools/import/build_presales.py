@@ -79,7 +79,7 @@ class Catalog:
 			'watts': None, 'ac_kw': None, 'kwh': None, 'kw': None, 'warranty_text': None,
 			'ext_warranty_years': None, 'ext_warranty_cost': None, 'siw_cost': None, 'is_solarinsure': 0,
 			'notes': None, 'print_notes': 0, 'segment': None, 'mounts': None,
-			'domestic_content_pct': None, 'feoc_ok': None,
+			'domestic_content_pct': None, 'feoc_ok': None, 'needs_mlpe': 0,
 			'price_updated_at': self.sheet_date, 'price_source': self.sheet_label,
 			'sort_order': len(self.items) + 1,
 		}
@@ -113,6 +113,8 @@ def classify(it: dict) -> None:
 				it['segment'] = 'commercial'
 		elif cat == 'electrical' and 'feeder protection' in low:
 			it['segment'] = 'commercial'
+	if cat == 'inverters' and 'solaredge' in low.replace(' ', ''):
+		it['needs_mlpe'] = 1
 	if cat == 'racking':
 		if 'flush roof' in notes or 'flat roof' in notes:
 			it['mounts'] = 'ground' if 'compactground' in low else 'roof'

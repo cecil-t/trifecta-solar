@@ -11,7 +11,7 @@ final class Designs
 {
 	/** Fields copied from a catalog item into a line (the line's snapshot). */
 	public const SNAPSHOT = ['name', 'qty_rule', 'price', 'shipping', 'setup_cost', 'min_total', 'tax_class', 'watts', 'ac_kw',
-		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok'];
+		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe'];
 	/** The fields that make a line's price differ from the catalog today. */
 	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class'];
 
@@ -356,7 +356,42 @@ final class Designs
 	{
 		$calc = Pricing::calculate($d, $lines, $arrays, Presales::contingencyRules(), max(1, Presales::num('round_to')));
 		$calc['warranty_summary'] = Pricing::warrantySummary($d, $calc['lines'], Presales::setting('trifecta_warranty_text'), Presales::setting('solarinsure_text'));
+		$calc['checks'] = self::checks($d, $calc, $arrays);
 		return $calc;
+	}
+
+	/**
+	 * Equipment checks shown on the build sheet (warnings, never blocking):
+	 * an inverter that needs optimizers with no optimizer line, and rooftop arrays with no
+	 * optimizer, microinverter or rapid shutdown line (ground mounts may not need rapid shutdown).
+	 */
+	public static function checks(array $d, array $calc, array $arrays): array
+	{
+		$hasMlpe = false;
+		$needs = [];
+		// the catalog's current flag counts too, for lines picked before the flag existed
+		$ids = array_filter(array_map(static fn ($l) => $l['category'] === 'inverters' ? (int) ($l['catalog_item_id'] ?? 0) : 0, $calc['lines']));
+		$flagged = $ids ? array_map('intval', array_column(Db::all('SELECT id FROM catalog_items WHERE needs_mlpe = 1 AND id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', array_values($ids)), 'id')) : [];
+		foreach ($calc['lines'] as $l) {
+			if (($l['qty_resolved'] ?? 0) <= 0) {
+				continue;
+			}
+			if ($l['category'] === 'mlpe') {
+				$hasMlpe = true;
+			}
+			if ($l['category'] === 'inverters' && (!empty($l['needs_mlpe']) || in_array((int) ($l['catalog_item_id'] ?? 0), $flagged, true))) {
+				$needs[] = $l['name'];
+			}
+		}
+		$out = [];
+		if ($needs && !$hasMlpe) {
+			$out[] = implode(', ', array_unique($needs)) . ' needs an optimizer on every module. Add one under Optimizers, micros and rapid shutdown.';
+		}
+		$roof = ($d['install_type'] ?? '') === 'roof' || in_array('roof', array_column($arrays, 'mount'), true);
+		if ($roof && !$hasMlpe && !$needs && $calc['panels'] > 0) {
+			$out[] = 'Rooftop arrays need rapid shutdown. Add an optimizer, microinverter or rapid shutdown line.';
+		}
+		return $out;
 	}
 
 	/**

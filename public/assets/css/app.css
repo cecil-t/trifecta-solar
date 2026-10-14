@@ -1503,3 +1503,12 @@ a[href^="tel:"] { white-space: nowrap; }
 	}
 }
 .table-rules td.num { white-space: nowrap; width: 4.5rem; }
+.design-checks { margin: 0 0 .5rem; padding: .45rem .7rem; font-weight: 600; font-size: .86rem; }
+.design-checks ul { margin: 0; padding-left: 1.1rem; }
+/* Build sheet: each equipment category is its own box (shaded header, shaded total) */
+.pl-block { border: 1px solid var(--border); border-left: 4px solid var(--blue); border-radius: var(--radius-sm); padding: 0 .6rem .4rem; margin-top: .55rem; background: #fff; }
+.pl-block + .pl-block { margin-top: .55rem; padding-top: 0; }
+.pl-block .pl-head { background: var(--blue-50); margin: 0 -.6rem .35rem; padding: .3rem .6rem; border-bottom: 0; border-radius: 0 var(--radius-sm) 0 0; }
+.pl-block .pl-total { background: #f5f7f6; margin: .35rem -.6rem -.4rem; padding: .3rem .6rem; border-top: 1px solid var(--border); border-radius: 0 0 var(--radius-sm) 0; }
+.pl-rows > .row-add { padding: .15rem .6rem; font-size: .76rem; }
+.pl-more { border-top: 0; padding-top: .2rem; }

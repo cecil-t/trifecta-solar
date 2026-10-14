@@ -140,6 +140,10 @@ $dis = $canEdit ? '' : 'disabled';
 				</select>
 			</label>
 			<div class="checkfield">
+				<span class="field-label">Inverters</span>
+				<label class="boxwrap"><input type="checkbox" name="needs_mlpe" value="1" <?= $v('needs_mlpe') ? 'checked' : '' ?> <?= $dis ?>> Needs an optimizer on every module (SolarEdge)</label>
+			</div>
+			<div class="checkfield">
 				<span class="field-label">Warranty programs</span>
 				<label class="boxwrap"><input type="checkbox" name="is_solarinsure" value="1" <?= $v('is_solarinsure') ? 'checked' : '' ?> <?= $dis ?>> This program is SolarInsure</label>
 			</div>

@@ -131,8 +131,8 @@ final class PresalesImporter
 	{
 		$cols = ['category', 'name', 'notes', 'print_notes', 'price', 'shipping', 'setup_cost', 'min_total', 'qty_rule', 'tax_class',
 			'watts', 'ac_kw', 'kwh', 'kw', 'warranty_text', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'is_solarinsure',
-			'price_updated_at', 'price_source', 'sort_order', 'segment', 'mounts', 'domestic_content_pct', 'feoc_ok'];
-		$fillable = ['segment', 'mounts', 'domestic_content_pct', 'feoc_ok'];
+			'price_updated_at', 'price_source', 'sort_order', 'segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe'];
+		$fillable = ['segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe'];
 		foreach ($items as $it) {
 			if (!isset(Presales::CATEGORIES[$it['category'] ?? '']) || trim((string) ($it['name'] ?? '')) === '') {
 				$this->log[] = '  catalog: skipped an item with an unknown category or no name';
@@ -142,7 +142,8 @@ final class PresalesImporter
 			if ($have) {
 				$fill = [];
 				foreach ($fillable as $c) {
-					if (($have[$c] === null || $have[$c] === '') && isset($it[$c]) && $it[$c] !== '') {
+					$blank = $have[$c] === null || $have[$c] === '' || ($c === 'needs_mlpe' && !(int) $have[$c]);
+					if ($blank && isset($it[$c]) && $it[$c] !== '' && !($c === 'needs_mlpe' && !(int) $it[$c])) {
 						$fill[$c] = $it[$c];
 					}
 				}
@@ -169,6 +170,7 @@ final class PresalesImporter
 			$row['setup_cost'] = (float) ($row['setup_cost'] ?? 0);
 			$row['qty_rule'] = array_key_exists((string) $row['qty_rule'], Presales::QTY_RULES) ? $row['qty_rule'] : 'manual';
 			$row['tax_class'] = array_key_exists((string) $row['tax_class'], Presales::TAX_CLASSES) ? $row['tax_class'] : 'bos';
+			$row['needs_mlpe'] = (int) ($row['needs_mlpe'] ?? 0);
 			$row['segment'] = in_array($row['segment'], ['residential', 'commercial'], true) ? $row['segment'] : null;
 			$id = Db::insert('catalog_items', $row);
 			if (!$this->dryRun) {

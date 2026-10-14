@@ -84,7 +84,7 @@ $lineFlag = static function (?array $f): string {
 	}
 	return $h;
 };
-$always = ['modules', 'inverters', 'racking', 'bos', 'permits', 'interconnection'];
+$always = ['modules', 'inverters', 'mlpe', 'racking', 'bos', 'permits', 'interconnection'];
 $folded = [];
 ?>
 <div class="project-head">
@@ -246,6 +246,9 @@ $folded = [];
 
 		<section class="card band">
 			<h2>Equipment and materials</h2>
+			<div class="flash flash-warn design-checks" id="design-checks" <?= $calc['checks'] ? '' : 'hidden' ?>>
+				<ul><?php foreach ($calc['checks'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
+			</div>
 			<p class="hint">Each line keeps the price it was picked at. Per-watt and per-module quantities fill in on their own. Retail is the line's share of the final price. <?= e($classLabel) ?> job: only <?= e(strtolower($classLabel)) ?> BOS, structural, permit and interconnection items are offered.</p>
 			<?php foreach (Presales::CATEGORIES as $cat => [$catLabel, $unitLabel]): if ($cat === 'warranty') { continue; } $rows = $byCat[$cat] ?? [null]; $items = $catalog[$cat] ?? [];
 				$fold = !isset($byCat[$cat]) && !in_array($cat, $always, true);

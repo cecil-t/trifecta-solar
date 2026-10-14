@@ -208,6 +208,7 @@ final class DesignController
 			'steep' => $c['steep_arrays'],
 			'deposit_options' => array_map(static fn ($a) => ['value' => Presales::field($a, 2), 'label' => $m($a)], $depositOptions),
 			'warranty_summary' => $c['warranty_summary'],
+			'checks' => $c['checks'],
 			'cats' => array_map(static fn ($t) => ['cost' => $m($t['cost']), 'tax' => $t['tax'] > 0 ? $m($t['tax']) : '-', 'retail' => $m($t['retail'])], $c['categories']),
 		];
 	}

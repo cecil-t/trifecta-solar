@@ -369,6 +369,13 @@
 			}
 		}
 
+		const checks = document.getElementById('design-checks');
+		if (checks) {
+			const ul = checks.querySelector('ul');
+			ul.textContent = '';
+			(res.checks || []).forEach((msg) => { const li = document.createElement('li'); li.textContent = msg; ul.appendChild(li); });
+			checks.hidden = !(res.checks || []).length;
+		}
 		const ws = document.getElementById('warranty-summary');
 		if (ws && ws.value !== res.warranty_summary) ws.value = res.warranty_summary;
 		if (status) status.textContent = 'Totals updated. Save to keep changes.';

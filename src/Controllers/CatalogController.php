@@ -22,7 +22,7 @@ final class CatalogController
 		'ext_warranty_cost' => 'Extended warranty cost', 'siw_cost' => 'SolarInsure cost', 'is_solarinsure' => 'SolarInsure program',
 		'price_source' => 'Price source', 'price_updated_at' => 'Price date', 'notes' => 'Notes', 'print_notes' => 'Print notes',
 		'is_active' => 'Active', 'segment' => 'Jobs', 'mounts' => 'Install types',
-		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant',
+		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant', 'needs_mlpe' => 'Needs optimizers',
 	];
 
 	public function index(): void
@@ -189,6 +189,7 @@ final class CatalogController
 			'segment' => in_array($p['segment'] ?? '', ['residential', 'commercial'], true) ? $p['segment'] : null,
 			'mounts' => implode(',', array_values(array_intersect(array_keys(Presales::MOUNT_FILTERS), (array) ($p['mounts'] ?? [])))) ?: null,
 			'domestic_content_pct' => $num('domestic_content_pct', 'Domestic content'),
+			'needs_mlpe' => $cat === 'inverters' && !empty($p['needs_mlpe']) ? 1 : 0,
 			'feoc_ok' => ($p['feoc_ok'] ?? '') === '' ? null : ((string) $p['feoc_ok'] === '1' ? 1 : 0),
 		];
 		if ($data['domestic_content_pct'] !== null && $data['domestic_content_pct'] > 100) {
