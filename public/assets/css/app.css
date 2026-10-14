@@ -1514,3 +1514,7 @@ a[href^="tel:"] { white-space: nowrap; }
 .pl-more { border-top: 0; padding-top: .2rem; }
 .pl-block.row-flash { animation: row-flash 2.5s ease-out; }
 @media (prefers-reduced-motion: reduce) { .pl-block.row-flash { animation: none; } }
+.table-opps th { white-space: normal; vertical-align: bottom; }
+.table-opps th { overflow-wrap: normal; word-break: keep-all; hyphens: none; min-width: 3.2rem; }
+.table-opps th:first-child { min-width: 8rem; }
+.table-opps th, .table-opps td { padding-left: 0.45rem; padding-right: 0.45rem; }

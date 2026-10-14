@@ -26,7 +26,18 @@ final class ReportController
 		'projection' => ['Projection', 'Next 12 months at the pace of the last quarter, this year, and rolling 12 and 24 months.'],
 		'time' => ['Project time', 'Days from contract signed to PTO, with an in-progress list.'],
 		'service' => ['Service', 'Tickets, trips, man-hours and amounts billed by coverage and month.'],
+		'opportunities' => ['Opportunities', 'Sales pipeline by salesperson: open, sold and lost quotes, win rate, pricing, and quotes going cold.'],
 	];
+
+	/** The reports this user may open (Opportunities is for salespeople and admins). */
+	public static function visibleReports(): array
+	{
+		$out = self::REPORTS;
+		if (!\App\Presales::canUse()) {
+			unset($out['opportunities']);
+		}
+		return $out;
+	}
 
 	public function index(): void
 	{
@@ -142,6 +153,23 @@ final class ReportController
 		$this->render('service', $f, [
 			'totals' => $this->svcSum($tickets), 'byCoverage' => $byCoverage, 'byMonth' => array_reverse($byMonth, true),
 		]);
+	}
+
+	// ------------------------------------------------------------------ opportunities
+
+	/** Sales pipeline. Admins see everyone (or one salesperson); a salesperson sees their own. */
+	public function opportunities(): void
+	{
+		\App\Presales::requireUse();
+		$admin = \App\Auth::isAdmin();
+		$f = $this->filters('ytd', false, $admin);
+		if (!$admin) {
+			$f['sales'] = (int) \App\Auth::id();
+			$f['sales_name'] = (string) (\App\Auth::user()['name'] ?? '');
+		}
+		$class = in_array($_GET['class'] ?? '', ['residential', 'commercial'], true) ? $_GET['class'] : '';
+		$f['class'] = $class;
+		$this->render('opportunities', $f, \App\OpportunityReport::build($f['from'], $f['to'], $f['sales'], $class) + ['admin' => $admin]);
 	}
 
 	// ------------------------------------------------------------------ shared

@@ -15,6 +15,9 @@ if (!in_array($f['preset'], ['custom', 'all'], true) && !$f['asof']) {
 if ($f['sales_name']) {
 	$summary .= ' · ' . $f['sales_name'];
 }
+if (!empty($f['class'])) {
+	$summary .= ' · ' . ($f['class'] === 'residential' ? 'Residential' : 'Non-Residential');
+}
 ?>
 <img src="<?= asset('assets/img/logo-horizontal.png') ?>" alt="Trifecta Solar" class="print-only report-logo" width="190">
 <div class="page-head report-head">
@@ -27,7 +30,7 @@ if ($f['sales_name']) {
 </div>
 
 <nav class="tabs no-print">
-	<?php foreach (ReportController::REPORTS as $key => [$label]): ?>
+	<?php foreach (ReportController::visibleReports() as $key => [$label]): ?>
 		<a href="/reports/<?= $key ?>?<?= e(http_build_query(array_filter(['preset' => $f['asof'] ? null : $f['preset'], 'from' => $f['preset'] === 'custom' ? $f['from'] : null, 'to' => $f['preset'] === 'custom' ? $f['to'] : null, 'sales' => $f['sales'] ?: null]))) ?>" class="tab <?= $key === $report ? 'active' : '' ?>"><?= e($label) ?></a>
 	<?php endforeach; ?>
 </nav>
@@ -49,6 +52,15 @@ if ($f['sales_name']) {
 			<select name="sales">
 				<option value="">Everyone</option>
 				<?php foreach ($users as $u): ?><option value="<?= (int) $u['id'] ?>" <?= $f['sales'] === (int) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option><?php endforeach; ?>
+			</select>
+		</label>
+	<?php endif; ?>
+	<?php if (array_key_exists('class', $f)): ?>
+		<label class="rf-wide">Jobs
+			<select name="class">
+				<option value="">All jobs</option>
+				<option value="residential" <?= $f['class'] === 'residential' ? 'selected' : '' ?>>Residential</option>
+				<option value="commercial" <?= $f['class'] === 'commercial' ? 'selected' : '' ?>>Non-Residential</option>
 			</select>
 		</label>
 	<?php endif; ?>

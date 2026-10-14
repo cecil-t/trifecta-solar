@@ -166,6 +166,7 @@ $r->get('/reports/sales', [ReportController::class, 'sales']);
 $r->get('/reports/projection', [ReportController::class, 'projection']);
 $r->get('/reports/time', [ReportController::class, 'time']);
 $r->get('/reports/service', [ReportController::class, 'service']);
+$r->get('/reports/opportunities', [ReportController::class, 'opportunities']);
 
 $r->post('/activity/{id}/edit', [ActivityController::class, 'edit']);
 $r->post('/activity/{id}/delete', [ActivityController::class, 'delete']);
