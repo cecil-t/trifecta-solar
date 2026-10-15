@@ -412,7 +412,10 @@
 		if (res.error) { showError(res.error); return; }
 		showError('');
 		Object.keys(res.v).forEach((k) => {
-			form.querySelectorAll('[data-v="' + k + '"]').forEach((el) => setText(el, res.v[k]));
+			form.querySelectorAll('[data-v="' + k + '"]').forEach((el) => {
+				setText(el, res.v[k]);
+				if (el.hasAttribute('data-hide-empty')) el.hidden = res.v[k] === '';
+			});
 			form.querySelectorAll('[data-v-value="' + k + '"]').forEach((el) => { el.value = res.v[k]; });
 		});
 		const st = res.state;
@@ -439,6 +442,8 @@
 			if (unitEl) { if (l.overridden) unitEl.title = 'Catalog ' + l.catalog_unit; else unitEl.removeAttribute('title'); }
 			const flags = row.querySelector('.pl-flags');
 			flags.textContent = '';
+			if (l.pass) flags.appendChild(chip('Pass-through', 'chip-blue'));
+			if (l.pays) flags.appendChild(chip('Pays the salesperson', 'chip-green'));
 			if (l.override_pending) flags.appendChild(chip('Type a reason to use the override', 'chip-red'));
 			if (l.retired) flags.appendChild(chip('Retired from the catalog', 'chip-red'));
 			else if (l.changed) flags.appendChild(chip('Catalog price changed', 'chip-red'));

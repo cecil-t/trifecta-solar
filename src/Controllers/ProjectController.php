@@ -625,6 +625,7 @@ final class ProjectController
 			'activity' => Activity::feed('project', $id, $commentsOnly),
 			'lastComment' => Activity::latestComment('project', $id),
 			'commentsOnly' => $commentsOnly,
+			'commission' => \App\Commissions::forProject($id),
 		]);
 	}
 
@@ -729,6 +730,9 @@ final class ProjectController
 			'owner_id' => static fn ($v) => (string) Db::value('SELECT name FROM users WHERE id = ?', [$v]),
 		]);
 		Db::update('projects', $id, ['updated_at' => now_utc()]);
+		if ($field === 'done_date' && ($t['action'] ?? null) === 'pay_commission' && (string) $t['done_date'] !== (string) $value) {
+			\App\Commissions::onPayStep($id, $t, $value);
+		}
 
 		$rows = Tasks::forProjects([$id])[$id] ?? [];
 		$status = Tasks::status($p, $rows);

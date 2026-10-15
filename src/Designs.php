@@ -11,9 +11,9 @@ final class Designs
 {
 	/** Fields copied from a catalog item into a line (the line's snapshot). */
 	public const SNAPSHOT = ['name', 'qty_rule', 'price', 'shipping', 'setup_cost', 'min_total', 'tax_class', 'watts', 'ac_kw',
-		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe'];
+		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'pricing', 'pays_sales'];
 	/** The fields that make a line's price differ from the catalog today. */
-	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class'];
+	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class', 'pricing', 'pays_sales'];
 
 	public static function find(int $id): ?array
 	{
@@ -56,7 +56,6 @@ final class Designs
 	/** A new build sheet with today's rates copied in. */
 	public static function create(int $oppId, string $name): int
 	{
-		$commission = Db::one('SELECT * FROM presales_commission_rates ORDER BY is_default DESC, rate DESC LIMIT 1');
 		$template = Db::one('SELECT * FROM presales_payment_templates ORDER BY is_default DESC, sort_order LIMIT 1');
 		$warranty = Db::one("SELECT * FROM catalog_items WHERE category = 'warranty' AND is_active = 1 ORDER BY is_solarinsure, sort_order LIMIT 1");
 		$sort = (int) Db::value('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM presales_designs WHERE opportunity_id = ?', [$oppId]);
@@ -66,9 +65,7 @@ final class Designs
 			'tax_rate' => Presales::num('tax_rate'),
 			'tax_note' => Presales::setting('tax_note'),
 			'markup' => Presales::num('markup_default'),
-			'commission_rate' => $commission ? (float) $commission['rate'] : 0,
-			'commission_adjusted' => $commission ? (float) $commission['adjusted'] : 0,
-			'commission_step_down' => $commission ? (float) $commission['step_down'] : 0,
+			'commission_plan' => json_encode(Commission::currentPlan()),
 			'warranty_item_id' => $warranty['id'] ?? null,
 			'warranty_price' => $warranty ? (float) $warranty['price'] : null,
 			'warranty_name' => $warranty['name'] ?? null,
@@ -78,7 +75,6 @@ final class Designs
 			'labor_rate' => Presales::num('labor_rate'),
 			'lodging_rate' => Presales::num('lodging_rate'),
 			'per_diem_rate' => Presales::num('per_diem_rate'),
-			'site_visit' => Presales::num('site_visit'),
 			'contingency_cap' => Presales::num('contingency_cap'),
 			'contingency_floor' => Presales::num('contingency_floor'),
 			'steep_deg' => Presales::num('steep_deg'),
@@ -183,8 +179,8 @@ final class Designs
 		}
 		$f['notes'] = trim((string) ($post['notes'] ?? '')) ?: null;
 
-		// Commission: one of the rates on the Rates page (its adjusted % and step-down come with it)
-		$rate = $num($post['commission_rate'] ?? '', 'Commission');
+		// Commission: build sheets with a plan keep it; older ones pick one of the old single rates
+		$rate = empty($d['commission_plan']) ? $num($post['commission_rate'] ?? '', 'Commission') : null;
 		if ($rate !== null && abs($rate / 100 - (float) $d['commission_rate']) > 0.000001) {
 			$c = Db::one('SELECT * FROM presales_commission_rates WHERE ABS(rate - ?) < 0.000001', [$rate / 100]);
 			if (!$c) {
@@ -223,7 +219,8 @@ final class Designs
 			throw new \InvalidArgumentException('Labor price can\'t be zero. The default per watt is on the Rates page.');
 		}
 		$f['labor_rate'] = $num($post['labor_rate'] ?? '', 'Labor rate') ?? 0;
-		$f['site_visit'] = $num($post['site_visit'] ?? '', 'Site visit') ?? 0;
+		// Site visit is a catalog line now; only build sheets from before commission plans keep the field
+		$f['site_visit'] = empty($d['commission_plan']) ? ($num($post['site_visit'] ?? '', 'Site visit') ?? 0) : (float) $d['site_visit'];
 		// Travel: lodging for every night away, per diem for every day away (nights + 1)
 		$f['trip_nights'] = max(0, (int) ($num($post['trip_nights'] ?? '', 'Nights away') ?? 0));
 		$f['trip_crew'] = max(0, (int) ($num($post['trip_crew'] ?? '', 'Crew traveling') ?? 0));
@@ -282,7 +279,8 @@ final class Designs
 						'min_total' => null, 'tax_class' => $tax, 'watts' => $cat === 'modules' ? $num($r['watts'] ?? '', 'Watts') : null,
 						'ac_kw' => null, 'kwh' => null, 'kw' => null, 'ext_warranty' => 0, 'ext_warranty_years' => null,
 						'ext_warranty_cost' => null, 'siw_cost' => null, 'warranty_text' => null, 'price_date' => date('Y-m-d'),
-						'note' => trim((string) ($r['note'] ?? '')) ?: null, 'sort_order' => ++$sort, '_key' => (string) ($r['key'] ?? '')];
+						'note' => trim((string) ($r['note'] ?? '')) ?: null, 'pricing' => 'markup', 'pays_sales' => 0,
+						'sort_order' => ++$sort, '_key' => (string) ($r['key'] ?? '')];
 					continue;
 				}
 				$itemId = (int) $itemKey;
@@ -445,6 +443,7 @@ final class Designs
 	 */
 	public static function calc(array $d, array $lines, array $arrays, ?array $trench = null): array
 	{
+		$d += self::leadFacts((int) ($d['opportunity_id'] ?? 0));
 		$trench ??= isset($d['id']) ? self::trench((int) $d['id']) : ['trenches' => [], 'circuits' => []];
 		$rules = Presales::contingencyRules();
 		$round = max(1, Presales::num('round_to'));
@@ -456,6 +455,20 @@ final class Designs
 		$calc['warranty_summary'] = Pricing::warrantySummary($d, $calc['lines'], Presales::setting('trifecta_warranty_text'), Presales::setting('solarinsure_text'));
 		$calc['checks'] = self::checks($d, $calc, $arrays);
 		return $calc;
+	}
+
+	/**
+	 * What the pricing needs to know about the opportunity: its lead source, whether there is an
+	 * in-house handoff, and whether the self-generated bonus can apply (net-new customers only).
+	 */
+	public static function leadFacts(int $oppId): array
+	{
+		$o = $oppId ? Db::one('SELECT id, customer_id, lead_source, handoff_user_id, project_id FROM presales_opportunities WHERE id = ?', [$oppId]) : null;
+		if (!$o) {
+			return ['lead_source' => null, 'handoff_user_id' => null, 'self_gen_allowed' => true];
+		}
+		return ['lead_source' => $o['lead_source'], 'handoff_user_id' => $o['handoff_user_id'],
+			'self_gen_allowed' => !Presales::isRepeatCustomer($o)];
 	}
 
 	/**
@@ -570,6 +583,21 @@ final class Designs
 			$count++;
 		}
 		Db::update('presales_designs', (int) $d['id'], ['trench_basis' => null]);
+		// A copy at today's prices also moves to today's commission plan. The old site visit field
+		// becomes the catalog's site visit line (a pays-the-salesperson item) when there is one.
+		$planUpdate = ['commission_plan' => json_encode(Commission::currentPlan()), 'site_visit' => 0,
+			'commission_rate' => 0, 'commission_adjusted' => 0, 'commission_step_down' => 0];
+		if ((float) $d['site_visit'] > 0) {
+			$visit = Db::one("SELECT * FROM catalog_items WHERE is_active = 1 AND pays_sales = 1 AND name LIKE '%site visit%' ORDER BY sort_order, id LIMIT 1");
+			if ($visit) {
+				$line = self::snapshot($visit) + ['design_id' => (int) $d['id'], 'qty' => 1, 'ext_warranty' => 0,
+					'sort_order' => (int) Db::value('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM presales_design_lines WHERE design_id = ?', [(int) $d['id']])];
+				Db::insert('presales_design_lines', $line);
+			} else {
+				$planUpdate['site_visit'] = (float) $d['site_visit'];
+			}
+		}
+		Db::update('presales_designs', (int) $d['id'], $planUpdate);
 		if ($d['warranty_item_id']) {
 			$c = Db::one('SELECT * FROM catalog_items WHERE id = ? AND is_active = 1', [(int) $d['warranty_item_id']]);
 			if ($c) {

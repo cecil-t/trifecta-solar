@@ -25,6 +25,7 @@ final class CatalogController
 		'is_active' => 'Active', 'segment' => 'Jobs', 'mounts' => 'Install types',
 		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant', 'needs_mlpe' => 'Needs optimizers',
 		'trench_part' => 'Trench builder part', 'part_size' => 'Part size', 'material' => 'Material',
+		'pricing' => 'Pricing', 'pays_sales' => 'Pays the salesperson',
 	];
 
 	public function index(): void
@@ -212,6 +213,8 @@ final class CatalogController
 			'mounts' => implode(',', array_values(array_intersect(array_keys(Presales::MOUNT_FILTERS), (array) ($p['mounts'] ?? [])))) ?: null,
 			'domestic_content_pct' => $num('domestic_content_pct', 'Domestic content'),
 			'needs_mlpe' => $cat === 'inverters' && !empty($p['needs_mlpe']) ? 1 : 0,
+			'pricing' => ($p['pricing'] ?? '') === 'pass' ? 'pass' : 'markup',
+			'pays_sales' => empty($p['pays_sales']) ? 0 : 1,
 			'feoc_ok' => ($p['feoc_ok'] ?? '') === '' ? null : ((string) $p['feoc_ok'] === '1' ? 1 : 0),
 		];
 		// Trench builder parts: which part, its size and material; one active item per part

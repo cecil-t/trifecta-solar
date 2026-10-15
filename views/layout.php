@@ -42,13 +42,14 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 		</form>
 
 		<details class="navmenu">
-			<summary class="<?= $isActive('/customers') || $isActive('/organizations') || $isActive('/municipalities') || $isActive('/directory') || $isActive('/admin') || $isActive('/users') ? 'active' : '' ?>">Lists &#9662;</summary>
+			<summary class="<?= $isActive('/customers') || $isActive('/organizations') || $isActive('/municipalities') || $isActive('/directory') || $isActive('/admin') || $isActive('/users') || $isActive('/commissions') ? 'active' : '' ?>">Lists &#9662;</summary>
 			<div class="usermenu-panel">
 				<a href="/customers">Customers</a>
 				<a href="/municipalities">Municipalities</a>
 				<a href="/directory">Directory (third parties)</a>
 				<a href="/presales/catalog">Sales catalog</a>
 				<a href="/presales/rates">Sales rates</a>
+				<?php if (App\Commissions::canUse()): ?><a href="/commissions">Sales commissions</a><?php endif; ?>
 				<?php if (Auth::isAdmin()): ?>
 					<a href="/admin/template" class="menu-admin">Task template <span class="menu-tag">Admin</span></a>
 					<a href="/users" class="menu-admin">Users <span class="menu-tag">Admin</span></a>

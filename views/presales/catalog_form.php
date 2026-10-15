@@ -113,6 +113,19 @@ $dis = $canEdit ? '' : 'disabled';
 					<?php endforeach; ?>
 				</select>
 			</label>
+			<label>Pricing
+				<select name="pricing" <?= $dis ?>>
+					<?php foreach (Presales::PRICING as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $sel($v('pricing', 'markup'), $k) ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">Pass-through is for money that only passes through us, such as REAP grant paperwork paid to the salesperson.</small>
+			</label>
+			<div class="checkfield">
+				<span class="field-label">Paid to</span>
+				<label class="boxwrap"><input type="checkbox" name="pays_sales" value="1" <?= $v('pays_sales') ? 'checked' : '' ?> <?= $dis ?>> Pays the salesperson</label>
+				<small class="hint">Counts toward the salesperson's payout (site visit, REAP paperwork).</small>
+			</div>
 			<label>Per-line adder
 				<input type="text" name="setup_cost" value="<?= e($n($v('setup_cost'), 2)) ?>" inputmode="decimal" placeholder="0" <?= $dis ?>>
 				<small class="hint">Added once per line (trench start-up, tracker sensors).</small>

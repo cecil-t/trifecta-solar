@@ -72,6 +72,12 @@ $orient = static function (?int $az, ?float $tilt, string $mount) use ($steep, $
 };
 $lineFlag = static function (?array $f, ?array $c = null): string {
 	$h = '';
+	if ($c && $c['pass']) {
+		$h .= '<span class="chip chip-blue" title="Added to the price after markup: no commission, no tax">Pass-through</span>';
+	}
+	if ($c && $c['pays_sales']) {
+		$h .= '<span class="chip chip-green">Pays the salesperson</span>';
+	}
 	if ($c && $c['override_pending']) {
 		$h .= '<span class="chip chip-red">Type a reason to use the override</span>';
 	}
@@ -169,13 +175,14 @@ $folded = [];
 				<tr class="dt-sub"><th>includes sales tax</th><td data-v="tax_total"><?= e($m($calc['tax_total'])) ?></td></tr>
 				<tr><th>Warranty program</th><td data-v="warranty_cost"><?= e($m($calc['warranty_cost'])) ?></td></tr>
 				<tr><th>Labor</th><td data-v="labor"><?= e($m($calc['labor'])) ?></td></tr>
-				<tr><th>Site visit</th><td data-v="site_visit"><?= e($m($calc['site_visit'])) ?></td></tr>
+				<?php if ($calc['plan'] === null || $calc['site_visit'] > 0): ?><tr><th>Site visit</th><td data-v="site_visit"><?= e($m($calc['site_visit'])) ?></td></tr><?php endif; ?>
 				<tr><th>Travel (lodging, per diem)</th><td data-v="expenses"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></td></tr>
 				<tr><th>Contingency <span class="muted" data-v="contingency_pct"><?= $calc['contingency_pct'] === null ? '' : e(Presales::pct($calc['contingency_pct'])) ?></span></th><td data-v="contingency"><?= e($m($calc['contingency'])) ?></td></tr>
 				<tr class="dt-total"><th>Internal cost</th><td data-v="cost_total"><?= e($m($calc['cost_total'])) ?></td></tr>
 				<tr class="dt-sub"><th>Cost $/W</th><td data-v="cpw"><?= $calc['cost_per_watt'] === null ? '-' : e(Presales::perWatt($calc['cost_per_watt'])) ?></td></tr>
 				<tr><th>Markup</th><td data-v="markup_amount"><?= e($m($calc['markup_amount'])) ?></td></tr>
 				<tr><th>Commission</th><td data-v="commission"><?= e($m($calc['commission'])) ?></td></tr>
+				<tr><th>Pass-through items</th><td data-v="pass_total"><?= e($m($calc['pass_total'])) ?></td></tr>
 				<tr><th>Extras without markup</th><td data-v="extras_total"><?= e($m($calc['extras_total'])) ?></td></tr>
 				<tr><th>Rounded up</th><td data-v="rounding"><?= e($m($calc['rounding'])) ?></td></tr>
 				<tr class="dt-total"><th>Retail price</th><td data-v="price"><?= e($m($calc['price'])) ?></td></tr>
@@ -185,9 +192,14 @@ $folded = [];
 				<div class="dt-markup">Markup <strong data-v="markup_pct"><?= e(Presales::pct((float) $d['markup'])) ?></strong></div>
 				<div class="dt-margin-main"><span data-v="gross_margin_pct"><?= $calc['gross_margin_pct'] === null ? '-' : e(Presales::pct($calc['gross_margin_pct'])) ?></span> <small>gross margin</small> <span class="dt-margin-amt" data-v="gross_margin"><?= e($m($calc['gross_margin'])) ?></span></div>
 				<div class="small">If the contingency isn't used: <strong data-v="margin_if_unused_pct"><?= $calc['margin_if_unused_pct'] === null ? '-' : e(Presales::pct($calc['margin_if_unused_pct'])) ?></strong></div>
-				<div class="small" title="Commission plus the site visit">Salesperson total: <strong data-v="to_salesperson"><?= e($m($calc['to_salesperson'])) ?></strong></div>
+				<div class="dt-payout">
+					<div class="small">Salesperson total: <strong data-v="to_salesperson"><?= e($m($calc['to_salesperson'])) ?></strong></div>
+					<div class="small muted" data-v="payout_breakdown" data-hide-empty <?= App\Controllers\DesignController::payoutText($calc) !== '' ? '' : 'hidden' ?>><?= e(App\Controllers\DesignController::payoutText($calc)) ?></div>
+					<div class="small muted" data-v="handoff_text" data-hide-empty <?= $calc['handoff_share'] > 0 ? '' : 'hidden' ?>><?= e(App\Controllers\DesignController::handoffText($calc, $o)) ?></div>
+					<div class="small" data-v="bonus_text" data-hide-empty <?= App\Controllers\DesignController::bonusText($calc) !== '' ? '' : 'hidden' ?>><?= e(App\Controllers\DesignController::bonusText($calc)) ?></div>
+				</div>
 				<div class="small">Domestic content: <strong data-v="domestic_short"><?= $calc['domestic_content_pct'] === null ? 'unknown' : e(Presales::pct($calc['domestic_content_pct'])) ?></strong></div>
-				<p class="hint mt-xs dt-explain">Gross margin = (retail price - extras without markup) - internal cost (including contingency) - commission, as a share of the retail price less extras. Extras are pass-through, so they are left out.</p>
+				<p class="hint mt-xs dt-explain">Gross margin = (retail price - extras without markup - pass-through paid to the salesperson) - internal cost (including contingency) - commission - self-generated or referral bonus, as a share of that revenue. Commission is paid on the price less pass-through items and extras: what isn't marked up earns no commission.</p>
 			</div>
 			<p class="dt-error" id="calc-error" hidden></p>
 			<button class="btn btn-primary btn-block">Save build sheet</button>
@@ -241,6 +253,13 @@ $folded = [];
 					</span>
 					<small class="hint" id="markup-floor">Floor <?= e(Presales::pct($markupFloor)) ?> (Rates page).</small>
 				</div>
+				<?php if ($calc['plan'] !== null): ?>
+				<div class="checkfield">
+					<span class="field-label">Commission</span>
+					<span class="boxwrap"><?= e(App\Commission::describe($calc['plan']['commission'])) ?></span>
+					<small class="hint">This build sheet's plan (from the Rates page when it was made), tax-bracket style on <span data-v="commissionable"><?= e($m($calc['commissionable'])) ?></span>, the price less pass-through items and extras.<?= !$calc['plan']['commission'] ? ' <strong class="text-red">No commission tiers were set on the Rates page.</strong>' : '' ?></small>
+				</div>
+				<?php else: ?>
 				<label>Commission
 					<select name="commission_rate">
 						<?php if (!$commissionKnown): ?><option value="<?= e($pf($d['commission_rate'] * 100, 2)) ?>" selected><?= e($pf($d['commission_rate'] * 100, 2)) ?>% (saved)</option><?php endif; ?>
@@ -248,8 +267,9 @@ $folded = [];
 							<option value="<?= e($pf($cr['rate'] * 100, 2)) ?>" <?= abs((float) $cr['rate'] - (float) $d['commission_rate']) < 0.000001 ? 'selected' : '' ?>><?= e($pf($cr['rate'] * 100, 2)) ?>%<?= (float) $cr['step_down'] > 0 ? ' (+' . e($m((float) $cr['step_down'])) . ')' : '' ?></option>
 						<?php endforeach; ?>
 					</select>
-					<small class="hint">Applied as <?= e(Presales::pct((float) $d['commission_adjusted'], 2)) ?> of the marked-up cost, as the old sheet did.</small>
+					<small class="hint">Applied as <?= e(Presales::pct((float) $d['commission_adjusted'], 2)) ?> of the marked-up cost, as the old sheet did. "Copy at today's prices" moves a copy to the current commission plan.</small>
 				</label>
+				<?php endif; ?>
 				<div class="checkfield">
 					<span class="field-label">Tax exempt</span>
 					<label class="boxwrap"><input type="checkbox" name="tax_exempt" value="1" id="tax-exempt" <?= $d['tax_exempt'] ? 'checked' : '' ?>> Customer is tax exempt</label>
@@ -525,10 +545,12 @@ $folded = [];
 					<input type="text" name="labor_rate" value="<?= e($pf((float) $d['labor_rate'], 2)) ?>" inputmode="decimal">
 					<?php if (Presales::setting('labor_guideline') !== ''): ?><small class="hint"><?= e(Presales::setting('labor_guideline')) ?></small><?php endif; ?>
 				</label>
+				<?php if (empty($d['commission_plan'])): ?>
 				<label>Site visit
 					<input type="text" name="site_visit" value="<?= e($pf((float) $d['site_visit'], 2)) ?>" inputmode="decimal">
 					<small class="hint">Paid to the salesperson on top of commission.</small>
 				</label>
+				<?php endif; ?>
 				<label>Nights away
 					<input type="number" name="trip_nights" value="<?= (int) $d['trip_nights'] ?>" min="0" inputmode="numeric">
 				</label>

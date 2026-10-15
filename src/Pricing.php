@@ -16,9 +16,16 @@ namespace App;
  *   base cost        = lines + warranty program + labor + overnight + per diem + site visit
  *   contingency      = base cost x rule % (capped), at least the minimum, or an override with a reason
  *   marked up        = (base cost + contingency) x (1 + markup)
- *   commission       = marked up rounded up to $100, x the adjusted commission %, + step-down amount
- *   final price      = marked up + commission + extras without markup, rounded up to $100
- *   gross margin     = final price - extras - all cost (incl. contingency) - commission
+ *   commission       = with a commission plan (tiers): the commissionable price P that covers its own
+ *                      commission, P = marked up + tiered commission on P (solved exactly per bracket).
+ *                      Build sheets from before plans: marked up rounded up to $100, x the adjusted
+ *                      commission %, + step-down amount, as the old sheet did.
+ *   pass-through     = catalog lines priced "pass-through": added after markup, no commission, no tax
+ *   final price      = commissionable price + pass-through + extras without markup, rounded up to $100
+ *   commission paid  = tiered on the final price less pass-through and extras (no markup, no commission)
+ *   bonuses          = self-generated lead bonus (tiered) or referral bonus (flat): out of margin
+ *   gross margin     = final price - extras - pass-through paid to the salesperson - all cost
+ *                      (incl. contingency) - commission - bonuses
  */
 final class Pricing
 {
@@ -66,6 +73,9 @@ final class Pricing
 		$hasSitework = false;
 		$hasEquipmentRental = false;
 		$overrideCount = 0;
+		$passTotal = 0.0;    // pass-through lines: after markup, no commission
+		$passPayout = 0.0;   // ...of which paid to the salesperson
+		$costPayout = 0.0;   // marked-up lines paid to the salesperson (inside cost)
 		foreach ($lines as $i => $l) {
 			$cat = $l['category'];
 			if ($cat === 'extra') {
@@ -99,11 +109,19 @@ final class Pricing
 					$minApplied = true;
 				}
 			}
+			$pass = ($l['pricing'] ?? 'markup') === 'pass';
+			$paysSales = !empty($l['pays_sales']);
 			$class = $l['tax_class'] ?? 'bos';
-			$taxable = $class === 'bos' || ($class === 'major' && !$exempt);
+			$taxable = !$pass && ($class === 'bos' || ($class === 'major' && !$exempt));
 			$tax = $taxable ? $subtotal * $taxRate : 0.0;
 			$cost = $subtotal + $tax;
-			$equipCost += $cost;
+			if ($pass) {
+				$passTotal += $cost;
+				$passPayout += $paysSales ? $cost : 0.0;
+			} else {
+				$equipCost += $cost;
+				$costPayout += $paysSales ? $cost : 0.0;
+			}
 			$taxTotal += $tax;
 			if (in_array($cat, ['inverters', 'mlpe'], true)) {
 				$acKw += $qty * (float) ($l['ac_kw'] ?? 0);
@@ -122,7 +140,7 @@ final class Pricing
 				'qty_resolved' => $qty, 'unit_total' => $unit, 'subtotal' => $subtotal, 'min_applied' => $minApplied,
 				'overridden' => $lineOverridden, 'catalog_unit' => $catalogUnit + $addOns,
 				'override_pending' => !$lineOverridden && $ovr !== null && $ovr !== '',
-				'taxable' => $taxable, 'tax' => $tax, 'cost' => $cost,
+				'taxable' => $taxable, 'tax' => $tax, 'cost' => $cost, 'pass' => $pass, 'pays_sales' => $paysSales,
 			];
 		}
 
@@ -195,22 +213,51 @@ final class Pricing
 		// Markup, commission, price
 		$markup = (float) ($d['markup'] ?? 0);
 		$markedUp = $costTotal * (1 + $markup);
-		$commissionBase = self::ceilTo($markedUp, $roundTo);
-		$commission = (float) ($d['commission_rate'] ?? 0) > 0
-			? $commissionBase * (float) ($d['commission_adjusted'] ?? 0) + (float) ($d['commission_step_down'] ?? 0)
-			: 0.0;
 		$extrasTotal = array_sum(array_column($extras, 'amount'));
-		$preRound = $markedUp + $commission + $extrasTotal;
-		$price = $preRound > 0 ? self::ceilTo($preRound, $roundTo) : 0.0;
-		$netRevenue = $price - $extrasTotal;
-		$grossMargin = $netRevenue - $costTotal - $commission;
+		$plan = is_array($d['commission_plan'] ?? null) ? $d['commission_plan'] : Commission::plan($d['commission_plan'] ?? null);
+		$leadSource = $d['lead_source'] ?? null;
+		$selfGenAllowed = !isset($d['self_gen_allowed']) || $d['self_gen_allowed'];
+		if ($plan !== null) {
+			// Commission is a share of the commissionable price (price less pass-through and extras)
+			$commissionable = $markedUp > 0 ? Commission::grossUp($plan['commission'], $markedUp) : 0.0;
+			$commissionBase = $commissionable;
+			$preRound = $commissionable + $passTotal + $extrasTotal;
+			$price = $preRound > 0 ? self::ceilTo($preRound, $roundTo) : 0.0;
+			$commissionable = max(0.0, $price - $passTotal - $extrasTotal);
+			$bonus = Commission::amounts($plan, $commissionable, $leadSource, $selfGenAllowed);
+			$commission = $bonus['commission'];
+			$selfGen = $bonus['self_gen'];
+			$referralBonus = $bonus['referral_bonus'];
+			$handoffShare = !empty($d['handoff_user_id']) ? $plan['handoff_share'] : 0.0;
+		} else {
+			// Build sheets from before commission plans: the old sheet's single rate
+			$commissionBase = self::ceilTo($markedUp, $roundTo);
+			$commission = (float) ($d['commission_rate'] ?? 0) > 0
+				? $commissionBase * (float) ($d['commission_adjusted'] ?? 0) + (float) ($d['commission_step_down'] ?? 0)
+				: 0.0;
+			$preRound = $markedUp + $commission + $passTotal + $extrasTotal;
+			$price = $preRound > 0 ? self::ceilTo($preRound, $roundTo) : 0.0;
+			$commissionable = max(0.0, $price - $passTotal - $extrasTotal);
+			$selfGen = 0.0;
+			$referralBonus = 0.0;
+			$handoffShare = 0.0;
+		}
+		// Revenue the margin is measured on: the price less money that only passes through us
+		// (extras, and pass-through items paid to the salesperson). Pass-through items nobody is
+		// paid for (a processing fee) stay in, so they count as margin.
+		$netRevenue = $price - $extrasTotal - $passPayout;
+		$grossMargin = $netRevenue - $costTotal - $commission - $selfGen - $referralBonus;
+		$toSalesperson = $commission + $selfGen + $costPayout + $passPayout + $siteVisit;
 
-		// Retail share per line: every cost line carries its share of contingency, markup,
-		// commission and rounding, so the retail column adds up to the price less extras.
-		$factor = $costTotal > 0 ? $netRevenue / $costTotal : 0.0;
+		// Retail share per line: every marked-up line carries its share of contingency, markup,
+		// commission and rounding, so those lines add up to the price less pass-through and extras;
+		// a pass-through line's retail is its own amount.
+		$markupRevenue = $price - $extrasTotal - $passTotal;
+		$factor = $costTotal > 0 ? $markupRevenue / $costTotal : 0.0;
 		foreach ($out as $i => $l) {
-			$out[$i]['retail'] = $l['cost'] * $factor;
-			$out[$i]['retail_per_watt'] = $dcWatts > 0 ? $l['cost'] * $factor / $dcWatts : null;
+			$retail = $l['pass'] ? $l['cost'] : $l['cost'] * $factor;
+			$out[$i]['retail'] = $retail;
+			$out[$i]['retail_per_watt'] = $dcWatts > 0 ? $retail / $dcWatts : null;
 			$out[$i]['cost_per_watt'] = $dcWatts > 0 ? $l['cost'] / $dcWatts : null;
 		}
 
@@ -307,7 +354,18 @@ final class Pricing
 			'markup_amount' => $markedUp - $costTotal,
 			'commission_base' => $commissionBase,
 			'commission' => $commission,
-			'to_salesperson' => $commission + $siteVisit,
+			'commissionable' => $commissionable,
+			'plan' => $plan,
+			'self_gen' => $selfGen,
+			'lead_source' => $leadSource,
+			'self_gen_allowed' => $selfGenAllowed,
+			'referral_bonus' => $referralBonus,
+			'handoff_share' => $handoffShare,
+			'handoff_amount' => $toSalesperson * $handoffShare,
+			'pass_total' => $passTotal,
+			'pass_payout' => $passPayout,
+			'cost_payout' => $costPayout,
+			'to_salesperson' => $toSalesperson,
 			'extras_total' => $extrasTotal,
 			'pre_round' => $preRound,
 			'rounding' => $price - $preRound,
@@ -316,7 +374,7 @@ final class Pricing
 			'gross_margin' => $grossMargin,
 			'gross_margin_pct' => $netRevenue > 0 ? $grossMargin / $netRevenue : null,
 			'margin_if_unused_pct' => $netRevenue > 0 ? ($grossMargin + $contingency) / $netRevenue : null,
-			'effective_markup' => $costTotal > 0 ? ($netRevenue - $commission) / $costTotal - 1 : null,
+			'effective_markup' => $costTotal > 0 ? ($markupRevenue - $commission) / $costTotal - 1 : null,
 			'price_per_watt' => $dcWatts > 0 ? $price / $dcWatts : null,
 			'cost_per_watt' => $dcWatts > 0 ? $costTotal / $dcWatts : null,
 			'payments' => $payments,

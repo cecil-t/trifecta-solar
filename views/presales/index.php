@@ -18,6 +18,7 @@ $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 	<div class="head-actions">
 		<a href="/presales/catalog" class="btn btn-ghost">Catalog</a>
 		<a href="/presales/rates" class="btn btn-ghost">Rates</a>
+		<a href="/commissions" class="btn btn-ghost">Commissions</a>
 		<a href="/presales/new" class="btn btn-primary">New opportunity</a>
 	</div>
 </div>

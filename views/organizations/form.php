@@ -41,6 +41,7 @@ $disabled = $canManage ? '' : 'disabled';
 			<label>ZIP <input type="text" name="zip" value="<?= e($o['zip'] ?? '') ?>" class="input-short" <?= $disabled ?>></label>
 			<label class="span-all">Notes <textarea name="notes" rows="2" <?= $disabled ?>><?= e($o['notes'] ?? '') ?></textarea></label>
 			<label class="check"><input type="checkbox" name="is_active" value="1" <?= ($o['is_active'] ?? 1) ? 'checked' : '' ?> <?= $disabled ?>> Active</label>
+			<label class="check"><input type="checkbox" name="referral_partner" value="1" <?= !empty($o['referral_partner']) ? 'checked' : '' ?> <?= $disabled ?>> Referral partner (sends us customers for a referral bonus)</label>
 			<?php if ($canManage): ?><div class="span-all"><button class="btn btn-primary"><?= $isNew ? 'Add' : 'Save' ?></button></div><?php endif; ?>
 		</form>
 	</section>

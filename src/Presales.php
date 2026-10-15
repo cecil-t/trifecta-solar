@@ -23,12 +23,28 @@ final class Presales
 		'permits'         => ['Permits', 'ea'],
 		'interconnection' => ['Interconnection', 'ea'],
 		'misc'            => ['Other', 'ea'],
+		'sales'           => ['Sales and admin fees', 'ea'],
 		'warranty'        => ['Warranty programs', 'ea'],
 		'trench_parts'    => ['Trench builder', 'ea'],
 	];
 
 	/** Categories priced outside the build sheet's line list (warranty programs, trench builder parts). */
 	public const NOT_LINES = ['warranty', 'trench_parts'];
+
+	/** How a catalog item reaches the price. */
+	public const PRICING = [
+		'markup' => 'Marked up (cost, markup and commission)',
+		'pass'   => 'Pass-through (added after markup, no commission, no tax)',
+	];
+
+	/** Where an opportunity came from. */
+	public const LEAD_SOURCES = [
+		'self_gen' => 'Self-generated',
+		'referral' => 'Referral',
+		'trifecta' => 'Trifecta lead',
+		'repeat'   => 'Repeat customer',
+	];
+	public const LEAD_DETAILS = ['website' => 'Website', 'phone' => 'Phone', 'marketing' => 'Marketing', 'other' => 'Other'];
 
 	public const TAX_CLASSES = [
 		'major'    => 'Major equipment (taxed unless tax exempt)',
@@ -71,6 +87,10 @@ final class Presales
 		'per_diem_rate'          => ['0', 'Per diem ($ per person per day)'],
 		'labor_guideline'        => ['', 'Labor guideline (shown beside the labor price)'],
 		'site_visit'             => ['0', 'Site visit (paid to the salesperson)'],
+		'commission_tiers'       => ['', 'Commission tiers'],
+		'self_gen_tiers'         => ['', 'Self-generated lead bonus tiers'],
+		'referral_bonus'         => ['0', 'Referral bonus'],
+		'handoff_share'          => ['0', 'In-house handoff share'],
 		'contingency_cap'        => ['15', 'Contingency cap (%)'],
 		'contingency_floor'      => ['0', 'Contingency minimum ($)'],
 		'steep_deg'              => ['30', 'Steep array threshold (degrees)'],
@@ -181,6 +201,43 @@ final class Presales
 	}
 
 	/** A catalog price older than the stale setting (or never dated) needs checking. */
+	/** "Trifecta lead (Website)", "Referral: Pat Example", "Self-generated". */
+	public static function leadLabel(array $o): string
+	{
+		$src = $o['lead_source'] ?? null;
+		if (!$src || !isset(self::LEAD_SOURCES[$src])) {
+			return '';
+		}
+		$label = self::LEAD_SOURCES[$src];
+		if ($src === 'trifecta' && !empty($o['lead_detail'])) {
+			$label .= ' (' . (self::LEAD_DETAILS[$o['lead_detail']] ?? $o['lead_detail']) . ')';
+		}
+		if ($src === 'referral') {
+			$who = $o['referrer_org_name'] ?? null;
+			if (!$who && !empty($o['referrer_org_id'])) {
+				$who = Db::value('SELECT name FROM organizations WHERE id = ?', [(int) $o['referrer_org_id']]);
+			}
+			$who = $who ?: ($o['referrer_name'] ?? '');
+			$label .= $who ? ': ' . $who : '';
+		}
+		return $label;
+	}
+
+	/**
+	 * A customer we already did a job for: another sold opportunity, or a project from before this
+	 * opportunity. The self-generated bonus is for net-new customers only.
+	 */
+	public static function isRepeatCustomer(array $o): bool
+	{
+		$cid = (int) ($o['customer_id'] ?? 0);
+		if (!$cid) {
+			return false;
+		}
+		$created = (string) (Db::value('SELECT created_at FROM presales_opportunities WHERE id = ?', [(int) ($o['id'] ?? 0)]) ?: now_utc());
+		return (bool) Db::value("SELECT 1 FROM presales_opportunities WHERE customer_id = ? AND id <> ? AND status = 'sold'", [$cid, (int) ($o['id'] ?? 0)])
+			|| (bool) Db::value('SELECT 1 FROM projects WHERE customer_id = ? AND id <> ? AND created_at < ?', [$cid, (int) ($o['project_id'] ?? 0), $created]);
+	}
+
 	public static function isStale(?string $date): bool
 	{
 		if (!$date) {

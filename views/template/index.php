@@ -22,7 +22,7 @@
 						<td><?= $isSub ? '<span class="indent">&rsaquo;</span> ' : '<strong>' ?><?= e($row['name']) ?><?= $isSub ? '' : '</strong>' ?><?= $row['is_active'] ? '' : ' <span class="chip">Inactive</span>' ?></td>
 						<td><?= $row['default_needed'] === null ? '<span class="chip chip-orange">Ask</span>' : ((int) $row['default_needed'] ? 'Yes' : 'No') ?></td>
 						<td><?= e(['all' => 'All', 'pv' => 'PV jobs', 'storage' => 'Battery jobs'][$row['applies_when']]) ?></td>
-						<td class="small"><?= e(Tasks::GATES[$row['gate']] ?? '') ?></td>
+						<td class="small"><?= e(Tasks::GATES[$row['gate']] ?? '') ?><?= ($row['action'] ?? null) === 'pay_commission' ? e($row['gate'] ? ', ' : '') . 'Marks the sales commission paid' : '' ?></td>
 						<td><?= e($row['ref_label'] ?? '') ?></td>
 						<td><?= e($row['owner_initials'] ?? ($isSub ? '(task)' : '')) ?></td>
 						<td class="nowrap">

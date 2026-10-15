@@ -52,7 +52,9 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 			<?php endif; ?>
 			<dt>Site</dt><dd><?= $siteAddr !== '' ? maps_link($siteAddr) : '<span class="muted">Not set</span>' ?></dd>
 			<dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?><?= $o['is_agricultural'] ? ' &middot; Agricultural' : '' ?><?php $cls = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']); ?><?= $cls === 'commercial' ? ' <span class="muted small">(Non-Residential)</span>' : '' ?></dd>
-			<dt>Salesperson</dt><dd><?= e($o['salesperson_name'] ?? '') ?></dd>
+			<dt>Salesperson</dt><dd><?= e($o['salesperson_name'] ?? '') ?><?= $o['handoff_user_id'] ? '<div class="small muted">Handed off by ' . e((string) App\Db::value('SELECT name FROM users WHERE id = ?', [(int) $o['handoff_user_id']])) . '</div>' : '' ?></dd>
+			<dt>Lead source</dt><dd><?= $o['lead_source'] ? e(Presales::leadLabel($o)) : '<a href="/presales/' . (int) $o['id'] . '/edit" class="small">Set the lead source</a>' ?>
+				<?php if ($o['lead_source'] === 'self_gen' && Presales::isRepeatCustomer($o)): ?><div class="small text-orange">We already did a job for this customer, so no self-generated bonus applies.</div><?php endif; ?></dd>
 			<dt>Utility bill</dt><dd><?php if ($o['bill_name'] || $o['utility_id'] || $o['utility_account'] || $o['annual_usage_kwh']): ?>
 				<?= implode(' &middot; ', array_map('e', array_filter([$o['bill_name'], $o['utility_name']]))) ?>
 				<?php if ($o['annual_usage_kwh']): ?><div><?= number_format((int) $o['annual_usage_kwh']) ?> kWh, last 12 months</div><?php endif; ?>

@@ -77,6 +77,7 @@ foreach ($lines as $i => $l) {
 			<dt>Cost</dt><dd><?= e($m($calc['cost_total'])) ?><?= $calc['cost_per_watt'] !== null ? ' &middot; ' . e(Presales::perWatt($calc['cost_per_watt'])) . '/W' : '' ?></dd>
 			<dt>Margin</dt><dd><?= $calc['gross_margin_pct'] !== null ? e(Presales::pct($calc['gross_margin_pct'])) . ' (' . e($m($calc['gross_margin'])) . ')' : '-' ?></dd>
 			<dt>Markup</dt><dd><?= e(Presales::pct((float) $d['markup'])) ?></dd>
+			<dt>Salesperson</dt><dd><?= e($m($calc['to_salesperson'])) ?><?php $pt = App\Controllers\DesignController::payoutText($calc); ?><?= $pt !== '' ? '<div class="small muted">' . e($pt) . '</div>' : '' ?><?php $bt = App\Controllers\DesignController::bonusText($calc); ?><?= $bt !== '' ? '<div class="small muted">' . e($bt) . '</div>' : '' ?><?= $calc['handoff_share'] > 0 ? '<div class="small muted">' . e(App\Controllers\DesignController::handoffText($calc, $o)) . '</div>' : '' ?></dd>
 			<dt>Tax</dt><dd><?= $d['tax_exempt'] ? 'Tax exempt (BOS taxed)' : e(Presales::pct((float) $d['tax_rate'], 2)) . ($d['tax_note'] ? ' ' . e($d['tax_note']) : '') ?></dd>
 		</dl>
 	</section>
@@ -121,7 +122,7 @@ foreach ($lines as $i => $l) {
 			<?php endforeach; ?>
 			</tbody>
 		<?php endif; ?>
-		<tfoot><tr><td>Equipment and materials</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'retail')))) ?></td></tr></tfoot>
+		<tfoot><tr><td>Equipment and materials</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'cost')))) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'retail')))) ?></td></tr></tfoot>
 	</table>
 </section>
 
@@ -133,12 +134,13 @@ foreach ($lines as $i => $l) {
 			<tr><td>Equipment and materials <span class="muted">(with tax)</span></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td></tr>
 			<tr><td>Warranty program</td><td class="num"><?= e($m($calc['warranty_cost'])) ?></td></tr>
 			<tr><td>Labor<?= $calc['man_hours'] !== null ? ' <span class="muted">(' . e(number_format($calc['man_hours'], 1)) . ' man-hours)</span>' : '' ?></td><td class="num"><?= e($m($calc['labor'])) ?></td></tr>
-			<tr><td>Site visit</td><td class="num"><?= e($m($calc['site_visit'])) ?></td></tr>
+			<?php if ($calc['plan'] === null || $calc['site_visit'] > 0): ?><tr><td>Site visit</td><td class="num"><?= e($m($calc['site_visit'])) ?></td></tr><?php endif; ?>
 			<?php if ($calc['overnight'] + $calc['per_diem'] > 0): ?><tr><td>Travel <span class="muted">(<?= (int) $d['trip_nights'] ?> nights, <?= (int) $d['trip_crew'] ?> crew)</span></td><td class="num"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></td></tr><?php endif; ?>
 			<tr><td>Contingency <span class="muted">(<?= $calc['contingency_pct'] !== null ? e(Presales::pct($calc['contingency_pct'])) : '-' ?><?= $calc['contingency_overridden'] ? ', overridden: ' . e((string) $d['contingency_reason']) : '' ?>)</span></td><td class="num"><?= e($m($calc['contingency'])) ?></td></tr>
 			<tr class="sheet-step"><td>Internal cost</td><td class="num"><?= e($m($calc['cost_total'])) ?></td></tr>
 			<tr><td>Markup <span class="muted">(<?= e(Presales::pct((float) $d['markup'])) ?>)</span></td><td class="num"><?= e($m($calc['markup_amount'])) ?></td></tr>
-			<tr><td>Commission <span class="muted">(<?= e(Presales::pct((float) $d['commission_rate'])) ?>)</span></td><td class="num"><?= e($m($calc['commission'])) ?></td></tr>
+			<tr><td>Commission <span class="muted">(<?= $calc['plan'] !== null ? e(App\Commission::describe($calc['plan']['commission'])) . ', on ' . e($m($calc['commissionable'])) : e(Presales::pct((float) $d['commission_rate'])) ?>)</span></td><td class="num"><?= e($m($calc['commission'])) ?></td></tr>
+			<?php if ($calc['pass_total'] > 0): ?><tr><td>Pass-through items <span class="muted">(no markup, no commission)</span></td><td class="num"><?= e($m($calc['pass_total'])) ?></td></tr><?php endif; ?>
 			<?php foreach ($calc['extras'] as $x): ?><tr><td>Extra, no markup: <?= e($x['name']) ?></td><td class="num"><?= e($m($x['amount'])) ?></td></tr><?php endforeach; ?>
 			<tr><td>Rounded up</td><td class="num"><?= e($m($calc['rounding'])) ?></td></tr>
 			<tr class="sheet-final"><td>Retail price</td><td class="num"><?= e($m($calc['price'])) ?></td></tr>

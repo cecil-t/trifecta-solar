@@ -10,7 +10,7 @@ use App\Trench;
 use App\View;
 
 /**
- * Pre-Sales > Rates: tax, labor, contingency rules and cap, commission table, deposit tiers and
+ * Pre-Sales > Rates: tax, labor, contingency rules and cap, the commission plan, deposit tiers and
  * payment schedules. New build sheets copy these in; saved build sheets keep their own copies.
  */
 final class PresalesRatesController
@@ -26,11 +26,8 @@ final class PresalesRatesController
 		View::render('presales/rates', [
 			'title' => 'Sales rates',
 			'settings' => $settings,
-			'commission' => $old['commission'] ?? array_map(static fn ($c) => [
-				'rate' => Presales::field((float) $c['rate'] * 100, 4), 'adjusted' => Presales::field((float) $c['adjusted'] * 100, 4),
-				'step_down' => $c['step_down'],
-			], Presales::commissionRates()),
-			'commissionDefault' => $old['commission_default'] ?? (string) array_search(1, array_map('intval', array_column(Presales::commissionRates(), 'is_default')), true),
+			'commissionTiers' => $old['commission_tiers'] ?? self::tierRows(Presales::setting('commission_tiers')),
+			'selfGenTiers' => $old['self_gen_tiers'] ?? self::tierRows(Presales::setting('self_gen_tiers')),
 			'templateDefault' => $old['template_default'] ?? (string) array_search(1, array_map('intval', array_column(Presales::paymentTemplates(), 'is_default')), true),
 			'deposits' => $old['deposits'] ?? Presales::depositTiers(),
 			'templates' => $old['templates'] ?? array_map(static function ($t) {
@@ -79,9 +76,10 @@ final class PresalesRatesController
 		};
 
 		// Single values. Percent fields are typed as percents (6 = 6%).
-		$percent = ['tax_rate' => true, 'markup_default' => true, 'markup_floor' => true];
+		$percent = ['tax_rate' => true, 'markup_default' => true, 'markup_floor' => true, 'handoff_share' => true];
 		$numeric = ['tax_rate', 'markup_default', 'markup_floor', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to',
-			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts'];
+			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts', 'referral_bonus', 'handoff_share'];
+		$skip = ['commission_tiers' => true, 'self_gen_tiers' => true, 'site_visit' => true];
 		// Trench builder choices come from fixed lists
 		$post = (array) ($_POST['settings'] ?? []);
 		if (!in_array((string) ($post['trench_al_from'] ?? ''), [...Trench::SIZES, 'never'], true)) {
@@ -108,6 +106,9 @@ final class PresalesRatesController
 			throw new \InvalidArgumentException('The default markup can\'t be below the markup floor.');
 		}
 		foreach (Presales::SETTINGS as $k => [$default, $label]) {
+			if (isset($skip[$k])) {
+				continue;
+			}
 			$raw = (string) ($_POST['settings'][$k] ?? '');
 			if ($k === 'labor_default' && ($num($raw, $label) ?? 0) <= 0) {
 				throw new \InvalidArgumentException('The default labor price can\'t be zero.');
@@ -125,25 +126,14 @@ final class PresalesRatesController
 			}
 		}
 
-		// Commission table
-		$rows = [];
-		$default = (string) ($_POST['commission_default'] ?? '');
-		foreach ((array) ($_POST['commission'] ?? []) as $i => $r) {
-			$rate = $num($r['rate'] ?? '', 'Commission rate', true);
-			if ($rate === null) {
-				continue;
+		// Commission plan: tax-bracket tiers for commission and the self-generated lead bonus
+		foreach (['commission_tiers' => 'Commission tiers', 'self_gen_tiers' => 'Self-generated lead bonus tiers'] as $k => $label) {
+			$value = json_encode(self::readTiers((array) ($_POST[$k] ?? []), $label, $num));
+			if ($value !== Presales::setting($k) && !($value === '[]' && Presales::setting($k) === '')) {
+				Db::run('INSERT OR REPLACE INTO presales_settings (key, value, updated_at) VALUES (?, ?, ?)', [$k, $value, now_utc()]);
+				$changes[] = $label;
 			}
-			$adj = $num($r['adjusted'] ?? '', 'Adjusted commission', true) ?? $rate;
-			$rows[] = ['rate' => round($rate / 100, 6), 'adjusted' => round($adj / 100, 6), 'step_down' => $num($r['step_down'] ?? '', 'Step-down'),
-				'is_default' => (string) $i === $default ? 1 : 0];
 		}
-		if (count(array_unique(array_column($rows, 'rate'))) !== count($rows)) {
-			throw new \InvalidArgumentException('Each commission rate can only be listed once.');
-		}
-		if ($rows && !array_filter(array_column($rows, 'is_default'))) {
-			$rows[0]['is_default'] = 1;
-		}
-		$changes = array_merge($changes, $this->replace('presales_commission_rates', $rows, ['rate', 'adjusted', 'step_down', 'is_default'], 'commission table'));
 
 		// Deposit tiers
 		$rows = [];
@@ -251,5 +241,43 @@ final class PresalesRatesController
 			Db::insert($table, array_intersect_key($r, array_flip($cols)));
 		}
 		return [$label];
+	}
+
+	/** Stored tiers (JSON, rates as fractions) as form rows (percents). */
+	private static function tierRows(string $json): array
+	{
+		return array_map(static fn ($t) => [
+			'upto' => $t['upto'] === null ? '' : Presales::field((float) $t['upto'], 2),
+			'rate' => Presales::field($t['rate'] * 100, 4),
+		], \App\Commission::tiers(json_decode($json, true) ?: []));
+	}
+
+	/** Tier rows from the form: "up to" blank means no limit (only the last tier). */
+	private static function readTiers(array $rows, string $label, callable $num): array
+	{
+		$out = [];
+		$open = 0;
+		foreach ($rows as $r) {
+			$rate = $num($r['rate'] ?? '', $label . ' rate', true);
+			if ($rate === null) {
+				continue;
+			}
+			if ($rate > 100) {
+				throw new \InvalidArgumentException($label . ': a rate can\'t be over 100%.');
+			}
+			$upto = $num($r['upto'] ?? '', $label . ' limit', true);
+			if ($upto === null) {
+				$open++;
+			}
+			$out[] = ['upto' => $upto, 'rate' => round($rate / 100, 6)];
+		}
+		if ($open > 1) {
+			throw new \InvalidArgumentException($label . ': only the last tier can have no "up to" limit.');
+		}
+		$limits = array_filter(array_column($out, 'upto'), static fn ($v) => $v !== null);
+		if (count(array_unique(array_map('strval', $limits))) !== count($limits)) {
+			throw new \InvalidArgumentException($label . ': each "up to" limit can only be listed once.');
+		}
+		return \App\Commission::tiers($out);
 	}
 }

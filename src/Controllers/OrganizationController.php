@@ -19,7 +19,8 @@ final class OrganizationController
 		'contractor' => 'Contractor', 'other' => 'Other',
 	];
 	private const TRACKED = ['name' => 'Name', 'phone' => 'Phone', 'email' => 'Email', 'street' => 'Street',
-		'city' => 'City', 'state' => 'State', 'zip' => 'ZIP', 'notes' => 'Notes', 'is_active' => 'Active', 'type' => 'Type'];
+		'city' => 'City', 'state' => 'State', 'zip' => 'ZIP', 'notes' => 'Notes', 'is_active' => 'Active', 'type' => 'Type',
+		'referral_partner' => 'Referral partner'];
 
 	public static function canManage(string $type): bool
 	{
@@ -72,6 +73,27 @@ final class OrganizationController
 		redirect('/organizations/' . $id);
 	}
 
+	/** Directory search for pickers (the referrer on an opportunity): JSON, a dozen best matches. */
+	public function search(): void
+	{
+		header('Content-Type: application/json');
+		$q = trim((string) ($_GET['q'] ?? ''));
+		if (mb_strlen($q) < 2) {
+			echo '[]';
+			return;
+		}
+		$like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
+		$rows = Db::all("SELECT id, name, type, referral_partner, city FROM organizations
+			WHERE is_active = 1 AND name LIKE ? ESCAPE '\\'
+			ORDER BY referral_partner DESC, (name LIKE ?) DESC, name LIMIT 12", [$like, $q . '%']);
+		echo json_encode(array_map(static fn ($r) => [
+			'id' => (int) $r['id'],
+			'name' => $r['name'],
+			'kind' => $r['referral_partner'] ? 'Referral partner' : (self::TYPES[$r['type']] ?? $r['type']),
+			'city' => (string) $r['city'],
+		], $rows));
+	}
+
 	public function show(int $id): void
 	{
 		$o = $this->find($id);
@@ -101,7 +123,7 @@ final class OrganizationController
 		}
 		Db::update('organizations', $id, $data + ['updated_at' => now_utc()]);
 		Activity::changes('organization', $id, $before, $data, self::TRACKED, [
-			'is_active' => static fn ($v) => $v ? 'Yes' : 'No', 'type' => static fn ($v) => self::TYPES[$v] ?? $v,
+			'is_active' => static fn ($v) => $v ? 'Yes' : 'No', 'referral_partner' => static fn ($v) => $v ? 'Yes' : 'No', 'type' => static fn ($v) => self::TYPES[$v] ?? $v,
 		]);
 		flash('success', 'Saved.');
 		redirect('/organizations/' . $id);
@@ -116,6 +138,7 @@ final class OrganizationController
 			'name' => (string) $s('name'), 'phone' => $s('phone'), 'email' => $s('email'),
 			'street' => $s('street'), 'city' => $s('city'), 'state' => strtoupper((string) $s('state')) ?: null, 'zip' => $s('zip'),
 			'notes' => $s('notes'), 'is_active' => empty($_POST['is_active']) ? 0 : 1,
+			'referral_partner' => empty($_POST['referral_partner']) ? 0 : 1,
 		];
 	}
 

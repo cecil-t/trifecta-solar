@@ -52,6 +52,7 @@ final class Tasks
 				'needed'      => $t['default_needed'],
 				'gate'        => $t['gate'],
 				'ref_label'   => $t['ref_label'],
+				'action'      => $t['action'],
 				'owner_id'    => $owner,
 			]);
 			$map[$t['id']] = $id;
@@ -91,7 +92,7 @@ final class Tasks
 			Db::insert('project_tasks', [
 				'project_id' => $projectId, 'parent_id' => $parentTaskId, 'template_id' => $t['id'], 'name' => $t['name'],
 				'phase' => $parent['phase'], 'sort_order' => $t['sort_order'], 'needed' => $t['default_needed'],
-				'gate' => $t['gate'], 'ref_label' => $t['ref_label'], 'owner_id' => $t['default_owner_id'] ?? $parent['owner_id'],
+				'gate' => $t['gate'], 'ref_label' => $t['ref_label'], 'action' => $t['action'], 'owner_id' => $t['default_owner_id'] ?? $parent['owner_id'],
 			]);
 			$added[] = $parent['name'] . ' > ' . $t['name'];
 		}
@@ -108,14 +109,14 @@ final class Tasks
 		$sort = (int) Db::value('SELECT COALESCE(MAX(sort_order), 0) + 10 FROM project_tasks WHERE project_id = ? AND parent_id IS NULL AND phase = ?', [$projectId, $t['phase']]);
 		$id = Db::insert('project_tasks', [
 			'project_id' => $projectId, 'template_id' => $t['id'], 'name' => $t['name'], 'phase' => $t['phase'],
-			'sort_order' => $sort, 'needed' => $t['default_needed'], 'gate' => $t['gate'],
+			'sort_order' => $sort, 'needed' => $t['default_needed'], 'gate' => $t['gate'], 'action' => $t['action'],
 			'ref_label' => $t['ref_label'], 'owner_id' => $t['default_owner_id'],
 		]);
 		foreach (Db::all('SELECT * FROM task_templates WHERE parent_id = ? AND is_active = 1 ORDER BY sort_order', [$templateId]) as $s) {
 			Db::insert('project_tasks', [
 				'project_id' => $projectId, 'parent_id' => $id, 'template_id' => $s['id'], 'name' => $s['name'],
 				'phase' => $t['phase'], 'sort_order' => $s['sort_order'], 'needed' => $s['default_needed'],
-				'gate' => $s['gate'], 'owner_id' => $s['default_owner_id'] ?? $t['default_owner_id'],
+				'gate' => $s['gate'], 'action' => $s['action'], 'owner_id' => $s['default_owner_id'] ?? $t['default_owner_id'],
 			]);
 		}
 		return $id;
@@ -131,7 +132,7 @@ final class Tasks
 		$fresh = static fn (array $r, ?int $parent, string $name) => [
 			'project_id' => $r['project_id'], 'parent_id' => $parent, 'template_id' => $r['template_id'],
 			'name' => $name, 'phase' => $r['phase'], 'sort_order' => $r['sort_order'] + ($parent ? 0 : 1),
-			'needed' => $r['needed'], 'gate' => $r['gate'], 'ref_label' => $r['ref_label'], 'owner_id' => $r['owner_id'],
+			'needed' => $r['needed'], 'gate' => $r['gate'], 'ref_label' => $r['ref_label'], 'action' => $r['action'], 'owner_id' => $r['owner_id'],
 		];
 		$count = (int) Db::value('SELECT COUNT(*) FROM project_tasks WHERE project_id = ? AND parent_id IS NULL AND (name = ? OR name LIKE ?)', [$t['project_id'], $t['name'], $t['name'] . ' #%']);
 		$baseName = preg_replace('/ #\d+$/', '', $t['name']);

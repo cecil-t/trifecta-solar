@@ -174,6 +174,8 @@ final class DesignController
 				'override_pending' => $c ? $c['override_pending'] : false,
 				'catalog_unit' => $c ? Presales::price($c['catalog_unit'], $c['qty_rule']) : '',
 				'why' => $c && $c['overridden'] ? (string) $c['override_reason'] : '',
+				'pass' => $c ? $c['pass'] : false,
+				'pays' => $c ? $c['pays_sales'] : false,
 				'changed' => $fl['changed'] ?? false,
 				'stale' => $fl['stale'] ?? false,
 				'retired' => $fl['retired'] ?? false,
@@ -224,6 +226,11 @@ final class DesignController
 				'markup_amount' => $m($c['markup_amount']),
 				'commission' => $m($c['commission']),
 				'to_salesperson' => $m($c['to_salesperson']),
+				'payout_breakdown' => self::payoutText($c),
+				'handoff_text' => $c['handoff_share'] > 0 ? self::handoffText($c, Db::one('SELECT salesperson_id, handoff_user_id FROM presales_opportunities WHERE id = ?', [(int) $d['opportunity_id']]) ?? []) : '',
+				'bonus_text' => self::bonusText($c),
+				'pass_total' => $m($c['pass_total']),
+				'commissionable' => $m($c['commissionable']),
 				'extras_total' => $m($c['extras_total']),
 				'rounding' => $m($c['rounding']),
 				'gross_margin' => $m($c['gross_margin']),
@@ -302,6 +309,56 @@ final class DesignController
 		}
 		return ['circuits' => $circuits, 'segments' => $segments, 'parts' => $parts, 'cost' => $m($cost), 'retail' => $m($retail),
 			'warnings' => $t['warnings']];
+	}
+
+	/** "Commission $1,500 + self-generated bonus $300 + Site visit $100": what the salesperson is paid. */
+	public static function payoutText(array $c): string
+	{
+		if ($c['to_salesperson'] <= 0) {
+			return '';
+		}
+		$parts = ['commission ' . Presales::money($c['commission'])];
+		if ($c['self_gen'] > 0) {
+			$parts[] = 'self-generated bonus ' . Presales::money($c['self_gen']);
+		}
+		$items = [];
+		foreach ($c['lines'] as $l) {
+			if (!empty($l['pays_sales']) && $l['cost'] > 0) {
+				$items[] = $l['name'];
+			}
+		}
+		$other = $c['cost_payout'] + $c['pass_payout'] + $c['site_visit'];
+		if ($other > 0) {
+			$parts[] = ($items ? implode(', ', $items) : 'site visit') . ' ' . Presales::money($other);
+		}
+		return ucfirst(implode(' + ', $parts));
+	}
+
+	/** "Split: 80% to Pat Example, 20% ($300) to Sam Example": the in-house handoff split. */
+	public static function handoffText(array $c, array $o): string
+	{
+		if ($c['handoff_share'] <= 0) {
+			return '';
+		}
+		$name = static fn ($id) => (string) Db::value('SELECT name FROM users WHERE id = ?', [(int) $id]);
+		return 'Split: ' . Presales::pct(1 - $c['handoff_share'], 0) . ' to ' . ($name($o['salesperson_id'] ?? 0) ?: 'the salesperson')
+			. ', ' . Presales::pct($c['handoff_share'], 0) . ' (' . Presales::money($c['handoff_amount']) . ') to '
+			. ($name($o['handoff_user_id'] ?? 0) ?: 'the salesperson who handed it off');
+	}
+
+	/** Bonuses paid out of margin, not added to the price. */
+	public static function bonusText(array $c): string
+	{
+		if ($c['self_gen'] > 0) {
+			return 'Self-generated lead bonus ' . Presales::money($c['self_gen']) . ', paid from margin';
+		}
+		if ($c['referral_bonus'] > 0) {
+			return 'Referral bonus ' . Presales::money($c['referral_bonus']) . ' to the referrer, paid from margin';
+		}
+		if (($c['lead_source'] ?? null) === 'self_gen' && empty($c['self_gen_allowed'])) {
+			return 'Repeat customer: no self-generated bonus';
+		}
+		return '';
 	}
 
 	/** "Domestic content about 12% of major equipment cost (2 items unknown)". */

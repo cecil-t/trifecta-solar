@@ -80,6 +80,47 @@ $isNew = $id === null;
 	</section>
 
 	<section class="card band">
+		<h2>Lead</h2>
+		<div class="grid-form">
+			<label>Lead source
+				<select name="lead_source" id="lead-source">
+					<option value="">Choose</option>
+					<?php foreach (App\Presales::LEAD_SOURCES as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $sel($v('lead_source'), $k) ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">Self-generated pays the self-generated bonus (net-new customers only); a referral pays the referrer instead.</small>
+			</label>
+			<label data-lead-show="trifecta" <?= $v('lead_source') === 'trifecta' ? '' : 'hidden' ?>>How it came in
+				<select name="lead_detail">
+					<option value="">Choose</option>
+					<?php foreach (App\Presales::LEAD_DETAILS as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $sel($v('lead_detail'), $k) ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<div class="checkfield span-2" data-lead-show="referral" <?= $v('lead_source') === 'referral' ? '' : 'hidden' ?>>
+				<label for="referrer" class="field-label">Referred by</label>
+				<div class="picker" data-picker-url="/organizations/search">
+					<input type="text" id="referrer" name="referrer_name" value="<?= e($v('referrer_label', $v('referrer_name'))) ?>" class="picker-input" autocomplete="off" placeholder="Search the directory, or type a name" role="combobox" aria-expanded="false" aria-controls="referrer-list" aria-autocomplete="list">
+					<input type="hidden" name="referrer_org_id" value="<?= e((string) $v('referrer_org_id')) ?>" class="picker-id">
+					<ul class="picker-list" id="referrer-list" role="listbox" hidden></ul>
+				</div>
+				<small class="hint">A customer, someone we quoted, a friend, or a referral partner such as a roofer. Pick from the directory when they are in it.</small>
+			</div>
+			<label>Handed off by
+				<select name="handoff_user_id">
+					<option value="">Nobody (found by the salesperson or Trifecta)</option>
+					<?php foreach ($users as $u): ?>
+						<option value="<?= (int) $u['id'] ?>" <?= $sel($v('handoff_user_id'), $u['id']) ?>><?= e($u['name']) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">Another salesperson who handed this lead over. They get the in-house share of the whole payout.</small>
+			</label>
+		</div>
+	</section>
+
+	<section class="card band">
 		<h2>Site</h2>
 		<div class="grid-form">
 			<label class="span-2">Street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>"></label>
@@ -124,3 +165,4 @@ $isNew = $id === null;
 	</div>
 </form>
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
+<script src="<?= asset('assets/js/picker.js') ?>"></script>

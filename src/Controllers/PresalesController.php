@@ -24,6 +24,8 @@ final class PresalesController
 		'utility_id' => 'Utility', 'bill_name' => 'Name on utility bill', 'utility_account' => 'Utility account #',
 		'utility_meter' => 'Meter #', 'utility_tariff' => 'Utility rate', 'service_address' => 'Service address',
 		'annual_usage_kwh' => 'Last 12 months usage (kWh)',
+		'lead_source' => 'Lead source', 'lead_detail' => 'Lead came in by', 'referrer_org_id' => 'Referred by',
+		'referrer_name' => 'Referred by (name)', 'handoff_user_id' => 'Handed off by',
 	];
 
 	public function index(): void
@@ -86,6 +88,9 @@ final class PresalesController
 
 	private function form(array $o, ?int $id): void
 	{
+		if (!empty($o['referrer_org_id']) && !isset($o['referrer_label'])) {
+			$o['referrer_label'] = (string) Db::value('SELECT name FROM organizations WHERE id = ?', [(int) $o['referrer_org_id']]);
+		}
 		View::render('presales/opportunity_form', [
 			'title' => $id ? 'Edit ' . $o['name'] : 'New opportunity', 'o' => $o, 'id' => $id,
 			'customers' => Projects::orgs('customer'), 'utilities' => Projects::utilities(),
@@ -123,6 +128,10 @@ final class PresalesController
 				'salesperson_id' => static fn ($v) => Db::value('SELECT name FROM users WHERE id = ?', [$v]) ?? $v,
 				'utility_id' => static fn ($v) => Db::value('SELECT name FROM utilities WHERE id = ?', [$v]) ?? $v,
 				'is_agricultural' => static fn ($v) => $v ? 'Yes' : 'No',
+				'lead_source' => static fn ($v) => Presales::LEAD_SOURCES[$v] ?? $v,
+				'lead_detail' => static fn ($v) => Presales::LEAD_DETAILS[$v] ?? $v,
+				'referrer_org_id' => static fn ($v) => Db::value('SELECT name FROM organizations WHERE id = ?', [$v]) ?? $v,
+				'handoff_user_id' => static fn ($v) => Db::value('SELECT name FROM users WHERE id = ?', [$v]) ?? $v,
 			]);
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_presales'] = $_POST + ['id' => $id];
@@ -257,7 +266,19 @@ final class PresalesController
 			$sales = $id ? (int) Db::value('SELECT salesperson_id FROM presales_opportunities WHERE id = ?', [$id]) : (int) Auth::id();
 		}
 		$type = (string) ($_POST['customer_type'] ?? '');
+		$lead = (string) ($_POST['lead_source'] ?? '');
+		$lead = array_key_exists($lead, Presales::LEAD_SOURCES) ? $lead : null;
+		$detail = (string) ($_POST['lead_detail'] ?? '');
+		$refOrg = $lead === 'referral' ? (int) Db::value('SELECT id FROM organizations WHERE id = ?', [(int) ($_POST['referrer_org_id'] ?? 0)]) : 0;
+		$refName = $lead === 'referral' && !$refOrg ? (trim((string) ($_POST['referrer_name'] ?? '')) ?: null) : null;
+		$handoff = (int) ($_POST['handoff_user_id'] ?? 0);
+		$handoff = $handoff && $handoff !== $sales && Db::value('SELECT 1 FROM users WHERE id = ?', [$handoff]) ? $handoff : null;
 		return [
+			'lead_source' => $lead,
+			'lead_detail' => $lead === 'trifecta' && array_key_exists($detail, Presales::LEAD_DETAILS) ? $detail : null,
+			'referrer_org_id' => $refOrg ?: null,
+			'referrer_name' => $refName,
+			'handoff_user_id' => $handoff,
 			'name' => $name,
 			'customer_id' => $customerId ? (int) $customerId : null,
 			'salesperson_id' => $sales && Db::value('SELECT 1 FROM users WHERE id = ?', [$sales]) ? $sales : null,

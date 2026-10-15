@@ -4,13 +4,13 @@ use App\Presales;
 
 /**
  * @var array $settings    key => value (raw stored values)
- * @var array $commission  rate rows (or as typed)
+ * @var array $commissionTiers  commission plan tiers (percents, or as typed)
+ * @var array $selfGenTiers     self-generated lead bonus tiers
  * @var array $deposits    tier rows
  * @var array $templates   schedule rows with 'lines' text
  * @var array $rules       contingency rules
  * @var bool  $canEdit
  * @var array $activity
- * @var string $commissionDefault  row index of the default commission rate
  * @var string $templateDefault    row index of the default schedule
  */
 $dis = $canEdit ? '' : 'disabled';
@@ -18,7 +18,6 @@ $s = static fn (string $k) => $settings[$k] ?? '';
 $pct = static fn ($v) => $v === '' || $v === null ? '' : Presales::field((float) $v * 100, 4);
 $tenths = static fn ($v) => $v === '' || $v === null ? '' : number_format((float) $v * 100, 1, '.', '');
 $n = static fn ($v, $dec = 4) => $v === '' || $v === null ? '' : Presales::field((float) $v, $dec);
-$commission = $commission ?: [[]];
 $deposits = $deposits ?: [[]];
 $templates = $templates ?: [[]];
 $rules = $rules ?: [[]];
@@ -52,7 +51,6 @@ $rules = $rules ?: [[]];
 				<input type="text" name="settings[labor_guideline]" value="<?= e($s('labor_guideline')) ?>" maxlength="200" placeholder="e.g. Residential roof: about $0.20/W" <?= $dis ?>>
 				<small class="hint">Shown beside the labor price on every build sheet.</small>
 			</label>
-			<label>Site visit ($) <input type="text" name="settings[site_visit]" value="<?= e($n($s('site_visit'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Lodging ($/person/night) <input type="text" name="settings[lodging_rate]" value="<?= e($n($s('lodging_rate'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Per diem ($/person/day) <input type="text" name="settings[per_diem_rate]" value="<?= e($n($s('per_diem_rate'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Price goes stale after (days) <input type="text" name="settings[stale_days]" value="<?= e($n($s('stale_days'), 0)) ?>" inputmode="numeric" <?= $dis ?>></label>
@@ -100,29 +98,50 @@ $rules = $rules ?: [[]];
 
 	<section class="card band">
 		<h2>Commission</h2>
-		<p class="hint">The adjusted rate is what is applied to the marked-up cost; the old sheet grosses the rate up (rate / (1 - rate)) so commission comes out near the rate times the final price. The step-down amount is added on top at that rate.</p>
-		<div class="eq eq-commission" data-rows>
-			<div class="eq-head"><span>Rate (%)</span><span>Adjusted (%)</span><span>Step-down ($)</span><span>Default</span><span></span></div>
-			<?php foreach ($commission as $i => $c): ?>
+		<p class="hint">Tax-bracket style: each rate applies only to the part of the job inside its bracket, so there is no cliff at a threshold. Commission is figured on the price less pass-through items and extras without markup: what we don't mark up, we don't pay commission on. The build sheet solves the price so it covers the commission exactly. New build sheets copy this plan; saved ones keep the plan they were built with.</p>
+		<h3 class="sub">Commission</h3>
+		<div class="eq eq-tiers" data-rows>
+			<div class="eq-head"><span>Up to ($)</span><span>Rate (%)</span><span></span></div>
+			<?php foreach ($commissionTiers ?: [[]] as $i => $t): ?>
 				<div class="eq-row">
-					<input type="text" name="commission[<?= $i ?>][rate]" value="<?= e((string) ($c['rate'] ?? '')) ?>" inputmode="decimal" aria-label="Rate" <?= $dis ?>>
-					<input type="text" name="commission[<?= $i ?>][adjusted]" value="<?= e((string) ($c['adjusted'] ?? '')) ?>" inputmode="decimal" aria-label="Adjusted rate" <?= $dis ?>>
-					<input type="text" name="commission[<?= $i ?>][step_down]" value="<?= e($n($c['step_down'] ?? '', 2)) ?>" inputmode="decimal" aria-label="Step-down amount" <?= $dis ?>>
-					<label class="boxwrap"><input type="radio" name="commission_default" value="<?= $i ?>" data-row-value <?= (string) $commissionDefault === (string) $i ? 'checked' : '' ?> <?= $dis ?>> Default</label>
+					<input type="text" name="commission_tiers[<?= $i ?>][upto]" value="<?= e((string) ($t['upto'] ?? '')) ?>" inputmode="decimal" placeholder="No limit" aria-label="Up to" <?= $dis ?>>
+					<input type="text" name="commission_tiers[<?= $i ?>][rate]" value="<?= e((string) ($t['rate'] ?? '')) ?>" inputmode="decimal" aria-label="Rate" <?= $dis ?>>
 					<button type="button" class="btn btn-ghost btn-small row-del" title="Remove" <?= $dis ?>>&times;</button>
 				</div>
 			<?php endforeach; ?>
-			<?php if ($canEdit): ?><button type="button" class="btn btn-ghost btn-small row-add">+ Rate</button><?php endif; ?>
+			<?php if ($canEdit): ?><button type="button" class="btn btn-ghost btn-small row-add">+ Tier</button><?php endif; ?>
+		</div>
+		<p class="hint">Leave "up to" blank on the last tier for no limit. Now: <?= e(App\Commission::describe(App\Commission::currentPlan()['commission'])) ?>.</p>
+		<h3 class="sub">Self-generated lead bonus</h3>
+		<div class="eq eq-tiers" data-rows>
+			<div class="eq-head"><span>Up to ($)</span><span>Rate (%)</span><span></span></div>
+			<?php foreach ($selfGenTiers ?: [[]] as $i => $t): ?>
+				<div class="eq-row">
+					<input type="text" name="self_gen_tiers[<?= $i ?>][upto]" value="<?= e((string) ($t['upto'] ?? '')) ?>" inputmode="decimal" placeholder="No limit" aria-label="Up to" <?= $dis ?>>
+					<input type="text" name="self_gen_tiers[<?= $i ?>][rate]" value="<?= e((string) ($t['rate'] ?? '')) ?>" inputmode="decimal" aria-label="Rate" <?= $dis ?>>
+					<button type="button" class="btn btn-ghost btn-small row-del" title="Remove" <?= $dis ?>>&times;</button>
+				</div>
+			<?php endforeach; ?>
+			<?php if ($canEdit): ?><button type="button" class="btn btn-ghost btn-small row-add">+ Tier</button><?php endif; ?>
+		</div>
+		<p class="hint">Paid on top of commission when the salesperson found the lead, for a net-new customer only. Comes out of margin, not the price. Now: <?= e(App\Commission::describe(App\Commission::currentPlan()['self_gen'])) ?>.</p>
+		<div class="grid-form mt-sm">
+			<label>Referral bonus ($) <input type="text" name="settings[referral_bonus]" value="<?= e($n($s('referral_bonus'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Paid to whoever referred the customer, instead of the self-generated bonus. Out of margin.</small>
+			</label>
+			<label>In-house handoff share (%) <input type="text" name="settings[handoff_share]" value="<?= e($pct($s('handoff_share'))) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">When one salesperson hands a lead to another, the one who handed it off gets this share of the whole payout; the closing salesperson keeps the rest.</small>
+			</label>
 		</div>
 	</section>
 
 	<section class="card band">
 		<h2>Contingency</h2>
 		<?php
-			$defComm = $commission[$commissionDefault] ?? ($commission[0] ?? []);
-			$factor = (1 + (float) $s('markup_default')) * (1 + (float) ($defComm['adjusted'] ?? 0) / 100);
+			$firstRate = App\Commission::currentPlan()['commission'][0]['rate'] ?? 0.0;
+			$factor = (1 + (float) $s('markup_default')) / (1 - min(0.99, $firstRate));
 		?>
-		<p class="hint">Contingency is part of the job's cost. It is added before markup, so it is marked up and carries commission like any other cost. If it gets spent, the job still earns its full margin on that money; if it isn't spent, all of it becomes extra margin. That is why a modest percentage goes further than it looks: at the default markup and commission, each $1,000 of contingency adds about <?= e(Presales::money(1000 * $factor)) ?> to the price.</p>
+		<p class="hint">Contingency is part of the job's cost. It is added before markup, so it is marked up and carries commission like any other cost. If it gets spent, the job still earns its full margin on that money; if it isn't spent, all of it becomes extra margin. That is why a modest percentage goes further than it looks: at the default markup and the first commission rate, each $1,000 of contingency adds about <?= e(Presales::money(1000 * $factor)) ?> to the price.</p>
 		<div class="grid-form">
 			<label>Cap (%) <input type="text" name="settings[contingency_cap]" value="<?= e($n($s('contingency_cap'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Minimum ($) <input type="text" name="settings[contingency_floor]" value="<?= e($n($s('contingency_floor'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
