@@ -9,16 +9,19 @@ namespace App;
  * refigured). Add-only: a job already recorded for that salesperson, or a project that already has
  * a commission, is skipped. A job is linked to its project when the names match one project.
  *
- * $paidBefore: jobs signed before that date are recorded as paid in full (the sheets have no paid
- * column), with one payment dated that day.
+ * A row marked "paid" (green on the sheet) is recorded as paid in full: one payment per person for
+ * what they are owed, dated $paidOn (today unless given), when the job has no payments yet. This
+ * also applies to jobs already imported, so the file can be run again to mark them paid.
+ * $paidBefore: jobs signed before that date are recorded as paid the same way.
  */
 final class CommissionImporter
 {
 	private array $log = [];
 	private array $counts = ['added' => 0, 'skipped' => 0, 'linked' => 0, 'marked_paid' => 0, 'no_salesperson' => 0];
 
-	public function __construct(private bool $dryRun, private ?string $paidBefore = null)
+	public function __construct(private bool $dryRun, private ?string $paidBefore = null, private ?string $paidOn = null)
 	{
+		$this->paidOn ??= date('Y-m-d');
 	}
 
 	public function run(array $data): array
@@ -52,8 +55,10 @@ final class CommissionImporter
 			$this->log[] = "  $job: no user matches salesperson \"" . ($r['salesperson'] ?? '') . '", skipped';
 			return;
 		}
-		if (Db::value('SELECT 1 FROM commissions WHERE job_name = ? COLLATE NOCASE AND salesperson_id = ?', [$job, $uid])) {
+		$existing = (int) Db::value('SELECT id FROM commissions WHERE job_name = ? COLLATE NOCASE AND salesperson_id = ?', [$job, $uid]);
+		if ($existing) {
 			$this->counts['skipped']++;
+			$this->markPaid($existing, $r, $job);
 			return;
 		}
 		$projectId = $this->project($job);
@@ -82,11 +87,29 @@ final class CommissionImporter
 			$this->log[] = '    note: the sheet\'s Total Amount (' . Presales::money((float) $r['sheet_total']) . ') leaves out part of this; check it';
 		}
 		Activity::event('commission', $id, 'Imported from the commission spreadsheet');
-		if ($this->paidBefore && $row['status'] === 'active' && $row['signed_on'] && $row['signed_on'] < $this->paidBefore && $total > 0) {
-			Db::insert('commission_entries', ['commission_id' => $id, 'kind' => 'payment', 'user_id' => $uid, 'amount' => round($total, 2),
-				'entry_date' => $this->paidBefore, 'note' => 'Paid before the tracker (from the commission sheet)']);
-			$this->counts['marked_paid']++;
+		$this->markPaid($id, $r, $job);
+	}
+
+	/** Record a job as paid in full when the sheet says so and nothing has been paid on it yet. */
+	private function markPaid(int $id, array $r, string $job): void
+	{
+		$c = Commissions::find($id);
+		if (!$c || $c['status'] !== 'active' || Db::value('SELECT 1 FROM commission_entries WHERE commission_id = ?', [$id])) {
+			return;
 		}
+		$byDate = $this->paidBefore && $c['signed_on'] && $c['signed_on'] < $this->paidBefore;
+		if (empty($r['paid']) && !$byDate) {
+			return;
+		}
+		foreach (Commissions::payees($c, []) as $p) {
+			if ($p['balance'] > 0.005) {
+				Db::insert('commission_entries', ['commission_id' => $id, 'kind' => 'payment', 'user_id' => $p['user_id'], 'amount' => $p['balance'],
+					'entry_date' => $this->paidOn, 'note' => 'Paid before the tracker (' . (!empty($r['paid']) ? 'green on the commission sheet' : 'signed before ' . fmt_date($this->paidBefore)) . ')']);
+			}
+		}
+		Activity::event('commission', $id, 'Marked paid from the commission sheet');
+		$this->counts['marked_paid']++;
+		$this->log[] = "  paid: $job";
 	}
 
 	/** A user by full name, or by a first name that only one user has. */

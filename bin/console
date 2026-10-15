@@ -15,9 +15,11 @@ declare(strict_types=1);
  *   import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
  *   import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
  *   import:presales <file.json> [--dry-run]   Add Pre-Sales catalog items and buildsheet rates (never changes existing ones)
- *   import:commissions <file.json> [--paid-before=YYYY-MM-DD] [--dry-run]
+ *   import:commissions <file.json> [--paid-on=YYYY-MM-DD] [--paid-before=YYYY-MM-DD] [--dry-run]
  *                                             Add sold jobs from the salespeople's commission sheets (never changes
- *                                             existing ones); --paid-before records jobs signed before that date as paid
+ *                                             existing ones). Jobs marked paid in the file (green on the sheet), and
+ *                                             with --paid-before those signed before that date, get a payment for what
+ *                                             is owed if they have none yet, dated --paid-on (default today)
  *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
@@ -137,12 +139,16 @@ try {
 			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
 			$dry = in_array('--dry-run', $args, true);
 			$paidBefore = null;
+			$paidOn = null;
 			foreach ($args as $a) {
 				if (str_starts_with($a, '--paid-before=')) {
 					$paidBefore = App\Projects::parseDate(substr($a, 14)) ?? fail('Use --paid-before=YYYY-MM-DD');
 				}
+				if (str_starts_with($a, '--paid-on=')) {
+					$paidOn = App\Projects::parseDate(substr($a, 10)) ?? fail('Use --paid-on=YYYY-MM-DD');
+				}
 			}
-			$res = (new App\CommissionImporter($dry, $paidBefore))->run($data);
+			$res = (new App\CommissionImporter($dry, $paidBefore, $paidOn))->run($data);
 			foreach ($res['log'] as $line) { out($line); }
 			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
 			break;
@@ -223,7 +229,7 @@ try {
 			break;
 
 		default:
-			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | import:commissions <file.json> [--paid-before=YYYY-MM-DD] [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run] | monitor:backfill [--vendor=X] [--daily] [--months] [--dry-run] [--force]');
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | import:commissions <file.json> [--paid-on=YYYY-MM-DD] [--paid-before=YYYY-MM-DD] [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run] | monitor:backfill [--vendor=X] [--daily] [--months] [--dry-run] [--force]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());

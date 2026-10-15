@@ -82,9 +82,10 @@ import:service <file.json> [--dry-run]    Add service tickets (never changes exi
 import:todos <file.json> [--dry-run]      Add Tasks (skips titles already open)
 import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
 import:presales <file.json> [--dry-run]   Add Sales catalog items and buildsheet rates (never changes existing ones)
-import:commissions <file.json> [--paid-before=YYYY-MM-DD] [--dry-run]
-                                          Add sold jobs from the commission spreadsheets (tools/import/build_commissions.py);
-                                          --paid-before records jobs signed before that date as paid
+import:commissions <file.json> [--paid-on=YYYY-MM-DD] [--paid-before=YYYY-MM-DD] [--dry-run]
+                                          Add sold jobs from the commission spreadsheets (tools/import/build_commissions.py).
+                                          Jobs marked paid (green on the sheet), and with --paid-before those signed before
+                                          that date, get a payment for what is owed if none yet, dated --paid-on (default today)
 fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
 fix:completed-payments [--dry-run]        Mark open payments received on Completed projects
 fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known

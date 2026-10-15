@@ -5,7 +5,8 @@ Each spreadsheet has one sheet per year (named 2024, 2025, ...) with a header ro
 "Project Name" and columns for the contract date, Project Amount, Commission, Step Down,
 REAP Extra, Self Gen Bonus, Site Visits, Total Amount and Referrals. Columns are found by their
 header text, so a sheet whose columns moved still reads. Amounts are taken as the sheet recorded
-them; the importer never refigures them.
+them; the importer never refigures them. A row with a cell filled bright green is paid; a row
+filled yellow is noted as unclear and left unpaid.
 
 Usage:
 	python3 tools/import/build_commissions.py import/commissions.json "Pat Example=sheets/pat.xlsx" ["Name=file.xlsx" ...]
@@ -62,10 +63,21 @@ def header_map(row):
 	return found
 
 
+GREEN = 'FF00FF00'
+YELLOW = 'FFFFFF00'
+
+
+def fill(cell):
+	f = cell.fill
+	return f.fgColor.rgb if f is not None and f.fill_type else None
+
+
 def read_sheet(ws, salesperson, source):
 	rows = []
 	cols = None
-	for row in ws.iter_rows(values_only=True):
+	for cells in ws.iter_rows():
+		row = [c.value for c in cells]
+		fills = {fill(c) for c in cells}
 		if any(clean(c).lower() == 'project name' for c in row):
 			cols = header_map(row)
 			continue
@@ -88,6 +100,8 @@ def read_sheet(ws, salesperson, source):
 		if reap:
 			parts.append('REAP $%s' % format(reap, ',.0f'))
 		notes = ' '.join(clean(c) for i, c in enumerate(row) if i > cols.get('total', 99) and clean(c))
+		if YELLOW in fills and GREEN not in fills:
+			notes = (notes + ' ' if notes else '') + '(Highlighted yellow on the sheet.)'
 		sheet_total = num(get('total'))
 		total = commission + self_gen + payouts
 		rows.append({
@@ -101,6 +115,7 @@ def read_sheet(ws, salesperson, source):
 			'payouts_note': ', '.join(parts) or None,
 			'notes': notes or None,
 			'status': 'cancelled' if re.search(r'cancel', notes, re.I) else 'active',
+			'paid': GREEN in fills,
 			'sheet_total': sheet_total,
 			'total_differs': bool(sheet_total) and abs(sheet_total - total) > 0.5,
 			'source': source,
@@ -126,7 +141,7 @@ def main():
 	with open(out, 'w') as f:
 		json.dump({'kind': 'commissions', 'rows': rows}, f, indent=1)
 	differs = [r for r in rows if r['total_differs']]
-	print('Wrote %d jobs to %s' % (len(rows), out))
+	print('Wrote %d jobs to %s (%d paid, green on the sheet)' % (len(rows), out, sum(1 for r in rows if r['paid'])))
 	for r in differs:
 		print('  check %s: sheet total %s, columns add up to %s' % (r['job_name'], r['sheet_total'], r['commission'] + r['self_gen'] + r['payouts']))
 

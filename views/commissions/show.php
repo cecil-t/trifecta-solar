@@ -32,7 +32,8 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-blue', 'Paid' => 'chip-gr
 		<div class="head-actions">
 			<a href="/commissions/<?= (int) $c['id'] ?>/edit" class="btn btn-secondary">Edit</a>
 			<?php if ($state !== 'Cancelled' && $due - $paid > 0.005): ?>
-				<form method="post" action="/commissions/<?= (int) $c['id'] ?>/paid" data-confirm="Record today's payment of everything still owed<?= $payStep && !$payStep['done_date'] ? ' and close the project\'s pay commission step' : '' ?>?">
+				<?php $owedList = implode(', ', array_map(static fn ($p) => Presales::money($p['balance']) . ' to ' . $p['name'], array_filter($payees, static fn ($p) => $p['balance'] > 0.005))); ?>
+				<form method="post" action="/commissions/<?= (int) $c['id'] ?>/paid" data-confirm="Mark this job paid? This records a payment dated today of what is still owed (<?= e($owedList) ?>)<?= $payStep && !$payStep['done_date'] ? ' and closes the project\'s Pay sales commission step' : '' ?>. To use another date, add the payment below instead.">
 					<?= Csrf::field() ?>
 					<button class="btn btn-primary">Mark paid</button>
 				</form>
