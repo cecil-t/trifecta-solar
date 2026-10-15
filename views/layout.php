@@ -13,7 +13,8 @@ $nav = [
 	['/reports', 'Reports', true],
 	['/monitor', 'Monitor', true],
 ];
-$isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_starts_with($path, $href);
+$isActive = static fn (string $href) => $href === '/' ? $path === '/' : (str_starts_with($path, $href)
+	|| ($href === '/presales' && str_starts_with($path, '/commissions'))); // commissions belong to Sales
 ?>
 <!doctype html>
 <html lang="en">
@@ -42,7 +43,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : str_star
 		</form>
 
 		<details class="navmenu">
-			<summary class="<?= $isActive('/customers') || $isActive('/organizations') || $isActive('/municipalities') || $isActive('/directory') || $isActive('/admin') || $isActive('/users') || $isActive('/commissions') ? 'active' : '' ?>">Lists &#9662;</summary>
+			<summary class="<?= $isActive('/customers') || $isActive('/organizations') || $isActive('/municipalities') || $isActive('/directory') || $isActive('/admin') || $isActive('/users') ? 'active' : '' ?>">Lists &#9662;</summary>
 			<div class="usermenu-panel">
 				<a href="/customers">Customers</a>
 				<a href="/municipalities">Municipalities</a>

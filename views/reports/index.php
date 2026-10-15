@@ -13,6 +13,12 @@
 			<p><?= e($desc) ?></p>
 		</a>
 	<?php endforeach; ?>
+	<?php if (App\Commissions::canUse()): ?>
+		<a class="card card-module report-card" href="/commissions">
+			<h2>Sales commissions</h2>
+			<p>Every sold job: commission, bonuses and payouts per salesperson, what is owed now, not due yet, and paid.</p>
+		</a>
+	<?php endif; ?>
 </div>
 
 <?php
