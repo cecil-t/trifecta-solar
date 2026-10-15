@@ -301,7 +301,7 @@ final class DesignController
 			$retail += $l['retail'];
 		}
 		return ['circuits' => $circuits, 'segments' => $segments, 'parts' => $parts, 'cost' => $m($cost), 'retail' => $m($retail),
-			'warnings' => $t['warnings'], 'ac_kw' => Presales::field($calc['ac_kw'], 2)];
+			'warnings' => $t['warnings']];
 	}
 
 	/** "Domestic content about 12% of major equipment cost (2 items unknown)". */

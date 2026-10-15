@@ -456,7 +456,7 @@ $folded = [];
 									<option value="<?= $k ?>" <?= $sel($kind, $k) ?>><?= e($label) ?></option>
 								<?php endforeach; ?>
 							</select>
-							<label class="tr-ac-only tr-inline">kW AC <input type="text" name="circuits[<?= $i ?>][ac_kw]" value="<?= e(isset($c['ac_kw']) && $c['ac_kw'] !== null ? $pf((float) $c['ac_kw'], 3) : '') ?>" inputmode="decimal" placeholder="<?= e($tv['ac_kw']) ?>" class="tr-kw input-short"></label>
+							<label class="tr-ac-only tr-inline">kW AC <input type="text" name="circuits[<?= $i ?>][ac_kw]" value="<?= e(isset($c['ac_kw']) && $c['ac_kw'] !== null ? $pf((float) $c['ac_kw'], 3) : '') ?>" inputmode="decimal" placeholder="Required" class="tr-kw input-short"></label>
 							<select name="circuits[<?= $i ?>][voltage]" aria-label="Voltage" class="tr-ac-only tr-volt">
 								<?php foreach (App\Trench::VOLTAGES as $k => $label): ?>
 									<option value="<?= $k ?>" <?= $sel($c['voltage'] ?? '240', $k) ?>><?= e($label) ?></option>

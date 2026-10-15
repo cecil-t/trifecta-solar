@@ -237,10 +237,9 @@ final class Trench
 	 * @param array $trenches   rows: key, name, method, length_ft
 	 * @param array $circuits   rows: key, name, kind, ac_kw, voltage, strings, segments (list of trench keys), size_override, override_reason
 	 * @param array $basis      ['settings' => [...], 'prices' => [part key => [...]]]; missing pieces come from today's rates and catalog
-	 * @param float $designAcKw the build sheet's AC kW, used for an AC circuit with no kW typed
 	 * @return array lines (for Pricing), segments and circuits (results by key), parts, warnings, missing (part keys with no catalog item), basis (with any new prices)
 	 */
-	public static function calculate(array $trenches, array $circuits, array $basis, float $designAcKw, ?array $catalog = null): array
+	public static function calculate(array $trenches, array $circuits, array $basis, ?array $catalog = null): array
 	{
 		$set = ($basis['settings'] ?? null) ?: self::currentSettings();
 		$basis['settings'] = $set;
@@ -284,9 +283,9 @@ final class Trench
 			}
 
 			if ($c['kind'] === 'ac') {
-				$kw = $c['ac_kw'] !== null && $c['ac_kw'] !== '' ? (float) $c['ac_kw'] : $designAcKw;
+				$kw = (float) ($c['ac_kw'] ?? 0);
 				if ($kw <= 0) {
-					$r['warn'][] = 'Needs the AC kW (none typed, and the build sheet has no inverters yet).';
+					$r['warn'][] = 'Type the kW AC this circuit carries.';
 					$results[$key] = $r;
 					continue;
 				}

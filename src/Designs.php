@@ -441,18 +441,16 @@ final class Designs
 
 	/**
 	 * Run the pricing for a design and its lines (rows from the database or from fromInput). The
-	 * trench builder's parts join the lines; it needs the build sheet's AC kW, so a first pass
-	 * without them finds that.
+	 * trench builder's parts join the lines.
 	 */
 	public static function calc(array $d, array $lines, array $arrays, ?array $trench = null): array
 	{
 		$trench ??= isset($d['id']) ? self::trench((int) $d['id']) : ['trenches' => [], 'circuits' => []];
 		$rules = Presales::contingencyRules();
 		$round = max(1, Presales::num('round_to'));
-		$first = Pricing::calculate($d, $lines, $arrays, $rules, $round);
 		$basis = json_decode((string) ($d['trench_basis'] ?? ''), true) ?: [];
-		$tr = Trench::calculate($trench['trenches'], $trench['circuits'], $basis, (float) $first['ac_kw']);
-		$calc = $tr['lines'] ? Pricing::calculate($d, array_merge($lines, $tr['lines']), $arrays, $rules, $round) : $first;
+		$tr = Trench::calculate($trench['trenches'], $trench['circuits'], $basis);
+		$calc = Pricing::calculate($d, array_merge($lines, $tr['lines']), $arrays, $rules, $round);
 		$calc['trench'] = $tr;
 		$calc['trench_rows'] = $trench;
 		$calc['warranty_summary'] = Pricing::warrantySummary($d, $calc['lines'], Presales::setting('trifecta_warranty_text'), Presales::setting('solarinsure_text'));

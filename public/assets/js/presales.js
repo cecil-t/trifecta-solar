@@ -609,7 +609,7 @@
 			return {
 				kind,
 				name: r.querySelector('.tr-cname').value.trim(),
-				kw: kwIn.value.trim() !== '' ? num(kwIn.value) : num(kwIn.placeholder),
+				kw: num(kwIn.value),
 				strings: Math.round(num(r.querySelector('.tr-strings').value)),
 				segs: Array.from(r.querySelectorAll('.tr-segs input:checked')).map((i) => i.value),
 			};
@@ -656,7 +656,7 @@
 				svg.appendChild(svgEl('line', { x1: (x0 + 4).toFixed(1), x2: (x0 + w - 4).toFixed(1), y1: y, y2: y, class: 'tr-w-under' }));
 				svg.appendChild(svgEl('line', { x1: (x0 + 4).toFixed(1), x2: (x0 + w - 4).toFixed(1), y1: y, y2: y, class: 'tr-w tr-w-' + c.kind }));
 				const lbl = svgEl('text', { x: String(x0 - 8), y: String(parseFloat(y) + 4), class: 'tr-lbl tr-lbl-' + c.kind, 'text-anchor': 'end' });
-				lbl.textContent = c.kind === 'ac' ? 'AC ' + fmtNum(c.kw) + ' kW' : (c.kind === 'dc' ? 'DC ' + c.strings + ' string' + (c.strings === 1 ? '' : 's') : 'Comms');
+				lbl.textContent = c.kind === 'ac' ? (c.kw > 0 ? 'AC ' + fmtNum(c.kw) + ' kW' : 'AC, kW needed') : (c.kind === 'dc' ? 'DC ' + c.strings + ' string' + (c.strings === 1 ? '' : 's') : 'Comms');
 				const tip = svgEl('title', {});
 				tip.textContent = c.name || lbl.textContent;
 				lbl.appendChild(tip);
@@ -683,8 +683,6 @@
 			const ul = r.querySelector('.tr-cwarn');
 			ul.textContent = '';
 			res.warn.forEach((w) => { const li = document.createElement('li'); li.textContent = w; ul.appendChild(li); });
-			const kw = r.querySelector('.tr-kw');
-			if (kw.placeholder !== t.ac_kw) kw.placeholder = t.ac_kw;
 		});
 		trRows().forEach((r) => setText(r.querySelector('[data-seg-out]'), t.segments[r.querySelector('.tr-key').value] || ''));
 		const body = document.getElementById('trench-parts');
