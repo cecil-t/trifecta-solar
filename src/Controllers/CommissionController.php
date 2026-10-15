@@ -20,7 +20,7 @@ use App\View;
 final class CommissionController
 {
 	private const TRACKED = [
-		'job_name' => 'Job', 'signed_on' => 'Contract signed', 'salesperson_id' => 'Salesperson',
+		'project_id' => 'Project', 'job_name' => 'Job', 'signed_on' => 'Contract signed', 'salesperson_id' => 'Salesperson',
 		'handoff_user_id' => 'Handed off by', 'handoff_share' => 'Handoff share', 'lead_source' => 'Lead source',
 		'referrer_name' => 'Referred by', 'contract_amount' => 'Commissionable amount', 'commission' => 'Commission',
 		'self_gen' => 'Self-generated bonus', 'payouts' => 'Other payouts', 'payouts_note' => 'Other payouts note',
@@ -34,10 +34,12 @@ final class CommissionController
 			$this->deny();
 		}
 		$admin = Commissions::canManage();
+		// Remember the list as filtered, so a job's back link returns to it
+		$_SESSION['commissions_list'] = local_path((string) ($_SERVER['REQUEST_URI'] ?? '/commissions'), '/commissions');
 		$person = $admin ? (int) ($_GET['sales'] ?? 0) : (int) Auth::id();
 		$year = preg_match('/^\d{4}$/', (string) ($_GET['year'] ?? '')) ? (string) $_GET['year'] : '';
 		$tab = (string) ($_GET['tab'] ?? 'all');
-		if (!in_array($tab, ['owed', 'paid', 'all', 'cancelled'], true)) {
+		if (!in_array($tab, ['owed', 'notdue', 'paid', 'all', 'cancelled'], true)) {
 			$tab = 'all';
 		}
 		$where = ['1 = 1'];
@@ -53,7 +55,8 @@ final class CommissionController
 		$records = Db::all('SELECT c.*, u.name AS salesperson_name, h.name AS handoff_name, p.project_number, p.name AS project_name
 			FROM commissions c LEFT JOIN users u ON u.id = c.salesperson_id LEFT JOIN users h ON h.id = c.handoff_user_id
 			LEFT JOIN projects p ON p.id = c.project_id WHERE ' . implode(' AND ', $where) . '
-			ORDER BY c.signed_on IS NULL, c.signed_on DESC, c.id DESC', $params);
+			ORDER BY c.signed_on IS NULL, c.signed_on, c.id', $params);
+		$phases = Commissions::phases($records);
 		$entries = [];
 		if ($records) {
 			$ids = array_column($records, 'id');
@@ -62,8 +65,9 @@ final class CommissionController
 			}
 		}
 		$rows = [];
-		$counts = ['owed' => 0, 'paid' => 0, 'all' => 0, 'cancelled' => 0];
-		$total = ['contract' => 0.0, 'commission' => 0.0, 'self_gen' => 0.0, 'payouts' => 0.0, 'adjust' => 0.0, 'due' => 0.0, 'paid' => 0.0, 'balance' => 0.0];
+		$counts = ['owed' => 0, 'notdue' => 0, 'paid' => 0, 'all' => 0, 'cancelled' => 0];
+		$total = ['contract' => 0.0, 'commission' => 0.0, 'self_gen' => 0.0, 'payouts' => 0.0, 'adjust' => 0.0, 'due' => 0.0, 'paid' => 0.0, 'balance' => 0.0,
+			'due_now' => 0.0, 'not_due' => 0.0];
 		foreach ($records as $c) {
 			$payees = Commissions::payees($c, $entries[(int) $c['id']] ?? []);
 			if ($person) {
@@ -76,8 +80,14 @@ final class CommissionController
 				$paid = array_sum(array_column($payees, 'paid'));
 				$adjust = array_sum(array_column($payees, 'adjust'));
 			}
-			$status = Commissions::status($c, $due, $paid);
-			$bucket = $status === 'Cancelled' ? 'cancelled' : (in_array($status, ['Paid', 'Nothing owed'], true) ? 'paid' : 'owed');
+			$phase = $phases[(int) $c['id']] ?? null;
+			$status = Commissions::status($c, $due, $paid, Commissions::isDue($phase));
+			$bucket = match ($status) {
+				'Cancelled' => 'cancelled',
+				'Paid', 'Nothing owed' => 'paid',
+				'Not due yet' => 'notdue',
+				default => 'owed',
+			};
 			$counts[$bucket]++;
 			if ($bucket !== 'cancelled') {
 				$counts['all']++;
@@ -85,7 +95,8 @@ final class CommissionController
 			if (!($tab === 'all' ? $bucket !== 'cancelled' : $tab === $bucket)) {
 				continue;
 			}
-			$row = $c + ['due' => $due, 'paid' => $paid, 'adjust' => $adjust, 'balance' => round($due - $paid, 2), 'state' => $status];
+			$row = $c + ['due' => $due, 'paid' => $paid, 'adjust' => $adjust, 'balance' => round($due - $paid, 2), 'state' => $status,
+				'phase' => $phase];
 			$rows[] = $row;
 			foreach (['commission', 'self_gen', 'payouts'] as $k) {
 				$total[$k] += (float) $c[$k];
@@ -95,6 +106,9 @@ final class CommissionController
 			$total['due'] += $due;
 			$total['paid'] += $paid;
 			$total['balance'] += $row['balance'];
+			if ($row['balance'] > 0.005) {
+				$total[$bucket === 'notdue' ? 'not_due' : 'due_now'] += $row['balance'];
+			}
 		}
 		$referrals = $admin ? Db::all("SELECT c.id, c.job_name, c.referrer_name, c.referral_bonus, c.referral_w9, p.project_number, p.name AS project_name
 			FROM commissions c LEFT JOIN projects p ON p.id = c.project_id
@@ -114,7 +128,10 @@ final class CommissionController
 		$c = $this->find($id);
 		$entries = Commissions::entries($id);
 		$o = $c['opportunity_id'] ? Db::one('SELECT id, name FROM presales_opportunities WHERE id = ?', [(int) $c['opportunity_id']]) : null;
+		$phase = Commissions::phases([$c])[$id] ?? null;
 		View::render('commissions/show', [
+			'phase' => $phase,
+			'listUrl' => local_path((string) ($_SESSION['commissions_list'] ?? '/commissions'), '/commissions') . '#c-' . $id,
 			'title' => 'Commission: ' . $c['job_name'], 'c' => $c, 'entries' => $entries,
 			'payees' => Commissions::payees($c, $entries), 'o' => $o, 'admin' => Commissions::canManage(),
 			'people' => $this->people(), 'activity' => Activity::feed('commission', $id),
@@ -215,6 +232,25 @@ final class CommissionController
 		}
 		flash('success', 'Saved.');
 		redirect('/commissions/' . $id);
+	}
+
+	/** Project search for linking a commission (projects without one): JSON for the picker. */
+	public function projectSearch(): void
+	{
+		$this->requireManage();
+		header('Content-Type: application/json');
+		$q = trim((string) ($_GET['q'] ?? ''));
+		if (mb_strlen($q) < 2) {
+			echo '[]';
+			return;
+		}
+		$like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
+		$rows = Db::all("SELECT p.id, p.project_number, p.name, p.site_city FROM projects p
+			WHERE (p.name LIKE ? ESCAPE '\\' OR p.project_number LIKE ? ESCAPE '\\')
+			  AND p.id NOT IN (SELECT project_id FROM commissions WHERE project_id IS NOT NULL)
+			ORDER BY (p.name LIKE ?) DESC, p.project_number DESC LIMIT 12", [$like, $like, $q . '%']);
+		echo json_encode(array_map(static fn ($r) => ['id' => (int) $r['id'], 'name' => trim($r['project_number'] . ' ' . $r['name']),
+			'kind' => 'Project', 'city' => (string) $r['site_city']], $rows));
 	}
 
 	/** A payment or an adjustment for one person. */
@@ -335,6 +371,17 @@ final class CommissionController
 			'status' => ($_POST['status'] ?? '') === 'cancelled' ? 'cancelled' : 'active',
 			'notes' => trim((string) ($_POST['notes'] ?? '')) ?: null,
 		];
+		if ($before !== null) {
+			// Linking (or relinking) the job to its project in the tracker
+			$pid = (int) ($_POST['project_id'] ?? 0);
+			if ($pid && !Db::value('SELECT 1 FROM projects WHERE id = ?', [$pid])) {
+				$pid = 0;
+			}
+			if ($pid && Db::value('SELECT 1 FROM commissions WHERE project_id = ? AND id <> ?', [$pid, (int) $before['id']])) {
+				throw new \InvalidArgumentException('That project already has a commission record.');
+			}
+			$data['project_id'] = $pid ?: null;
+		}
 		if ($data['handoff_user_id'] && $data['handoff_user_id'] === $data['salesperson_id']) {
 			throw new \InvalidArgumentException('The salesperson can\'t also be the one who handed the lead off.');
 		}
@@ -364,9 +411,10 @@ final class CommissionController
 	private function formatters(): array
 	{
 		$name = static fn ($v) => (string) Db::value('SELECT name FROM users WHERE id = ?', [$v]);
+		$project = static fn ($v) => (string) Db::value("SELECT project_number || ' ' || name FROM projects WHERE id = ?", [$v]);
 		$money = static fn ($v) => $v === null || $v === '' ? '' : Presales::money((float) $v);
 		return [
-			'salesperson_id' => $name, 'handoff_user_id' => $name,
+			'salesperson_id' => $name, 'handoff_user_id' => $name, 'project_id' => $project,
 			'lead_source' => static fn ($v) => Presales::LEAD_SOURCES[$v] ?? (string) $v,
 			'handoff_share' => static fn ($v) => Presales::pct((float) $v, 0),
 			'contract_amount' => $money, 'commission' => $money, 'self_gen' => $money, 'payouts' => $money, 'referral_bonus' => $money,

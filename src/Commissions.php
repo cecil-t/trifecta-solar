@@ -100,8 +100,11 @@ final class Commissions
 		return $out;
 	}
 
-	/** Owed | Part paid | Paid | Nothing owed | Cancelled, for a job or for one person on it. */
-	public static function status(array $c, float $due, float $paid): string
+	/**
+	 * Owed | Part paid | Not due yet | Paid | Nothing owed | Cancelled, for a job or for one person on
+	 * it. A balance is not due until the job's project reaches Closeout (PTO received).
+	 */
+	public static function status(array $c, float $due, float $paid, bool $isDue = true): string
 	{
 		if ($c['status'] === 'cancelled') {
 			return 'Cancelled';
@@ -112,7 +115,46 @@ final class Commissions
 		if ($due - $paid <= 0.005) {
 			return 'Paid';
 		}
+		if (!$isDue) {
+			return 'Not due yet';
+		}
 		return $paid > 0.005 ? 'Part paid' : 'Owed';
+	}
+
+	/**
+	 * Project phase per commission id (Pre-Install, Installation, Closeout, Completed, Cancelled),
+	 * for the records that have a project. Commission is due from Closeout on.
+	 */
+	public static function phases(array $records): array
+	{
+		$pids = array_values(array_unique(array_filter(array_map(static fn ($c) => (int) $c['project_id'], $records))));
+		if (!$pids) {
+			return [];
+		}
+		$projects = [];
+		foreach (Db::all('SELECT * FROM projects WHERE id IN (' . implode(',', $pids) . ')') as $p) {
+			$projects[(int) $p['id']] = $p;
+		}
+		$tasks = Tasks::forProjects($pids);
+		$phase = [];
+		foreach ($pids as $pid) {
+			if (isset($projects[$pid])) {
+				$phase[$pid] = Tasks::status($projects[$pid], $tasks[$pid] ?? [])['phase'];
+			}
+		}
+		$out = [];
+		foreach ($records as $c) {
+			if ($c['project_id'] && isset($phase[(int) $c['project_id']])) {
+				$out[(int) $c['id']] = $phase[(int) $c['project_id']];
+			}
+		}
+		return $out;
+	}
+
+	/** Due from Closeout on; a job with no project in the tracker is treated as due. */
+	public static function isDue(?string $phase): bool
+	{
+		return $phase === null || in_array($phase, ['closeout', 'complete'], true);
 	}
 
 	/** Amounts from the plan the job sold under, for the commissionable amount and lead source. */

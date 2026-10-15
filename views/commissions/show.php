@@ -10,6 +10,8 @@ use App\Presales;
  * @var array      $payees    per person: share, adjust, due, paid, balance
  * @var array|null $o         the opportunity it came from (id, name)
  * @var array|null $payStep   the project's pay-commission step
+ * @var string      $listUrl   the commissions list as it was filtered
+ * @var string|null $phase    the project's phase (commission is due from Closeout on)
  * @var bool       $admin
  * @var array      $people    id, name
  * @var array      $activity
@@ -18,20 +20,21 @@ $m = static fn ($v) => Presales::money((float) $v);
 $plan = Commission::plan($c['plan']);
 $due = array_sum(array_column($payees, 'due'));
 $paid = array_sum(array_column($payees, 'paid'));
-$state = Commissions::status($c, $due, $paid);
-$chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-blue', 'Paid' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
+$state = Commissions::status($c, $due, $paid, Commissions::isDue($phase));
+$chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' => 'chip-blue', 'Paid' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
 ?>
 <div class="page-head">
 	<div>
-		<a href="/commissions" class="back">&larr; Sales commissions</a>
+		<a href="<?= e($listUrl) ?>" class="back">&larr; Sales commissions</a>
 		<div class="page-kicker">Sales commission</div>
 		<h1><?= e($c['project_id'] ? trim($c['project_number'] . ' ' . $c['project_name']) : $c['job_name']) ?></h1>
-		<div class="badges"><span class="chip <?= $chip[$state] ?? '' ?>"><?= e($state) ?></span></div>
+		<div class="badges"><span class="chip <?= $chip[$state] ?? '' ?>"><?= e($state) ?></span><?php if ($phase): ?> <span class="chip">Project: <?= e(App\Tasks::PHASE_LABELS[$phase] ?? $phase) ?></span><?php endif; ?></div>
 	</div>
 	<?php if ($admin): ?>
 		<div class="head-actions">
 			<a href="/commissions/<?= (int) $c['id'] ?>/edit" class="btn btn-secondary">Edit</a>
 			<?php if ($state !== 'Cancelled' && $due - $paid > 0.005): ?>
+				<?php if ($state === 'Not due yet'): ?><span class="muted small self-center">Due when the project reaches Closeout</span><?php endif; ?>
 				<?php $owedList = implode(', ', array_map(static fn ($p) => Presales::money($p['balance']) . ' to ' . $p['name'], array_filter($payees, static fn ($p) => $p['balance'] > 0.005))); ?>
 				<form method="post" action="/commissions/<?= (int) $c['id'] ?>/paid" data-confirm="Mark this job paid? This records a payment dated today of what is still owed (<?= e($owedList) ?>)<?= $payStep && !$payStep['done_date'] ? ' and closes the project\'s Pay sales commission step' : '' ?>. To use another date, add the payment below instead.">
 					<?= Csrf::field() ?>

@@ -222,7 +222,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			<dt>Utility rebate</dt><dd><?= $answer('Utility rebate') ?></dd>
 			<dt>VNM</dt><dd><?= $answer('Virtual net metering') ?></dd>
 			<?php if ($commission && App\Commissions::canSee($commission)): $cp = App\Commissions::payees($commission); $cdue = array_sum(array_column($cp, 'due')); $cpaid = array_sum(array_column($cp, 'paid')); ?>
-				<dt>Commission</dt><dd><a href="/commissions/<?= (int) $commission['id'] ?>"><?= e(App\Presales::money($cdue)) ?></a> <span class="muted small"><?= e(App\Commissions::status($commission, $cdue, $cpaid)) ?><?= $cpaid > 0.005 && $cdue - $cpaid > 0.005 ? ', ' . e(App\Presales::money($cdue - $cpaid)) . ' still owed' : '' ?></span></dd>
+				<dt>Commission</dt><dd><a href="/commissions/<?= (int) $commission['id'] ?>"><?= e(App\Presales::money($cdue)) ?></a> <span class="muted small"><?= e(App\Commissions::status($commission, $cdue, $cpaid, App\Commissions::isDue($status['phase']))) ?><?= $cpaid > 0.005 && $cdue - $cpaid > 0.005 ? ', ' . e(App\Presales::money($cdue - $cpaid)) . ' still owed' : '' ?></span></dd>
 			<?php elseif (!$commission && App\Commissions::canManage()): ?>
 				<dt>Commission</dt><dd><a href="/projects/<?= (int) $p['id'] ?>/commission/new" class="small">Set up the sales commission</a></dd>
 			<?php endif; ?>

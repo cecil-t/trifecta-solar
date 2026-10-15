@@ -177,6 +177,7 @@ $r->get('/customers', [OrganizationController::class, 'customers']);
 $r->get('/directory', [OrganizationController::class, 'directory']);
 $r->get('/organizations/search', [OrganizationController::class, 'search']);
 $r->get('/commissions', [CommissionController::class, 'index']);
+$r->get('/commissions/projects', [CommissionController::class, 'projectSearch']);
 $r->get('/commissions/{id}', [CommissionController::class, 'show']);
 $r->get('/commissions/{id}/edit', [CommissionController::class, 'edit']);
 $r->post('/commissions/{id}', [CommissionController::class, 'update']);

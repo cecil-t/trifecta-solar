@@ -5,7 +5,7 @@ use App\Presales;
  * @var array  $rows       commission records with due, paid, balance, state (for one person when filtered)
  * @var array  $total      column totals
  * @var array  $counts     owed, paid, all, cancelled
- * @var string $tab        owed | paid | all | cancelled
+ * @var string $tab        owed | notdue | paid | all | cancelled
  * @var string $year
  * @var int    $person     filtered person (always the viewer for salespeople)
  * @var string $personName
@@ -16,13 +16,13 @@ use App\Presales;
  */
 $m = static fn ($v) => Presales::money((float) $v);
 $qs = static fn (array $over) => '/commissions?' . http_build_query(array_filter(array_merge(['tab' => $tab, 'year' => $year, 'sales' => $admin && $person ? $person : null], $over), static fn ($v) => $v !== '' && $v !== null));
-$tabs = ['owed' => 'Owed', 'paid' => 'Paid', 'all' => 'All', 'cancelled' => 'Cancelled'];
-$chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-blue', 'Paid' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
+$tabs = ['owed' => 'Owed now', 'notdue' => 'Not due yet', 'paid' => 'Paid', 'all' => 'All', 'cancelled' => 'Cancelled'];
+$chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' => 'chip-blue', 'Paid' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
 ?>
 <div class="page-head">
 	<div>
 		<h1>Sales commissions</h1>
-		<p class="muted"><?= $admin ? 'Every sold job, what each salesperson is owed and what has been paid. Closing a project\'s "Pay sales commission" step marks it paid.' : 'Your sold jobs, what you are owed and what has been paid.' ?><?= $person && $admin ? ' Amounts are ' . e($personName) . '\'s share.' : '' ?></p>
+		<p class="muted"><?= $admin ? 'Every sold job, what each salesperson is owed and what has been paid, oldest first. Commission comes due when the project reaches Closeout (PTO); closing its "Pay sales commission" step marks it paid.' : 'Your sold jobs, what you are owed and what has been paid, oldest first. Commission comes due when the project reaches Closeout (PTO).' ?><?= $person && $admin ? ' Amounts are ' . e($personName) . '\'s share.' : '' ?></p>
 	</div>
 </div>
 
@@ -54,7 +54,8 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-blue', 'Paid' => 'chip-gr
 <div class="metrics commission-metrics">
 	<div><span class="m-num"><?= e($m($total['due'])) ?></span><span class="m-label">Earned</span></div>
 	<div><span class="m-num"><?= e($m($total['paid'])) ?></span><span class="m-label">Paid</span></div>
-	<div><span class="m-num <?= $total['balance'] > 0.005 ? 'text-orange' : '' ?>"><?= e($m($total['balance'])) ?></span><span class="m-label">Still owed</span></div>
+	<div><span class="m-num <?= $total['due_now'] > 0.005 ? 'text-orange' : '' ?>"><?= e($m($total['due_now'])) ?></span><span class="m-label">Owed now</span></div>
+	<div><span class="m-num"><?= e($m($total['not_due'])) ?></span><span class="m-label">Not due yet</span></div>
 	<div><span class="m-num"><?= count($rows) ?></span><span class="m-label">Jobs</span></div>
 </div>
 
@@ -66,7 +67,7 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-blue', 'Paid' => 'chip-gr
 		<tbody>
 		<?php if (!$rows): ?><tr><td colspan="12" class="empty">Nothing here.</td></tr><?php endif; ?>
 		<?php foreach ($rows as $r): ?>
-			<tr data-href="/commissions/<?= (int) $r['id'] ?>">
+			<tr data-href="/commissions/<?= (int) $r['id'] ?>" id="c-<?= (int) $r['id'] ?>">
 				<td class="nowrap"><?= $r['signed_on'] ? e(fmt_date($r['signed_on'])) : '<span class="muted">Not set</span>' ?></td>
 				<td>
 					<a href="/commissions/<?= (int) $r['id'] ?>"><strong><?= e($r['project_id'] ? trim($r['project_number'] . ' ' . $r['project_name']) : $r['job_name']) ?></strong></a>
@@ -80,8 +81,8 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-blue', 'Paid' => 'chip-gr
 				<td class="num"><?= abs($r['adjust']) > 0.005 ? e($m($r['adjust'])) : '-' ?></td>
 				<td class="num"><strong><?= e($m($r['due'])) ?></strong></td>
 				<td class="num"><?= e($m($r['paid'])) ?></td>
-				<td class="num <?= $r['balance'] > 0.005 ? 'text-orange' : '' ?>"><?= e($m($r['balance'])) ?></td>
-				<td><span class="chip <?= $chip[$r['state']] ?? '' ?>"><?= e($r['state']) ?></span></td>
+				<td class="num <?= $r['balance'] > 0.005 && $r['state'] !== 'Not due yet' ? 'text-orange' : '' ?>"><?= e($m($r['balance'])) ?></td>
+				<td><span class="chip <?= $chip[$r['state']] ?? '' ?>"><?= e($r['state']) ?></span><?= $r['phase'] && $r['state'] === 'Not due yet' ? '<div class="muted small">' . e(App\Tasks::PHASE_LABELS[$r['phase']] ?? '') . '</div>' : '' ?></td>
 			</tr>
 		<?php endforeach; ?>
 		</tbody>

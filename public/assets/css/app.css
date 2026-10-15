@@ -1625,3 +1625,4 @@ a[href^="tel:"] { white-space: nowrap; }
 .commission-metrics { margin: .2rem 0 .9rem; }
 .table-commissions th, .table-commissions td { padding-left: .5rem; padding-right: .5rem; }
 .table-commissions th, .card .table th { overflow-wrap: normal; word-break: keep-all; }
+.self-center { align-self: center; }

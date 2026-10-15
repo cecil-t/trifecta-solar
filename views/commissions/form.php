@@ -53,7 +53,20 @@ $back = $isNew ? '/projects/' . (int) $p['id'] : '/commissions/' . (int) $c['id'
 	<section class="card band">
 		<h2>Job</h2>
 		<div class="grid-form">
-			<?php if (!$p): ?><label class="span-2">Job <input type="text" name="job_name" value="<?= e((string) $v('job_name')) ?>" required></label><?php endif; ?>
+			<?php if (!$isNew): ?>
+				<div class="checkfield span-2">
+					<label for="project-pick" class="field-label">Project</label>
+					<div class="picker" data-picker-url="/commissions/projects">
+						<input type="text" id="project-pick" value="<?= e($p ? trim($p['project_number'] . ' ' . $p['name']) : '') ?>" class="picker-input" autocomplete="off" placeholder="Search by project number or name" role="combobox" aria-expanded="false" aria-controls="project-list" aria-autocomplete="list">
+						<input type="hidden" name="project_id" value="<?= $p ? (int) $p['id'] : '' ?>" class="picker-id">
+						<ul class="picker-list" id="project-list" role="listbox" hidden></ul>
+					</div>
+					<small class="hint">The job in the tracker. Linked, it shows on the project page and becomes due when the project reaches Closeout. Clear the box to unlink.</small>
+				</div>
+				<label class="span-2">Job name <input type="text" name="job_name" value="<?= e((string) $v('job_name')) ?>" required>
+					<small class="hint">As it was on the commission sheet; the project's name shows instead when it is linked.</small>
+				</label>
+			<?php endif; ?>
 			<label>Contract signed <input type="date" name="signed_on" value="<?= e((string) $v('signed_on')) ?>"></label>
 			<label>Salesperson
 				<select name="salesperson_id">
@@ -141,3 +154,4 @@ $back = $isNew ? '/projects/' . (int) $p['id'] : '/commissions/' . (int) $c['id'
 		<button class="btn btn-ghost btn-small">Delete commission record</button>
 	</form>
 <?php endif; ?>
+<script src="<?= asset('assets/js/picker.js') ?>"></script>
