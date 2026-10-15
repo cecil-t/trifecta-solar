@@ -1626,3 +1626,6 @@ a[href^="tel:"] { white-space: nowrap; }
 .table-commissions th, .table-commissions td { padding-left: .5rem; padding-right: .5rem; }
 .table-commissions th, .card .table th { overflow-wrap: normal; word-break: keep-all; }
 .self-center { align-self: center; }
+.table-commissions { width: 100%; }
+.table-commissions td { vertical-align: middle; }
+.table-commissions td:nth-child(2) { white-space: normal; min-width: 10rem; }

@@ -82,7 +82,7 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' =>
 				<td class="num"><strong><?= e($m($r['due'])) ?></strong></td>
 				<td class="num"><?= e($m($r['paid'])) ?></td>
 				<td class="num <?= $r['balance'] > 0.005 && $r['state'] !== 'Not due yet' ? 'text-orange' : '' ?>"><?= e($m($r['balance'])) ?></td>
-				<td><span class="chip <?= $chip[$r['state']] ?? '' ?>"><?= e($r['state']) ?></span><?= $r['phase'] && $r['state'] === 'Not due yet' ? '<div class="muted small">' . e(App\Tasks::PHASE_LABELS[$r['phase']] ?? '') . '</div>' : '' ?></td>
+				<td class="nowrap"><span class="chip <?= $chip[$r['state']] ?? '' ?>"<?= $r['phase'] && $r['state'] === 'Not due yet' ? ' title="Project is in ' . e(App\Tasks::PHASE_LABELS[$r['phase']] ?? '') . '; due at Closeout"' : '' ?>><?= e($r['state']) ?></span></td>
 			</tr>
 		<?php endforeach; ?>
 		</tbody>
