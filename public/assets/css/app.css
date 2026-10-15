@@ -1318,16 +1318,16 @@ a[href^="tel:"] { white-space: nowrap; }
 .tr-w { stroke-width: 3.5; stroke-linecap: round; }
 .tr-w-ac { stroke: #d32f2f; }
 .tr-w-dc { stroke: #1565c0; }
-.tr-w-comms { stroke: #7b1fa2; }
+.tr-w-comms { stroke: #43a047; }
 .tr-lbl { font-size: 12px; font-weight: 700; }
 .tr-lbl-ac { fill: #d32f2f; }
 .tr-lbl-dc { fill: #1565c0; }
-.tr-lbl-comms { fill: #7b1fa2; }
+.tr-lbl-comms { fill: #2e7d32; }
 .tr-lbl-none { fill: var(--muted); font-weight: 400; font-style: italic; }
 .tr-circuits { gap: .6rem; }
 .tr-circ { display: block; width: 100%; max-width: none; padding: .6rem .7rem; border: 1px solid var(--border); border-left: 4px solid #d32f2f; border-radius: var(--radius-sm); }
 .tr-circ[data-kind="dc"] { border-left-color: #1565c0; }
-.tr-circ[data-kind="comms"] { border-left-color: #7b1fa2; }
+.tr-circ[data-kind="comms"] { border-left-color: #43a047; }
 .tr-circ-top { display: grid; grid-template-columns: minmax(170px, 1fr) 100px auto auto auto 36px; gap: .5rem; align-items: center; }
 .tr-inline { display: flex; flex-direction: row; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 600; white-space: nowrap; margin: 0; }
 .tr-inline input { width: 5.5rem; }

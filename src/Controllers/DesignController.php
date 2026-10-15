@@ -7,6 +7,7 @@ use App\Activity;
 use App\Db;
 use App\Designs;
 use App\Presales;
+use App\Trench;
 use App\View;
 
 /** One build sheet: the editor, its live calculation, copy, delete and "copy at today's prices". */
@@ -283,7 +284,7 @@ final class DesignController
 		}
 		$segments = [];
 		foreach ($t['segments'] as $k => $s) {
-			$segments[$k] = implode('; ', array_map(static fn ($x) => $x['circuit'] . ': ' . ($x['count'] > 1 ? $x['count'] . ' x ' : '') . $x['size'] . '" PVC', $s['conduits']));
+			$segments[$k] = implode('; ', array_map(static fn ($x) => $x['circuit'] . ': ' . Trench::conduitText($x['count'], $x['size'], $x['fill']), $s['conduits']));
 		}
 		$parts = [];
 		$cost = 0.0;

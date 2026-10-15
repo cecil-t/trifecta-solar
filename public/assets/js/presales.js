@@ -536,7 +536,7 @@
 
 	// ---- Trench builder: segment keys, the "Runs through" checkboxes, fields by circuit type, and
 	// a drawing per segment (length to scale; brown open trench, gray bore, tan customer trench;
-	// red AC, blue DC, purple comms). Sizes and prices come back from the server with the totals.
+	// red AC, blue DC, green comms). Sizes and prices come back from the server with the totals.
 	const trBox = document.getElementById('trench-builder');
 	const METHOD_LABEL = { open: 'Open trench', bore: 'Linear bore', customer: 'Customer trench' };
 	const trRows = () => (trBox ? Array.from(trBox.querySelectorAll('#trench-rows > .tr-row')) : []);

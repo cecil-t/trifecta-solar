@@ -19,7 +19,7 @@ final class Trench
 {
 	public const METHODS = ['open' => 'Open trench', 'bore' => 'Linear bore', 'customer' => 'Customer trench'];
 	public const KINDS = ['ac' => 'AC', 'dc' => 'DC', 'comms' => 'Comms'];
-	public const VOLTAGES = ['240' => '240 V single-phase', '208' => '208 V three-phase', '480' => '480 V three-phase'];
+	public const VOLTAGES = ['120' => '120 V single-phase', '240' => '240 V single-phase', '208' => '208 V three-phase', '480' => '480 V three-phase'];
 
 	/** Catalog parts the builder prices with: key => [label, unit]. Conduit and wire also carry a size (and wire a material). */
 	public const PARTS = [
@@ -208,6 +208,18 @@ final class Trench
 		return null;
 	}
 
+	/** Percent of the conduit's area the conductors take (NEC allows 40% for three or more). */
+	private static function fill(float $area, string $conduit): float
+	{
+		return $area / self::CONDUITS[$conduit] * 100;
+	}
+
+	/** '2 x 1-1/4" PVC, 32% fill' */
+	public static function conduitText(int $count, string $size, ?float $fill): string
+	{
+		return ($count > 1 ? $count . ' x ' : '') . $size . '" PVC' . ($fill !== null ? ', ' . round($fill) . '% fill' : '');
+	}
+
 	/** Smallest PVC conduit holding this conductor area at 40% fill; null if more than 4". */
 	private static function conduitFor(float $area): ?string
 	{
@@ -279,13 +291,15 @@ final class Trench
 					continue;
 				}
 				$volts = (float) (isset(self::VOLTAGES[(string) ($c['voltage'] ?? '')]) ? $c['voltage'] : '240');
-				$three = $volts !== 240.0;
+				$three = in_array($volts, [208.0, 480.0], true);
+				$is120 = $volts === 120.0;
 				$k = $three ? sqrt(3) : 2.0;
 				$amps = $kw * 1000 / ($volts * ($three ? sqrt(3) : 1));
 				$need = 1.25 * $amps;
 				$breaker = self::nextBreaker($need);
-				$hots = $three ? 3 : 2;
-				$ccc = $hots;   // a neutral carrying only unbalanced current does not count
+				$hots = $three ? 3 : ($is120 ? 1 : 2);
+				// a neutral carrying only unbalanced current does not count; on 120 V it carries it all
+				$ccc = $is120 ? 2 : $hots;
 				$target = (float) $set['vd_ac'];
 				$mat = 'cu';
 				$size = self::size('cu', $need, $amps, $length, $volts, $k, $target, $ccc, '14');
@@ -309,22 +323,22 @@ final class Trench
 					}
 				}
 				$drop = self::drop($size, $mat, $amps, $length, $volts, $k);
-				$neutral = !empty($set['neutral']) ? 1 : 0;
+				$neutral = $is120 || !empty($set['neutral']) ? 1 : 0;
 				$egc = self::egc($breaker, $mat);
 				$count = $hots + $neutral;
 				$area = $count * self::AREA[$size] + self::AREA[$egc];
 				$conduit = self::conduitFor($area);
 				if ($conduit === null) {
 					$n = (int) ceil($area / (self::CONDUITS['4'] * 0.4));
-					$conduits[] = [$n, '4'];
+					$conduits[] = [$n, '4', self::fill($area / $n, '4')];
 					$r['warn'][] = 'Needs more than one 4" conduit; priced as ' . $n . '.';
 				} else {
-					$conduits[] = [1, $conduit];
+					$conduits[] = [1, $conduit, self::fill($area, $conduit)];
 				}
 				$add(self::partKey('wire', $size, $mat), $count * $length);
 				$add(self::partKey('wire', $egc, $mat), $length);
 				$r['text'] = round($amps, 1) . ' A, ' . $breaker . ' A breaker: ' . $count . ' x ' . self::sizeLabel($size) . ' ' . strtolower(self::MATERIALS[$mat])
-					. ($neutral ? ' (incl. neutral)' : '') . ' + ' . self::sizeLabel($egc) . ' ground';
+					. ($neutral && !$is120 ? ' (incl. neutral)' : '') . ($is120 ? ' (hot and neutral)' : '') . ' + ' . self::sizeLabel($egc) . ' ground';
 				$r['drop'] = $drop;
 				if ($drop > $target + 1e-9) {
 					$r['warn'][] = 'Voltage drop ' . number_format($drop, 1) . '% is over the ' . rtrim(rtrim(number_format($target, 1), '0'), '.') . '% target.';
@@ -364,7 +378,7 @@ final class Trench
 				$egc = self::idx($egc) > self::idx('6') ? '6' : $egc;
 				$area = 2 * $per * self::AREA[$size] + self::AREA[$egc];
 				$conduit = self::conduitFor($area) ?? '4';
-				$conduits[] = [$groups, $conduit];
+				$conduits[] = [$groups, $conduit, self::fill($area, $conduit)];
 				$add(self::partKey('wire', $size, 'cu'), 2 * $n * $length);
 				$add(self::partKey('wire', $egc, 'cu'), $groups * $length);
 				$r['text'] = $n . ' string' . ($n > 1 ? 's' : '') . ': ' . (2 * $n) . ' x ' . self::sizeLabel($size) . ' copper + ' . self::sizeLabel($egc) . ' ground'
@@ -377,7 +391,7 @@ final class Trench
 				$r['material'] = 'cu';
 				$r['strings'] = $n;
 			} else {
-				$conduits[] = [1, isset(self::CONDUITS[(string) $set['comms_conduit']]) ? (string) $set['comms_conduit'] : '1'];
+				$conduits[] = [1, isset(self::CONDUITS[(string) $set['comms_conduit']]) ? (string) $set['comms_conduit'] : '1', null];
 				$add('comms', $length);
 				$r['text'] = 'Communications cable';
 			}
@@ -387,8 +401,8 @@ final class Trench
 			foreach ($through as $sk) {
 				$seg = &$segs[$sk];
 				$seg['circuits'][] = $key;
-				foreach ($conduits as [$count, $size]) {
-					$seg['conduits'][] = ['circuit' => $name, 'kind' => $c['kind'], 'count' => $count, 'size' => $size];
+				foreach ($conduits as [$count, $size, $fill]) {
+					$seg['conduits'][] = ['circuit' => $name, 'kind' => $c['kind'], 'count' => $count, 'size' => $size, 'fill' => $fill];
 					if ($seg['method'] === 'bore') {
 						$add('termination', 2 * $count);   // extend and terminate on each side of the bore
 					} else {
@@ -397,7 +411,7 @@ final class Trench
 				}
 				unset($seg);
 			}
-			$r['conduit'] = implode(' + ', array_map(static fn ($x) => ($x[0] > 1 ? $x[0] . ' x ' : '') . $x[1] . '" PVC', $conduits));
+			$r['conduit'] = implode(' + ', array_map(static fn ($x) => self::conduitText($x[0], $x[1], $x[2]), $conduits));
 			$results[$key] = $r;
 		}
 
