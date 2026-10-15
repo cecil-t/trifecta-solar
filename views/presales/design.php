@@ -90,6 +90,12 @@ $lineFlag = static function (?array $f, ?array $c = null): string {
 	return $h;
 };
 $markupFloor = Presales::num('markup_floor');
+// Every section folds from its blue header; a few start folded unless they hold something
+$foldBtn = static fn (string $id, string $title, bool $folded) => '<button type="button" class="fold-btn" aria-expanded="' . ($folded ? 'false' : 'true') . '" aria-controls="' . $id . '" title="' . ($folded ? 'Show' : 'Hide') . ' ' . e($title) . '"><span aria-hidden="true">' . ($folded ? '+' : '&minus;') . '</span><span class="visually-hidden">' . ($folded ? 'Show' : 'Hide') . ' ' . e($title) . '</span></button>';
+$hasTrench = (bool) ($calc['trench_rows']['trenches'] || $calc['trench_rows']['circuits']);
+$foldTrench = !$hasTrench;
+$foldExtras = !array_filter($extras, static fn ($x) => trim((string) ($x['name'] ?? '')) !== '' || (float) ($x['price'] ?? 0) != 0);
+$foldContingency = !$calc['contingency_overridden'] && $d['contingency_override'] === null && !array_filter(array_map('intval', json_decode((string) ($d['contingency_manual'] ?? ''), true) ?: []));
 $always = ['modules', 'inverters', 'mlpe', 'racking', 'bos', 'permits', 'interconnection'];
 $folded = [];
 ?>
@@ -190,8 +196,8 @@ $folded = [];
 	</aside>
 
 	<div class="design-main">
-		<section class="card band">
-			<h2>Setup</h2>
+		<section class="card band" id="sec-setup">
+			<h2><?= $foldBtn('sec-setup', 'Setup', false) ?>Setup</h2>
 			<div class="grid-form">
 				<label class="span-2">Build sheet name
 					<input type="text" name="name" value="<?= e($d['name']) ?>" maxlength="80">
@@ -259,8 +265,8 @@ $folded = [];
 			</div>
 		</section>
 
-		<section class="card band">
-			<h2>Equipment and materials</h2>
+		<section class="card band" id="sec-equipment">
+			<h2><?= $foldBtn('sec-equipment', 'Equipment and materials', false) ?>Equipment and materials</h2>
 			<div class="flash flash-warn design-checks" id="design-checks" <?= $calc['checks'] ? '' : 'hidden' ?>>
 				<ul><?php foreach ($calc['checks'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
 			</div>
@@ -366,9 +372,9 @@ $folded = [];
 			<p class="hint">From the Domestic content % and FEOC fields on catalog items. A flag, not a tax opinion: whether the job qualifies for the credit or the domestic content bonus also depends on the project type and dates.</p>
 		</section>
 
-		<section class="card band">
+		<section class="card band" id="sec-arrays">
 			<div class="card-head card-head-plain band-head">
-				<h2>Arrays</h2>
+				<h2><?= $foldBtn('sec-arrays', 'Arrays', false) ?>Arrays</h2>
 				<span class="small" id="arrays-count"><?= $arrays ? (int) $calc['arrays_panels'] . ' panels on arrays, ' . (int) $calc['panels'] . ' modules' : '' ?></span>
 			</div>
 			<div class="eq eq-arrays" data-rows>
@@ -407,9 +413,9 @@ $folded = [];
 		$segName = static fn (array $t, int $i) => trim((string) ($t['name'] ?? '')) !== '' ? (string) $t['name'] : 'Segment ' . ($i + 1);
 		$trWarn = $tv['warnings'];
 		?>
-		<section class="card band trench-builder" id="trench-builder">
+		<section class="card band trench-builder<?= $foldTrench ? ' is-folded' : '' ?>" id="trench-builder">
 			<div class="card-head card-head-plain band-head">
-				<h2>Trenching</h2>
+				<h2><?= $foldBtn('trench-builder', 'Trenching and boring', $foldTrench) ?>Trenching and boring</h2>
 				<span class="small">Cost <strong data-tr="cost"><?= e($tv['cost']) ?></strong> &middot; Retail <strong data-tr="retail"><?= e($tv['retail']) ?></strong></span>
 			</div>
 			<p class="hint">Lay out each stretch of digging or boring, then each circuit and the segments it runs through. Wire and conduit are sized from the NEC tables and priced from the Trench builder parts in the catalog: an estimate for quoting; the planset decides.</p>
@@ -501,8 +507,8 @@ $folded = [];
 			</table></div>
 		</section>
 
-		<section class="card band">
-			<h2>Labor, site visit and travel</h2>
+		<section class="card band" id="sec-labor">
+			<h2><?= $foldBtn('sec-labor', 'Labor, site visit and travel', false) ?>Labor, site visit and travel</h2>
 			<div class="grid-form">
 				<div class="checkfield">
 					<span class="field-label">Labor priced</span>
@@ -540,8 +546,11 @@ $folded = [];
 			</div>
 		</section>
 
-		<section class="card band">
-			<h2>Extras without markup</h2>
+		<section class="card band<?= $foldExtras ? ' is-folded' : '' ?>" id="sec-extras">
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-extras', 'Extras without markup', $foldExtras) ?>Extras without markup</h2>
+				<span class="small">Total <strong data-v="extras_total"><?= e($m($calc['extras_total'])) ?></strong></span>
+			</div>
 			<p class="hint">Pass-through amounts shown to the customer at cost, such as a utility transformer upgrade. No markup, no commission, no tax, and left out of the margin.</p>
 			<div class="eq eq-extras" data-rows>
 				<?php foreach ($extras ?: [[]] as $i => $x): ?>
@@ -555,8 +564,11 @@ $folded = [];
 			</div>
 		</section>
 
-		<section class="card band">
-			<h2>Contingency</h2>
+		<section class="card band<?= $foldContingency ? ' is-folded' : '' ?>" id="sec-contingency">
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-contingency', 'Contingency', $foldContingency) ?>Contingency</h2>
+				<span class="small"><strong data-v="contingency"><?= e($m($calc['contingency'])) ?></strong> (<span data-v="contingency_pct"><?= $calc['contingency_pct'] === null ? '-' : e(Presales::pct($calc['contingency_pct'])) ?></span> of cost, by the rules unless overridden)</span>
+			</div>
 			<p class="hint">A cost of work, figured on internal cost and then marked up like any other cost, so the margin holds if it gets spent and grows if it doesn't. Rules switch on from the build sheet itself; some can be checked by hand.</p>
 			<table class="table table-rules">
 				<tbody>
@@ -590,8 +602,8 @@ $folded = [];
 			</div>
 		</section>
 
-		<section class="card band">
-			<h2>Payment schedule</h2>
+		<section class="card band" id="sec-payments">
+			<h2><?= $foldBtn('sec-payments', 'Payment schedule', false) ?>Payment schedule</h2>
 			<div class="grid-form">
 				<label>Deposit
 					<select name="deposit" id="deposit-select">
@@ -625,17 +637,17 @@ $folded = [];
 			<p class="hint">Each payment rounds up to $100 except the last, which takes what is left, so they always add up to the price.</p>
 		</section>
 
-		<section class="card band">
+		<section class="card band" id="sec-warranty">
 			<div class="card-head card-head-plain band-head">
-				<h2>Warranty summary</h2>
+				<h2><?= $foldBtn('sec-warranty', 'Warranty summary', false) ?>Warranty summary</h2>
 				<button type="button" class="btn btn-secondary btn-small" data-copy-from="warranty-summary">Copy</button>
 			</div>
 			<textarea id="warranty-summary" class="warranty-summary" rows="14" readonly aria-label="Warranty summary"><?= e($calc['warranty_summary']) ?></textarea>
 			<p class="hint">Plain text for the OpenSolar proposal. Manufacturer wording comes from each catalog item; the Trifecta and SolarInsure wording from the Rates page.</p>
 		</section>
 
-		<section class="card band">
-			<h2>Notes</h2>
+		<section class="card band" id="sec-notes">
+			<h2><?= $foldBtn('sec-notes', 'Notes', false) ?>Notes</h2>
 			<textarea name="notes" rows="3" data-autogrow aria-label="Build sheet notes"><?= e((string) $d['notes']) ?></textarea>
 		</section>
 

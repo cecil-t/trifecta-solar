@@ -1436,6 +1436,14 @@ a[href^="tel:"] { white-space: nowrap; }
 .band > .band-head:first-child h2 { color: #fff; margin: 0; font-size: .95rem; }
 .band > .band-head:first-child .small { color: #dce9f2; }
 .band > .band-head:first-child .btn-secondary { padding: .2rem .7rem; }
+/* Build sheet sections fold from their header */
+.fold-btn { display: inline-flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; margin: 0 .5rem 0 0; padding: 0;
+	border: 1px solid rgba(255, 255, 255, .6); border-radius: 4px; background: transparent; color: #fff; font: 700 1rem/1 inherit; cursor: pointer; vertical-align: -.15rem; }
+.fold-btn:hover, .fold-btn:focus-visible { background: rgba(255, 255, 255, .18); }
+#design-form .band > h2:first-child, #design-form .band > .band-head:first-child h2 { cursor: pointer; user-select: none; }
+.band.is-folded > :not(:first-child) { display: none !important; }
+.card.band.is-folded { padding-bottom: 0; }
+.band.is-folded > h2:first-child, .band.is-folded > .band-head:first-child { margin-bottom: 0; border-radius: var(--radius); }
 .band .grid-form { gap: .45rem .75rem; }
 .band label { gap: .2rem; font-size: .84rem; }
 .band input[type=text], .band input[type=number], .band input[type=email], .band input[type=tel], .band input[type=url],

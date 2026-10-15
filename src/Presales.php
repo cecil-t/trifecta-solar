@@ -16,7 +16,7 @@ final class Presales
 		'racking'         => ['Racking', 'ea'],
 		'bos'             => ['Balance of System', 'ea'],
 		'electrical'      => ['Electrical and service upgrades', 'ea'],
-		'sitework'        => ['Trenching and boring', 'ft'],
+		'sitework'        => ['Trenching, old all-in items', 'ft'],
 		'structural'      => ['Structural analysis', 'ea'],
 		'foundation'      => ['Foundations', 'ea'],
 		'equipment'       => ['Equipment rental', 'ea'],
