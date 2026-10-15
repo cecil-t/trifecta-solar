@@ -17,11 +17,10 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 
 <form method="post" action="<?= $isNew ? '/service' : '/service/' . (int) $id ?>" class="project-form">
 	<?= Csrf::field() ?>
-	<?php if ($isNew && !empty($t['monitor_site_id'])): ?><input type="hidden" name="monitor_site_id" value="<?= (int) $t['monitor_site_id'] ?>"><?php endif; ?>
 
 	<?php if (!empty($monitor['site'])): $ms = $monitor['site']; ?>
 		<div class="flash flash-info monitor-from">
-			<p><strong><?= $isNew ? 'From monitoring' : 'Opened from monitoring' ?>:</strong> <?= e($ms['vendor_label']) ?> system <?= e($ms['display_name']) ?> (ID <?= e($ms['vendor_site_id']) ?>)<?= $isNew ? ', filled in below' : '' ?>.</p>
+			<p><strong>From monitoring:</strong> <?= e($ms['vendor_label']) ?> system <?= e($ms['display_name']) ?> (ID <?= e($ms['vendor_site_id']) ?>), filled in below.</p>
 			<?php if (!empty($monitor['notes'])): ?>
 				<ul>
 					<?php foreach ($monitor['notes'] as $note): ?><li><?= e($note) ?></li><?php endforeach; ?>
@@ -61,6 +60,24 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 				<input type="url" name="monitoring_url" value="<?= e($v('monitoring_url')) ?>" placeholder="https://monitoring.solaredge.com/...">
 				<small class="hint">Direct link to this system in SolarEdge, Enphase, SMA, etc.</small>
 			</label>
+			<?php if ($monitorChoices['suggested'] || $monitorChoices['by_vendor']): ?>
+				<label class="span-2">Monitoring system
+					<select name="monitor_site_id">
+						<option value="">None</option>
+						<?php if ($monitorChoices['suggested']): ?>
+							<optgroup label="Matches this ticket">
+								<?php foreach ($monitorChoices['suggested'] as $ms): ?><option value="<?= (int) $ms['id'] ?>"><?= e($ms['vendor_label'] . ' ' . $ms['label'] . ', ' . $ms['why']) ?></option><?php endforeach; ?>
+							</optgroup>
+						<?php endif; ?>
+						<?php foreach ($monitorChoices['by_vendor'] as $vendor => $list): ?>
+							<optgroup label="<?= e($vendor) ?>">
+								<?php foreach ($list as $ms): ?><option value="<?= (int) $ms['id'] ?>" <?= $sel($v('monitor_site_id'), $ms['id']) ?>><?= e($ms['label']) ?></option><?php endforeach; ?>
+							</optgroup>
+						<?php endforeach; ?>
+					</select>
+					<small class="hint">The system on the Monitor page this ticket is about. Its Issues row then shows this ticket while it is open. Fills a blank portal link on save.</small>
+				</label>
+			<?php endif; ?>
 		</div>
 	</section>
 

@@ -154,6 +154,50 @@ final class MonitorTicket
 		}
 	}
 
+	/**
+	 * Every monitored system for the ticket form's picker, with the ones that match this ticket first:
+	 * linked to the ticket's project, named in its monitoring portal link, or at its site street.
+	 *
+	 * @return array{suggested:array<int,array>,by_vendor:array<string,array<int,array>>}
+	 */
+	public static function choices(array $t): array
+	{
+		$sites = Db::all('SELECT id, vendor, vendor_site_id, name, project_id, site_street FROM monitor_sites ORDER BY name COLLATE NOCASE, vendor_site_id');
+		$url = (string) ($t['monitoring_url'] ?? '');
+		$street = self::streetKey((string) ($t['site_street'] ?? ''));
+		$suggested = [];
+		$byVendor = [];
+		foreach ($sites as $s) {
+			$s['label'] = ($s['name'] !== '' ? $s['name'] : 'ID ' . $s['vendor_site_id']) . ($s['name'] !== '' ? ' (ID ' . $s['vendor_site_id'] . ')' : '');
+			$s['vendor_label'] = MonitorCollector::VENDORS[$s['vendor']] ?? $s['vendor'];
+			$why = null;
+			if (!empty($t['project_id']) && (int) $s['project_id'] === (int) $t['project_id']) {
+				$why = 'linked to this project';
+			} elseif ($url !== '' && preg_match('/(?<![0-9A-Za-z])' . preg_quote((string) $s['vendor_site_id'], '/') . '(?![0-9A-Za-z])/', $url)) {
+				$why = 'ID in the portal link';
+			} elseif ($street !== '' && self::streetKey((string) $s['site_street']) === $street) {
+				$why = 'same site street';
+			}
+			if ($why !== null && (int) $s['id'] !== (int) ($t['monitor_site_id'] ?? 0)) {
+				$suggested[] = $s + ['why' => $why];
+			} else {
+				$byVendor[$s['vendor_label']][] = $s;
+			}
+		}
+		ksort($byVendor);
+		return ['suggested' => $suggested, 'by_vendor' => $byVendor];
+	}
+
+	/** "SolarEdge Example Residence (ID 1234567)", for the ticket log. */
+	public static function label(?int $siteId): string
+	{
+		$s = $siteId ? Db::one('SELECT vendor, vendor_site_id, name FROM monitor_sites WHERE id = ?', [$siteId]) : null;
+		if (!$s) {
+			return '';
+		}
+		return (MonitorCollector::VENDORS[$s['vendor']] ?? $s['vendor']) . ' ' . ($s['name'] !== '' ? $s['name'] . ' (ID ' . $s['vendor_site_id'] . ')' : 'ID ' . $s['vendor_site_id']);
+	}
+
 	/** @return array{0:?array,1:string} the project and how it was found */
 	private static function matchProject(array $s, string $name): array
 	{

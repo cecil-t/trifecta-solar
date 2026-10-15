@@ -19,7 +19,7 @@ final class ServiceController
 		'site_street' => 'Site street', 'site_city' => 'City', 'site_state' => 'State', 'site_zip' => 'ZIP',
 		'description' => 'Description', 'source' => 'Came from', 'trifecta_install' => 'Trifecta install',
 		'coverage' => 'Coverage', 'owner_id' => 'Owner', 'scheduled_on' => 'Scheduled', 'completed_on' => 'Completed',
-		'drive_url' => 'Drive folder', 'monitoring_url' => 'Monitoring portal', 'billing_note' => 'Billing note', 'bill_amount_cents' => 'Amount billed',
+		'drive_url' => 'Drive folder', 'monitoring_url' => 'Monitoring portal', 'monitor_site_id' => 'Monitoring system', 'billing_note' => 'Billing note', 'bill_amount_cents' => 'Amount billed',
 		'invoiced' => 'Invoiced', 'invoiced_on' => 'Invoice date', 'invoice_number' => 'Invoice #',
 	];
 
@@ -110,7 +110,8 @@ final class ServiceController
 			'users' => Projects::users(),
 			'customers' => Projects::orgs('customer'),
 			'projects' => Service::projects(),
-			'monitor' => $monitor ?? (!empty($t['monitor_site_id']) ? ['notes' => [], 'site' => self::monitorSite((int) $t['monitor_site_id'])] : null),
+			'monitorChoices' => MonitorTicket::choices($t),
+			'monitor' => $monitor,
 		]);
 	}
 
@@ -155,7 +156,7 @@ final class ServiceController
 				$data = $this->input($id);
 				Db::update('service_tickets', $id, $data + ['updated_at' => now_utc()]);
 				Activity::changes('service', $id, $before, $data, self::TRACKED, $this->formatters());
-				MonitorTicket::linkProject($before['monitor_site_id'] ? (int) $before['monitor_site_id'] : null, $data['project_id']);
+				MonitorTicket::linkProject($data['monitor_site_id'], $data['project_id']);
 			});
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_service'] = $_POST;
@@ -240,10 +241,15 @@ final class ServiceController
 				throw new \InvalidArgumentException($error);
 			}
 		}
-		// The monitored system a new ticket came from (kept as is when a ticket is edited).
-		if ($id === null) {
-			$mid = $int('monitor_site_id');
-			$data['monitor_site_id'] = $mid && Db::value('SELECT id FROM monitor_sites WHERE id = ?', [$mid]) ? $mid : null;
+		// The monitored system the ticket is about: picked on the form, or set by Open ticket on the Monitor page.
+		$mid = $int('monitor_site_id');
+		$site = $mid ? Db::one('SELECT id, vendor, vendor_site_id FROM monitor_sites WHERE id = ?', [$mid]) : null;
+		if ($mid && !$site) {
+			throw new \InvalidArgumentException('That monitoring system is no longer in the tracker. Pick another, or None.');
+		}
+		$data['monitor_site_id'] = $site ? (int) $site['id'] : null;
+		if ($site && $data['monitoring_url'] === null) {
+			$data['monitoring_url'] = MonitorTicket::portalUrl((string) $site['vendor'], (string) $site['vendor_site_id']);
 		}
 		if ($data['invoiced_on'] || $data['invoice_number']) {
 			$data['invoiced'] = 1;
@@ -288,6 +294,7 @@ final class ServiceController
 		return [
 			'customer_id' => static fn ($v) => (string) Db::value('SELECT name FROM organizations WHERE id = ?', [$v]),
 			'project_id' => static fn ($v) => (string) Db::value("SELECT project_number || ' ' || name FROM projects WHERE id = ?", [$v]),
+			'monitor_site_id' => static fn ($v) => MonitorTicket::label((int) $v),
 			'owner_id' => static fn ($v) => (string) Db::value('SELECT name FROM users WHERE id = ?', [$v]),
 			'source' => static fn ($v) => Service::SOURCES[$v] ?? $v,
 			'coverage' => static fn ($v) => Service::COVERAGE[$v] ?? $v,

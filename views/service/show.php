@@ -61,6 +61,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 			<?php endforeach; ?>
 			<dt>Site</dt><dd><?= $site !== '' ? maps_link($site) : $muted('Not set') ?></dd>
 			<dt>Installed by</dt><dd><?= match ((string) $t['trifecta_install']) { '1' => 'Trifecta', '0' => 'Another installer', default => $muted('Unknown') } ?></dd>
+			<?php if ($t['monitor_site_id'] && ($ml = \App\MonitorTicket::label((int) $t['monitor_site_id'])) !== ''): ?><dt>Monitoring</dt><dd><?= e($ml) ?></dd><?php endif; ?>
 			<?php if ($t['project_id']): ?><dt>Project</dt><dd><a href="/projects/<?= (int) $t['project_id'] ?>"><?= e($t['project_number'] . ' ' . $t['project_name']) ?></a></dd><?php endif; ?>
 		</dl>
 		<?php if ($history): ?>
