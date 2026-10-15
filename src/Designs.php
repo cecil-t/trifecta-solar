@@ -357,7 +357,6 @@ final class Designs
 		}
 
 		// Trench builder: segments (keys stay as the page made them) and the circuits in them
-		$f['trench_inspection'] = empty($post['trench_inspection']) ? 0 : 1;
 		$trenches = [];
 		$keys = [];
 		foreach ((array) ($post['trenches'] ?? []) as $t) {
@@ -452,7 +451,7 @@ final class Designs
 		$round = max(1, Presales::num('round_to'));
 		$first = Pricing::calculate($d, $lines, $arrays, $rules, $round);
 		$basis = json_decode((string) ($d['trench_basis'] ?? ''), true) ?: [];
-		$tr = Trench::calculate($trench['trenches'], $trench['circuits'], !empty($d['trench_inspection']), $basis, (float) $first['ac_kw']);
+		$tr = Trench::calculate($trench['trenches'], $trench['circuits'], $basis, (float) $first['ac_kw']);
 		$calc = $tr['lines'] ? Pricing::calculate($d, array_merge($lines, $tr['lines']), $arrays, $rules, $round) : $first;
 		$calc['trench'] = $tr;
 		$calc['trench_rows'] = $trench;

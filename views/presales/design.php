@@ -490,8 +490,6 @@ $folded = [];
 			</div>
 			<p class="hint mt-xs">AC kW left blank uses the build sheet's AC size. DC is one string per pair of wires; strings are split across conduits when too many would share one. Settings (voltage drop targets, when AC goes aluminum, string current) are on the Rates page.</p>
 
-			<label class="boxwrap mt-xs"><input type="checkbox" name="trench_inspection" value="1" <?= !isset($d['trench_inspection']) || $d['trench_inspection'] ? 'checked' : '' ?>> Trench inspection (charged once when there is an open or customer trench)</label>
-
 			<div class="table-wrap mt-xs"><table class="table table-tight tr-parts">
 				<thead><tr><th>Priced parts</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Tax</th><th class="num">Cost</th><th class="num">Retail</th></tr></thead>
 				<tbody id="trench-parts">

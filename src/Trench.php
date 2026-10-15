@@ -25,7 +25,6 @@ final class Trench
 	public const PARTS = [
 		'mob_trench'  => ['Trenching mobilization (once per job)', 'ea'],
 		'mob_bore'    => ['Boring setup (once per job)', 'ea'],
-		'inspection'  => ['Trench inspection', 'ea'],
 		'dig'         => ['Open trench, dig and backfill', 'ft'],
 		'bore'        => ['Linear bore (borer supplies the conduit)', 'ft'],
 		'conduit'     => ['PVC conduit', 'ft'],
@@ -225,12 +224,11 @@ final class Trench
 	 *
 	 * @param array $trenches   rows: key, name, method, length_ft
 	 * @param array $circuits   rows: key, name, kind, ac_kw, voltage, strings, segments (list of trench keys), size_override, override_reason
-	 * @param bool  $inspection charge a trench inspection when there is an open or customer trench
 	 * @param array $basis      ['settings' => [...], 'prices' => [part key => [...]]]; missing pieces come from today's rates and catalog
 	 * @param float $designAcKw the build sheet's AC kW, used for an AC circuit with no kW typed
 	 * @return array lines (for Pricing), segments and circuits (results by key), parts, warnings, missing (part keys with no catalog item), basis (with any new prices)
 	 */
-	public static function calculate(array $trenches, array $circuits, bool $inspection, array $basis, float $designAcKw, ?array $catalog = null): array
+	public static function calculate(array $trenches, array $circuits, array $basis, float $designAcKw, ?array $catalog = null): array
 	{
 		$set = ($basis['settings'] ?? null) ?: self::currentSettings();
 		$basis['settings'] = $set;
@@ -416,7 +414,6 @@ final class Trench
 		$add('bore', $bore);
 		$add('mob_trench', $open > 0 ? 1 : 0);
 		$add('mob_bore', $bore > 0 ? 1 : 0);
-		$add('inspection', $inspection && ($open + $customer) > 0 ? 1 : 0);
 
 		// Price every part from the basis, else today's catalog (and remember it)
 		$catalog ??= self::catalogParts();
