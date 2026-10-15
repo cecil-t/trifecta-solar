@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Activity;
 use App\Auth;
 use App\Db;
+use App\MonitorTicket;
 use App\Projects;
 use App\Service;
 use App\View;
@@ -79,7 +80,17 @@ final class ServiceController
 				$t['site_state'] = $p['site_state'] ?: 'PA';
 			}
 		}
-		$this->form($t, null);
+		$monitor = null;
+		if ($mid = (int) ($_GET['monitor'] ?? 0)) {
+			if ($open = MonitorTicket::openTickets([$mid])[$mid] ?? null) {
+				flash('info', 'Service ticket ' . $open['ticket_number'] . ' is already open for this system.');
+				redirect('/service/' . $open['id']);
+			}
+			if ($monitor = MonitorTicket::prefill($mid)) {
+				$t = array_merge($t, $monitor['ticket']);
+			}
+		}
+		$this->form($t, null, $monitor);
 	}
 
 	public function edit(int $id): void
@@ -87,7 +98,7 @@ final class ServiceController
 		$this->form($this->find($id), $id);
 	}
 
-	private function form(array $t, ?int $id): void
+	private function form(array $t, ?int $id, ?array $monitor = null): void
 	{
 		if ($old = $_SESSION['old_service'] ?? null) {
 			$t = array_merge($t, $old);
@@ -99,7 +110,19 @@ final class ServiceController
 			'users' => Projects::users(),
 			'customers' => Projects::orgs('customer'),
 			'projects' => Service::projects(),
+			'monitor' => $monitor ?? (!empty($t['monitor_site_id']) ? ['notes' => [], 'site' => self::monitorSite((int) $t['monitor_site_id'])] : null),
 		]);
+	}
+
+	/** The monitored system a ticket came from, for the line naming it on the form. */
+	private static function monitorSite(int $id): ?array
+	{
+		$s = Db::one('SELECT * FROM monitor_sites WHERE id = ?', [$id]);
+		if ($s) {
+			$s['vendor_label'] = \App\MonitorCollector::VENDORS[$s['vendor']] ?? $s['vendor'];
+			$s['display_name'] = $s['name'] !== '' ? $s['name'] : $s['vendor_site_id'];
+		}
+		return $s;
 	}
 
 	public function store(): void
@@ -109,7 +132,10 @@ final class ServiceController
 				$data = $this->input(null);
 				$data['created_by'] = Auth::id();
 				$id = Db::insert('service_tickets', $data);
-				Activity::event('service', $id, 'Opened service ticket ' . $data['ticket_number']);
+				$site = $data['monitor_site_id'] ? self::monitorSite((int) $data['monitor_site_id']) : null;
+				Activity::event('service', $id, 'Opened service ticket ' . $data['ticket_number']
+					. ($site ? ' from a ' . $site['vendor_label'] . ' monitoring alert (' . $site['display_name'] . ')' : ''));
+				MonitorTicket::linkProject($data['monitor_site_id'], $data['project_id']);
 				return $id;
 			});
 		} catch (\InvalidArgumentException $e) {
@@ -129,6 +155,7 @@ final class ServiceController
 				$data = $this->input($id);
 				Db::update('service_tickets', $id, $data + ['updated_at' => now_utc()]);
 				Activity::changes('service', $id, $before, $data, self::TRACKED, $this->formatters());
+				MonitorTicket::linkProject($before['monitor_site_id'] ? (int) $before['monitor_site_id'] : null, $data['project_id']);
 			});
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_service'] = $_POST;
@@ -212,6 +239,11 @@ final class ServiceController
 			if ($error = link_error($label, $data[$k])) {
 				throw new \InvalidArgumentException($error);
 			}
+		}
+		// The monitored system a new ticket came from (kept as is when a ticket is edited).
+		if ($id === null) {
+			$mid = $int('monitor_site_id');
+			$data['monitor_site_id'] = $mid && Db::value('SELECT id FROM monitor_sites WHERE id = ?', [$mid]) ? $mid : null;
 		}
 		if ($data['invoiced_on'] || $data['invoice_number']) {
 			$data['invoiced'] = 1;

@@ -786,6 +786,9 @@ final class MonitorCollector
 				'today_date' => $today,
 				'today_wh' => self::num($p['yieldToday'] ?? null),
 			];
+			if (is_string($p['city'] ?? null) && trim($p['city']) !== '') {
+				$fields['site_city'] = trim($p['city']); // the status list gives the plant's city only
+			}
 			if ($daily) {
 				// Peak power (kWp) as entered for the plant; else the inverters' maximum DC input.
 				$detail = Sma::plant($pid);
@@ -1071,7 +1074,7 @@ final class MonitorCollector
 				'alert_count' => count($mine),
 				'alert_impact' => $mine ? max(array_map(static fn ($al) => (int) ($al['impact'] ?? 0), $mine)) : null,
 				'last_report_at' => $commFault ? $lastTrigger : null,
-			]);
+			] + self::seLocation($s['location'] ?? null));
 			if (!$pending && !$commFault) {
 				$pull[] = $id;
 			}
@@ -1110,6 +1113,50 @@ final class MonitorCollector
 		}
 		return count($sites) . ' sites, ' . array_sum(array_map('count', $alerts)) . " open alerts, energy for $fetched";
 	}
+
+	/**
+	 * The site address from a SolarEdge site's location, as monitor_sites columns. Only the keys found
+	 * are returned, so a reply without a location never blanks an address already stored. Accepts the
+	 * V1 key names (address, address2, city, state or stateCode, zip) and common alternatives, since the
+	 * V2 reference does not spell the object out.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function seLocation(mixed $loc): array
+	{
+		if (!is_array($loc)) {
+			return [];
+		}
+		$pick = static function (array $keys) use ($loc): ?string {
+			foreach ($keys as $k) {
+				if (isset($loc[$k]) && is_scalar($loc[$k]) && ($v = trim((string) $loc[$k])) !== '') {
+					return $v;
+				}
+			}
+			return null;
+		};
+		$out = [];
+		$street = $pick(['address', 'address1', 'addressLine1', 'street', 'streetAddress']);
+		if ($street !== null) {
+			$two = $pick(['address2', 'addressLine2']);
+			$out['site_street'] = $two !== null ? $street . ', ' . $two : $street;
+		}
+		if (($city = $pick(['city'])) !== null) {
+			$out['site_city'] = $city;
+		}
+		// A two-letter code when there is one; full state names stay as given.
+		$state = $pick(['stateCode', 'state']);
+		if ($state !== null) {
+			$out['site_state'] = strlen($state) === 2 ? strtoupper($state) : (self::US_STATES[strtolower($state)] ?? $state);
+		}
+		if (($zip = $pick(['zip', 'zipCode', 'postalCode', 'postCode'])) !== null) {
+			$out['site_zip'] = $zip;
+		}
+		return $out;
+	}
+
+	/** State names the vendors spell out, for the ones Trifecta works in. */
+	private const US_STATES = ['pennsylvania' => 'PA', 'maryland' => 'MD', 'delaware' => 'DE', 'new jersey' => 'NJ', 'new york' => 'NY', 'virginia' => 'VA', 'ohio' => 'OH', 'west virginia' => 'WV'];
 
 	/** One SolarEdge call: counted, paced under 10 a minute, and stopped cleanly at the credit limit. */
 	private function seGet(string $path, array $query): array

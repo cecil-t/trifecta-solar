@@ -1079,6 +1079,13 @@ a[href^="tel:"] { white-space: nowrap; }
 .mon-count-alert { background: var(--red-50); color: var(--red); }
 .mon-row-offline td:first-child { box-shadow: inset 4px 0 0 var(--red); }
 .mon-why { white-space: normal; min-width: 14rem; }
+.mon-ticket { white-space: nowrap; }
+.mon-ticket .btn { padding: .2rem .6rem; }
+
+/* Service ticket form opened from a monitoring alert */
+.monitor-from { font-weight: 400; }
+.monitor-from p { margin: 0; }
+.monitor-from ul { margin: .35rem 0 0; padding-left: 1.2rem; }
 .table th.mon-th-plain { text-transform: none; }
 .mon-months { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 0 .5rem; list-style: none; margin: .75rem 0 0; padding: 0; text-align: center; }
 .mon-month-track { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 160px; border-bottom: 1px solid var(--border); }

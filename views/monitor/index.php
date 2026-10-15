@@ -6,7 +6,8 @@
  * @var array  $monthsFrom  brand label => first month with data, for brands that start after the first month
  * @var array  $vendors     per manufacturer: label, source [label, kind, detail], systems, kw, kw_ac, yesterday, week, month, year, attention, pending, first_date, run, d30, yield_day, yield_days, yield_ac
  * @var bool   $kiosk       office-screen view opened with a display key: no links into the tracker
- * @var array  $attention   vendor, name, reason, offline, impact, last_production
+ * @var array  $attention   vendor, name, reason, offline, impact, last_production, project_id, site_id
+ * @var array  $tickets     open service ticket per monitor site id: id, ticket_number
  * @var string $yearStart
  * @var int    $seCreditsLeft
  * @var int    $noProductionDays
@@ -139,7 +140,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 	<?php else: ?>
 		<div class="mon-scroll">
 			<table class="table mon-table">
-				<thead><tr><th>Manufacturer</th><th>System</th><th>Why</th><th>Last production</th></tr></thead>
+				<thead><tr><th>Manufacturer</th><th>System</th><th>Why</th><th>Last production</th><?php if (!$kiosk): ?><th>Service</th><?php endif; ?></tr></thead>
 				<tbody>
 				<?php foreach ($attention as $a): ?>
 					<tr class="<?= $a['offline'] ? 'mon-row-offline' : '' ?>">
@@ -147,6 +148,9 @@ foreach (['solaredge', 'growatt'] as $k) {
 						<td><?php if ($a['project_id'] && !$kiosk): ?><a href="/projects/<?= (int) $a['project_id'] ?>"><?= e($a['name']) ?></a><?php else: ?><?= e($a['name']) ?><?php endif; ?></td>
 						<td class="mon-why"><?= e($a['reason']) ?><?= $a['impact'] && $a['vendor'] === 'SolarEdge' ? ' <span class="chip">impact ' . (int) $a['impact'] . '</span>' : '' ?></td>
 						<td><?= $a['last_production'] ? e($date($a['last_production'])) : '<span class="muted">none on record</span>' ?></td>
+						<?php if (!$kiosk): $tk = $tickets[$a['site_id']] ?? null; ?>
+							<td class="mon-ticket"><?php if ($tk): ?><a href="/service/<?= (int) $tk['id'] ?>" class="chip" title="Open service ticket for this system"><?= e($tk['ticket_number']) ?></a><?php else: ?><a href="/service/new?monitor=<?= (int) $a['site_id'] ?>" class="btn btn-small btn-ghost">Open ticket</a><?php endif; ?></td>
+						<?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>

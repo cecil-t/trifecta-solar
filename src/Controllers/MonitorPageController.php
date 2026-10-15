@@ -204,6 +204,7 @@ final class MonitorPageController
 					'impact' => (int) $s['alert_impact'],
 					'last_production' => $d['last_production'] ?? null,
 					'project_id' => $s['project_id'],
+					'site_id' => (int) $s['id'],
 				];
 			}
 			unset($v);
@@ -261,6 +262,7 @@ final class MonitorPageController
 			'fleet' => $fleet,
 			'vendors' => $vendors,
 			'attention' => $attention,
+			'tickets' => \App\MonitorTicket::openTickets(array_column($attention, 'site_id')),
 			'yearStart' => $year,
 			'seCreditsLeft' => $seLeft,
 			'noProductionDays' => self::NO_PRODUCTION_DAYS,

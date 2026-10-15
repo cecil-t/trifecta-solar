@@ -17,6 +17,18 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 
 <form method="post" action="<?= $isNew ? '/service' : '/service/' . (int) $id ?>" class="project-form">
 	<?= Csrf::field() ?>
+	<?php if ($isNew && !empty($t['monitor_site_id'])): ?><input type="hidden" name="monitor_site_id" value="<?= (int) $t['monitor_site_id'] ?>"><?php endif; ?>
+
+	<?php if (!empty($monitor['site'])): $ms = $monitor['site']; ?>
+		<div class="flash flash-info monitor-from">
+			<p><strong><?= $isNew ? 'From monitoring' : 'Opened from monitoring' ?>:</strong> <?= e($ms['vendor_label']) ?> system <?= e($ms['display_name']) ?> (ID <?= e($ms['vendor_site_id']) ?>)<?= $isNew ? ', filled in below' : '' ?>.</p>
+			<?php if (!empty($monitor['notes'])): ?>
+				<ul>
+					<?php foreach ($monitor['notes'] as $note): ?><li><?= e($note) ?></li><?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
 
 	<section class="card">
 		<h2>Request</h2>
@@ -40,7 +52,7 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 				</select>
 			</label>
 			<label class="span-all">Problem / request
-				<textarea name="description" rows="3" required placeholder="e.g. Inverter offline in monitoring portal, SolarEdge SiteID 1809815"><?= e($v('description')) ?></textarea>
+				<textarea name="description" rows="<?= substr_count((string) $v('description'), "\n") >= 2 ? 4 : 3 ?>" required placeholder="e.g. Inverter offline in monitoring portal, SolarEdge SiteID 1809815"><?= e($v('description')) ?></textarea>
 			</label>
 			<label class="span-2">Google Drive service folder
 				<input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/...">
