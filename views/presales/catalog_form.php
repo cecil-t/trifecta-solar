@@ -47,6 +47,40 @@ $dis = $canEdit ? '' : 'disabled';
 				<input type="text" name="name" value="<?= e($v('name')) ?>" required maxlength="160" <?= $dis ?>>
 				<small class="hint">Keep it short; long detail goes in Notes.</small>
 			</label>
+			<div class="tr-part-fields span-2" data-cat-only="trench_parts">
+				<label>Trench builder part
+					<select name="trench_part" <?= $dis ?>>
+						<option value="">Choose</option>
+						<?php foreach (App\Trench::PARTS as $k => [$label, $unit]): ?>
+							<option value="<?= $k ?>" <?= $sel($v('trench_part'), $k) ?>><?= e($label) ?> (<?= $unit === 'ft' ? 'per foot' : 'each' ?>)</option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<label>Size
+					<select name="part_size" <?= $dis ?>>
+						<option value="">None</option>
+						<optgroup label="Conduit">
+							<?php foreach (App\Trench::conduitSizes() as $s): ?>
+								<option value="<?= e($s) ?>" <?= $v('trench_part') === 'conduit' ? $sel(preg_replace('/^w:/', '', (string) $v('part_size')), $s) : '' ?>><?= e($s) ?>" conduit</option>
+							<?php endforeach; ?>
+						</optgroup>
+						<optgroup label="Wire">
+							<?php foreach (App\Trench::SIZES as $s): ?>
+								<option value="w:<?= e($s) ?>" <?= $v('trench_part') === 'wire' ? $sel(preg_replace('/^w:/', '', (string) $v('part_size')), $s) : '' ?>><?= e(App\Trench::sizeLabel($s)) ?> wire</option>
+							<?php endforeach; ?>
+						</optgroup>
+					</select>
+				</label>
+				<label>Material (wire)
+					<select name="material" <?= $dis ?>>
+						<option value="">None</option>
+						<?php foreach (App\Trench::MATERIALS as $k => $label): ?>
+							<option value="<?= $k ?>" <?= $sel($v('material'), $k) ?>><?= e($label) ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<small class="hint span-2">The trench builder finds this item by part, size and material. Wire is priced per conductor foot; conduit per foot of trench.</small>
+			</div>
 			<div class="checkfield">
 				<span class="field-label">Active</span>
 				<label class="boxwrap"><input type="checkbox" name="is_active" value="1" <?= $v('is_active', 1) ? 'checked' : '' ?> <?= $dis ?>> Offered on build sheets</label>

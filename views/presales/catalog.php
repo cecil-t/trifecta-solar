@@ -71,17 +71,17 @@ $spec = static function (array $i): string {
 						<?php endif; ?>
 					</td>
 					<td class="num nowrap">
-						<strong><?= e(Presales::price((float) $i['price'], $i['qty_rule'])) ?></strong><?= $i['qty_rule'] === 'dc_watts' ? '/W' : ($k === 'sitework' ? '/ft' : '') ?>
+						<strong><?= e(Presales::price((float) $i['price'], $i['qty_rule'])) ?></strong><?= $i['qty_rule'] === 'dc_watts' ? '/W' : ($k === 'sitework' || ($i['trench_part'] && (App\Trench::PARTS[$i['trench_part']][1] ?? '') === 'ft') ? '/ft' : '') ?>
 						<?php if ((float) $i['shipping'] > 0): ?><div class="muted small">+ <?= e(Presales::price((float) $i['shipping'], $i['qty_rule'])) ?> shipping</div><?php endif; ?>
 						<?php if ((float) $i['setup_cost'] > 0): ?><div class="muted small">+ <?= e(Presales::money((float) $i['setup_cost'])) ?> per line</div><?php endif; ?>
 						<?php if ($i['min_total'] !== null): ?><div class="muted small">min <?= e(Presales::money((float) $i['min_total'])) ?></div><?php endif; ?>
 						<?php if ($i['ext_warranty_cost'] !== null): ?><div class="muted small">ext. warranty +<?= e(Presales::money((float) $i['ext_warranty_cost'])) ?></div><?php endif; ?>
 						<?php if ($i['siw_cost'] !== null): ?><div class="muted small">SolarInsure +<?= e(Presales::money((float) $i['siw_cost'])) ?></div><?php endif; ?>
 					</td>
-					<td class="small nowrap"><?= e(Presales::QTY_SHORT[$i['qty_rule']] ?? '') ?><?= $k === 'sitework' && $i['qty_rule'] === 'manual' ? ' foot' : '' ?></td>
+					<td class="small nowrap"><?= $i['trench_part'] ? ((App\Trench::PARTS[$i['trench_part']][1] ?? '') === 'ft' ? 'Each foot' : 'Each') : e(Presales::QTY_SHORT[$i['qty_rule']] ?? '') . ($k === 'sitework' && $i['qty_rule'] === 'manual' ? ' foot' : '') ?></td>
 					<td><span class="chip chip-tax-<?= e($i['tax_class']) ?>"><?= e(Presales::TAX_SHORT[$i['tax_class']] ?? '') ?></span></td>
 					<td class="small"><?= $i['segment'] ? e(Presales::CLASS_LABELS[$i['segment']]) : '' ?><?= $i['segment'] && $i['mounts'] ? '<br>' : '' ?><?= $i['mounts'] ? e(implode(', ', array_map(static fn ($x) => Presales::MOUNT_FILTERS[$x] ?? $x, explode(',', $i['mounts'])))) : '' ?><?= !$i['segment'] && !$i['mounts'] ? '<span class="muted">Any</span>' : '' ?></td>
-					<td class="small cell-wrap"><?= $spec($i) ?><?= !empty($i['needs_mlpe']) ? '<div>Needs optimizers</div>' : '' ?><?= $i['domestic_content_pct'] !== null ? '<div>Domestic ' . e(Presales::field((float) $i['domestic_content_pct'], 1)) . '%</div>' : '' ?><?= $i['feoc_ok'] !== null ? '<div>' . ((int) $i['feoc_ok'] ? 'FEOC compliant' : '<span class="text-red">Not FEOC compliant</span>') . '</div>' : '' ?><?= $i['warranty_text'] ? '<div class="muted">' . e($i['warranty_text']) . '</div>' : '' ?><?= $i['ext_warranty_years'] ? '<div class="muted">Extendable to ' . (int) $i['ext_warranty_years'] . ' years</div>' : '' ?></td>
+					<td class="small cell-wrap"><?= $i['trench_part'] ? '<div>Trench builder: ' . e(App\Trench::partLabel((string) App\Trench::itemKey($i))) . '</div>' : '' ?><?= $spec($i) ?><?= !empty($i['needs_mlpe']) ? '<div>Needs optimizers</div>' : '' ?><?= $i['domestic_content_pct'] !== null ? '<div>Domestic ' . e(Presales::field((float) $i['domestic_content_pct'], 1)) . '%</div>' : '' ?><?= $i['feoc_ok'] !== null ? '<div>' . ((int) $i['feoc_ok'] ? 'FEOC compliant' : '<span class="text-red">Not FEOC compliant</span>') . '</div>' : '' ?><?= $i['warranty_text'] ? '<div class="muted">' . e($i['warranty_text']) . '</div>' : '' ?><?= $i['ext_warranty_years'] ? '<div class="muted">Extendable to ' . (int) $i['ext_warranty_years'] . ' years</div>' : '' ?></td>
 					<td class="small cell-wrap">
 						<span class="<?= $stale ? 'price-stale' : '' ?>"><?= $i['price_updated_at'] ? e(fmt_date($i['price_updated_at'])) : 'No date' ?></span>
 						<?= $i['updated_by_name'] ? '<span class="muted"> &middot; ' . e($i['updated_by_name']) . '</span>' : '' ?>

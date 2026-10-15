@@ -106,6 +106,21 @@ foreach ($lines as $i => $l) {
 			<?php endforeach; ?>
 			</tbody>
 		<?php endforeach; ?>
+		<?php $trLines = array_filter($calc['lines'], static fn ($c) => !empty($c['trench'])); if ($trLines): $t = $calc['categories']['trench_parts']; ?>
+			<tbody class="sheet-keep">
+			<tr class="sheet-cat"><td colspan="3">Trenching (trench builder)</td><td class="num"><?= $t['tax'] > 0 ? e($m($t['tax'])) : '-' ?></td><td class="num"><?= e($m($t['cost'])) ?></td><td class="num"><?= e($m($t['retail'])) ?></td></tr>
+			<?php foreach ($trLines as $c): ?>
+				<tr class="sheet-item">
+					<td><?= e($c['name']) ?><?= in_array($c['trench_key'], $calc['trench']['missing'], true) ? ' <span class="chip chip-orange">No catalog price</span>' : '' ?><?= in_array($c['trench_key'], $flags['trench_changed'], true) ? ' <span class="chip chip-red">Catalog price changed</span>' : '' ?></td>
+					<td class="num"><?= e(Presales::field($c['qty_resolved'], 1)) ?><?= $c['trench_unit'] === 'ft' ? ' ft' : '' ?></td>
+					<td class="num"><?= e(Presales::unit($c['unit_total'])) ?></td>
+					<td class="num"><?= $c['tax'] > 0 ? e($m($c['tax'])) : '-' ?></td>
+					<td class="num"><?= e($m($c['cost'])) ?></td>
+					<td class="num"><?= e($m($c['retail'])) ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		<?php endif; ?>
 		<tfoot><tr><td>Equipment and materials</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'retail')))) ?></td></tr></tfoot>
 	</table>
 </section>
@@ -141,6 +156,28 @@ foreach ($lines as $i => $l) {
 				</tbody>
 			</table>
 		</section>
+		<?php $tr = $calc['trench_rows']; if ($tr['trenches']): $segOut = $trenchView['segments']; ?>
+			<section class="sheet-sec sheet-box sheet-box-yellow">
+				<h2>Trenching</h2>
+				<table class="sheet-table sheet-compact">
+					<thead><tr><th>Segment</th><th>Method</th><th class="num">Length</th></tr></thead>
+					<tbody>
+					<?php foreach ($tr['trenches'] as $t): ?>
+						<tr><td><?= e((string) ($t['name'] ?? '')) ?><?= !empty($segOut[$t['key']]) ? '<div class="muted small">' . e($segOut[$t['key']]) . '</div>' : '' ?></td><td class="nowrap"><?= e(App\Trench::METHODS[$t['method']] ?? '') ?></td><td class="num nowrap"><?= $t['length_ft'] !== null ? e(Presales::field((float) $t['length_ft'], 1)) . ' ft' : '' ?></td></tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+				<table class="sheet-table sheet-compact">
+					<thead><tr><th>Circuit</th><th>Wire and conduit</th></tr></thead>
+					<tbody>
+					<?php foreach ($tr['circuits'] as $c): $r = $trenchView['circuits'][$c['key']] ?? null; ?>
+						<tr><td><?= e((string) ($c['name'] ?? App\Trench::KINDS[$c['kind']])) ?> <span class="muted small"><?= e(App\Trench::KINDS[$c['kind']]) ?></span></td>
+							<td class="small"><?= e($r['text'] ?? '') ?><?= !empty($r['conduit']) ? ' &middot; ' . e($r['conduit']) : '' ?><?= !empty($r['drop']) ? ' &middot; ' . e($r['drop']) : '' ?><?= !empty($c['size_override']) ? ' <span class="muted">(size override: ' . e((string) $c['override_reason']) . ')</span>' : '' ?></td></tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
+		<?php endif; ?>
 		<?php if ($arrays): ?>
 			<section class="sheet-sec sheet-box sheet-box-yellow">
 				<h2>Arrays</h2>

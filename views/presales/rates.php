@@ -61,6 +61,44 @@ $rules = $rules ?: [[]];
 	</section>
 
 	<section class="card band">
+		<h2>Trench builder</h2>
+		<p class="hint">How the build sheet's trench builder sizes wire. New build sheets copy these in when trenching is first added; saved build sheets keep their own.</p>
+		<div class="grid-form">
+			<label>AC voltage drop target (%) <input type="text" name="settings[trench_vd_ac]" value="<?= e($n($s('trench_vd_ac'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label>DC voltage drop target (%) <input type="text" name="settings[trench_vd_dc]" value="<?= e($n($s('trench_vd_dc'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label>AC wire goes aluminum from
+				<select name="settings[trench_al_from]" <?= $dis ?>>
+					<option value="never" <?= $s('trench_al_from') === 'never' ? 'selected' : '' ?>>Never (always copper)</option>
+					<?php foreach (App\Trench::SIZES as $size): ?>
+						<option value="<?= e($size) ?>" <?= $s('trench_al_from') === $size ? 'selected' : '' ?>><?= e(App\Trench::sizeLabel($size)) ?> copper and larger</option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">When copper would need this size or larger, the circuit is sized in aluminum instead. DC is always copper.</small>
+			</label>
+			<label>Extra wire at each circuit end (ft) <input type="text" name="settings[trench_allowance_ft]" value="<?= e($n($s('trench_allowance_ft'), 1)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Risers, stub-ups and slack, added to both ends of every circuit.</small>
+			</label>
+			<label>DC string current (A) <input type="text" name="settings[trench_dc_amps]" value="<?= e($n($s('trench_dc_amps'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Sized at 125% of this. 15 A is a SolarEdge string's limit.</small>
+			</label>
+			<label>DC string voltage (V) <input type="text" name="settings[trench_dc_volts]" value="<?= e($n($s('trench_dc_volts'), 0)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">For voltage drop only.</small>
+			</label>
+			<label>Comms conduit
+				<select name="settings[trench_comms_conduit]" <?= $dis ?>>
+					<?php foreach (App\Trench::conduitSizes() as $size): ?>
+						<option value="<?= e($size) ?>" <?= $s('trench_comms_conduit') === $size ? 'selected' : '' ?>><?= e($size) ?>" PVC</option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<div class="checkfield">
+				<span class="field-label">AC neutral</span>
+				<label class="boxwrap"><input type="checkbox" name="settings[trench_ac_neutral]" value="1" <?= $s('trench_ac_neutral') === '1' ? 'checked' : '' ?> <?= $dis ?>> AC circuits carry a neutral</label>
+			</div>
+		</div>
+	</section>
+
+	<section class="card band">
 		<h2>Commission</h2>
 		<p class="hint">The adjusted rate is what is applied to the marked-up cost; the old sheet grosses the rate up (rate / (1 - rate)) so commission comes out near the rate times the final price. The step-down amount is added on top at that rate.</p>
 		<div class="eq eq-commission" data-rows>

@@ -24,7 +24,11 @@ final class Presales
 		'interconnection' => ['Interconnection', 'ea'],
 		'misc'            => ['Other', 'ea'],
 		'warranty'        => ['Warranty programs', 'ea'],
+		'trench_parts'    => ['Trench builder', 'ea'],
 	];
+
+	/** Categories priced outside the build sheet's line list (warranty programs, trench builder parts). */
+	public const NOT_LINES = ['warranty', 'trench_parts'];
 
 	public const TAX_CLASSES = [
 		'major'    => 'Major equipment (taxed unless tax exempt)',
@@ -74,6 +78,14 @@ final class Presales
 		'round_to'               => ['100', 'Round the final price up to the next ($)'],
 		'trifecta_warranty_text' => ['', 'Trifecta labor and workmanship warranty wording'],
 		'solarinsure_text'       => ['', 'SolarInsure wording'],
+		'trench_vd_ac'           => ['2', 'Trench builder: AC voltage drop target (%)'],
+		'trench_vd_dc'           => ['2', 'Trench builder: DC voltage drop target (%)'],
+		'trench_al_from'         => ['4', 'Trench builder: AC wire goes aluminum from this copper size up'],
+		'trench_allowance_ft'    => ['10', 'Trench builder: extra wire at each circuit end (ft)'],
+		'trench_dc_amps'         => ['15', 'Trench builder: DC string current (A)'],
+		'trench_dc_volts'        => ['400', 'Trench builder: DC string voltage (V)'],
+		'trench_ac_neutral'      => ['1', 'Trench builder: AC circuits carry a neutral'],
+		'trench_comms_conduit'   => ['1', 'Trench builder: comms conduit size (in)'],
 	];
 
 	private static ?array $settings = null;

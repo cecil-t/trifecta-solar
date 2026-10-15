@@ -1300,6 +1300,55 @@ a[href^="tel:"] { white-space: nowrap; }
 .is-steep .pitch-label { color: var(--red); font-weight: 700; }
 
 .eq-extras .eq-head, .eq-extras .eq-row { grid-template-columns: minmax(200px, 1fr) 140px 36px; }
+
+/* Trench builder: segments, circuits and a drawing per segment */
+.tr-sub { font-size: .95rem; margin: 1rem 0 .4rem; color: var(--blue); }
+.eq-trenches .eq-head, .eq-trenches .eq-row { grid-template-columns: minmax(170px, 1fr) 150px 100px minmax(160px, 1.3fr) 36px; max-width: none; align-items: center; }
+.tr-seg-out { white-space: normal; line-height: 1.3; }
+.tr-graphs { width: 100%; margin: .6rem 0 .2rem; }
+.tr-graph { display: block; max-width: 100%; height: auto; margin-bottom: .35rem; overflow: visible; }
+.tr-g-title { font-size: 13px; fill: var(--text); }
+.tr-g-name { font-weight: 700; }
+.tr-g-meta { fill: var(--muted); font-size: 12px; }
+.tr-g-len { font-size: 12px; fill: var(--muted); }
+.tr-dig-open { fill: #8b5a2b; }
+.tr-dig-bore { fill: #9aa0a6; }
+.tr-dig-customer { fill: #e3cfae; stroke: #8b5a2b; stroke-width: 1.5; stroke-dasharray: 5 3; }
+.tr-w-under { stroke: #fff; stroke-width: 6; stroke-linecap: round; opacity: .85; }
+.tr-w { stroke-width: 3.5; stroke-linecap: round; }
+.tr-w-ac { stroke: #d32f2f; }
+.tr-w-dc { stroke: #1565c0; }
+.tr-w-comms { stroke: #7b1fa2; }
+.tr-lbl { font-size: 12px; font-weight: 700; }
+.tr-lbl-ac { fill: #d32f2f; }
+.tr-lbl-dc { fill: #1565c0; }
+.tr-lbl-comms { fill: #7b1fa2; }
+.tr-lbl-none { fill: var(--muted); font-weight: 400; font-style: italic; }
+.tr-circuits { gap: .6rem; }
+.tr-circ { display: block; width: 100%; max-width: none; padding: .6rem .7rem; border: 1px solid var(--border); border-left: 4px solid #d32f2f; border-radius: var(--radius-sm); }
+.tr-circ[data-kind="dc"] { border-left-color: #1565c0; }
+.tr-circ[data-kind="comms"] { border-left-color: #7b1fa2; }
+.tr-circ-top { display: grid; grid-template-columns: minmax(170px, 1fr) 100px auto auto auto 36px; gap: .5rem; align-items: center; }
+.tr-inline { display: flex; flex-direction: row; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 600; white-space: nowrap; margin: 0; }
+.tr-inline input { width: 5.5rem; }
+.tr-circ[data-kind="ac"] .tr-dc-only, .tr-circ[data-kind="dc"] .tr-ac-only, .tr-circ[data-kind="comms"] .tr-ac-only, .tr-circ[data-kind="comms"] .tr-dc-only, .tr-circ[data-kind="comms"] .tr-wire-only { display: none; }
+.tr-segs { display: flex; flex-wrap: wrap; gap: .25rem .9rem; align-items: center; margin-top: .45rem; }
+.tr-segs .field-label { margin-right: .2rem; }
+.tr-result { display: flex; flex-wrap: wrap; gap: .1rem .9rem; margin-top: .4rem; }
+.tr-res:empty { display: none; }
+.tr-res[data-cr="text"] { font-weight: 600; }
+.tr-cwarn { flex-basis: 100%; margin: .2rem 0 0; padding-left: 1.1rem; color: var(--red); }
+.tr-cwarn:empty { display: none; }
+.tr-override { margin-top: .35rem; font-size: .85rem; }
+.tr-override summary { cursor: pointer; color: var(--muted); }
+.tr-override-fields { display: flex; gap: .5rem; margin-top: .35rem; flex-wrap: wrap; }
+.tr-override-fields input { flex: 1 1 14rem; }
+.tr-parts td:first-child { white-space: normal; min-width: 11rem; }
+@media (max-width: 760px) { .tr-parts th:nth-child(4), .tr-parts td:nth-child(4), .tr-parts th:nth-child(6), .tr-parts td:nth-child(6) { display: none; } .tr-parts td:first-child { min-width: 9rem; } }
+.row-warn td { background: var(--orange-50); }
+.tr-part-fields { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem 1rem; }
+.grid-form:has(select[name=category] option[value=trench_parts]:checked) .tr-part-fields { display: grid; }
+@media (max-width: 760px) { .tr-part-fields { grid-template-columns: 1fr; } }
 .table-rules td { white-space: normal; vertical-align: top; }
 .table-rules .rule-why { color: var(--blue); }
 .table-payments td { font-variant-numeric: tabular-nums; }
@@ -1342,6 +1391,15 @@ a[href^="tel:"] { white-space: nowrap; }
 	.eq-arrays .eq-row > input:first-child { grid-column: 1 / 3; }
 	.eq-arrays .eq-row > .row-del { grid-column: 3; grid-row: 1; }
 	.eq-extras .eq-row { grid-template-columns: 1fr 110px 36px; }
+	.eq-trenches .eq-row { grid-template-columns: 1fr 1fr 36px; }
+	.eq-trenches .eq-row > .tr-name { grid-column: 1 / 3; }
+	.eq-trenches .eq-row > .row-del { grid-column: 3; grid-row: 1; }
+	.eq-trenches .eq-row > .tr-seg-out { grid-column: 1 / -1; }
+	.tr-circ-top { grid-template-columns: 1fr 1fr 36px; }
+	.tr-circ-top > .tr-cname { grid-column: 1 / 3; }
+	.tr-circ-top > .row-del { grid-column: 3; grid-row: 1; }
+	.tr-circ-top > .tr-volt { grid-column: 1 / -1; }
+	.tr-circ-top > .tr-inline { grid-column: 2 / -1; }
 	.eq-commission .eq-row, .eq-deposits .eq-row, .eq-rules .eq-row, .eq-schedules .eq-row { grid-template-columns: 1fr 1fr 36px; }
 	.eq-rules .eq-row > input[type=text]:first-of-type, .eq-schedules .eq-row > input[type=text] { grid-column: 1 / 3; }
 	.dt-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }

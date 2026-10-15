@@ -20,6 +20,7 @@ use App\Projects;
  * @var string $depositClass   residential | commercial (Non-Residential)
  * @var array  $who            created_name, updated_name
  * @var array $siblings        the opportunity's build sheets
+ * @var array $trenchView      DesignController::trenchView()
  */
 $base = '/presales/' . (int) $o['id'] . '/designs/' . (int) $d['id'];
 $sel = static fn ($a, $b) => (string) $a === (string) $b && (string) $a !== '' ? 'selected' : '';
@@ -264,7 +265,7 @@ $folded = [];
 				<ul><?php foreach ($calc['checks'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
 			</div>
 			<p class="hint">Each line keeps the price it was picked at. Per-watt and per-module quantities fill in on their own. Retail is the line's share of the final price. <?= e($classLabel) ?> job: only <?= e(strtolower($classLabel)) ?> BOS, structural, permit and interconnection items are offered.</p>
-			<?php foreach (Presales::CATEGORIES as $cat => [$catLabel, $unitLabel]): if ($cat === 'warranty') { continue; } $rows = $byCat[$cat] ?? [null]; $items = $catalog[$cat] ?? [];
+			<?php foreach (Presales::CATEGORIES as $cat => [$catLabel, $unitLabel]): if (in_array($cat, Presales::NOT_LINES, true)) { continue; } $rows = $byCat[$cat] ?? [null]; $items = $catalog[$cat] ?? [];
 				$fold = !isset($byCat[$cat]) && !in_array($cat, $always, true);
 				if ($fold) { $folded[$cat] = $catLabel; }
 				$ct = $calc['categories'][$cat] ?? null; ?>
@@ -396,6 +397,110 @@ $folded = [];
 				<button type="button" class="btn btn-ghost btn-small row-add">+ Array</button>
 			</div>
 			<p class="hint mt-xs">Azimuth is degrees from true north (180 = south). Tilt takes degrees or a roof pitch like 6/12; over <?= e($deg($steep)) ?>° shows red. Trackers have no fixed tilt or azimuth. <span class="text-red" id="panels-mismatch" <?= $calc['panels_mismatch'] ? '' : 'hidden' ?>>Panels on arrays don't match the module count.</span></p>
+		</section>
+
+		<?php
+		$trows = $calc['trench_rows'];
+		$tv = $trenchView;
+		$trenchList = $trows['trenches'] ?: [['key' => 't1', 'method' => 'open']];
+		$circuitList = $trows['circuits'] ?: [['key' => 'c1', 'kind' => 'ac', 'voltage' => '240', 'segments' => []]];
+		$segName = static fn (array $t, int $i) => trim((string) ($t['name'] ?? '')) !== '' ? (string) $t['name'] : 'Segment ' . ($i + 1);
+		$trWarn = $tv['warnings'];
+		?>
+		<section class="card band trench-builder" id="trench-builder">
+			<div class="card-head card-head-plain band-head">
+				<h2>Trenching</h2>
+				<span class="small">Cost <strong data-tr="cost"><?= e($tv['cost']) ?></strong> &middot; Retail <strong data-tr="retail"><?= e($tv['retail']) ?></strong></span>
+			</div>
+			<p class="hint">Lay out each stretch of digging or boring, then each circuit and the segments it runs through. Wire and conduit are sized from the NEC tables and priced from the Trench builder parts in the catalog: an estimate for quoting; the planset decides.</p>
+			<div class="flash flash-warn design-checks" id="trench-warnings" <?= $trWarn ? '' : 'hidden' ?>>
+				<ul><?php foreach ($trWarn as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
+			</div>
+
+			<h3 class="tr-sub">Trench segments</h3>
+			<div class="eq eq-trenches" data-rows id="trench-rows">
+				<div class="eq-head"><span>Segment</span><span>Method</span><span>Length (ft)</span><span>Conduit in it</span><span></span></div>
+				<?php foreach ($trenchList as $i => $t): ?>
+					<div class="eq-row tr-row">
+						<input type="hidden" name="trenches[<?= $i ?>][key]" value="<?= e((string) $t['key']) ?>" class="tr-key">
+						<input type="text" name="trenches[<?= $i ?>][name]" value="<?= e((string) ($t['name'] ?? '')) ?>" placeholder="e.g. House to barn, Under the driveway" aria-label="Segment name" class="tr-name" maxlength="60">
+						<select name="trenches[<?= $i ?>][method]" aria-label="Method" class="tr-method">
+							<?php foreach (App\Trench::METHODS as $k => $label): ?>
+								<option value="<?= $k ?>" <?= $sel($t['method'] ?? 'open', $k) ?>><?= e($label) ?></option>
+							<?php endforeach; ?>
+						</select>
+						<input type="text" name="trenches[<?= $i ?>][length]" value="<?= e(isset($t['length_ft']) && $t['length_ft'] !== null ? $pf((float) $t['length_ft'], 1) : '') ?>" inputmode="decimal" placeholder="0" aria-label="Length in feet" class="tr-len">
+						<span class="tr-seg-out small muted" data-seg-out><?= e($tv['circuits'] ? ($tv['segments'][$t['key']] ?? '') : '') ?></span>
+						<button type="button" class="btn btn-ghost btn-small row-del" title="Remove">&times;</button>
+					</div>
+				<?php endforeach; ?>
+				<button type="button" class="btn btn-ghost btn-small row-add">+ Trench segment</button>
+			</div>
+			<div class="tr-graphs" id="trench-graphs" aria-hidden="true"></div>
+
+			<h3 class="tr-sub">Circuits</h3>
+			<div class="eq tr-circuits" data-rows id="circuit-rows">
+				<?php foreach ($circuitList as $i => $c): $kind = $c['kind'] ?? 'ac'; $res = $tv['circuits'][$c['key']] ?? null; $segs = array_map('strval', (array) ($c['segments'] ?? [])); ?>
+					<div class="eq-row tr-circ" data-kind="<?= e($kind) ?>">
+						<input type="hidden" name="circuits[<?= $i ?>][key]" value="<?= e((string) $c['key']) ?>" class="tr-ckey">
+						<div class="tr-circ-top">
+							<input type="text" name="circuits[<?= $i ?>][name]" value="<?= e((string) ($c['name'] ?? '')) ?>" placeholder="e.g. Inverters to house, Poles 1 and 2" aria-label="Circuit name" class="tr-cname" maxlength="60">
+							<select name="circuits[<?= $i ?>][kind]" aria-label="Circuit type" class="tr-kind">
+								<?php foreach (App\Trench::KINDS as $k => $label): ?>
+									<option value="<?= $k ?>" <?= $sel($kind, $k) ?>><?= e($label) ?></option>
+								<?php endforeach; ?>
+							</select>
+							<label class="tr-ac-only tr-inline">kW AC <input type="text" name="circuits[<?= $i ?>][ac_kw]" value="<?= e(isset($c['ac_kw']) && $c['ac_kw'] !== null ? $pf((float) $c['ac_kw'], 3) : '') ?>" inputmode="decimal" placeholder="<?= e($tv['ac_kw']) ?>" class="tr-kw input-short"></label>
+							<select name="circuits[<?= $i ?>][voltage]" aria-label="Voltage" class="tr-ac-only tr-volt">
+								<?php foreach (App\Trench::VOLTAGES as $k => $label): ?>
+									<option value="<?= $k ?>" <?= $sel($c['voltage'] ?? '240', $k) ?>><?= e($label) ?></option>
+								<?php endforeach; ?>
+							</select>
+							<label class="tr-dc-only tr-inline">Strings <input type="text" name="circuits[<?= $i ?>][strings]" value="<?= e(isset($c['strings']) && $c['strings'] !== null ? (string) (int) $c['strings'] : '') ?>" inputmode="numeric" placeholder="0" class="tr-strings input-short"></label>
+							<button type="button" class="btn btn-ghost btn-small row-del" title="Remove">&times;</button>
+						</div>
+						<div class="tr-segs" role="group" aria-label="Runs through">
+							<span class="field-label">Runs through</span>
+							<?php foreach ($trenchList as $ti => $t): ?>
+								<label class="boxwrap"><input type="checkbox" name="circuits[<?= $i ?>][segs][]" value="<?= e((string) $t['key']) ?>" <?= in_array((string) $t['key'], $segs, true) ? 'checked' : '' ?>> <?= e($segName($t, $ti)) ?></label>
+							<?php endforeach; ?>
+						</div>
+						<div class="tr-result small">
+							<span class="tr-res" data-cr="text"><?= e($res['text'] ?? '') ?></span>
+							<span class="tr-res muted" data-cr="conduit"><?= e($res['conduit'] ?? '') ?></span>
+							<span class="tr-res muted" data-cr="drop"><?= e($res['drop'] ?? '') ?></span>
+							<span class="tr-res muted" data-cr="length"><?= e($res['length'] ?? '') ?></span>
+							<ul class="tr-cwarn"><?php foreach ($res['warn'] ?? [] as $w): ?><li><?= e($w) ?></li><?php endforeach; ?></ul>
+						</div>
+						<details class="tr-override tr-wire-only" <?= !empty($c['size_override']) ? 'open' : '' ?>>
+							<summary>Wire size override</summary>
+							<div class="tr-override-fields">
+								<select name="circuits[<?= $i ?>][size]" aria-label="Wire size override">
+									<option value="">Automatic</option>
+									<?php foreach (App\Trench::SIZES as $s): ?>
+										<option value="<?= e($s) ?>" <?= $sel($c['size_override'] ?? '', $s) ?>><?= e(App\Trench::sizeLabel($s)) ?></option>
+									<?php endforeach; ?>
+								</select>
+								<input type="text" name="circuits[<?= $i ?>][size_reason]" value="<?= e((string) ($c['override_reason'] ?? '')) ?>" maxlength="200" placeholder="Reason (required)" aria-label="Reason for the override">
+							</div>
+						</details>
+					</div>
+				<?php endforeach; ?>
+				<button type="button" class="btn btn-ghost btn-small row-add">+ Circuit</button>
+			</div>
+			<p class="hint mt-xs">AC kW left blank uses the build sheet's AC size. DC is one string per pair of wires; strings are split across conduits when too many would share one. Settings (voltage drop targets, when AC goes aluminum, string current) are on the Rates page.</p>
+
+			<label class="boxwrap mt-xs"><input type="checkbox" name="trench_inspection" value="1" <?= !isset($d['trench_inspection']) || $d['trench_inspection'] ? 'checked' : '' ?>> Trench inspection (charged once when there is an open or customer trench)</label>
+
+			<div class="table-wrap mt-xs"><table class="table table-tight tr-parts">
+				<thead><tr><th>Priced parts</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Tax</th><th class="num">Cost</th><th class="num">Retail</th></tr></thead>
+				<tbody id="trench-parts">
+				<?php foreach ($tv['parts'] as $p): ?>
+					<tr<?= $p['missing'] ? ' class="row-warn"' : '' ?>><td><?= e($p['name']) ?></td><td class="num"><?= e($p['qty']) ?></td><td class="num"><?= e($p['unit']) ?></td><td class="num"><?= e($p['tax']) ?></td><td class="num"><?= e($p['cost']) ?></td><td class="num"><?= e($p['retail']) ?></td></tr>
+				<?php endforeach; ?>
+				<?php if (!$tv['parts']): ?><tr class="tr-empty"><td colspan="6" class="muted">Nothing priced yet.</td></tr><?php endif; ?>
+				</tbody>
+			</table></div>
 		</section>
 
 		<section class="card band">

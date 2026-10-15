@@ -500,6 +500,7 @@
 		}
 		const ws = document.getElementById('warranty-summary');
 		if (ws && ws.value !== res.warranty_summary) ws.value = res.warranty_summary;
+		applyTrench(res.trench);
 		if (status) status.textContent = 'Totals updated. Save to keep changes.';
 	}
 	function toggle(id, on) {
@@ -511,6 +512,206 @@
 		s.className = 'chip ' + cls;
 		s.textContent = text;
 		return s;
+	}
+
+	// ---- Trench builder: segment keys, the "Runs through" checkboxes, fields by circuit type, and
+	// a drawing per segment (length to scale; brown open trench, gray bore, tan customer trench;
+	// red AC, blue DC, purple comms). Sizes and prices come back from the server with the totals.
+	const trBox = document.getElementById('trench-builder');
+	const METHOD_LABEL = { open: 'Open trench', bore: 'Linear bore', customer: 'Customer trench' };
+	const trRows = () => (trBox ? Array.from(trBox.querySelectorAll('#trench-rows > .tr-row')) : []);
+	const circRows = () => (trBox ? Array.from(trBox.querySelectorAll('#circuit-rows > .tr-circ')) : []);
+	let trSeq = Date.now() % 46656;
+	const trKey = (p) => p + (++trSeq).toString(36);
+	const num = (v) => { const n = parseFloat(String(v || '').replace(/[,\s]/g, '')); return isNaN(n) ? 0 : n; };
+
+	function trEnsureKeys() {
+		const seen = new Set();
+		trRows().forEach((r) => {
+			const k = r.querySelector('.tr-key');
+			if (!k.value || seen.has(k.value)) {
+				k.value = trKey('t');
+				r.querySelector('[data-seg-out]').textContent = '';
+			}
+			seen.add(k.value);
+		});
+		const cseen = new Set();
+		circRows().forEach((r) => {
+			const k = r.querySelector('.tr-ckey');
+			if (!k.value || cseen.has(k.value)) {
+				k.value = trKey('c');
+				r.querySelectorAll('[data-cr]').forEach((el) => { el.textContent = ''; });
+				r.querySelector('.tr-cwarn').textContent = '';
+			}
+			cseen.add(k.value);
+		});
+	}
+	function trSegments() {
+		return trRows().map((r, i) => ({
+			key: r.querySelector('.tr-key').value,
+			name: r.querySelector('.tr-name').value.trim() || 'Segment ' + (i + 1),
+			method: r.querySelector('.tr-method').value,
+			len: num(r.querySelector('.tr-len').value),
+		}));
+	}
+	// Rebuild every circuit's "Runs through" boxes from the segments as they stand, keeping what was checked
+	function trSyncSegs() {
+		const segs = trSegments();
+		circRows().forEach((row) => {
+			const box = row.querySelector('.tr-segs');
+			const checked = new Set(Array.from(box.querySelectorAll('input:checked')).map((i) => i.value));
+			const base = row.querySelector('.tr-ckey').name.replace(/\[key\]$/, '[segs][]');
+			box.querySelectorAll('label').forEach((l) => l.remove());
+			segs.forEach((s) => {
+				const label = document.createElement('label');
+				label.className = 'boxwrap';
+				const cb = document.createElement('input');
+				cb.type = 'checkbox';
+				cb.name = base;
+				cb.value = s.key;
+				cb.checked = checked.has(s.key);
+				label.append(cb, ' ' + s.name);
+				box.appendChild(label);
+			});
+		});
+	}
+	function trSyncKind(row) {
+		const kind = row.querySelector('.tr-kind').value;
+		row.dataset.kind = kind;
+		row.querySelectorAll('.tr-ac-only input, select.tr-ac-only').forEach((i) => { i.disabled = kind !== 'ac'; });
+		row.querySelectorAll('.tr-dc-only input').forEach((i) => { i.disabled = kind !== 'dc'; });
+		row.querySelectorAll('.tr-wire-only select, .tr-wire-only input').forEach((i) => { i.disabled = kind === 'comms'; });
+	}
+	function trCircuits() {
+		return circRows().map((r) => {
+			const kind = r.querySelector('.tr-kind').value;
+			const kwIn = r.querySelector('.tr-kw');
+			return {
+				kind,
+				name: r.querySelector('.tr-cname').value.trim(),
+				kw: kwIn.value.trim() !== '' ? num(kwIn.value) : num(kwIn.placeholder),
+				strings: Math.round(num(r.querySelector('.tr-strings').value)),
+				segs: Array.from(r.querySelectorAll('.tr-segs input:checked')).map((i) => i.value),
+			};
+		});
+	}
+	const fmtNum = (n) => (Math.round(n * 10) / 10).toLocaleString('en-US');
+	function trDraw() {
+		const wrap = document.getElementById('trench-graphs');
+		if (!wrap) return;
+		wrap.textContent = '';
+		const segs = trSegments().filter((s) => s.len > 0);
+		if (!segs.length) return;
+		const circs = trCircuits();
+		const W = Math.max(300, Math.round(wrap.clientWidth || 640));
+		const narrow = W < 520;
+		const x0 = narrow ? 104 : 170;
+		const maxW = W - x0 - (narrow ? 58 : 70);
+		const maxLen = Math.max(...segs.map((s) => s.len));
+		segs.forEach((s) => {
+			const through = circs.filter((c) => c.segs.includes(s.key));
+			const barH = Math.max(18, 8 + 14 * through.length);
+			const top = 24;
+			const H = top + barH + 6;
+			const w = Math.max(22, maxW * s.len / maxLen);
+			const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, width: String(W), height: String(H), class: 'tr-graph' });
+			const title = svgEl('text', { x: '0', y: '15', class: 'tr-g-title' });
+			const t1 = svgEl('tspan', { class: 'tr-g-name' });
+			t1.textContent = s.name;
+			const t2 = svgEl('tspan', { class: 'tr-g-meta', dx: '8' });
+			t2.textContent = METHOD_LABEL[s.method] + ' · ' + fmtNum(s.len) + ' ft';
+			title.append(t1, t2);
+			svg.appendChild(title);
+			svg.appendChild(svgEl('rect', { x: String(x0), y: String(top), width: w.toFixed(1), height: String(barH), rx: '3', class: 'tr-dig tr-dig-' + s.method }));
+			const len = svgEl('text', { x: (x0 + w + 6).toFixed(1), y: String(top + barH / 2 + 4), class: 'tr-g-len' });
+			len.textContent = fmtNum(s.len) + ' ft';
+			svg.appendChild(len);
+			if (!through.length) {
+				const none = svgEl('text', { x: String(x0 - 8), y: String(top + barH / 2 + 4), class: 'tr-lbl tr-lbl-none', 'text-anchor': 'end' });
+				none.textContent = 'No circuits yet';
+				svg.appendChild(none);
+			}
+			through.forEach((c, i) => {
+				const y = (top + 11 + 14 * i).toFixed(1);
+				svg.appendChild(svgEl('line', { x1: (x0 + 4).toFixed(1), x2: (x0 + w - 4).toFixed(1), y1: y, y2: y, class: 'tr-w-under' }));
+				svg.appendChild(svgEl('line', { x1: (x0 + 4).toFixed(1), x2: (x0 + w - 4).toFixed(1), y1: y, y2: y, class: 'tr-w tr-w-' + c.kind }));
+				const lbl = svgEl('text', { x: String(x0 - 8), y: String(parseFloat(y) + 4), class: 'tr-lbl tr-lbl-' + c.kind, 'text-anchor': 'end' });
+				lbl.textContent = c.kind === 'ac' ? 'AC ' + fmtNum(c.kw) + ' kW' : (c.kind === 'dc' ? 'DC ' + c.strings + ' string' + (c.strings === 1 ? '' : 's') : 'Comms');
+				const tip = svgEl('title', {});
+				tip.textContent = c.name || lbl.textContent;
+				lbl.appendChild(tip);
+				svg.appendChild(lbl);
+			});
+			wrap.appendChild(svg);
+		});
+	}
+	function trSync() {
+		if (!trBox) return;
+		trEnsureKeys();
+		trSyncSegs();
+		circRows().forEach(trSyncKind);
+		trDraw();
+	}
+	// Results from the live calculation: per circuit, per segment, the parts table and warnings
+	function applyTrench(t) {
+		if (!trBox || !t) return;
+		setText(trBox.querySelector('[data-tr="cost"]'), t.cost);
+		setText(trBox.querySelector('[data-tr="retail"]'), t.retail);
+		circRows().forEach((r) => {
+			const res = t.circuits[r.querySelector('.tr-ckey').value] || { text: '', conduit: '', drop: '', length: '', warn: [] };
+			['text', 'conduit', 'drop', 'length'].forEach((k) => setText(r.querySelector('[data-cr="' + k + '"]'), res[k] || ''));
+			const ul = r.querySelector('.tr-cwarn');
+			ul.textContent = '';
+			res.warn.forEach((w) => { const li = document.createElement('li'); li.textContent = w; ul.appendChild(li); });
+			const kw = r.querySelector('.tr-kw');
+			if (kw.placeholder !== t.ac_kw) kw.placeholder = t.ac_kw;
+		});
+		trRows().forEach((r) => setText(r.querySelector('[data-seg-out]'), t.segments[r.querySelector('.tr-key').value] || ''));
+		const body = document.getElementById('trench-parts');
+		body.textContent = '';
+		if (!t.parts.length) {
+			const tr = document.createElement('tr');
+			const td = document.createElement('td');
+			td.colSpan = 6;
+			td.className = 'muted';
+			td.textContent = 'Nothing priced yet.';
+			tr.appendChild(td);
+			body.appendChild(tr);
+		}
+		t.parts.forEach((p) => {
+			const tr = document.createElement('tr');
+			if (p.missing) tr.className = 'row-warn';
+			[p.name, p.qty, p.unit, p.tax, p.cost, p.retail].forEach((v, i) => {
+				const td = document.createElement('td');
+				if (i > 0) td.className = 'num';
+				td.textContent = v;
+				tr.appendChild(td);
+			});
+			body.appendChild(tr);
+		});
+		const warn = document.getElementById('trench-warnings');
+		const ul = warn.querySelector('ul');
+		ul.textContent = '';
+		t.warnings.forEach((w) => { const li = document.createElement('li'); li.textContent = w; ul.appendChild(li); });
+		warn.hidden = !t.warnings.length;
+		trDraw();
+	}
+	if (trBox) {
+		trSync();
+		trBox.addEventListener('input', (e) => {
+			if (e.target.matches('.tr-name')) { trSyncSegs(); trDraw(); }
+			if (e.target.matches('.tr-len, .tr-kw, .tr-strings')) trDraw();
+		});
+		trBox.addEventListener('change', (e) => {
+			const row = e.target.closest('.tr-circ');
+			if (row && e.target.matches('.tr-kind')) trSyncKind(row);
+			trDraw();
+		});
+		// rows added or removed (the shared + / x buttons)
+		const watch = new MutationObserver(() => { trSync(); schedule(); });
+		['trench-rows', 'circuit-rows'].forEach((id) => watch.observe(document.getElementById(id), { childList: true }));
+		let resizeTimer = null;
+		window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(trDraw, 150); });
 	}
 
 	// Leaving with unsaved changes asks first

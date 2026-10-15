@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Activity;
 use App\Db;
 use App\Presales;
+use App\Trench;
 use App\View;
 
 /**
@@ -79,7 +80,28 @@ final class PresalesRatesController
 
 		// Single values. Percent fields are typed as percents (6 = 6%).
 		$percent = ['tax_rate' => true, 'markup_default' => true, 'markup_floor' => true];
-		$numeric = ['tax_rate', 'markup_default', 'markup_floor', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to'];
+		$numeric = ['tax_rate', 'markup_default', 'markup_floor', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to',
+			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts'];
+		// Trench builder choices come from fixed lists
+		$post = (array) ($_POST['settings'] ?? []);
+		if (!in_array((string) ($post['trench_al_from'] ?? ''), [...Trench::SIZES, 'never'], true)) {
+			throw new \InvalidArgumentException('Pick when AC wire goes aluminum from the list.');
+		}
+		if (!isset(Trench::CONDUITS[(string) ($post['trench_comms_conduit'] ?? '')])) {
+			throw new \InvalidArgumentException('Pick the comms conduit size from the list.');
+		}
+		$_POST['settings']['trench_ac_neutral'] = !empty($post['trench_ac_neutral']) ? '1' : '0';
+		foreach (['trench_vd_ac' => 'AC voltage drop target', 'trench_vd_dc' => 'DC voltage drop target'] as $k => $label) {
+			$v = (float) ($post[$k] ?? 0);
+			if ($v <= 0 || $v > 10) {
+				throw new \InvalidArgumentException($label . ' must be between 0 and 10%.');
+			}
+		}
+		foreach (['trench_dc_amps' => 'DC string current', 'trench_dc_volts' => 'DC string voltage'] as $k => $label) {
+			if ((float) ($post[$k] ?? 0) <= 0) {
+				throw new \InvalidArgumentException($label . ' must be more than zero.');
+			}
+		}
 		$floorIn = $num((string) ($_POST['settings']['markup_floor'] ?? ''), 'Markup floor');
 		$defaultIn = $num((string) ($_POST['settings']['markup_default'] ?? ''), 'Default markup');
 		if ($floorIn !== null && $defaultIn !== null && $defaultIn < $floorIn) {

@@ -7,6 +7,7 @@ use App\Activity;
 use App\Auth;
 use App\Db;
 use App\Presales;
+use App\Trench;
 use App\View;
 
 /**
@@ -23,6 +24,7 @@ final class CatalogController
 		'price_source' => 'Price source', 'price_updated_at' => 'Price date', 'notes' => 'Notes', 'print_notes' => 'Print notes',
 		'is_active' => 'Active', 'segment' => 'Jobs', 'mounts' => 'Install types',
 		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant', 'needs_mlpe' => 'Needs optimizers',
+		'trench_part' => 'Trench builder part', 'part_size' => 'Part size', 'material' => 'Material',
 	];
 
 	public function index(): void
@@ -212,6 +214,38 @@ final class CatalogController
 			'needs_mlpe' => $cat === 'inverters' && !empty($p['needs_mlpe']) ? 1 : 0,
 			'feoc_ok' => ($p['feoc_ok'] ?? '') === '' ? null : ((string) $p['feoc_ok'] === '1' ? 1 : 0),
 		];
+		// Trench builder parts: which part, its size and material; one active item per part
+		$data['trench_part'] = $data['part_size'] = $data['material'] = null;
+		if ($cat === 'trench_parts') {
+			$part = (string) ($p['trench_part'] ?? '');
+			if (!isset(Trench::PARTS[$part])) {
+				throw new \InvalidArgumentException('Pick which trench builder part this is.');
+			}
+			$size = preg_replace('/^w:/', '', (string) ($p['part_size'] ?? '')) ?? '';
+			$data['trench_part'] = $part;
+			if ($part === 'conduit') {
+				if (!isset(Trench::CONDUITS[$size]) || str_starts_with((string) ($p['part_size'] ?? ''), 'w:')) {
+					throw new \InvalidArgumentException('Pick the conduit size.');
+				}
+				$data['part_size'] = $size;
+			} elseif ($part === 'wire') {
+				$mat = (string) ($p['material'] ?? '');
+				if (!in_array($size, Trench::SIZES, true) || !str_starts_with((string) ($p['part_size'] ?? ''), 'w:')) {
+					throw new \InvalidArgumentException('Pick the wire size.');
+				}
+				if (!isset(Trench::MATERIALS[$mat])) {
+					throw new \InvalidArgumentException('Pick copper or aluminum for the wire.');
+				}
+				$data['part_size'] = $size;
+				$data['material'] = $mat;
+			}
+			$key = Trench::itemKey($data);
+			foreach (Db::all("SELECT * FROM catalog_items WHERE category = 'trench_parts' AND is_active = 1 AND id <> ?", [$id ?? 0]) as $other) {
+				if (!empty($p['is_active']) && Trench::itemKey($other) === $key) {
+					throw new \InvalidArgumentException('"' . $other['name'] . '" is already the active catalog item for ' . Trench::partLabel((string) $key) . '. Retire it first, or edit that one.');
+				}
+			}
+		}
 		if ($data['domestic_content_pct'] !== null && $data['domestic_content_pct'] > 100) {
 			throw new \InvalidArgumentException('Domestic content is a percent, 0 to 100.');
 		}

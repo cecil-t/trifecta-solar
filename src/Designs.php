@@ -30,6 +30,17 @@ final class Designs
 		return Db::all('SELECT * FROM presales_design_arrays WHERE design_id = ? ORDER BY sort_order, id', [$designId]);
 	}
 
+	/** Trench builder rows: ['trenches' => [...], 'circuits' => [...]] (circuit segments decoded). */
+	public static function trench(int $designId): array
+	{
+		$circuits = Db::all('SELECT * FROM presales_design_circuits WHERE design_id = ? ORDER BY sort_order, id', [$designId]);
+		foreach ($circuits as &$c) {
+			$c['segments'] = json_decode((string) $c['segments'], true) ?: [];
+		}
+		unset($c);
+		return ['trenches' => Db::all('SELECT * FROM presales_design_trenches WHERE design_id = ? ORDER BY sort_order, id', [$designId]), 'circuits' => $circuits];
+	}
+
 	/** "<Opportunity name> Solar Project", numbered when the opportunity already has one. */
 	public static function defaultName(int $oppId): string
 	{
@@ -104,6 +115,13 @@ final class Designs
 				$a['design_id'] = $newId;
 				Db::insert('presales_design_arrays', $a);
 			}
+			foreach (['presales_design_trenches', 'presales_design_circuits'] as $table) {
+				foreach (Db::all("SELECT * FROM $table WHERE design_id = ? ORDER BY sort_order, id", [(int) $d['id']]) as $r) {
+					unset($r['id']);
+					$r['design_id'] = $newId;
+					Db::insert($table, $r);
+				}
+			}
 			Activity::event('presales', (int) $d['opportunity_id'], 'Build sheet "' . $d['name'] . '" copied as "' . $name . '"');
 			return $newId;
 		});
@@ -123,7 +141,7 @@ final class Designs
 	}
 
 	/**
-	 * Read the build sheet form into [design fields, lines, arrays]. Throws with a message the
+	 * Read the build sheet form into [design fields, lines, arrays, trench]. Throws with a message the
 	 * page can show when something can't be read. Nothing is saved here (the live calculation
 	 * uses the same reading).
 	 */
@@ -246,7 +264,7 @@ final class Designs
 		$lines = [];
 		$sort = 0;
 		foreach ((array) ($post['lines'] ?? []) as $cat => $rows) {
-			if (!isset(Presales::CATEGORIES[$cat]) || $cat === 'warranty') {
+			if (!isset(Presales::CATEGORIES[$cat]) || in_array($cat, Presales::NOT_LINES, true)) {
 				continue;
 			}
 			foreach ((array) $rows as $r) {
@@ -338,13 +356,61 @@ final class Designs
 				'panels' => $panels === null ? null : (int) $panels, 'sort_order' => count($arrays) + 1];
 		}
 
-		return [$f, $lines, $arrays];
+		// Trench builder: segments (keys stay as the page made them) and the circuits in them
+		$f['trench_inspection'] = empty($post['trench_inspection']) ? 0 : 1;
+		$trenches = [];
+		$keys = [];
+		foreach ((array) ($post['trenches'] ?? []) as $t) {
+			$key = (string) ($t['key'] ?? '');
+			$name = trim((string) ($t['name'] ?? ''));
+			$len = $num($t['length'] ?? '', 'Trench length');
+			if ($name === '' && $len === null) {
+				continue;
+			}
+			if (!preg_match('/^[a-z0-9]{1,16}$/', $key) || isset($keys[$key])) {
+				$key = 't' . (count($trenches) + 1) . 'x' . substr(md5($name . count($trenches)), 0, 4);
+			}
+			if ($len !== null && $len < 0 && $strict) {
+				throw new \InvalidArgumentException('Trench length can\'t be negative.');
+			}
+			$keys[$key] = true;
+			$trenches[] = ['key' => $key, 'name' => $name ?: null, 'method' => array_key_exists((string) ($t['method'] ?? ''), Trench::METHODS) ? $t['method'] : 'open',
+				'length_ft' => $len === null ? null : max(0.0, $len), 'sort_order' => count($trenches) + 1];
+		}
+		$circuits = [];
+		foreach ((array) ($post['circuits'] ?? []) as $c) {
+			$name = trim((string) ($c['name'] ?? ''));
+			$kind = array_key_exists((string) ($c['kind'] ?? ''), Trench::KINDS) ? $c['kind'] : 'ac';
+			$segs = array_values(array_unique(array_filter(array_map('strval', (array) ($c['segs'] ?? [])), static fn ($k) => isset($keys[$k]))));
+			$kw = $num($c['ac_kw'] ?? '', 'Circuit kW');
+			$strings = $num($c['strings'] ?? '', 'Strings');
+			if ($name === '' && !$segs && $kw === null && $strings === null) {
+				continue;
+			}
+			$size = in_array((string) ($c['size'] ?? ''), Trench::SIZES, true) ? (string) $c['size'] : null;
+			$why = trim((string) ($c['size_reason'] ?? ''));
+			if ($size !== null && $why === '' && $strict) {
+				throw new \InvalidArgumentException('Type a reason for the wire size override on ' . ($name ?: 'a circuit') . '.');
+			}
+			$key = preg_match('/^[a-z0-9]{1,16}$/', (string) ($c['key'] ?? '')) ? (string) $c['key'] : 'c' . (count($circuits) + 1);
+			$circuits[] = ['key' => $key, 'name' => $name ?: null, 'kind' => $kind,
+				'ac_kw' => $kind === 'ac' && $kw !== null ? max(0.0, $kw) : null,
+				'voltage' => $kind === 'ac' && array_key_exists((string) ($c['voltage'] ?? ''), Trench::VOLTAGES) ? $c['voltage'] : ($kind === 'ac' ? '240' : null),
+				'strings' => $kind === 'dc' && $strings !== null ? max(0, (int) $strings) : null,
+				'segments' => $segs, 'size_override' => $kind === 'comms' ? null : $size, 'override_reason' => $size !== null && $kind !== 'comms' ? ($why ?: null) : null,
+				'sort_order' => count($circuits) + 1];
+		}
+		// A build sheet keeps the trench settings and part prices it was first priced with
+		$f['trench_basis'] = $d['trench_basis'] ?? null;
+
+		return [$f, $lines, $arrays, ['trenches' => $trenches, 'circuits' => $circuits]];
 	}
 
-	/** Save a build sheet read by fromInput(); lines and arrays are replaced as a set. */
-	public static function save(array $d, array $f, array $lines, array $arrays, array $calc): void
+	/** Save a build sheet read by fromInput(); lines, arrays and trench rows are replaced as a set. */
+	public static function save(array $d, array $f, array $lines, array $arrays, array $calc, array $trench): void
 	{
-		Db::transaction(static function () use ($d, $f, $lines, $arrays, $calc): void {
+		Db::transaction(static function () use ($d, $f, $lines, $arrays, $calc, $trench): void {
+			$f['trench_basis'] = $trench['trenches'] || $trench['circuits'] ? json_encode($calc['trench']['basis']) : null;
 			$f['price_total'] = $calc['price'];
 			$f['dc_watts'] = $calc['dc_watts'];
 			$f['updated_by'] = Auth::id();
@@ -361,14 +427,35 @@ final class Designs
 				$a['design_id'] = (int) $d['id'];
 				Db::insert('presales_design_arrays', $a);
 			}
+			Db::run('DELETE FROM presales_design_trenches WHERE design_id = ?', [(int) $d['id']]);
+			foreach ($trench['trenches'] as $t) {
+				Db::insert('presales_design_trenches', $t + ['design_id' => (int) $d['id']]);
+			}
+			Db::run('DELETE FROM presales_design_circuits WHERE design_id = ?', [(int) $d['id']]);
+			foreach ($trench['circuits'] as $c) {
+				$c['segments'] = json_encode(array_values($c['segments']));
+				Db::insert('presales_design_circuits', $c + ['design_id' => (int) $d['id']]);
+			}
 			Db::update('presales_opportunities', (int) $d['opportunity_id'], ['updated_at' => now_utc()]);
 		});
 	}
 
-	/** Run the pricing for a design and its lines (rows from the database or from fromInput). */
-	public static function calc(array $d, array $lines, array $arrays): array
+	/**
+	 * Run the pricing for a design and its lines (rows from the database or from fromInput). The
+	 * trench builder's parts join the lines; it needs the build sheet's AC kW, so a first pass
+	 * without them finds that.
+	 */
+	public static function calc(array $d, array $lines, array $arrays, ?array $trench = null): array
 	{
-		$calc = Pricing::calculate($d, $lines, $arrays, Presales::contingencyRules(), max(1, Presales::num('round_to')));
+		$trench ??= isset($d['id']) ? self::trench((int) $d['id']) : ['trenches' => [], 'circuits' => []];
+		$rules = Presales::contingencyRules();
+		$round = max(1, Presales::num('round_to'));
+		$first = Pricing::calculate($d, $lines, $arrays, $rules, $round);
+		$basis = json_decode((string) ($d['trench_basis'] ?? ''), true) ?: [];
+		$tr = Trench::calculate($trench['trenches'], $trench['circuits'], !empty($d['trench_inspection']), $basis, (float) $first['ac_kw']);
+		$calc = $tr['lines'] ? Pricing::calculate($d, array_merge($lines, $tr['lines']), $arrays, $rules, $round) : $first;
+		$calc['trench'] = $tr;
+		$calc['trench_rows'] = $trench;
 		$calc['warranty_summary'] = Pricing::warrantySummary($d, $calc['lines'], Presales::setting('trifecta_warranty_text'), Presales::setting('solarinsure_text'));
 		$calc['checks'] = self::checks($d, $calc, $arrays);
 		return $calc;
@@ -458,6 +545,13 @@ final class Designs
 			'retired' => count(array_filter($flags, static fn ($f) => $f['retired']))];
 	}
 
+	/** Trench builder parts whose catalog price is different now than this build sheet's (part keys). */
+	public static function trenchChanged(array $calc): array
+	{
+		$keys = array_column($calc['trench']['lines'] ?? [], 'trench_key');
+		return $keys ? Trench::changedParts($calc['trench']['basis'], $keys) : [];
+	}
+
 	/** Bring every catalog line (and the warranty program) up to today's catalog prices. */
 	public static function reprice(array $d): int
 	{
@@ -478,6 +572,7 @@ final class Designs
 			Db::update('presales_design_lines', (int) $l['id'], $snap);
 			$count++;
 		}
+		Db::update('presales_designs', (int) $d['id'], ['trench_basis' => null]);
 		if ($d['warranty_item_id']) {
 			$c = Db::one('SELECT * FROM catalog_items WHERE id = ? AND is_active = 1', [(int) $d['warranty_item_id']]);
 			if ($c) {
@@ -487,7 +582,9 @@ final class Designs
 		}
 		$fresh = self::find((int) $d['id']);
 		$calc = self::calc($fresh, self::lines((int) $d['id']), self::arrays((int) $d['id']));
+		$trench = self::trench((int) $d['id']);
 		Db::update('presales_designs', (int) $d['id'], ['price_total' => $calc['price'], 'dc_watts' => $calc['dc_watts'],
+			'trench_basis' => $trench['trenches'] || $trench['circuits'] ? json_encode($calc['trench']['basis']) : null,
 			'updated_by' => Auth::id(), 'updated_at' => now_utc()]);
 		return $count;
 	}

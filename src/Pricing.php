@@ -112,7 +112,7 @@ final class Pricing
 				$kwh += $qty * (float) ($l['kwh'] ?? 0);
 				$batteryKw += $qty * (float) ($l['kw'] ?? 0);
 			}
-			if ($subtotal > 0 && in_array($cat, ['sitework', 'foundation'], true)) {
+			if ($subtotal > 0 && in_array($cat, ['sitework', 'foundation', 'trench_parts'], true)) {
 				$hasSitework = true;
 			}
 			if ($subtotal > 0 && $cat === 'equipment') {

@@ -21,18 +21,20 @@ final class DesignController
 		unset($_SESSION['design_failed'][$id]);
 		if ($failed) {
 			// Show what was typed after a failed save, read leniently
-			[$f, $lines, $arrays] = Designs::fromInput($d, $failed, false);
+			[$f, $lines, $arrays, $trench] = Designs::fromInput($d, $failed, false);
 			$d = array_merge($d, $f);
 		} else {
 			$lines = Designs::lines($id);
 			$arrays = Designs::arrays($id);
+			$trench = Designs::trench($id);
 		}
-		$calc = Designs::calc($d, $lines, $arrays);
+		$calc = Designs::calc($d, $lines, $arrays, $trench);
 		$depositClass = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']);
 		View::render('presales/design', [
 			'title' => $d['name'] . ' - ' . $o['name'],
 			'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
-			'flags' => Designs::priceFlags($lines, $d),
+			'flags' => self::flags($lines, $d, $calc),
+			'trenchView' => self::trenchView($calc),
 			'catalog' => Presales::catalogByCategory(),
 			'commissionRates' => Presales::commissionRates(),
 			'templates' => Presales::paymentTemplates(),
@@ -59,7 +61,7 @@ final class DesignController
 		}
 		View::render('presales/summary', [
 			'title' => $d['name'] . ' summary', 'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
-			'flags' => Designs::priceFlags($lines, $d), 'printNotes' => $notes,
+			'flags' => self::flags($lines, $d, $calc), 'printNotes' => $notes, 'trenchView' => self::trenchView($calc),
 			'who' => Db::one('SELECT cu.name AS created_name, uu.name AS updated_name FROM presales_designs d LEFT JOIN users cu ON cu.id = d.created_by LEFT JOIN users uu ON uu.id = d.updated_by WHERE d.id = ?', [$designId]),
 			'depositClass' => Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']),
 		], 'print_layout');
@@ -71,15 +73,15 @@ final class DesignController
 		$id = $designId;
 		[, $d] = $this->find($oppId, $id);
 		try {
-			[$f, $lines, $arrays] = Designs::fromInput($d, $_POST);
+			[$f, $lines, $arrays, $trench] = Designs::fromInput($d, $_POST);
 			$merged = array_merge($d, $f);
-			$calc = Designs::calc($merged, $lines, $arrays);
+			$calc = Designs::calc($merged, $lines, $arrays, $trench);
 			$this->checkDeposit($oppId, $merged, $calc);
 			$before = [];
 			foreach (Designs::lines($id) as $l) {
 				$before[(int) $l['id']] = $l;
 			}
-			Designs::save($d, $f, $lines, $arrays, $calc);
+			Designs::save($d, $f, $lines, $arrays, $calc, $trench);
 			$changes = [];
 			if (abs((float) $d['price_total'] - $calc['price']) > 0.5) {
 				$changes[] = 'price ' . Presales::money((float) $d['price_total']) . ' to ' . Presales::money($calc['price']);
@@ -133,14 +135,14 @@ final class DesignController
 		[$o, $d] = $this->find($oppId, $id);
 		header('Content-Type: application/json');
 		try {
-			[$f, $lines, $arrays] = Designs::fromInput($d, $_POST, false);
+			[$f, $lines, $arrays, $trench] = Designs::fromInput($d, $_POST, false);
 		} catch (\InvalidArgumentException $e) {
 			echo json_encode(['error' => $e->getMessage()]);
 			return;
 		}
 		$merged = array_merge($d, $f);
-		$calc = Designs::calc($merged, $lines, $arrays);
-		$flags = Designs::priceFlags($lines, $merged);
+		$calc = Designs::calc($merged, $lines, $arrays, $trench);
+		$flags = self::flags($lines, $merged, $calc);
 		$depositOptions = Presales::depositOptions(Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']), $calc['dc_kw']);
 		echo json_encode(self::payload($calc, $flags, $lines, $depositOptions, $merged));
 	}
@@ -251,7 +253,54 @@ final class DesignController
 			'warranty_summary' => $c['warranty_summary'],
 			'checks' => $c['checks'],
 			'cats' => array_map(static fn ($t) => ['cost' => $m($t['cost']), 'tax' => $t['tax'] > 0 ? $m($t['tax']) : '-', 'retail' => $m($t['retail'])], $c['categories']),
+			'trench' => self::trenchView($c),
 		];
+	}
+
+	/** Price flags for the lines, plus trench builder parts whose catalog price changed. */
+	private static function flags(array $lines, array $d, array $calc): array
+	{
+		$flags = Designs::priceFlags($lines, $d);
+		$flags['trench_changed'] = Designs::trenchChanged($calc);
+		$flags['changed'] += count($flags['trench_changed']);
+		return $flags;
+	}
+
+	/** What the trench builder shows: results per circuit and segment, the parts priced, warnings. */
+	public static function trenchView(array $calc): array
+	{
+		$m = static fn ($v) => Presales::money($v);
+		$t = $calc['trench'];
+		$circuits = [];
+		foreach ($t['circuits'] as $k => $c) {
+			$circuits[$k] = [
+				'text' => $c['text'],
+				'conduit' => $c['conduit'],
+				'drop' => $c['drop'] === null ? '' : number_format($c['drop'], 1) . '% drop',
+				'length' => $c['length'] === null ? '' : number_format($c['length']) . ' ft of wire run',
+				'warn' => $c['warn'],
+			];
+		}
+		$segments = [];
+		foreach ($t['segments'] as $k => $s) {
+			$segments[$k] = implode('; ', array_map(static fn ($x) => $x['circuit'] . ': ' . ($x['count'] > 1 ? $x['count'] . ' x ' : '') . $x['size'] . '" PVC', $s['conduits']));
+		}
+		$parts = [];
+		$cost = 0.0;
+		$retail = 0.0;
+		foreach ($calc['lines'] as $l) {
+			if (empty($l['trench'])) {
+				continue;
+			}
+			$ft = $l['trench_unit'] === 'ft';
+			$parts[] = ['name' => $l['name'], 'qty' => $ft ? number_format((float) $l['qty_resolved']) . ' ft' : (string) (int) $l['qty_resolved'],
+				'unit' => Presales::unit($l['unit_total']) . ($ft ? '/ft' : ''), 'tax' => $l['tax'] > 0 ? $m($l['tax']) : '-', 'cost' => $m($l['cost']), 'retail' => $m($l['retail']),
+				'missing' => in_array($l['trench_key'], $t['missing'], true)];
+			$cost += $l['cost'];
+			$retail += $l['retail'];
+		}
+		return ['circuits' => $circuits, 'segments' => $segments, 'parts' => $parts, 'cost' => $m($cost), 'retail' => $m($retail),
+			'warnings' => $t['warnings'], 'ac_kw' => Presales::field($calc['ac_kw'], 2)];
 	}
 
 	/** "Domestic content about 12% of major equipment cost (2 items unknown)". */
