@@ -109,7 +109,7 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 					<dt>Web server</dt><dd><?= e($host['server']) ?></dd>
 				<?php endif; ?>
 				<dt>PHP</dt><dd><?= e($host['php']) ?></dd>
-				<?php if ($host['python']): ?><dt>Python</dt><dd><?= e($host['python']) ?> <span class="muted small">(SAM and WeasyPrint)</span></dd><?php endif; ?>
+				<?php if ($host['python']): ?><dt>Python</dt><dd><?= e($host['python']) ?></dd><?php endif; ?>
 				<dt>Database</dt><dd>SQLite <?= e($host['sqlite']) ?>, <?= e($host['journal']) ?> mode, <?= e($bytes((float) $host['db_bytes'])) ?></dd>
 			</dl>
 
