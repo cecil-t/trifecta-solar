@@ -50,7 +50,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 
 <?php if ($result && $result['ok']): ?>
 	<section class="card">
-		<h2>Check passed</h2>
+		<h2>SAM check passed</h2>
 		<p class="muted small"><?= e($result['at']) ?></p>
 		<dl class="kv">
 			<dt>PySAM</dt><dd><?= e((string) $result['pysam']) ?> on Python <?= e((string) $result['python']) ?></dd>
@@ -70,10 +70,12 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 <?php endif; ?>
 
 <section class="card<?= $result ? ' mt' : '' ?>" id="google">
-	<h2>Google</h2>
+	<h2>Google (address, roof model, aerial)</h2>
 	<p class="muted small">Address to point with Google Geocoding, then the Solar API's roof model for the building there, and an aerial image. The point found fills the Weather and Utility rates forms below. Nothing is saved.</p>
 	<?php if (!$googleConfigured): ?>
 		<p class="muted">Not set up. Add <code>GOOGLE_MAPS_API_KEY</code> to the server .env file (Google Cloud project with Geocoding, Solar, Maps Static and Map Tiles enabled).</p>
+	<?php else: ?>
+		<p class="muted small">API key: set (<code>GOOGLE_MAPS_API_KEY</code>).</p>
 	<?php endif; ?>
 
 	<?php if ($googleError): ?>
@@ -129,10 +131,12 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 </section>
 
 <section class="card mt" id="weather">
-	<h2>Weather</h2>
+	<h2>Weather (NSRDB)</h2>
 	<p class="muted small">NSRDB typical-year weather (<?= e($dataset) ?>, hourly) for a point. Downloaded once per NSRDB grid cell (about 2 km) and kept on the server, so nearby jobs share a file. Then SAM's example system runs on it three ways as a sanity check; those numbers are not an estimate for any real system.</p>
 	<?php if (!$nlrConfigured): ?>
 		<p class="muted">Not set up. Add <code>NLR_API_KEY</code> and <code>NLR_EMAIL</code> to the server .env file (free key from developer.nlr.gov).</p>
+	<?php else: ?>
+		<p class="muted small">API key: set (<code>NLR_API_KEY</code>, <code>NLR_EMAIL</code>).</p>
 	<?php endif; ?>
 
 	<?php if ($weatherError): ?>
@@ -202,10 +206,12 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 </section>
 
 <section class="card mt" id="rates">
-	<h2>Utility rates</h2>
+	<h2>Utility rates (OpenEI)</h2>
 	<p class="muted small">Rates in effect at a point from OpenEI's Utility Rate Database (approved rates only). Bill runs one rate through SAM's bill calculator for the same use every month with no solar, as a check that SAM reads the rate right. Nothing is saved.</p>
 	<?php if (!$openeiConfigured): ?>
 		<p class="muted">Not set up. Add <code>NLR_API_KEY</code> (the same free developer key as NSRDB) or <code>OPENEI_API_KEY</code> to the server .env file.</p>
+	<?php else: ?>
+		<p class="muted small">API key: set (<code>OPENEI_API_KEY</code>, or <code>NLR_API_KEY</code> when that is not set).</p>
 	<?php endif; ?>
 
 	<?php if ($ratesError): ?>
@@ -280,7 +286,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 </section>
 
 <section class="card mt" id="pdf">
-	<h2>PDF</h2>
+	<h2>PDF (WeasyPrint)</h2>
 	<p class="muted small">WeasyPrint turns the app's HTML into PDF (for proposals later). The test page has the logo, a table, an SVG chart, two columns, a page break and page numbers in the footer.</p>
 	<?php if ($pdfError): ?>
 		<div class="flash flash-error"><?= e($pdfError) ?></div>
@@ -298,9 +304,6 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<dt>Installed</dt><dd><?= $installed ? 'Yes' : 'No: rebuild the Docker image' ?></dd>
 		<dt>Python</dt><dd><code><?= e($python) ?></code></dd>
 		<dt>Libraries</dt><dd><code><?= e($libFolder) ?></code></dd>
-		<dt>NSRDB key</dt><dd><?= $nlrConfigured ? 'Set' : 'Not set' ?></dd>
-		<dt>OpenEI key</dt><dd><?= $openeiConfigured ? 'Set' : 'Not set' ?></dd>
-		<dt>Google key</dt><dd><?= $googleConfigured ? 'Set' : 'Not set' ?></dd>
 	</dl>
 	<form method="post" action="/admin/proposal-apis" class="mt">
 		<?= Csrf::field() ?>
