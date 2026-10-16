@@ -34,7 +34,7 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 <div class="page-head">
 	<div>
 		<h1>About</h1>
-		<p class="muted">Trifecta Solar Ops Tracker: projects, service and tasks for Trifecta Solar, in place of the old tracker spreadsheets.</p>
+		<p class="muted">All about the systems, software, libraries, data, licenses, and versions that this Operations Tracker platform is built on.</p>
 	</div>
 </div>
 
