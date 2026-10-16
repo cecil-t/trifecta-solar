@@ -39,6 +39,7 @@ use App\Migrator;
 use App\Router;
 use App\Controllers\ServiceController;
 use App\Controllers\ReportController;
+use App\Controllers\SamController;
 use App\Controllers\TodoController;
 
 if (Config::bool('APP_DEBUG')) {
@@ -208,6 +209,8 @@ $r->post('/admin/display-links/{id}', [DisplayKeyController::class, 'rename'], '
 $r->post('/admin/display-links/{id}/revoke', [DisplayKeyController::class, 'revoke'], 'admin');
 
 // Admin: monitoring API test (one call per click; Enphase OAuth connect and callback)
+$r->get('/admin/sam', [SamController::class, 'test'], 'admin');
+$r->post('/admin/sam', [SamController::class, 'run'], 'admin');
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');

@@ -23,6 +23,7 @@ declare(strict_types=1);
  *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
+ *   sam:check                                 Check that SAM (PySAM) is installed and runs (read-only; also Lists > SAM)
  *   geo:check [--dry-run]                     Township / county lookup for every project address not yet checked; lists mismatches
  *   monitor:poll [--vendor=X] [--force] [--dry-run]
  *                                             Inverter monitoring collector (run every 15 minutes from cron). Pulls each
@@ -201,6 +202,22 @@ try {
 				fail('Unknown vendor. Use one of: ' . implode(', ', array_keys(App\MonitorCollector::VENDORS)));
 			}
 			foreach (App\MonitorCollector::backfill($vendor, in_array('--daily', $args, true), in_array('--dry-run', $args, true), in_array('--force', $args, true), in_array('--months', $args, true)) as $line) { out($line); }
+			break;
+
+		case 'sam:check':
+			$r = App\Sam::call(['action' => 'check']);
+			if (!$r['ok']) {
+				fail('SAM check failed: ' . $r['error'] . (!empty($r['trace']) ? PHP_EOL . $r['trace'] : ''));
+			}
+			out('PySAM ' . $r['pysam'] . ' on Python ' . $r['python']);
+			out('SAM libraries: ' . ($r['library_release'] ?? 'release unknown') . ' in ' . $r['library_folder']);
+			foreach ($r['libraries'] as $lib) {
+				out('  ' . $lib['file'] . ': ' . ($lib['found'] ? number_format($lib['rows']) . ' entries' : 'MISSING'));
+			}
+			$t = $r['test_run'];
+			out('Test run: ' . $t['model']);
+			out('  ' . $t['system_kw_dc'] . ' kW DC, ' . number_format($t['annual_kwh']) . ' kWh (made-up weather), ' . $t['seconds'] . ' s');
+			out('Whole call ' . number_format($r['ms'] / 1000, 2) . ' s, peak memory ' . $r['peak_memory_mb'] . ' MB');
 			break;
 
 		case 'geo:check':
