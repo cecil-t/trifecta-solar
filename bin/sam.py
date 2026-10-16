@@ -22,8 +22,9 @@ Actions:
 	          and inverter from SAM's library) and PVWatts v8, year one by month. Request:
 	          {"weather_file", "module": CEC name, "inverter": CEC name, "inverter_count",
 	           "arrays": [{"azimuth", "tilt", "modules", "mount": "roof" | "ground"}],
-	           "losses": {"total", "inverter", "optimizer", "shading"} (percent, as a proposal states
-	           them; total includes the others), "optimizers": true for module-level optimizers}.
+	           "losses": {"total", "inverter", "optimizer", "shading"} (percent, as an OpenSolar
+	           proposal states them: its total covers inverter, optimizer and the other losses, and
+	           shading comes on top of it), "optimizers": true for module-level optimizers}.
 	          Losses other than inverter, optimizer and shading go in as one DC loss, shading as a
 	          flat loss (soiling slot), so both models carry the same assumptions.
 
@@ -316,8 +317,9 @@ def system(req):
 	pct = lambda k: max(0.0, min(99.0, float(L.get(k) or 0)))
 	total, inv_loss, opt_loss, shade = pct('total'), pct('inverter'), pct('optimizer'), pct('shading')
 	optimizers = bool(req.get('optimizers'))
-	# what is left of the stated total once inverter, optimizer and shading are taken out
-	keep_other = (1 - total / 100) / ((1 - inv_loss / 100) * (1 - opt_loss / 100) * (1 - shade / 100)) if total else 1.0
+	# what is left of the stated total once inverter and optimizer are taken out; OpenSolar's total
+	# leaves shading out (its shaded jobs show about 5 points less "other" loss if it were inside)
+	keep_other = (1 - total / 100) / ((1 - inv_loss / 100) * (1 - opt_loss / 100)) if total else 1.0
 	other = max(0.0, (1 - keep_other) * 100)
 	modules = sum(g['modules'] for g in groups)
 	module_w = mod['cec_v_mp_ref'] * mod['cec_i_mp_ref']

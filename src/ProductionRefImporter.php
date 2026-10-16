@@ -7,7 +7,7 @@ namespace App;
  * Adds reference jobs from a JSON file: {"jobs": [{name, project_number, monitor (vendor:site id,
  * e.g. "solaredge:1234567"), in_service, lat, lon, module, inverter, inverter_count, optimizers,
  * equipment, arrays [{azimuth, tilt, modules, mount}], losses {total, inverter, optimizer,
- * shading}, proposal_tool, proposal_annual, proposal_monthly [12], notes}]}.
+ * shading} (total as OpenSolar states it, without shading), proposal_tool, proposal_annual, proposal_monthly [12], notes}]}.
  * Add-only: a job whose name exists is skipped. Module and inverter names are checked against
  * SAM's CEC library files when they are present. One transaction; --dry-run rolls it back.
  */

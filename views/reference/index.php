@@ -68,7 +68,7 @@ $share = static function (array $t, int $i): ?float {
 				<dt>SAM library</dt><dd class="small"><?= e($j['module']) ?><br><?= (int) $j['inverter_count'] ?> x <?= e($j['inverter']) ?><?= $j['optimizers'] ? '<br>Module optimizers' : '' ?></dd>
 				<dt>Arrays</dt><dd><?= e(implode(', ', array_map(static fn ($a) => $a['modules'] . ' at ' . (float) $a['azimuth'] . '° / ' . (float) $a['tilt'] . '°' . ($a['mount'] === 'ground' ? ' ground' : ''), $j['arrays']))) ?> <span class="muted small">(modules at azimuth / tilt)</span></dd>
 				<dt>Proposal</dt><dd><?= e((string) $j['proposal_tool']) ?><?= $j['proposal_annual'] ? ', ' . e($kwh($j['proposal_annual'])) . ' kWh a year' : '' ?></dd>
-				<dt>Losses</dt><dd><?= $j['loss_total'] !== null ? 'Total ' . e((string) (float) $j['loss_total']) . '%: inverter ' . e((string) (float) $j['loss_inverter']) . '%, optimizer ' . e((string) (float) $j['loss_optimizer']) . '%, shading ' . e((string) (float) $j['loss_shading']) . '%' : 'Not stated' ?><?= $ok ? ', other ' . e((string) $res['other_loss_percent']) . '%' : '' ?></dd>
+				<dt>Losses</dt><dd><?= $j['loss_total'] !== null ? 'Total without shading ' . e((string) (float) $j['loss_total']) . '%: inverter ' . e((string) (float) $j['loss_inverter']) . '%, optimizer ' . e((string) (float) $j['loss_optimizer']) . '%, shading ' . e((string) (float) $j['loss_shading']) . '%' : 'Not stated' ?><?= $ok ? ', other ' . e((string) $res['other_loss_percent']) . '%' : '' ?></dd>
 				<?php if ($j['notes']): ?><dt>Notes</dt><dd><?= nl2br(e($j['notes'])) ?></dd><?php endif; ?>
 			</dl>
 
