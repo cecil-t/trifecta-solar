@@ -1650,3 +1650,11 @@ a[href^="tel:"] { white-space: nowrap; }
 .svc { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .7rem .8rem; }
 .svc-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
 .svc .kv { font-size: .85rem; }
+
+/* Lists > Proposal APIs > Reference jobs: compact tables that fit a phone */
+.table-refs th, .table-refs td { padding: .55rem .6rem; }
+.table-refs td:first-child:not(.nowrap) { white-space: normal; }
+@media (max-width: 640px) {
+	.table-refs th, .table-refs td { padding: .5rem .35rem; font-size: .85rem; }
+	.table-refs th { font-size: .68rem; }
+}

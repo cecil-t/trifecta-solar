@@ -18,6 +18,14 @@ Actions:
 	bill      {"rate": one URDB rate (OpenEI, full detail), "monthly_kwh": n}: the rate converted
 	          for SAM (UtilityRateTools.URDBv8_to_ElectricityRates) and SAM's Utilityrate5 bill
 	          for a flat use of n kWh every month with no solar, as a check that the rate reads right.
+	system    One real system on a weather file: both SAM's detailed PV model (Pvsamv1, CEC module
+	          and inverter from SAM's library) and PVWatts v8, year one by month. Request:
+	          {"weather_file", "module": CEC name, "inverter": CEC name, "inverter_count",
+	           "arrays": [{"azimuth", "tilt", "modules", "mount": "roof" | "ground"}],
+	           "losses": {"total", "inverter", "optimizer", "shading"} (percent, as a proposal states
+	           them; total includes the others), "optimizers": true for module-level optimizers}.
+	          Losses other than inverter, optimizer and shading go in as one DC loss, shading as a
+	          flat loss (soiling slot), so both models carry the same assumptions.
 
 SAM_LIB (environment) is the folder holding cec_modules.csv, cec_inverters.csv and VERSION.
 """
@@ -224,7 +232,213 @@ def bill(req):
 	}
 
 
-ACTIONS = {'check': check, 'weather': weather, 'bill': bill}
+def cec_row(file_name, name):
+	"""One row of a CEC library file as {SAM variable: value}, using the file's third header row."""
+	import csv
+	path = os.path.join(LIB, file_name)
+	with open(path, newline='', encoding='utf-8', errors='replace') as f:
+		r = csv.reader(f)
+		next(r)
+		next(r)
+		keys = next(r)
+		for row in r:
+			if row and row[0] == name:
+				out = {}
+				for k, v in zip(keys, row):
+					if not k or k == '[0]':
+						continue
+					try:
+						out[k] = float(v)
+					except ValueError:
+						out[k] = v
+				return out
+	raise ValueError('Not in SAM\'s CEC library (%s): %s' % (file_name, name))
+
+
+def weather_columns(path):
+	"""Column names of an NSRDB CSV (the third line)."""
+	import csv
+	with open(path, newline='', encoding='utf-8') as f:
+		f.readline()
+		f.readline()
+		return next(csv.reader([f.readline()]))
+
+
+def group_arrays(arrays):
+	"""Arrays merged by orientation (same mount, tilt within 1 degree and azimuth within 3), then the
+	smallest groups folded into their nearest neighbor until at most 4 remain (SAM's subarray limit)."""
+	groups = []
+	for a in arrays:
+		n = int(a.get('modules') or 0)
+		if n <= 0:
+			continue
+		mount = 'ground' if a.get('mount') == 'ground' else 'roof'
+		az, tilt = float(a.get('azimuth') or 180) % 360, float(a.get('tilt') or 0)
+		for g in groups:
+			d = abs((g['azimuth'] - az + 180) % 360 - 180)
+			if g['mount'] == mount and abs(g['tilt'] - tilt) <= 1 and d <= 3:
+				g['modules'] += n
+				break
+		else:
+			groups.append({'azimuth': az, 'tilt': tilt, 'modules': n, 'mount': mount})
+	merged = []
+	while len(groups) > 4:
+		groups.sort(key=lambda g: g['modules'])
+		small = groups.pop(0)
+		def dist(g):
+			return abs((g['azimuth'] - small['azimuth'] + 180) % 360 - 180) + abs(g['tilt'] - small['tilt']) * 3
+		target = min(groups, key=dist)
+		merged.append('%d modules at %d/%d folded into %d/%d' % (small['modules'], small['azimuth'], small['tilt'], target['azimuth'], target['tilt']))
+		target['modules'] += small['modules']
+	return groups, merged
+
+
+def monthly(hourly_or_monthly):
+	return [round(v) for v in hourly_or_monthly]
+
+
+def system(req):
+	"""Year one of a real system, detailed model and PVWatts v8 with the same assumptions."""
+	import PySAM
+	import PySAM.Pvsamv1 as pvsam
+	import PySAM.Pvwattsv8 as pvwatts
+
+	path = req.get('weather_file')
+	if not path or not os.path.isfile(path):
+		raise ValueError('Weather file not found.')
+	groups, merged = group_arrays(req.get('arrays') or [])
+	if not groups:
+		raise ValueError('No arrays with modules.')
+	mod = cec_row('cec_modules.csv', req.get('module') or '')
+	inv = cec_row('cec_inverters.csv', req.get('inverter') or '')
+	inv_count = max(1, int(req.get('inverter_count') or 1))
+	L = req.get('losses') or {}
+	pct = lambda k: max(0.0, min(99.0, float(L.get(k) or 0)))
+	total, inv_loss, opt_loss, shade = pct('total'), pct('inverter'), pct('optimizer'), pct('shading')
+	optimizers = bool(req.get('optimizers'))
+	# what is left of the stated total once inverter, optimizer and shading are taken out
+	keep_other = (1 - total / 100) / ((1 - inv_loss / 100) * (1 - opt_loss / 100) * (1 - shade / 100)) if total else 1.0
+	other = max(0.0, (1 - keep_other) * 100)
+	modules = sum(g['modules'] for g in groups)
+	module_w = mod['cec_v_mp_ref'] * mod['cec_i_mp_ref']
+	kw_dc = modules * module_w / 1000
+	kw_ac = inv_count * inv['inv_snl_paco'] / 1000
+	cols = weather_columns(path)
+	snow = any('snow' in c.lower() for c in cols)
+
+	# Detailed model
+	t0 = time.time()
+	m = pvsam.default('FlatPlatePVNone')
+	m.SolarResource.solar_resource_file = path
+	m.Module.module_model = 1
+	cec = m.CECPerformanceModelWithModuleDatabase
+	for k, v in mod.items():
+		if k.startswith('cec_') and k in cec.export():
+			cec.__setattr__(k, v)
+	ground = any(g['mount'] == 'ground' for g in groups)
+	cec.cec_is_bifacial = 1 if (ground and mod.get('lib_is_bifacial') == 1) else 0
+	cec.cec_bifaciality = 0.7
+	cec.cec_temp_corr_mode = 0
+	cec.cec_standoff = 6 if ground else 1   # rack, or roof with more than 3.5 in. of standoff
+	cec.cec_height = 1 if ground else 0
+	m.Inverter.inverter_model = 0
+	db = m.InverterCECDatabase
+	for k, v in inv.items():
+		if k.startswith('inv_snl_') and k in db.export():
+			db.__setattr__(k, v)
+	if optimizers:
+		# Optimizers hold the string at the inverter's fixed input voltage: no voltage window to fall
+		# out of, and the inverter's efficiency at its rated DC voltage.
+		db.inv_snl_c1 = db.inv_snl_c2 = db.inv_snl_c3 = 0
+		db.inv_snl_vdcmax = 100000
+	m.Inverter.mppt_low_inverter = 0 if optimizers else inv['inv_snl_mppt_low']
+	m.Inverter.mppt_hi_inverter = 100000 if optimizers else inv['inv_snl_mppt_hi']
+	m.Inverter.inv_num_mppt = 1
+	m.Inverter.inverter_count = inv_count
+	sd = m.SystemDesign
+	sd.enable_mismatch_vmax_calc = 0
+	sd.inverter_count = inv_count
+	for i in range(1, 5):
+		g = groups[i - 1] if i <= len(groups) else None
+		if i > 1:
+			m.value('subarray%d_enable' % i, 1 if g else 0)
+		if not g:
+			continue
+		if optimizers:
+			per_string, strings = g['modules'], 1
+		else:
+			per_string = max(1, round(inv['inv_snl_vdco'] / mod['cec_v_mp_ref']))
+			strings = max(1, round(g['modules'] / per_string))
+		for k, v in (('modules_per_string', per_string), ('nstrings', strings), ('tilt', g['tilt']), ('azimuth', g['azimuth']),
+				('track_mode', 0), ('mppt_input', 1), ('gcr', 0.4 if g['mount'] == 'ground' else 0.9)):
+			m.value('subarray%d_%s' % (i, k), v)
+		for k, v in (('mismatch_loss', 0), ('diodeconn_loss', 0), ('dcwiring_loss', other), ('tracking_loss', 0), ('nameplate_loss', 0),
+				('rear_soiling_loss', 0), ('rack_shading', 0), ('electrical_mismatch', 0)):
+			m.value('subarray%d_%s' % (i, k), v)
+		m.value('subarray%d_soiling' % i, [shade] * 12)
+	sd.system_capacity = kw_dc
+	m.Losses.dcoptimizer_loss = opt_loss if optimizers else 0
+	m.Losses.acwiring_loss = 0
+	m.Losses.transmission_loss = 0
+	m.Losses.calculate_rack_shading = 0
+	m.Losses.en_snow_model = 1 if snow else 0
+	m.Losses.use_snow_weather_file = 1 if snow else 0
+	m.AdjustmentFactors.adjust_constant = 0
+	m.execute()
+	detailed = {
+		'model': 'Pvsamv1 (SAM detailed PV)',
+		'annual_kwh': round(m.Outputs.annual_energy),
+		'monthly_kwh': monthly(m.Outputs.monthly_energy),
+		'clip_loss_percent': round(m.Outputs.annual_ac_inv_clip_loss_percent, 2),
+		'seconds': round(time.time() - t0, 2),
+	}
+
+	# PVWatts v8: whole system as one array per group, run once per group and added up
+	t1 = time.time()
+	cec_eff = inv['inv_snl_paco'] / inv['inv_snl_pdco'] * 100   # rated-point efficiency, used only when the proposal gives no inverter loss
+	inv_eff = 100 - inv_loss if inv_loss else cec_eff
+	keep = (1 - other / 100) * (1 - shade / 100) * (1 - opt_loss / 100)
+	pv_monthly = [0.0] * 12
+	pv_clip = 0.0
+	for g in groups:
+		w = pvwatts.default('PVWattsNone')
+		w.SolarResource.solar_resource_file = path
+		s = w.SystemDesign
+		share = g['modules'] / modules
+		s.system_capacity = kw_dc * share
+		s.dc_ac_ratio = kw_dc / kw_ac
+		s.array_type = 0 if g['mount'] == 'ground' else 1
+		s.tilt = g['tilt']
+		s.azimuth = g['azimuth']
+		s.gcr = 0.4
+		s.inv_eff = min(99.5, max(90.0, inv_eff))
+		s.losses = (1 - keep) * 100
+		s.module_type = 1
+		s.bifaciality = 0
+		w.execute()
+		pv_monthly = [a + b for a, b in zip(pv_monthly, w.Outputs.ac_monthly)]
+	pvw = {
+		'model': 'PVWatts v8',
+		'annual_kwh': round(sum(pv_monthly)),
+		'monthly_kwh': monthly(pv_monthly),
+		'inverter_eff_percent': round(inv_eff, 2),
+		'seconds': round(time.time() - t1, 2),
+	}
+	version_file = os.path.join(LIB, 'VERSION')
+	return {
+		'kw_dc': round(kw_dc, 3), 'kw_ac': round(kw_ac, 3), 'dc_ac': round(kw_dc / kw_ac, 3),
+		'module_w': round(module_w, 1), 'modules': modules,
+		'groups': groups, 'merged': merged,
+		'other_loss_percent': round(other, 2),
+		'snow_modeled': snow,
+		'weather_columns': cols,
+		'detailed': detailed, 'pvwatts': pvw,
+		'pysam': PySAM.__version__,
+		'library_release': open(version_file).read().strip() if os.path.isfile(version_file) else None,
+	}
+
+
+ACTIONS = {'check': check, 'weather': weather, 'bill': bill, 'system': system}
 
 
 def main():

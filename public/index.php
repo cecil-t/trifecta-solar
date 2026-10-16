@@ -40,6 +40,7 @@ use App\Router;
 use App\Controllers\ServiceController;
 use App\Controllers\ReportController;
 use App\Controllers\SamController;
+use App\Controllers\ReferenceJobsController;
 use App\Controllers\TodoController;
 
 if (Config::bool('APP_DEBUG')) {
@@ -218,6 +219,9 @@ $r->post('/admin/proposal-apis/rates', [SamController::class, 'rates'], 'admin')
 $r->post('/admin/proposal-apis/pdf', [SamController::class, 'pdf'], 'admin');
 $r->post('/admin/proposal-apis/google', [SamController::class, 'google'], 'admin');
 $r->get('/admin/proposal-apis/aerial', [SamController::class, 'aerial'], 'admin');
+$r->get('/admin/reference-jobs', [ReferenceJobsController::class, 'index'], 'admin');
+$r->post('/admin/reference-jobs/run', [ReferenceJobsController::class, 'runAll'], 'admin');
+$r->post('/admin/reference-jobs/{id}/run', [ReferenceJobsController::class, 'run'], 'admin');
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');
