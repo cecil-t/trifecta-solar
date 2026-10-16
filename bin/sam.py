@@ -8,9 +8,12 @@ Request:  {"action": "check"}
 Reply:    {"ok": true, ...} or {"ok": false, "error": "..."}
 
 Actions:
-	check   Versions, the CEC module and inverter libraries, and one run of SAM's detailed PV model
-	        (Pvsamv1) on made-up clear-sky weather. Proves SAM is installed and runs; the kWh from
-	        the made-up weather means nothing.
+	check     Versions, the CEC module and inverter libraries, and one run of SAM's detailed PV model
+	          (Pvsamv1) on made-up clear-sky weather. Proves SAM is installed and runs; the kWh from
+	          the made-up weather means nothing.
+	weather   {"weather_file": path to an NSRDB CSV}: the file's point and yearly irradiance, and
+	          SAM's default example system run on it fixed, single-axis and dual-axis (kWh per kW DC),
+	          as a sanity check of the weather. Not an estimate for any real system.
 
 SAM_LIB (environment) is the folder holding cec_modules.csv, cec_inverters.csv and VERSION.
 """
@@ -77,7 +80,68 @@ def check(_req):
 	return reply
 
 
-ACTIONS = {'check': check}
+def read_weather_summary(path):
+	"""Point, row count and yearly irradiance and temperature from an NSRDB CSV (two metadata lines, then a header row)."""
+	import csv
+	with open(path, newline='', encoding='utf-8') as f:
+		keys = next(csv.reader([f.readline()]))
+		vals = next(csv.reader([f.readline()]))
+		meta = dict(zip(keys, vals))
+		rows = list(csv.DictReader(f))
+	num = lambda r, k: float(r[k]) if r.get(k) not in (None, '') else 0.0
+	temps = [num(r, 'Temperature') for r in rows]
+	return {
+		'location_id': meta.get('Location ID'),
+		'lat': float(meta['Latitude']), 'lon': float(meta['Longitude']),
+		'elevation_m': float(meta.get('Elevation') or 0), 'tz': float(meta.get('Local Time Zone') or meta.get('Time Zone') or 0),
+		'hours': len(rows),
+		'columns': list(rows[0].keys()) if rows else [],
+		'ghi_kwh_m2': round(sum(num(r, 'GHI') for r in rows) / 1000),
+		'dni_kwh_m2': round(sum(num(r, 'DNI') for r in rows) / 1000),
+		'dhi_kwh_m2': round(sum(num(r, 'DHI') for r in rows) / 1000),
+		'temp_avg_c': round(sum(temps) / len(temps), 1) if temps else None,
+		'temp_min_c': min(temps) if temps else None,
+		'temp_max_c': max(temps) if temps else None,
+	}
+
+
+# Mounting cases for the weather test, on SAM's default example system: [label, settings]
+WEATHER_CASES = [
+	('Fixed, 30 degree tilt, due south', {'subarray1_track_mode': 0, 'subarray1_tilt': 30, 'subarray1_azimuth': 180}),
+	('Single-axis tracker (north-south axis, backtracking)', {'subarray1_track_mode': 1, 'subarray1_tilt': 0, 'subarray1_azimuth': 180, 'subarray1_backtrack': 1}),
+	('Dual-axis tracker', {'subarray1_track_mode': 2}),
+]
+
+
+def weather(req):
+	"""Summarize one weather file and run SAM's example system on it for three mounting cases."""
+	import PySAM.Pvsamv1 as pvsam
+
+	path = req.get('weather_file')
+	if not path or not os.path.isfile(path):
+		raise ValueError('Weather file not found.')
+	reply = {'weather': read_weather_summary(path), 'runs': []}
+	for label, settings in WEATHER_CASES:
+		t0 = time.time()
+		m = pvsam.default('FlatPlatePVNone')
+		m.SolarResource.solar_resource_file = path
+		m.Losses.use_snow_weather_file = 0
+		for k, v in settings.items():
+			m.value(k, v)
+		m.execute()
+		kw = m.value('system_capacity')
+		reply['runs'].append({
+			'case': label,
+			'kwh_per_kw': round(m.Outputs.annual_energy / kw),
+			'clip_loss_percent': round(m.Outputs.annual_ac_inv_clip_loss_percent, 1),
+			'seconds': round(time.time() - t0, 2),
+		})
+	reply['system'] = 'SAM default example system: %.0f kW DC, DC/AC ratio %.2f, 5%% soiling' % (
+		m.value('system_capacity'), m.value('system_capacity') * 1000 / (m.value('inverter_count') * m.value('inv_snl_paco')))
+	return reply
+
+
+ACTIONS = {'check': check, 'weather': weather}
 
 
 def main():
