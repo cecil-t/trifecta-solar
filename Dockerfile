@@ -29,6 +29,18 @@ RUN apt-get update \
 	&& printf '%s  %s\n%s  %s\n' "$SAM_MODULES_SHA256" /opt/sam/lib/cec_modules.csv "$SAM_INVERTERS_SHA256" /opt/sam/lib/cec_inverters.csv | sha256sum -c - \
 	&& echo "$SAM_LIBRARY_TAG" > /opt/sam/lib/VERSION
 
+# WeasyPrint turns the app's HTML (proposals, reports) into PDF: its own venv in /opt/pdf, plus the
+# Pango and HarfBuzz libraries it draws text with and basic fonts (Liberation is metric-compatible
+# with Arial, Helvetica and Times). App\Pdf calls it. To upgrade: change the version, rebuild, then
+# run Lists > SAM > Test PDF.
+ARG WEASYPRINT_VERSION=70.0
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-liberation fonts-dejavu-core \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& python3 -m venv /opt/pdf \
+	&& /opt/pdf/bin/pip install --no-cache-dir "weasyprint==${WEASYPRINT_VERSION}" \
+	&& /opt/pdf/bin/python -m weasyprint --version
+
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-trifecta.ini"
 COPY docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/entrypoint.sh /usr/local/bin/trifecta-entrypoint

@@ -1,0 +1,23 @@
+/* Print styles for PDFs made by WeasyPrint (App\Pdf). Letter paper; page numbers in the footer. */
+@page {
+	size: letter;
+	margin: 0.7in 0.6in 0.8in;
+	@bottom-left { content: string(doc-title); font: 8pt "Liberation Sans", Arial, sans-serif; color: #5d6a72; }
+	@bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt "Liberation Sans", Arial, sans-serif; color: #5d6a72; }
+}
+html { font: 10.5pt/1.45 "Liberation Sans", Arial, Helvetica, sans-serif; color: #1c2830; }
+body { margin: 0; }
+h1 { font-size: 20pt; color: #025586; margin: 0 0 .2em; string-set: doc-title content(); }
+h2 { font-size: 13pt; color: #025586; margin: 1.4em 0 .4em; }
+p { margin: 0 0 .6em; }
+.pdf-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #69b545; padding-bottom: 10pt; margin-bottom: 14pt; }
+.pdf-head img { height: 42pt; }
+.pdf-muted { color: #5d6a72; font-size: 9pt; }
+.pdf-table { width: 100%; border-collapse: collapse; margin: .4em 0 1em; }
+.pdf-table th { text-align: left; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .03em; color: #5d6a72; border-bottom: 1px solid #e0e5e1; padding: 4pt 6pt; }
+.pdf-table td { border-bottom: 1px solid #eef0f2; padding: 3pt 6pt; }
+.pdf-table .num { text-align: right; }
+.pdf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
+.pdf-box { border: 1px solid #e0e5e1; border-radius: 6pt; padding: 8pt 10pt; }
+.pdf-chart { width: 100%; height: auto; }
+.pdf-page-break { break-before: page; }

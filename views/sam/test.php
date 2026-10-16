@@ -18,6 +18,8 @@ use App\Csrf;
  * @var ?array  $rates         list (UtilityRates::summary rows), ms, at
  * @var ?string $ratesError
  * @var ?array  $bill          summary and sam (reply from the bill action), or error
+ * @var bool    $pdfInstalled  WeasyPrint's Python exists
+ * @var ?string $pdfError
  */
 $test = $result['test_run'] ?? null;
 $rf = $rateForm ?? ['lat' => $point['lat'], 'lon' => $point['lon'], 'sector' => 'Residential', 'kwh' => '1000'];
@@ -210,6 +212,19 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 			</table></div>
 		<?php endif; ?>
 	<?php endif; ?>
+</section>
+
+<section class="card mt" id="pdf">
+	<h2>PDF</h2>
+	<p class="muted small">WeasyPrint turns the app's HTML into PDF (for proposals later). The test page has the logo, a table, an SVG chart, two columns, a page break and page numbers in the footer.</p>
+	<?php if ($pdfError): ?>
+		<div class="flash flash-error"><?= e($pdfError) ?></div>
+	<?php endif; ?>
+	<form method="post" action="/admin/sam/pdf" target="_blank" class="mt">
+		<?= Csrf::field() ?>
+		<button type="submit" class="btn btn-primary"<?= $pdfInstalled ? '' : ' disabled' ?>>Test PDF</button>
+		<span class="muted small"><?= $pdfInstalled ? 'Opens in a new tab.' : 'Not installed: rebuild the Docker image.' ?></span>
+	</form>
 </section>
 
 <section class="card mt">

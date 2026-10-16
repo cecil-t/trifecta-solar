@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Pdf;
 use App\Sam;
 use App\SolarResource;
 use App\UtilityRates;
@@ -13,7 +14,7 @@ use App\Weather;
  * Lists > SAM (admin): checks that SAM (System Advisor Model) is installed and runs, fetches
  * NSRDB weather for a point and runs SAM's example system on it, and lists OpenEI utility rates at
  * a point with SAM's bill for one of them. A test bench for the production and savings estimates
- * the proposal system will need. Downloaded weather files are kept for reuse; nothing else is saved.
+ * the proposal system will need, and makes a test PDF with WeasyPrint. Downloaded weather files are kept for reuse; nothing else is saved.
  */
 final class SamController
 {
@@ -87,6 +88,21 @@ final class SamController
 		$this->render($vars);
 	}
 
+	/** A test PDF from WeasyPrint, shown in the browser; on failure, the page with the error. */
+	public function pdf(): void
+	{
+		$r = Pdf::fromHtml(View::partial('pdf/test', ['at' => date('m/d/Y g:i A')]));
+		if (!$r['ok']) {
+			$this->render(['pdfError' => $r['error']]);
+			return;
+		}
+		header('Content-Type: application/pdf');
+		header('Content-Disposition: inline; filename="pdf-test.pdf"');
+		header('Content-Length: ' . strlen($r['pdf']));
+		header('X-Render-Ms: ' . $r['ms']);
+		echo $r['pdf'];
+	}
+
 	private function render(array $vars = []): void
 	{
 		$office = Weather::location();
@@ -108,6 +124,8 @@ final class SamController
 			'rates' => null,
 			'ratesError' => null,
 			'bill' => null,
+			'pdfInstalled' => Pdf::installed(),
+			'pdfError' => null,
 		]);
 	}
 }
