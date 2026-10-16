@@ -13,6 +13,15 @@ use App\Controllers\MonitorController;
  */
 final class ThirdParty
 {
+	/**
+	 * Release dates of the pinned Python packages (from PyPI), which the installed files do not record.
+	 * Add a line when the Dockerfile pins a new version. SAM's date comes from its release name.
+	 */
+	public const RELEASED = [
+		'nlr_pysam 8.0.0' => '2026-08-14',
+		'weasyprint 70.0' => '2026-09-08',
+	];
+
 	/** @return list<array{group:string, services:list<array>}> */
 	public static function all(): array
 	{
@@ -135,11 +144,19 @@ final class ThirdParty
 		$pysam = self::package($samRoot, 'nlr_pysam');
 		$weasy = self::package($pdfRoot, 'weasyprint');
 		$py = self::pythonVersion($samRoot);
+		$sam = self::samRelease($libRelease);
 		return [
 			[
 				'name' => 'SAM, System Advisor Model (National Laboratory of the Rockies)', 'url' => 'https://github.com/NatLabRockies/SAM',
 				'for' => 'Production and utility bill models for proposals (Proposal APIs)',
-				'interface' => 'PySAM ' . ($pysam ?? 'not installed') . ($py ? ' on Python ' . $py : '') . ($libRelease ? ', SAM release ' . $libRelease : '') . '; detailed PV model (Pvsamv1), Utilityrate5',
+				'interface' => 'PySAM, the Python wrapper for SAM\'s simulation core',
+				'versions' => array_values(array_filter([
+					['SAM', $sam ? $sam['release'] . ' (simulation core build ' . $sam['ssc'] . '), released ' . $sam['date'] : ($libRelease ?? 'Unknown')],
+					['PySAM', ($pysam ?? 'Not installed') . self::released('nlr_pysam', $pysam) . ($py ? ', on Python ' . $py : '')],
+					['Detailed PV model', 'Pvsamv1' . ($sam ? ', in SAM ' . $sam['release'] : '')],
+					['PVWatts', 'Version 8 (Pvwattsv8)' . ($sam ? ', in SAM ' . $sam['release'] : '')],
+					['Utility bills', 'Utilityrate5' . ($sam ? ', in SAM ' . $sam['release'] : '')],
+				])),
 				'access' => 'Open source (BSD 3-Clause), runs on this server', 'configured' => null,
 				'last' => null,
 				'storage' => [['Program', 'In the Docker image (' . $samRoot . '), with SAM\'s CEC module and inverter libraries']],
@@ -147,12 +164,34 @@ final class ThirdParty
 			[
 				'name' => 'WeasyPrint', 'url' => 'https://weasyprint.org/',
 				'for' => 'PDFs from the app\'s pages (proposals later)',
-				'interface' => 'WeasyPrint ' . ($weasy ?? 'not installed') . ', HTML and CSS to PDF',
+				'interface' => 'HTML and CSS to PDF',
+				'versions' => [['WeasyPrint', ($weasy ?? 'Not installed') . self::released('weasyprint', $weasy)]],
 				'access' => 'Open source (BSD 3-Clause), runs on this server', 'configured' => null,
 				'last' => null,
 				'storage' => [['Program', 'In the Docker image (' . $pdfRoot . '); PDFs are made when asked for and not kept']],
 			],
 		];
+	}
+
+	/**
+	 * SAM's release from its tag, e.g. 2026.7.3.r0.ssc.308: release 2026.7.3, dated July 3, 2026,
+	 * simulation core (SSC) build 308. PVWatts v8 and the detailed model are both in that core.
+	 *
+	 * @return ?array{release:string, date:string, ssc:string}
+	 */
+	public static function samRelease(?string $tag): ?array
+	{
+		if ($tag === null || !preg_match('/^(\d{4})\.(\d{1,2})\.(\d{1,2})\.r\d+\.ssc\.(\d+)$/', $tag, $m)) {
+			return null;
+		}
+		return ['release' => $m[1] . '.' . $m[2] . '.' . $m[3], 'date' => sprintf('%02d/%02d/%04d', $m[2], $m[3], $m[1]), 'ssc' => $m[4]];
+	}
+
+	/** ", released 08/14/2026" for a pinned package version, or ''. */
+	private static function released(string $package, ?string $version): string
+	{
+		$d = $version !== null ? (self::RELEASED[$package . ' ' . $version] ?? null) : null;
+		return $d ? ', released ' . date('m/d/Y', (int) strtotime($d)) : '';
 	}
 
 	/** Version of a package in a venv, from its dist-info folder name, or null. */

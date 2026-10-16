@@ -180,6 +180,9 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 					<dl class="kv">
 						<dt>Used for</dt><dd><?= e($sv['for']) ?></dd>
 						<dt>Interface</dt><dd><?= e($sv['interface']) ?></dd>
+						<?php foreach ($sv['versions'] ?? [] as [$what, $detail]): ?>
+							<dt><?= e($what) ?></dt><dd><?= e($detail) ?></dd>
+						<?php endforeach; ?>
 						<dt>Access</dt><dd><?= e($sv['access']) ?></dd>
 						<?php if ($sv['last']): ?><dt>Last used</dt><dd><?= e($utc($sv['last'])) ?></dd><?php endif; ?>
 						<?php foreach ($sv['storage'] as [$what, $detail]): ?>
