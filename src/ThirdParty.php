@@ -71,7 +71,7 @@ final class ThirdParty
 					'name' => 'OpenEI Utility Rate Database', 'url' => 'https://openei.org/wiki/Utility_Rate_Database',
 					'for' => 'Utility rates at a point, billed through SAM (Proposal APIs)',
 					'interface' => 'utility_rates API, version latest',
-					'access' => 'API key', 'configured' => UtilityRates::configured(),
+					'access' => 'API key from the same developer system as NSRDB (NLR_API_KEY, or its own OPENEI_API_KEY)', 'configured' => UtilityRates::configured(),
 					'last' => null,
 					'storage' => [['Stored here', 'Nothing; rates are looked up when needed']],
 				],

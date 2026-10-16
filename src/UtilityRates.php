@@ -4,8 +4,9 @@ declare(strict_types=1);
 namespace App;
 
 /**
- * Utility rates from OpenEI's Utility Rate Database (URDB, api.openei.org). Free key from
- * openei.org/services/api/signup in OPENEI_API_KEY (a different key from NLR_API_KEY).
+ * Utility rates from OpenEI's Utility Rate Database (URDB, api.openei.org). OpenEI uses the National
+ * Laboratory of the Rockies developer key system, so NLR_API_KEY works here too; OPENEI_API_KEY, when
+ * set, is used instead (its own rate limit, revoked separately).
  *
  * search() lists the rates in effect at a point; rate() fetches one rate in full, in the URDB
  * format that SAM reads (PySAM's UtilityRateTools.URDBv8_to_ElectricityRates). Nothing is stored yet.
@@ -18,7 +19,13 @@ final class UtilityRates
 
 	public static function configured(): bool
 	{
-		return (string) Config::get('OPENEI_API_KEY', '') !== '';
+		return self::key() !== '';
+	}
+
+	/** OPENEI_API_KEY, or NLR_API_KEY (the same developer key system). */
+	private static function key(): string
+	{
+		return (string) (Config::get('OPENEI_API_KEY', '') ?: Config::get('NLR_API_KEY', ''));
 	}
 
 	/**
@@ -112,9 +119,9 @@ final class UtilityRates
 		$start = microtime(true);
 		$done = static fn (array $r): array => $r + ['ms' => (int) round((microtime(true) - $start) * 1000)];
 		if (!self::configured()) {
-			return $done(['ok' => false, 'error' => 'Add OPENEI_API_KEY to the server .env file.']);
+			return $done(['ok' => false, 'error' => 'Add NLR_API_KEY (or OPENEI_API_KEY) to the server .env file.']);
 		}
-		$url = self::ENDPOINT . '?' . http_build_query(['version' => 'latest', 'format' => 'json', 'api_key' => Config::get('OPENEI_API_KEY')] + $query);
+		$url = self::ENDPOINT . '?' . http_build_query(['version' => 'latest', 'format' => 'json', 'api_key' => self::key()] + $query);
 		$ctx = stream_context_create(['http' => [
 			'method' => 'GET',
 			'timeout' => self::TIMEOUT,
@@ -141,7 +148,7 @@ final class UtilityRates
 			if ($msg === '') {
 				$msg = trim(substr(strip_tags($body), 0, 300));
 			}
-			$msg = str_replace((string) Config::get('OPENEI_API_KEY', ''), '[key]', $msg);
+			$msg = str_replace(self::key(), '[key]', $msg);
 			return $done(['ok' => false, 'error' => 'OpenEI said: ' . ($status ? 'HTTP ' . $status . ', ' : '') . $msg]);
 		}
 		return $done(['ok' => true, 'items' => $j['items']]);

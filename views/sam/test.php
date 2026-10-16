@@ -12,7 +12,7 @@ use App\Csrf;
  * @var array   $point         lat and lon for the weather form
  * @var ?array  $weather       file (SolarResource::forPoint), sam (reply from the weather action), at
  * @var ?string $weatherError
- * @var bool    $openeiConfigured OPENEI_API_KEY is set
+ * @var bool    $openeiConfigured OPENEI_API_KEY or NLR_API_KEY is set
  * @var array   $sectors       URDB sectors
  * @var ?array  $rateForm      lat, lon, sector, kwh for the rates form
  * @var ?array  $rates         list (UtilityRates::summary rows), ms, at
@@ -203,7 +203,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 	<h2>Utility rates</h2>
 	<p class="muted small">Rates in effect at a point from OpenEI's Utility Rate Database (approved rates only). Bill runs one rate through SAM's bill calculator for the same use every month with no solar, as a check that SAM reads the rate right. Nothing is saved.</p>
 	<?php if (!$openeiConfigured): ?>
-		<p class="muted">Not set up. Add <code>OPENEI_API_KEY</code> to the server .env file (free key from openei.org/services/api/signup).</p>
+		<p class="muted">Not set up. Add <code>NLR_API_KEY</code> (the same free developer key as NSRDB) or <code>OPENEI_API_KEY</code> to the server .env file.</p>
 	<?php endif; ?>
 
 	<?php if ($ratesError): ?>
