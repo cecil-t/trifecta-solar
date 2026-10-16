@@ -20,6 +20,10 @@ use App\Csrf;
  * @var ?array  $bill          summary and sam (reply from the bill action), or error
  * @var bool    $pdfInstalled  WeasyPrint's Python exists
  * @var ?string $pdfError
+ * @var bool    $googleConfigured GOOGLE_MAPS_API_KEY is set
+ * @var string  $address       the address typed in the Google form
+ * @var ?array  $google        geo (GoogleMaps::geocode), building (GoogleMaps::buildingInsights), at
+ * @var ?string $googleError
  */
 $test = $result['test_run'] ?? null;
 $rf = $rateForm ?? ['lat' => $point['lat'], 'lon' => $point['lon'], 'sector' => 'Residential', 'kwh' => '1000'];
@@ -65,7 +69,66 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 	</section>
 <?php endif; ?>
 
-<section class="card<?= $result ? ' mt' : '' ?>" id="weather">
+<section class="card<?= $result ? ' mt' : '' ?>" id="google">
+	<h2>Google</h2>
+	<p class="muted small">Address to point with Google Geocoding, then the Solar API's roof model for the building there, and an aerial image. The point found fills the Weather and Utility rates forms below. Nothing is saved.</p>
+	<?php if (!$googleConfigured): ?>
+		<p class="muted">Not set up. Add <code>GOOGLE_MAPS_API_KEY</code> to the server .env file (Google Cloud project with Geocoding, Solar, Maps Static and Map Tiles enabled).</p>
+	<?php endif; ?>
+
+	<?php if ($googleError): ?>
+		<div class="flash flash-error"><?= e($googleError) ?></div>
+	<?php endif; ?>
+
+	<form method="post" action="/admin/sam/google#google" class="sam-point">
+		<?= Csrf::field() ?>
+		<label class="sam-address">Address <input type="text" name="address" value="<?= e($address) ?>" placeholder="123 Main St, Springfield, PA 17000" maxlength="300" required></label>
+		<button type="submit" class="btn btn-primary">Look up</button>
+	</form>
+
+	<?php if ($google): ?>
+		<?php $g = $google['geo']; $bi = $google['building']; ?>
+		<h3 class="mt">Result</h3>
+		<p class="muted small"><?= e($google['at']) ?></p>
+		<dl class="kv">
+			<dt>Address</dt><dd><?= e($g['address']) ?><?= $g['partial'] ? ' <span class="muted small">(partial match)</span>' : '' ?></dd>
+			<dt>Point</dt><dd><?= e($deg($g['lat'])) ?>, <?= e($deg($g['lon'])) ?> <span class="muted small">(<?= e(strtolower(str_replace('_', ' ', $g['precision']))) ?>, <?= e(number_format($g['ms'] / 1000, 1)) ?> s)</span></dd>
+			<dt>Parts</dt><dd><?= e(implode(' | ', array_filter([$g['parts']['street'], $g['parts']['city'], $g['parts']['township'] !== $g['parts']['city'] ? $g['parts']['township'] : '', $g['parts']['county'], $g['parts']['state'], $g['parts']['zip']]))) ?></dd>
+		</dl>
+		<img class="sam-aerial mt" src="/admin/sam/aerial?lat=<?= e(rawurlencode($deg($g['lat']))) ?>&amp;lon=<?= e(rawurlencode($deg($g['lon']))) ?>&amp;zoom=20" alt="Aerial image at the point" width="640" height="400">
+
+		<h3 class="mt">Solar API roof model</h3>
+		<?php if (!$bi['ok']): ?>
+			<div class="flash flash-error"><?= e($bi['error']) ?></div>
+		<?php else: ?>
+			<?php $b = $bi['building']; ?>
+			<dl class="kv">
+				<dt>Imagery</dt><dd><?= e(ucfirst(strtolower($b['quality']))) ?> quality, taken <?= e($b['imagery_date']) ?></dd>
+				<dt>Building</dt><dd>Centre <?= e($deg($b['center_lat'])) ?>, <?= e($deg($b['center_lon'])) ?><?= $b['roof_m2'] !== null ? ', roof ' . e(number_format($b['roof_m2'] * 10.7639)) . ' sq ft' : '' ?></dd>
+				<?php if ($b['max_panels'] !== null): ?><dt>Google's fit</dt><dd>Up to <?= (int) $b['max_panels'] ?> panels of <?= e(number_format((float) $b['panel_watts'])) ?> W<?= $b['max_sun_hours'] !== null ? ', best spot ' . e(number_format($b['max_sun_hours'])) . ' sun hours a year' : '' ?></dd><?php endif; ?>
+			</dl>
+			<?php if ($b['segments']): ?>
+				<div class="table-wrap mt"><table class="table">
+					<thead><tr><th>Roof face</th><th class="num">Pitch</th><th class="num">Azimuth</th><th class="num">Area</th><th class="num">Sun hours</th></tr></thead>
+					<tbody>
+					<?php foreach ($b['segments'] as $i => $s): ?>
+						<tr>
+							<td><?= $i + 1 ?></td>
+							<td class="num"><?= e(number_format($s['pitch'], 1)) ?>&deg; <span class="muted small">(<?= e(number_format($s['pitch_12'], 1)) ?>/12)</span></td>
+							<td class="num"><?= e(number_format($s['azimuth'])) ?>&deg;</td>
+							<td class="num"><?= e(number_format($s['area_m2'] * 10.7639)) ?> sq ft</td>
+							<td class="num"><?= $s['sun_median'] !== null ? e(number_format($s['sun_median'])) : '' ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table></div>
+				<p class="muted small">Largest faces first. Sun hours are the median for the face, a year of full-sun-equivalent hours in Google's model.</p>
+			<?php endif; ?>
+		<?php endif; ?>
+	<?php endif; ?>
+</section>
+
+<section class="card mt" id="weather">
 	<h2>Weather</h2>
 	<p class="muted small">NSRDB typical-year weather (<?= e($dataset) ?>, hourly) for a point. Downloaded once per NSRDB grid cell (about 2 km) and kept on the server, so nearby jobs share a file. Then SAM's example system runs on it three ways as a sanity check; those numbers are not an estimate for any real system.</p>
 	<?php if (!$nlrConfigured): ?>
@@ -235,6 +298,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<dt>Libraries</dt><dd><code><?= e($libFolder) ?></code></dd>
 		<dt>NSRDB key</dt><dd><?= $nlrConfigured ? 'Set' : 'Not set' ?></dd>
 		<dt>OpenEI key</dt><dd><?= $openeiConfigured ? 'Set' : 'Not set' ?></dd>
+		<dt>Google key</dt><dd><?= $googleConfigured ? 'Set' : 'Not set' ?></dd>
 	</dl>
 	<form method="post" action="/admin/sam" class="mt">
 		<?= Csrf::field() ?>

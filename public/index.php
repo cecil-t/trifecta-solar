@@ -214,6 +214,8 @@ $r->post('/admin/sam', [SamController::class, 'run'], 'admin');
 $r->post('/admin/sam/weather', [SamController::class, 'weather'], 'admin');
 $r->post('/admin/sam/rates', [SamController::class, 'rates'], 'admin');
 $r->post('/admin/sam/pdf', [SamController::class, 'pdf'], 'admin');
+$r->post('/admin/sam/google', [SamController::class, 'google'], 'admin');
+$r->get('/admin/sam/aerial', [SamController::class, 'aerial'], 'admin');
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');

@@ -1641,3 +1641,6 @@ a[href^="tel:"] { white-space: nowrap; }
 .sam-point { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; margin-top: .6rem; }
 .sam-point label { display: flex; flex-direction: column; gap: .2rem; font-size: .8rem; font-weight: 600; margin: 0; }
 .sam-point input { width: 9rem; }
+.sam-point .sam-address { flex: 1 1 22rem; }
+.sam-point .sam-address input { width: 100%; }
+.sam-aerial { display: block; width: 100%; max-width: 640px; height: auto; border-radius: var(--radius-sm); background: var(--bg); }

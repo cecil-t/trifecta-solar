@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\GoogleMaps;
 use App\Pdf;
 use App\Sam;
 use App\SolarResource;
@@ -13,8 +14,10 @@ use App\Weather;
 /**
  * Lists > SAM (admin): checks that SAM (System Advisor Model) is installed and runs, fetches
  * NSRDB weather for a point and runs SAM's example system on it, and lists OpenEI utility rates at
- * a point with SAM's bill for one of them. A test bench for the production and savings estimates
- * the proposal system will need, and makes a test PDF with WeasyPrint. Downloaded weather files are kept for reuse; nothing else is saved.
+ * a point with SAM's bill for one of them, looks up an address with Google (point, roof segments and
+ * an aerial image) and makes a test PDF with WeasyPrint. A test bench for the production and savings
+ * estimates the proposal system will need. Downloaded weather files are kept for reuse; nothing else
+ * is saved.
  */
 final class SamController
 {
@@ -88,6 +91,49 @@ final class SamController
 		$this->render($vars);
 	}
 
+	/** Google: geocode an address, then Solar API Building Insights at that point; the point fills the other forms. */
+	public function google(): void
+	{
+		$address = trim((string) ($_POST['address'] ?? ''));
+		if ($address === '' || strlen($address) > 300) {
+			$this->render(['address' => $address, 'googleError' => 'Type or paste an address.']);
+			return;
+		}
+		$geo = GoogleMaps::geocode($address);
+		if (!$geo['ok']) {
+			$this->render(['address' => $address, 'googleError' => $geo['error']]);
+			return;
+		}
+		$point = ['lat' => number_format($geo['lat'], 6, '.', ''), 'lon' => number_format($geo['lon'], 6, '.', '')];
+		$this->render(['address' => $address, 'point' => $point, 'google' => [
+			'geo' => $geo,
+			'building' => GoogleMaps::buildingInsights($geo['lat'], $geo['lon']),
+			'at' => date('m/d/Y g:i:s A'),
+		]]);
+	}
+
+	/** The aerial image for the Google section, passed through from Maps Static (never stored). */
+	public function aerial(): void
+	{
+		$lat = filter_var($_GET['lat'] ?? null, FILTER_VALIDATE_FLOAT);
+		$lon = filter_var($_GET['lon'] ?? null, FILTER_VALIDATE_FLOAT);
+		$zoom = filter_var($_GET['zoom'] ?? 20, FILTER_VALIDATE_INT) ?: 20;
+		if ($lat === false || $lon === false || abs($lat) > 90 || abs($lon) > 180) {
+			http_response_code(400);
+			return;
+		}
+		$img = GoogleMaps::aerial($lat, $lon, $zoom);
+		if (!$img['ok']) {
+			http_response_code(502);
+			header('Content-Type: text/plain; charset=utf-8');
+			echo $img['error'];
+			return;
+		}
+		header('Content-Type: ' . $img['type']);
+		header('Cache-Control: private, no-store');
+		echo $img['bytes'];
+	}
+
 	/** A test PDF from WeasyPrint, shown in the browser; on failure, the page with the error. */
 	public function pdf(): void
 	{
@@ -126,6 +172,10 @@ final class SamController
 			'bill' => null,
 			'pdfInstalled' => Pdf::installed(),
 			'pdfError' => null,
+			'googleConfigured' => GoogleMaps::configured(),
+			'address' => '',
+			'google' => null,
+			'googleError' => null,
 		]);
 	}
 }
