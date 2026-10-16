@@ -30,7 +30,7 @@ final class MonitorController
 	];
 
 	/** .env names each manufacturer needs. */
-	private const ENV = [
+	public const ENV = [
 		'enphase' => ['ENPHASE_ENLIGHTEN_EMAIL', 'ENPHASE_ENLIGHTEN_PASSWORD'],
 		'apsystems' => ['APSYSTEMS_APP_ID', 'APSYSTEMS_APP_SECRET'],
 		'growatt' => ['GROWATT_USERNAME', 'GROWATT_PASSWORD'],

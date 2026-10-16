@@ -6,6 +6,7 @@
  * @var array   $server  from App\ServerInfo, plus disk space
  * @var ?array  $tls     host, port and cert (from App\TlsInfo, null if no TLS answered)
  * @var array   $stats  (not $data: View::partial keeps its own $data)
+ * @var array   $services outside services and software by group (App\ThirdParty::all)
  */
 $bytes = static function (?float $n): string {
 	if (!$n) {
@@ -28,6 +29,7 @@ $span = static function (float $secs): string {
 	return $d ? $plural($d, 'day') . ', ' . $plural($h, 'hour') : ($h ? $plural($h, 'hour') . ', ' . $plural($m, 'minute') : $plural($m, 'minute'));
 };
 $cores = (int) ($server['cpu']['cores'] ?? 0);
+$utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotime($t)) : '';
 ?>
 <div class="page-head">
 	<div>
@@ -162,3 +164,30 @@ $cores = (int) ($server['cpu']['cores'] ?? 0);
 		</section>
 	</div>
 </div>
+
+<section class="card mt" id="services">
+	<h2>Outside services and software</h2>
+	<p class="muted small">Everything the app reaches outside this server, and the outside software built into it. Keys and logins live in the server's .env file and are only shown as set or not set. "Last used" is shown where the app keeps a record.</p>
+	<?php foreach ($services as $grp): ?>
+		<h3 class="mt"><?= e($grp['group']) ?></h3>
+		<div class="svc-grid">
+			<?php foreach ($grp['services'] as $sv): ?>
+				<div class="svc">
+					<div class="svc-head">
+						<strong><?php if ($sv['url']): ?><a href="<?= e($sv['url']) ?>" rel="noopener" target="_blank"><?= e($sv['name']) ?></a><?php else: ?><?= e($sv['name']) ?><?php endif; ?></strong>
+						<?php if ($sv['configured'] === true): ?><span class="chip chip-green">Set up</span><?php elseif ($sv['configured'] === false): ?><span class="chip chip-orange">Not set up</span><?php endif; ?>
+					</div>
+					<dl class="kv">
+						<dt>Used for</dt><dd><?= e($sv['for']) ?></dd>
+						<dt>Interface</dt><dd><?= e($sv['interface']) ?></dd>
+						<dt>Access</dt><dd><?= e($sv['access']) ?></dd>
+						<?php if ($sv['last']): ?><dt>Last used</dt><dd><?= e($utc($sv['last'])) ?></dd><?php endif; ?>
+						<?php foreach ($sv['storage'] as [$what, $detail]): ?>
+							<dt><?= e($what) ?></dt><dd class="small"><?= e($detail) ?></dd>
+						<?php endforeach; ?>
+					</dl>
+				</div>
+			<?php endforeach; ?>
+		</div>
+	<?php endforeach; ?>
+</section>

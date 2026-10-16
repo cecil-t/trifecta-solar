@@ -7,11 +7,12 @@ use App\Backup;
 use App\Db;
 use App\Migrator;
 use App\ServerInfo;
+use App\ThirdParty;
 use App\TlsInfo;
 use App\Version;
 use App\View;
 
-/** About this app: credits, the deployed code version, where it runs, and the data it holds. */
+/** About this app: credits, the deployed code version, where it runs, the data it holds, and the outside services it uses. */
 final class AboutController
 {
 	public function show(): void
@@ -57,6 +58,7 @@ final class AboutController
 				'db_bytes' => $dbBytes,
 			],
 			'tls' => $tls,
+			'services' => ThirdParty::all(),
 			'server' => ServerInfo::all() + [
 				'disk_free' => @disk_free_space(dirname($dbPath)) ?: null,
 				'disk_total' => @disk_total_space(dirname($dbPath)) ?: null,

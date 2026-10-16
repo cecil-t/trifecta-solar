@@ -1644,3 +1644,9 @@ a[href^="tel:"] { white-space: nowrap; }
 .sam-point .sam-address { flex: 1 1 22rem; }
 .sam-point .sam-address input { width: 100%; }
 .sam-aerial { display: block; width: 100%; max-width: 640px; height: auto; border-radius: var(--radius-sm); background: var(--bg); }
+
+/* About: outside services */
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); gap: .8rem; margin-top: .5rem; }
+.svc { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .7rem .8rem; }
+.svc-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
+.svc .kv { font-size: .85rem; }
