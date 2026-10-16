@@ -48,6 +48,7 @@ final class AboutController
 				'server' => $_SERVER['SERVER_SOFTWARE'] ?? null,
 				'apache' => self::apacheVersion(),
 				'php' => PHP_VERSION . ' (' . PHP_SAPI . ')',
+				'python' => ThirdParty::python(),
 				'os' => $os,
 				'docker' => is_file('/.dockerenv'),
 				'hostname' => gethostname() ?: null,

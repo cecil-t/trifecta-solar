@@ -55,7 +55,7 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 				<?php else: ?>
 					<dt>Code version</dt><dd class="muted">Not available (no .git folder on this server)</dd>
 				<?php endif; ?>
-				<dt>Built with</dt><dd>PHP, SQLite and Apache in Docker, with no framework and no JavaScript build step</dd>
+				<dt>Built with</dt><dd>PHP, SQLite and Apache in Docker, with no framework and no JavaScript build step; Python for SAM and PDFs</dd>
 			</dl>
 		</section>
 
@@ -109,6 +109,7 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 					<dt>Web server</dt><dd><?= e($host['server']) ?></dd>
 				<?php endif; ?>
 				<dt>PHP</dt><dd><?= e($host['php']) ?></dd>
+				<?php if ($host['python']): ?><dt>Python</dt><dd><?= e($host['python']) ?> <span class="muted small">(SAM and WeasyPrint)</span></dd><?php endif; ?>
 				<dt>Database</dt><dd>SQLite <?= e($host['sqlite']) ?>, <?= e($host['journal']) ?> mode, <?= e($bytes((float) $host['db_bytes'])) ?></dd>
 			</dl>
 

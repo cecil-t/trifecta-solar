@@ -162,6 +162,12 @@ final class ThirdParty
 		return $hits && preg_match('/-([^-]+)\.dist-info$/', $hits[0], $m) ? $m[1] : null;
 	}
 
+	/** Python version of the SAM venv (the WeasyPrint venv is made from the same Python), or null. */
+	public static function python(): ?string
+	{
+		return self::pythonVersion(dirname(Sam::python(), 2));
+	}
+
 	private static function pythonVersion(string $venv): ?string
 	{
 		$cfg = @file_get_contents($venv . '/pyvenv.cfg');
