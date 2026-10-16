@@ -1637,7 +1637,7 @@ a[href^="tel:"] { white-space: nowrap; }
 .table-commissions td { vertical-align: middle; }
 .table-commissions td:nth-child(2) { white-space: normal; min-width: 10rem; }
 
-/* Lists > SAM: the weather point form */
+/* Lists > Proposal APIs: the point and address forms, the aerial image */
 .sam-point { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; margin-top: .6rem; }
 .sam-point label { display: flex; flex-direction: column; gap: .2rem; font-size: .8rem; font-weight: 600; margin: 0; }
 .sam-point input { width: 9rem; }

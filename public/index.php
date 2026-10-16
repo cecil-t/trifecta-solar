@@ -209,13 +209,15 @@ $r->post('/admin/display-links/{id}', [DisplayKeyController::class, 'rename'], '
 $r->post('/admin/display-links/{id}/revoke', [DisplayKeyController::class, 'revoke'], 'admin');
 
 // Admin: monitoring API test (one call per click; Enphase OAuth connect and callback)
-$r->get('/admin/sam', [SamController::class, 'test'], 'admin');
-$r->post('/admin/sam', [SamController::class, 'run'], 'admin');
-$r->post('/admin/sam/weather', [SamController::class, 'weather'], 'admin');
-$r->post('/admin/sam/rates', [SamController::class, 'rates'], 'admin');
-$r->post('/admin/sam/pdf', [SamController::class, 'pdf'], 'admin');
-$r->post('/admin/sam/google', [SamController::class, 'google'], 'admin');
-$r->get('/admin/sam/aerial', [SamController::class, 'aerial'], 'admin');
+// Admin: Proposal APIs (SAM, weather, utility rates, Google, PDF); /admin/sam was its first address
+$r->get('/admin/sam', [SamController::class, 'moved'], 'admin');
+$r->get('/admin/proposal-apis', [SamController::class, 'test'], 'admin');
+$r->post('/admin/proposal-apis', [SamController::class, 'run'], 'admin');
+$r->post('/admin/proposal-apis/weather', [SamController::class, 'weather'], 'admin');
+$r->post('/admin/proposal-apis/rates', [SamController::class, 'rates'], 'admin');
+$r->post('/admin/proposal-apis/pdf', [SamController::class, 'pdf'], 'admin');
+$r->post('/admin/proposal-apis/google', [SamController::class, 'google'], 'admin');
+$r->get('/admin/proposal-apis/aerial', [SamController::class, 'aerial'], 'admin');
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');

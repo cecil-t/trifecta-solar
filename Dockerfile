@@ -13,7 +13,7 @@ RUN a2enmod headers \
 # its own Python venv, plus SAM's CEC module and inverter libraries from the matching SAM release
 # (checked by hash). Both live in /opt/sam, outside the app folder, because docker-compose.yml
 # bind-mounts the repo over /var/www/app. bin/sam.py runs it; App\Sam calls that script.
-# To upgrade: change the versions and hashes here, rebuild, then run Lists > SAM > Check.
+# To upgrade: change the versions and hashes here, rebuild, then run Lists > Proposal APIs > Run check.
 ARG PYSAM_VERSION=8.0.0
 ARG SAM_LIBRARY_TAG=2026.7.3.r0.ssc.308
 ARG SAM_MODULES_SHA256=a28cf8956a839ed98bb941809b439e4907f5b4c237bd9299bc123fb502c29aff
@@ -32,7 +32,7 @@ RUN apt-get update \
 # WeasyPrint turns the app's HTML (proposals, reports) into PDF: its own venv in /opt/pdf, plus the
 # Pango and HarfBuzz libraries it draws text with and basic fonts (Liberation is metric-compatible
 # with Arial, Helvetica and Times). App\Pdf calls it. To upgrade: change the version, rebuild, then
-# run Lists > SAM > Test PDF.
+# run Lists > Proposal APIs > Test PDF.
 ARG WEASYPRINT_VERSION=70.0
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-liberation fonts-dejavu-core \

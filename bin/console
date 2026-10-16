@@ -23,7 +23,7 @@ declare(strict_types=1);
  *   fix:payment-labels [--dry-run]            Name payment milestones the first import left blank
  *   fix:completed-payments [--dry-run]        Mark open payments received (today) on Completed projects
  *   fix:question-defaults [--dry-run]         Fill blank SolarEdge warranty / rebate / VNM answers with No where known
- *   sam:check                                 Check that SAM (PySAM) is installed and runs (read-only; also Lists > SAM)
+ *   sam:check                                 Check that SAM (PySAM) is installed and runs (read-only; also Lists > Proposal APIs)
  *   geo:check [--dry-run]                     Township / county lookup for every project address not yet checked; lists mismatches
  *   monitor:poll [--vendor=X] [--force] [--dry-run]
  *                                             Inverter monitoring collector (run every 15 minutes from cron). Pulls each

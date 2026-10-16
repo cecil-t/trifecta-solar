@@ -1,6 +1,6 @@
 <?php
 /**
- * Test document for Lists > SAM > Test PDF: the logo, page footer with page numbers, a table, an SVG
+ * Test document for Lists > Proposal APIs > Test PDF: the logo, page footer with page numbers, a table, an SVG
  * chart, a two-column grid and a page break. Made-up numbers.
  *
  * @var string $at when it was made

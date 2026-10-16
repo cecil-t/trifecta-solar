@@ -33,8 +33,8 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 ?>
 <div class="page-head">
 	<div>
-		<h1>SAM</h1>
-		<p class="muted">SAM (System Advisor Model, National Laboratory of the Rockies) on this server, for production estimates. Admins only; nothing here is shown to anyone else.</p>
+		<h1>Proposal APIs</h1>
+		<p class="muted">The services the proposal system will use, each with a test: Google (address, roof and aerial), NSRDB weather, OpenEI utility rates, SAM (System Advisor Model) for production and bills, and PDF output. Admins only; nothing here is shown to anyone else.</p>
 	</div>
 </div>
 
@@ -80,7 +80,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<div class="flash flash-error"><?= e($googleError) ?></div>
 	<?php endif; ?>
 
-	<form method="post" action="/admin/sam/google#google" class="sam-point">
+	<form method="post" action="/admin/proposal-apis/google#google" class="sam-point">
 		<?= Csrf::field() ?>
 		<label class="sam-address">Address <input type="text" name="address" value="<?= e($address) ?>" placeholder="123 Main St, Springfield, PA 17000" maxlength="300" required></label>
 		<button type="submit" class="btn btn-primary">Look up</button>
@@ -95,7 +95,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 			<dt>Point</dt><dd><?= e($deg($g['lat'])) ?>, <?= e($deg($g['lon'])) ?> <span class="muted small">(<?= e(strtolower(str_replace('_', ' ', $g['precision']))) ?>, <?= e(number_format($g['ms'] / 1000, 1)) ?> s)</span></dd>
 			<dt>Parts</dt><dd><?= e(implode(' | ', array_filter([$g['parts']['street'], $g['parts']['city'], $g['parts']['township'] !== $g['parts']['city'] ? $g['parts']['township'] : '', $g['parts']['county'], $g['parts']['state'], $g['parts']['zip']]))) ?></dd>
 		</dl>
-		<img class="sam-aerial mt" src="/admin/sam/aerial?lat=<?= e(rawurlencode($deg($g['lat']))) ?>&amp;lon=<?= e(rawurlencode($deg($g['lon']))) ?>&amp;zoom=20" alt="Aerial image at the point" width="640" height="400">
+		<img class="sam-aerial mt" src="/admin/proposal-apis/aerial?lat=<?= e(rawurlencode($deg($g['lat']))) ?>&amp;lon=<?= e(rawurlencode($deg($g['lon']))) ?>&amp;zoom=20" alt="Aerial image at the point" width="640" height="400">
 
 		<h3 class="mt">Solar API roof model</h3>
 		<?php if (!$bi['ok']): ?>
@@ -139,7 +139,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<div class="flash flash-error"><?= e($weatherError) ?></div>
 	<?php endif; ?>
 
-	<form method="post" action="/admin/sam/weather" class="sam-point">
+	<form method="post" action="/admin/proposal-apis/weather" class="sam-point">
 		<?= Csrf::field() ?>
 		<label>Latitude <input type="text" name="lat" value="<?= e($point['lat']) ?>" inputmode="decimal" placeholder="40.1600" required></label>
 		<label>Longitude <input type="text" name="lon" value="<?= e($point['lon']) ?>" inputmode="decimal" placeholder="-76.3900" required></label>
@@ -210,7 +210,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<div class="flash flash-error"><?= e($ratesError) ?></div>
 	<?php endif; ?>
 
-	<form method="post" action="/admin/sam/rates#rates" class="sam-point">
+	<form method="post" action="/admin/proposal-apis/rates#rates" class="sam-point">
 		<?= Csrf::field() ?>
 		<label>Latitude <input type="text" name="lat" value="<?= e($rf['lat']) ?>" inputmode="decimal" placeholder="40.1600" required></label>
 		<label>Longitude <input type="text" name="lon" value="<?= e($rf['lon']) ?>" inputmode="decimal" placeholder="-76.3900" required></label>
@@ -259,7 +259,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 						<td class="num"><?php if ($rt['energy_min'] !== null): ?><?= e(number_format($rt['energy_min'], 4)) ?><?= $rt['energy_max'] > $rt['energy_min'] ? ' to ' . e(number_format($rt['energy_max'], 4)) : '' ?><?php endif; ?></td>
 						<td class="num"><?= $rt['fixed'] !== null ? '$' . e(number_format($rt['fixed'], 2)) . ' <span class="muted small">' . e($rt['fixed_units']) . '</span>' : '' ?></td>
 						<td>
-							<form method="post" action="/admin/sam/rates#rates">
+							<form method="post" action="/admin/proposal-apis/rates#rates">
 								<?= Csrf::field() ?>
 								<input type="hidden" name="lat" value="<?= e($rf['lat']) ?>">
 								<input type="hidden" name="lon" value="<?= e($rf['lon']) ?>">
@@ -283,7 +283,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 	<?php if ($pdfError): ?>
 		<div class="flash flash-error"><?= e($pdfError) ?></div>
 	<?php endif; ?>
-	<form method="post" action="/admin/sam/pdf" target="_blank" class="mt">
+	<form method="post" action="/admin/proposal-apis/pdf" target="_blank" class="mt">
 		<?= Csrf::field() ?>
 		<button type="submit" class="btn btn-primary"<?= $pdfInstalled ? '' : ' disabled' ?>>Test PDF</button>
 		<span class="muted small"><?= $pdfInstalled ? 'Opens in a new tab.' : 'Not installed: rebuild the Docker image.' ?></span>
@@ -300,7 +300,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<dt>OpenEI key</dt><dd><?= $openeiConfigured ? 'Set' : 'Not set' ?></dd>
 		<dt>Google key</dt><dd><?= $googleConfigured ? 'Set' : 'Not set' ?></dd>
 	</dl>
-	<form method="post" action="/admin/sam" class="mt">
+	<form method="post" action="/admin/proposal-apis" class="mt">
 		<?= Csrf::field() ?>
 		<button type="submit" class="btn btn-primary">Run check</button>
 		<span class="muted small">Starts SAM, reads the library files and runs the detailed PV model once (about a second).</span>

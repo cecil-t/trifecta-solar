@@ -12,7 +12,7 @@ use App\View;
 use App\Weather;
 
 /**
- * Lists > SAM (admin): checks that SAM (System Advisor Model) is installed and runs, fetches
+ * Lists > Proposal APIs (admin): checks that SAM (System Advisor Model) is installed and runs, fetches
  * NSRDB weather for a point and runs SAM's example system on it, and lists OpenEI utility rates at
  * a point with SAM's bill for one of them, looks up an address with Google (point, roof segments and
  * an aerial image) and makes a test PDF with WeasyPrint. A test bench for the production and savings
@@ -24,6 +24,12 @@ final class SamController
 	public function test(): void
 	{
 		$this->render();
+	}
+
+	/** The page's first address. */
+	public function moved(): void
+	{
+		redirect('/admin/proposal-apis');
 	}
 
 	public function run(): void
@@ -153,7 +159,7 @@ final class SamController
 	{
 		$office = Weather::location();
 		View::render('sam/test', $vars + [
-			'title' => 'SAM',
+			'title' => 'Proposal APIs',
 			'installed' => Sam::installed(),
 			'python' => Sam::python(),
 			'libFolder' => Sam::libFolder(),
