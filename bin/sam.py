@@ -13,7 +13,8 @@ Actions:
 	          the made-up weather means nothing.
 	weather   {"weather_file": path to an NSRDB CSV}: the file's point and yearly irradiance, and
 	          SAM's default example system run on it fixed, single-axis and dual-axis (kWh per kW DC),
-	          as a sanity check of the weather. Not an estimate for any real system.
+	          as a sanity check of the weather, with PVWatts v8 set up to match each case for
+	          comparison. Not an estimate for any real system.
 	bill      {"rate": one URDB rate (OpenEI, full detail), "monthly_kwh": n}: the rate converted
 	          for SAM (UtilityRateTools.URDBv8_to_ElectricityRates) and SAM's Utilityrate5 bill
 	          for a flat use of n kWh every month with no solar, as a check that the rate reads right.
@@ -108,12 +109,43 @@ def read_weather_summary(path):
 	}
 
 
-# Mounting cases for the weather test, on SAM's default example system: [label, settings]
+# Mounting cases for the weather test, on SAM's default example system: [label, detailed model settings, PVWatts array_type]
+# PVWatts array types: 0 fixed open rack, 1 fixed roof mount, 2 single-axis, 3 single-axis with backtracking, 4 dual-axis
 WEATHER_CASES = [
-	('Fixed, 30 degree tilt, due south', {'subarray1_track_mode': 0, 'subarray1_tilt': 30, 'subarray1_azimuth': 180}),
-	('Single-axis tracker (north-south axis, backtracking)', {'subarray1_track_mode': 1, 'subarray1_tilt': 0, 'subarray1_azimuth': 180, 'subarray1_backtrack': 1}),
-	('Dual-axis tracker', {'subarray1_track_mode': 2}),
+	('Fixed, 30 degree tilt, due south', {'subarray1_track_mode': 0, 'subarray1_tilt': 30, 'subarray1_azimuth': 180}, 0),
+	('Single-axis tracker (north-south axis, backtracking)', {'subarray1_track_mode': 1, 'subarray1_tilt': 0, 'subarray1_azimuth': 180, 'subarray1_backtrack': 1}, 3),
+	('Dual-axis tracker', {'subarray1_track_mode': 2}, 4),
 ]
+
+
+def pvwatts_like(m, path, array_type):
+	"""PVWatts v8 set up to match a detailed-model run: same size, DC/AC ratio, tilt, azimuth and ground
+	coverage, its losses combined into one percentage, the inverter's CEC efficiency, and the module's
+	bifaciality. Returns kWh per kW DC for year one."""
+	import PySAM.Pvwattsv8 as pvwatts
+
+	soiling = sum(m.value('subarray1_soiling')) / 12
+	parts = [soiling] + [m.value(k) for k in ('subarray1_mismatch_loss', 'subarray1_diodeconn_loss', 'subarray1_dcwiring_loss',
+		'subarray1_tracking_loss', 'subarray1_nameplate_loss', 'dcoptimizer_loss', 'acwiring_loss', 'transmission_loss')]
+	keep = 1.0
+	for loss in parts:
+		keep *= 1 - loss / 100
+	kw = m.value('system_capacity')
+	w = pvwatts.default('PVWattsNone')
+	w.SolarResource.solar_resource_file = path
+	sd = w.SystemDesign
+	sd.system_capacity = kw
+	sd.dc_ac_ratio = kw * 1000 / (m.value('inverter_count') * m.value('inv_snl_paco'))
+	sd.array_type = array_type
+	sd.tilt = m.value('subarray1_tilt')
+	sd.azimuth = m.value('subarray1_azimuth')
+	sd.gcr = m.value('subarray1_gcr')
+	sd.inv_eff = m.value('inv_snl_eff_cec')
+	sd.losses = (1 - keep) * 100
+	sd.module_type = 1   # premium (about 21% efficient, like the example's module)
+	sd.bifaciality = m.value('cec_bifaciality') if m.value('cec_is_bifacial') else 0
+	w.execute()
+	return w.Outputs.ac_annual / kw, sd.losses
 
 
 def weather(req):
@@ -124,7 +156,7 @@ def weather(req):
 	if not path or not os.path.isfile(path):
 		raise ValueError('Weather file not found.')
 	reply = {'weather': read_weather_summary(path), 'runs': []}
-	for label, settings in WEATHER_CASES:
+	for label, settings, array_type in WEATHER_CASES:
 		t0 = time.time()
 		m = pvsam.default('FlatPlatePVNone')
 		m.SolarResource.solar_resource_file = path
@@ -133,12 +165,20 @@ def weather(req):
 			m.value(k, v)
 		m.execute()
 		kw = m.value('system_capacity')
+		detailed = m.Outputs.annual_energy / kw
+		seconds = time.time() - t0
+		t1 = time.time()
+		pvw, pvw_losses = pvwatts_like(m, path, array_type)
 		reply['runs'].append({
 			'case': label,
-			'kwh_per_kw': round(m.Outputs.annual_energy / kw),
+			'kwh_per_kw': round(detailed),
 			'clip_loss_percent': round(m.Outputs.annual_ac_inv_clip_loss_percent, 1),
-			'seconds': round(time.time() - t0, 2),
+			'seconds': round(seconds, 2),
+			'pvwatts_kwh_per_kw': round(pvw),
+			'pvwatts_vs_detailed_percent': round((pvw - detailed) / detailed * 100, 1),
+			'pvwatts_seconds': round(time.time() - t1, 2),
 		})
+		reply['pvwatts_losses'] = round(pvw_losses, 1)
 	reply['system'] = 'SAM default example system: %.0f kW DC, DC/AC ratio %.2f, 5%% soiling' % (
 		m.value('system_capacity'), m.value('system_capacity') * 1000 / (m.value('inverter_count') * m.value('inv_snl_paco')))
 	return reply

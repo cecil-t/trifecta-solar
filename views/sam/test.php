@@ -165,19 +165,21 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 			<?php if (!empty($sam['trace'])): ?><pre class="small"><?= e((string) $sam['trace']) ?></pre><?php endif; ?>
 		<?php else: ?>
 			<div class="table-wrap mt"><table class="table">
-				<thead><tr><th>SAM example system</th><th class="num">kWh per kW DC</th><th class="num">Clipping</th><th class="num">Run</th></tr></thead>
+				<thead><tr><th>SAM example system</th><th class="num">Detailed, kWh per kW DC</th><th class="num">PVWatts, kWh per kW DC</th><th class="num">PVWatts vs detailed</th><th class="num">Clipping</th><th class="num">Run</th></tr></thead>
 				<tbody>
-				<?php foreach ($sam['runs'] as $run): ?>
+				<?php foreach ($sam['runs'] as $run): $diff = (float) ($run['pvwatts_vs_detailed_percent'] ?? 0); ?>
 					<tr>
 						<td><?= e((string) $run['case']) ?></td>
 						<td class="num"><?= e(number_format((int) $run['kwh_per_kw'])) ?></td>
+						<td class="num"><?= isset($run['pvwatts_kwh_per_kw']) ? e(number_format((int) $run['pvwatts_kwh_per_kw'])) : '' ?></td>
+						<td class="num"><?= isset($run['pvwatts_kwh_per_kw']) ? e(($diff > 0 ? '+' : '') . number_format($diff, 1)) . '%' : '' ?></td>
 						<td class="num"><?= e(number_format((float) $run['clip_loss_percent'], 1)) ?>%</td>
-						<td class="num"><?= e(number_format((float) $run['seconds'], 2)) ?> s</td>
+						<td class="num"><?= e(number_format((float) $run['seconds'] + (float) ($run['pvwatts_seconds'] ?? 0), 2)) ?> s</td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table></div>
-			<p class="muted small"><?= e((string) $sam['system']) ?>. Whole call <?= e(number_format((int) $sam['ms'] / 1000, 2)) ?> s, peak memory <?= (int) $sam['peak_memory_mb'] ?> MB.</p>
+			<p class="muted small"><?= e((string) $sam['system']) ?>. PVWatts v8 is set up to match it: same size, DC/AC ratio, tilt, azimuth and row spacing, the example's losses combined into <?= e(number_format((float) ($sam['pvwatts_losses'] ?? 0), 1)) ?>%, its inverter's efficiency and a bifacial premium module. Whole call <?= e(number_format((int) $sam['ms'] / 1000, 2)) ?> s, peak memory <?= (int) $sam['peak_memory_mb'] ?> MB.</p>
 		<?php endif; ?>
 	<?php endif; ?>
 
