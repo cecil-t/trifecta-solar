@@ -56,7 +56,6 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 					<dt>Code version</dt><dd class="muted">Not available (no .git folder on this server)</dd>
 				<?php endif; ?>
 				<dt>Built with</dt><dd>PHP, SQLite and Apache in Docker, with no framework and no JavaScript build step</dd>
-				<dt>Weather</dt><dd><a href="https://open-meteo.com/" rel="noopener" target="_blank">Open-Meteo</a> <span class="muted small">(CC BY 4.0)</span></dd>
 			</dl>
 		</section>
 
