@@ -14,6 +14,9 @@ Actions:
 	weather   {"weather_file": path to an NSRDB CSV}: the file's point and yearly irradiance, and
 	          SAM's default example system run on it fixed, single-axis and dual-axis (kWh per kW DC),
 	          as a sanity check of the weather. Not an estimate for any real system.
+	bill      {"rate": one URDB rate (OpenEI, full detail), "monthly_kwh": n}: the rate converted
+	          for SAM (UtilityRateTools.URDBv8_to_ElectricityRates) and SAM's Utilityrate5 bill
+	          for a flat use of n kWh every month with no solar, as a check that the rate reads right.
 
 SAM_LIB (environment) is the folder holding cec_modules.csv, cec_inverters.csv and VERSION.
 """
@@ -141,7 +144,47 @@ def weather(req):
 	return reply
 
 
-ACTIONS = {'check': check, 'weather': weather}
+def bill(req):
+	"""Convert one URDB rate for SAM and bill a flat monthly use with no solar."""
+	import PySAM.Utilityrate5 as utilityrate
+	from PySAM.UtilityRateTools import URDBv8_to_ElectricityRates
+
+	rate = req.get('rate')
+	if not isinstance(rate, dict):
+		raise ValueError('No rate given.')
+	monthly_kwh = float(req.get('monthly_kwh') or 1000)
+	rates = URDBv8_to_ElectricityRates(rate)
+	m = utilityrate.new()
+	m.ElectricityRates.assign(rates)
+	m.ElectricityRates.rate_escalation = [0]
+	m.Lifetime.analysis_period = 1
+	m.Lifetime.system_use_lifetime_output = 0
+	m.Lifetime.inflation_rate = 0
+	m.SystemOutput.gen = [0] * 8760
+	m.SystemOutput.degradation = [0]
+	# the same use every hour, scaled so each 30-day month is monthly_kwh (31-day months use a bit more)
+	m.Load.load = [monthly_kwh * 12 / 8760] * 8760
+	m.execute()
+	o = m.Outputs
+	months = [round(e + f, 2) for e, f in zip(o.year1_monthly_ec_charge_without_system, o.year1_monthly_fixed_without_system)]
+	tou = rates.get('ur_ec_tou_mat', [])
+	return {
+		'monthly_kwh': monthly_kwh,
+		'annual_bill': round(o.utility_bill_wo_sys_year1, 2),
+		'monthly_bills': months,
+		'energy_charges': round(sum(o.year1_monthly_ec_charge_without_system), 2),
+		'fixed_charges': round(sum(o.year1_monthly_fixed_without_system), 2),
+		'sam_rate': {
+			'periods': len({row[0] for row in tou}),
+			'tiers': len(tou),
+			'monthly_fixed': rates.get('ur_monthly_fixed_charge'),
+			'metering': {0: 'Net metering', 2: 'Net billing, instantaneous', 3: 'Net billing, hourly', 4: 'Buy all, sell all'}.get(rates.get('ur_metering_option'), 'Other'),
+			'demand_charges': bool(rates.get('ur_dc_enable')),
+		},
+	}
+
+
+ACTIONS = {'check': check, 'weather': weather, 'bill': bill}
 
 
 def main():

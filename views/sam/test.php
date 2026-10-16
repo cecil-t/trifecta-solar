@@ -12,8 +12,15 @@ use App\Csrf;
  * @var array   $point         lat and lon for the weather form
  * @var ?array  $weather       file (SolarResource::forPoint), sam (reply from the weather action), at
  * @var ?string $weatherError
+ * @var bool    $openeiConfigured OPENEI_API_KEY is set
+ * @var array   $sectors       URDB sectors
+ * @var ?array  $rateForm      lat, lon, sector, kwh for the rates form
+ * @var ?array  $rates         list (UtilityRates::summary rows), ms, at
+ * @var ?string $ratesError
+ * @var ?array  $bill          summary and sam (reply from the bill action), or error
  */
 $test = $result['test_run'] ?? null;
+$rf = $rateForm ?? ['lat' => $point['lat'], 'lon' => $point['lon'], 'sector' => 'Residential', 'kwh' => '1000'];
 $wx = $weather['sam']['weather'] ?? null;
 $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotime($t . ' UTC')) : '';
 $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((float) $v, 4, '.', ''), '0'), '.');
@@ -127,6 +134,84 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 	<?php endif; ?>
 </section>
 
+<section class="card mt" id="rates">
+	<h2>Utility rates</h2>
+	<p class="muted small">Rates in effect at a point from OpenEI's Utility Rate Database (approved rates only). Bill runs one rate through SAM's bill calculator for the same use every month with no solar, as a check that SAM reads the rate right. Nothing is saved.</p>
+	<?php if (!$openeiConfigured): ?>
+		<p class="muted">Not set up. Add <code>OPENEI_API_KEY</code> to the server .env file (free key from openei.org/services/api/signup).</p>
+	<?php endif; ?>
+
+	<?php if ($ratesError): ?>
+		<div class="flash flash-error"><?= e($ratesError) ?></div>
+	<?php endif; ?>
+
+	<form method="post" action="/admin/sam/rates#rates" class="sam-point">
+		<?= Csrf::field() ?>
+		<label>Latitude <input type="text" name="lat" value="<?= e($rf['lat']) ?>" inputmode="decimal" placeholder="40.1600" required></label>
+		<label>Longitude <input type="text" name="lon" value="<?= e($rf['lon']) ?>" inputmode="decimal" placeholder="-76.3900" required></label>
+		<label>Sector
+			<select name="sector">
+				<?php foreach ($sectors as $s): ?><option value="<?= e($s) ?>"<?= $rf['sector'] === $s ? ' selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?>
+			</select>
+		</label>
+		<label>kWh a month <input type="text" name="kwh" value="<?= e($rf['kwh']) ?>" inputmode="decimal"></label>
+		<button type="submit" class="btn btn-primary">Find rates</button>
+	</form>
+
+	<?php if ($bill): ?>
+		<?php if (isset($bill['error'])): ?>
+			<div class="flash flash-error mt"><?= e($bill['error']) ?></div>
+		<?php else: ?>
+			<?php $bs = $bill['summary']; $b = $bill['sam']; ?>
+			<h3 class="mt">Bill: <?= e($bs['utility']) ?>, <?= e($bs['name']) ?></h3>
+			<?php if (!$b['ok']): ?>
+				<div class="flash flash-error"><?= e($b['error']) ?></div>
+				<?php if (!empty($b['trace'])): ?><pre class="small"><?= e((string) $b['trace']) ?></pre><?php endif; ?>
+			<?php else: ?>
+				<dl class="kv">
+					<dt>Use</dt><dd><?= e(number_format((float) $b['monthly_kwh'])) ?> kWh a month, no solar</dd>
+					<dt>Year one bill</dt><dd>$<?= e(number_format((float) $b['annual_bill'], 2)) ?> (energy $<?= e(number_format((float) $b['energy_charges'], 2)) ?>, fixed $<?= e(number_format((float) $b['fixed_charges'], 2)) ?>)</dd>
+					<dt>Months</dt><dd class="small"><?= e(implode(', ', array_map(static fn ($v) => '$' . number_format((float) $v, 2), $b['monthly_bills']))) ?></dd>
+					<dt>As SAM reads it</dt><dd><?= (int) $b['sam_rate']['periods'] ?> <?= (int) $b['sam_rate']['periods'] === 1 ? 'period' : 'periods' ?>, <?= (int) $b['sam_rate']['tiers'] ?> <?= (int) $b['sam_rate']['tiers'] === 1 ? 'tier' : 'tiers' ?>, <?= e((string) $b['sam_rate']['metering']) ?><?= $b['sam_rate']['monthly_fixed'] !== null ? ', $' . e(number_format((float) $b['sam_rate']['monthly_fixed'], 2)) . ' a month fixed' : '' ?><?= $b['sam_rate']['demand_charges'] ? ', demand charges' : '' ?></dd>
+					<?php if (safe_url($bs['uri']) !== null): ?><dt>On OpenEI</dt><dd><a href="<?= e(safe_url($bs['uri'])) ?>" target="_blank" rel="noopener">View the rate</a></dd><?php endif; ?>
+				</dl>
+			<?php endif; ?>
+		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ($rates): ?>
+		<h3 class="mt"><?= count($rates['list']) ?> <?= count($rates['list']) === 1 ? 'rate' : 'rates' ?> in effect</h3>
+		<p class="muted small"><?= e($rates['at']) ?>, <?= e(number_format((int) $rates['ms'] / 1000, 1)) ?> s</p>
+		<?php if ($rates['list']): ?>
+			<div class="table-wrap"><table class="table">
+				<thead><tr><th>Utility</th><th>Rate</th><th>Since</th><th class="num">Energy $/kWh</th><th class="num">Fixed</th><th></th></tr></thead>
+				<tbody>
+				<?php foreach ($rates['list'] as $rt): ?>
+					<tr>
+						<td><?= e($rt['utility']) ?></td>
+						<td><?= e($rt['name']) ?><?= $rt['is_default'] ? ' <span class="muted small">(default)</span>' : '' ?><?= $rt['periods'] > 1 ? ' <span class="muted small">(' . (int) $rt['periods'] . ' periods)</span>' : '' ?><?= $rt['demand'] ? ' <span class="muted small">(demand)</span>' : '' ?></td>
+						<td><?= $rt['start'] ? e(gmdate('m/d/Y', $rt['start'])) : '' ?></td>
+						<td class="num"><?php if ($rt['energy_min'] !== null): ?><?= e(number_format($rt['energy_min'], 4)) ?><?= $rt['energy_max'] > $rt['energy_min'] ? ' to ' . e(number_format($rt['energy_max'], 4)) : '' ?><?php endif; ?></td>
+						<td class="num"><?= $rt['fixed'] !== null ? '$' . e(number_format($rt['fixed'], 2)) . ' <span class="muted small">' . e($rt['fixed_units']) . '</span>' : '' ?></td>
+						<td>
+							<form method="post" action="/admin/sam/rates#rates">
+								<?= Csrf::field() ?>
+								<input type="hidden" name="lat" value="<?= e($rf['lat']) ?>">
+								<input type="hidden" name="lon" value="<?= e($rf['lon']) ?>">
+								<input type="hidden" name="sector" value="<?= e($rf['sector']) ?>">
+								<input type="hidden" name="kwh" value="<?= e($rf['kwh']) ?>">
+								<input type="hidden" name="label" value="<?= e($rt['label']) ?>">
+								<button type="submit" class="btn btn-small">Bill</button>
+							</form>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table></div>
+		<?php endif; ?>
+	<?php endif; ?>
+</section>
+
 <section class="card mt">
 	<h2>Setup</h2>
 	<dl class="kv">
@@ -134,6 +219,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<dt>Python</dt><dd><code><?= e($python) ?></code></dd>
 		<dt>Libraries</dt><dd><code><?= e($libFolder) ?></code></dd>
 		<dt>NSRDB key</dt><dd><?= $nlrConfigured ? 'Set' : 'Not set' ?></dd>
+		<dt>OpenEI key</dt><dd><?= $openeiConfigured ? 'Set' : 'Not set' ?></dd>
 	</dl>
 	<form method="post" action="/admin/sam" class="mt">
 		<?= Csrf::field() ?>

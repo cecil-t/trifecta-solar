@@ -212,6 +212,7 @@ $r->post('/admin/display-links/{id}/revoke', [DisplayKeyController::class, 'revo
 $r->get('/admin/sam', [SamController::class, 'test'], 'admin');
 $r->post('/admin/sam', [SamController::class, 'run'], 'admin');
 $r->post('/admin/sam/weather', [SamController::class, 'weather'], 'admin');
+$r->post('/admin/sam/rates', [SamController::class, 'rates'], 'admin');
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');
 $r->post('/admin/monitor-test', [MonitorController::class, 'run'], 'admin');
 $r->post('/admin/monitor-test/enlighten-forget', [MonitorController::class, 'enlightenForget'], 'admin');
