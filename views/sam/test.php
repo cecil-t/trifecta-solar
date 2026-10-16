@@ -293,7 +293,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 </section>
 
 <section class="card mt">
-	<h2>Setup</h2>
+	<h2>System Advisor Model (SAM) setup</h2>
 	<dl class="kv">
 		<dt>Installed</dt><dd><?= $installed ? 'Yes' : 'No: rebuild the Docker image' ?></dd>
 		<dt>Python</dt><dd><code><?= e($python) ?></code></dd>
