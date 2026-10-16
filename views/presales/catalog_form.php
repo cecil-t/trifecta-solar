@@ -170,6 +170,32 @@ $dis = $canEdit ? '' : 'disabled';
 			<label>Inverter / micro kW AC <input type="text" name="ac_kw" value="<?= e($n($v('ac_kw'), 3)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Battery kWh <input type="text" name="kwh" value="<?= e($n($v('kwh'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Battery kW <input type="text" name="kw" value="<?= e($n($v('kw'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<div class="checkfield span-2 cec-only">
+				<label for="cec-pick" class="field-label">SAM (CEC) model</label>
+				<div class="picker" data-picker-url="/presales/catalog/cec">
+					<input type="text" id="cec-pick" name="cec_name" value="<?= e($v('cec_name')) ?>" class="picker-input" autocomplete="off" maxlength="200" placeholder="Type part of the model, e.g. SEG 430 BTD or SE11400H 240" role="combobox" aria-expanded="false" aria-controls="cec-list" aria-autocomplete="list" <?= $dis ?>>
+					<input type="hidden" value="" class="picker-id">
+					<ul class="picker-list" id="cec-list" role="listbox" hidden></ul>
+				</div>
+				<small class="hint">The same model in SAM's CEC library, so build sheets can estimate production. Pick from the list; for inverters, the 240 V or 208 V version the job uses.</small>
+			</div>
+			<label class="inv-only">CEC units per inverter
+				<input type="text" name="cec_units" value="<?= e($n($v('cec_units'), 0)) ?>" inputmode="numeric" placeholder="1" <?= $dis ?>>
+				<small class="hint">When the library lists the smaller units this inverter is built from (large SolarEdge commercial).</small>
+			</label>
+			<label class="mod-only">First-year degradation (%)
+				<input type="text" name="degradation_first_pct" value="<?= e($n($v('degradation_first_pct'), 2)) ?>" inputmode="decimal" placeholder="Same as later years" <?= $dis ?>>
+			</label>
+			<label class="mod-only">Annual degradation (%)
+				<input type="text" name="degradation_annual_pct" value="<?= e($n($v('degradation_annual_pct'), 2)) ?>" inputmode="decimal" placeholder="e.g. 0.4" <?= $dis ?>>
+				<small class="hint">Each year after the first, from the module's performance warranty.</small>
+			</label>
+			<label class="equip-only">Product warranty (years)
+				<input type="text" name="product_warranty_years" value="<?= e($n($v('product_warranty_years'), 0)) ?>" inputmode="numeric" <?= $dis ?>>
+			</label>
+			<label class="mod-only">Performance warranty (years)
+				<input type="text" name="performance_warranty_years" value="<?= e($n($v('performance_warranty_years'), 0)) ?>" inputmode="numeric" <?= $dis ?>>
+			</label>
 			<label class="span-2">Manufacturer warranty
 				<input type="text" name="warranty_text" value="<?= e($v('warranty_text')) ?>" maxlength="200" placeholder="e.g. 25 year product, 30 year performance" <?= $dis ?>>
 				<small class="hint">Goes into the build sheet's warranty summary.</small>
@@ -222,3 +248,4 @@ $dis = $canEdit ? '' : 'disabled';
 		<?= App\View::partial('partials/activity', ['entries' => $activity]) ?>
 	</section>
 <?php endif; ?>
+<script src="<?= asset('assets/js/picker.js') ?>"></script>

@@ -11,7 +11,8 @@ final class Designs
 {
 	/** Fields copied from a catalog item into a line (the line's snapshot). */
 	public const SNAPSHOT = ['name', 'qty_rule', 'price', 'shipping', 'setup_cost', 'min_total', 'tax_class', 'watts', 'ac_kw',
-		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'pricing', 'pays_sales'];
+		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'pricing', 'pays_sales',
+		'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
 	/** The fields that make a line's price differ from the catalog today. */
 	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class', 'pricing', 'pays_sales'];
 
@@ -333,8 +334,16 @@ final class Designs
 			$panels = $num($a['panels'] ?? '', 'Panels');
 			$tiltRaw = trim((string) ($a['tilt'] ?? ''));
 			$az = $num($a['azimuth'] ?? '', 'Azimuth');
-			if ($name === '' && $panels === null && $tiltRaw === '' && $az === null) {
+			$shade = $num($a['shading_pct'] ?? '', 'Shading');
+			$shadeNote = trim((string) ($a['shading_note'] ?? ''));
+			if ($name === '' && $panels === null && $tiltRaw === '' && $az === null && $shade === null && $shadeNote === '') {
 				continue;
+			}
+			if ($shade !== null && ($shade < 0 || $shade > 90)) {
+				if ($strict) {
+					throw new \InvalidArgumentException('Shading is a percent loss, 0 to 90.');
+				}
+				$shade = null;
 			}
 			$mount = array_key_exists((string) ($a['mount'] ?? ''), Presales::MOUNTS) ? $a['mount'] : 'roof';
 			try {
@@ -351,7 +360,9 @@ final class Designs
 			$arrays[] = ['name' => $name ?: null, 'mount' => $mount,
 				'material' => $mount === 'roof' && array_key_exists((string) ($a['material'] ?? ''), Projects::ROOF_MATERIALS) ? $a['material'] : null,
 				'azimuth' => $mount === 'tracker' || $az === null ? null : (int) $az, 'tilt' => $tilt,
-				'panels' => $panels === null ? null : (int) $panels, 'sort_order' => count($arrays) + 1];
+				'panels' => $panels === null ? null : (int) $panels,
+				'shading_pct' => $shade, 'shading_note' => $shadeNote !== '' ? mb_substr($shadeNote, 0, 200) : null,
+				'sort_order' => count($arrays) + 1];
 		}
 
 		// Trench builder: segments (keys stay as the page made them) and the circuits in them

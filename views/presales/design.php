@@ -398,7 +398,7 @@ $folded = [];
 				<span class="small" id="arrays-count"><?= $arrays ? (int) $calc['arrays_panels'] . ' panels on arrays, ' . (int) $calc['panels'] . ' modules' : '' ?></span>
 			</div>
 			<div class="eq eq-arrays" data-rows>
-				<div class="eq-head"><span>Array / face</span><span>Mount</span><span>Roof material</span><span>Azimuth</span><span>Tilt</span><span>Panels</span><span>Orientation</span><span></span></div>
+				<div class="eq-head"><span>Array / face</span><span>Mount</span><span>Roof material</span><span>Azimuth</span><span>Tilt</span><span>Panels</span><span>Shade %</span><span>Orientation</span><span></span></div>
 				<?php foreach ($arrays ?: [['mount' => $d['install_type'] === 'ground' ? 'ground' : ($d['install_type'] === 'tracker' ? 'tracker' : 'roof')]] as $i => $a): $tilt = isset($a['tilt']) && $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = isset($a['azimuth']) && $a['azimuth'] !== null && $a['azimuth'] !== '' ? (int) $a['azimuth'] : null; ?>
 					<div class="eq-row array-row<?= $tilt !== null && $tilt > $steep ? ' is-steep' : '' ?>" data-mount="<?= e($a['mount'] ?? 'roof') ?>">
 						<input type="text" name="arrays[<?= $i ?>][name]" value="<?= e($a['name'] ?? '') ?>" placeholder="e.g. South roof, Barn" aria-label="Array or face">
@@ -416,13 +416,15 @@ $folded = [];
 						<input type="number" name="arrays[<?= $i ?>][azimuth]" value="<?= e($a['azimuth'] ?? '') ?>" min="0" max="359" placeholder="180" aria-label="Azimuth in degrees" class="array-fixed-only array-az">
 						<input type="text" name="arrays[<?= $i ?>][tilt]" value="<?= e($tilt === null ? '' : $deg($tilt)) ?>" placeholder="6/12" aria-label="Tilt in degrees or pitch" class="array-fixed-only array-tilt">
 						<input type="number" name="arrays[<?= $i ?>][panels]" value="<?= e($a['panels'] ?? '') ?>" min="0" placeholder="0" aria-label="Panels on this array">
+						<input type="text" name="arrays[<?= $i ?>][shading_pct]" value="<?= e(isset($a['shading_pct']) && $a['shading_pct'] !== null && $a['shading_pct'] !== '' ? rtrim(rtrim(number_format((float) $a['shading_pct'], 1, '.', ''), '0'), '.') : '') ?>" inputmode="decimal" placeholder="0" aria-label="Shading loss in percent" class="array-shade">
 						<span class="array-pitch"><?= $orient($az, $tilt, (string) ($a['mount'] ?? 'roof')) ?></span>
 						<button type="button" class="btn btn-ghost btn-small row-del" title="Remove">&times;</button>
+						<input type="text" name="arrays[<?= $i ?>][shading_note]" value="<?= e($a['shading_note'] ?? '') ?>" maxlength="200" placeholder="Shading note: how it was judged (trees, chimney, Solar API, site visit)" aria-label="Shading note" class="array-shade-note">
 					</div>
 				<?php endforeach; ?>
 				<button type="button" class="btn btn-ghost btn-small row-add">+ Array</button>
 			</div>
-			<p class="hint mt-xs">Azimuth is degrees from true north (180 = south). Tilt takes degrees or a roof pitch like 6/12; over <?= e($deg($steep)) ?>° shows red. Trackers have no fixed tilt or azimuth. <span class="text-red" id="panels-mismatch" <?= $calc['panels_mismatch'] ? '' : 'hidden' ?>>Panels on arrays don't match the module count.</span></p>
+			<p class="hint mt-xs">Azimuth is degrees from true north (180 = south). Tilt takes degrees or a roof pitch like 6/12; over <?= e($deg($steep)) ?>° shows red. Trackers have no fixed tilt or azimuth. Shading is the share of a year's production lost to shade on that array (0 = none); it's a judgment, so note how it was made. <span class="text-red" id="panels-mismatch" <?= $calc['panels_mismatch'] ? '' : 'hidden' ?>>Panels on arrays don't match the module count.</span></p>
 		</section>
 
 		<?php

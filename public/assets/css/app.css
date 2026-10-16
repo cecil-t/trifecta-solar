@@ -1478,7 +1478,8 @@ a[href^="tel:"] { white-space: nowrap; }
 .pl-total > span:first-child { color: var(--muted); font-weight: 600; }
 .content-flags { margin-top: .6rem; padding-top: .5rem; border-top: 1px solid var(--border); }
 
-.eq-arrays .eq-head, .eq-arrays .eq-row { grid-template-columns: minmax(120px, 1fr) 92px 160px 66px 64px 58px 200px 32px; }
+.eq-arrays .eq-head, .eq-arrays .eq-row { grid-template-columns: minmax(90px, 1fr) 80px 142px 64px 54px 52px 52px 206px 32px; }
+.eq-arrays .eq-row > .array-shade-note { grid-column: 1 / -1; font-size: .82rem; padding-top: .3rem; padding-bottom: .3rem; }
 .array-pitch { gap: .25rem; }
 .compass { flex-shrink: 0; }
 .compass circle { fill: #fff; stroke: #b8c2c7; stroke-width: 1.5; }
@@ -1657,4 +1658,22 @@ a[href^="tel:"] { white-space: nowrap; }
 @media (max-width: 640px) {
 	.table-refs th, .table-refs td { padding: .5rem .35rem; font-size: .85rem; }
 	.table-refs th { font-size: .68rem; }
+}
+
+/* Catalog form: production and warranty fields only for the categories that use them */
+.project-form .cec-only, .project-form .inv-only, .project-form .mod-only, .project-form .equip-only { display: none; }
+.project-form:has(select[name=category] :is(option[value=modules], option[value=inverters], option[value=mlpe]):checked) .cec-only { display: flex; }
+.project-form:has(select[name=category] option[value=inverters]:checked) .inv-only,
+.project-form:has(select[name=category] option[value=modules]:checked) .mod-only,
+.project-form:has(select[name=category] :is(option[value=modules], option[value=inverters], option[value=mlpe], option[value=batteries], option[value=racking], option[value=monitoring]):checked) .equip-only { display: flex; }
+@media (max-width: 760px) {
+	/* Build sheet arrays on a phone: name and remove; mount and material; azimuth, tilt, panels; shading and orientation; note */
+	.eq-arrays .eq-row { grid-template-columns: 1fr 1fr 1fr 32px; }
+	.eq-arrays .eq-row > input:first-child { grid-column: 1 / 4; }
+	.eq-arrays .eq-row > .row-del { grid-column: 4; grid-row: 1; }
+	.eq-arrays .eq-row > .array-roof-only { grid-column: 2 / 5; }
+	.eq-arrays .eq-row > input[name$="[panels]"] { grid-column: 3 / 5; }
+	.eq-arrays .eq-row > .array-pitch { grid-column: 2 / 5; }
+	.eq-arrays .eq-row > .array-shade-note { grid-column: 1 / -1; }
+	.eq-arrays .eq-row > .array-tilt, .eq-arrays .eq-row > .array-shade { grid-column: auto; }
 }

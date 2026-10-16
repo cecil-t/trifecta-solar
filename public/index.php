@@ -104,6 +104,7 @@ $r->post('/presales', [PresalesController::class, 'store']);
 $r->get('/presales/catalog', [CatalogController::class, 'index']);
 $r->get('/presales/catalog/new', [CatalogController::class, 'create']);
 $r->post('/presales/catalog', [CatalogController::class, 'store']);
+$r->get('/presales/catalog/cec', [CatalogController::class, 'cec']);
 $r->get('/presales/catalog/{id}', [CatalogController::class, 'edit']);
 $r->post('/presales/catalog/{id}', [CatalogController::class, 'update']);
 $r->post('/presales/catalog/{id}/confirm', [CatalogController::class, 'confirm']);

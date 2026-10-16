@@ -1,0 +1,156 @@
+<?php
+declare(strict_types=1);
+
+namespace App;
+
+/**
+ * SAM's CEC module and inverter libraries (cec_modules.csv and cec_inverters.csv in Sam::libFolder(),
+ * from the SAM release pinned in the Dockerfile). Read straight from the files: a search reads the
+ * names, and a name is valid only when the library lists it exactly.
+ */
+final class CecLibrary
+{
+	public const FILES = ['modules' => 'cec_modules.csv', 'inverters' => 'cec_inverters.csv'];
+
+	/** Which library a catalog category uses, or null when it has none. */
+	public static function kindFor(string $category): ?string
+	{
+		return match ($category) {
+			'modules' => 'modules',
+			'inverters', 'mlpe' => 'inverters',
+			default => null,
+		};
+	}
+
+	public static function available(): bool
+	{
+		return is_file(self::path('modules')) && is_file(self::path('inverters'));
+	}
+
+	private static function path(string $kind): string
+	{
+		return Sam::libFolder() . '/' . self::FILES[$kind];
+	}
+
+	/** Lowercase letters and digits only, so "Q.TRON M-G2+" matches "qtron mg2". */
+	public static function norm(string $s): string
+	{
+		return (string) preg_replace('/[^a-z0-9]/', '', strtolower($s));
+	}
+
+	/**
+	 * Library rows whose name holds every word of the query (punctuation ignored), modules first.
+	 *
+	 * @return list<array{id:string, name:string, kind:string}>  in the picker's shape
+	 */
+	public static function search(string $q, int $limit = 25, ?string $only = null): array
+	{
+		$words = array_values(array_filter(array_map([self::class, 'norm'], preg_split('/\s+/', trim($q)) ?: [])));
+		if (!$words) {
+			return [];
+		}
+		$out = [];
+		foreach (self::index() as $line) {
+			[$kind, $name, $desc, $n] = explode("\t", $line);
+			if ($only !== null && $only !== $kind) {
+				continue;
+			}
+			foreach ($words as $w) {
+				if (!str_contains($n, $w)) {
+					continue 2;
+				}
+			}
+			$out[] = ['id' => $name, 'name' => $name, 'kind' => $desc];
+			if (count($out) >= $limit) {
+				break;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Every library name as "kind, name, description, normalized name" lines, built once per
+	 * library version into a file next to the database (reading the CSVs takes about half a second).
+	 *
+	 * @return list<string>
+	 */
+	private static function index(): array
+	{
+		$stamp = '';
+		foreach (self::FILES as $kind => $file) {
+			$stamp .= is_file(self::path($kind)) ? filemtime(self::path($kind)) . filesize(self::path($kind)) : '0';
+		}
+		$cache = dirname(Db::path()) . '/cec-index-' . substr(sha1($stamp), 0, 12) . '.tsv';
+		if (is_file($cache)) {
+			return file($cache, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+		}
+		$lines = [];
+		foreach (self::FILES as $kind => $file) {
+			foreach (self::rows($kind) as $r) {
+				$lines[] = $kind . "\t" . str_replace("\t", ' ', $r['name']) . "\t" . self::describe($kind, $r) . "\t" . self::norm($r['name']);
+			}
+		}
+		if ($lines) {
+			foreach (glob(dirname(Db::path()) . '/cec-index-*.tsv') ?: [] as $old) {
+				@unlink($old);
+			}
+			@file_put_contents($cache . '.tmp', implode("\n", $lines) . "\n") && @rename($cache . '.tmp', $cache);
+		}
+		return $lines;
+	}
+
+	/** One entry by its exact library name ({name, description}), or null. */
+	public static function find(string $kind, string $name): ?array
+	{
+		if ($name === '' || !isset(self::FILES[$kind])) {
+			return null;
+		}
+		foreach (self::index() as $line) {
+			[$k, $n, $desc] = explode("\t", $line);
+			if ($k === $kind && $n === $name) {
+				return ['name' => $n, 'description' => $desc];
+			}
+		}
+		return null;
+	}
+
+	/** Short description for a picker line: module watts and bifacial, or inverter kW AC and voltage. */
+	public static function describe(string $kind, array $r): string
+	{
+		if ($kind === 'modules') {
+			return 'Module, ' . rtrim(rtrim(number_format((float) $r['stc'], 1, '.', ''), '0'), '.') . ' W' . ($r['bifacial'] ? ', bifacial' : '');
+		}
+		return 'Inverter, ' . rtrim(rtrim(number_format((float) $r['paco'] / 1000, 2, '.', ''), '0'), '.') . ' kW AC, ' . $r['vac'] . ' V';
+	}
+
+	/**
+	 * The rows of one library: name plus the few values the app shows (modules: STC watts,
+	 * bifacial; inverters: Paco watts, AC voltage).
+	 *
+	 * @return \Generator<array>
+	 */
+	private static function rows(string $kind): \Generator
+	{
+		$path = self::path($kind);
+		if (!is_file($path)) {
+			return;
+		}
+		$f = fopen($path, 'r');
+		if (!$f) {
+			return;
+		}
+		$head = fgetcsv($f, null, ',', '"', '') ?: [];
+		fgetcsv($f, null, ',', '"', '');   // units
+		fgetcsv($f, null, ',', '"', '');   // SAM variable names
+		$col = array_flip($head);
+		while (($row = fgetcsv($f, null, ',', '"', '')) !== false) {
+			if (!isset($row[0]) || $row[0] === '') {
+				continue;
+			}
+			yield $kind === 'modules'
+				? ['name' => $row[0], 'stc' => (float) ($row[$col['STC'] ?? 4] ?? 0), 'bifacial' => (int) ($row[$col['Bifacial'] ?? 3] ?? 0)]
+				: ['name' => $row[0], 'paco' => (float) ($row[$col['Paco'] ?? 3] ?? 0), 'vac' => (string) ($row[$col['Vac'] ?? 1] ?? '')];
+		}
+		fclose($f);
+	}
+}

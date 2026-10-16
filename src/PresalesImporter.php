@@ -131,8 +131,10 @@ final class PresalesImporter
 	{
 		$cols = ['category', 'name', 'notes', 'print_notes', 'price', 'shipping', 'setup_cost', 'min_total', 'qty_rule', 'tax_class',
 			'watts', 'ac_kw', 'kwh', 'kw', 'warranty_text', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'is_solarinsure',
-			'price_updated_at', 'price_source', 'sort_order', 'segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'trench_part', 'part_size', 'material'];
-		$fillable = ['segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe'];
+			'price_updated_at', 'price_source', 'sort_order', 'segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'trench_part', 'part_size', 'material',
+			'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
+		$fillable = ['segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe',
+			'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
 		foreach ($items as $it) {
 			if (!isset(Presales::CATEGORIES[$it['category'] ?? '']) || trim((string) ($it['name'] ?? '')) === '') {
 				$this->log[] = '  catalog: skipped an item with an unknown category or no name';
@@ -150,10 +152,16 @@ final class PresalesImporter
 				if (isset($fill['segment']) && !in_array($fill['segment'], ['residential', 'commercial'], true)) {
 					unset($fill['segment']);
 				}
+				if (isset($fill['cec_name']) && !$this->cecOk((string) $it['category'], (string) $fill['cec_name'], (string) $have['name'])) {
+					unset($fill['cec_name'], $fill['cec_units']);
+				}
 				if ($fill) {
 					Db::update('catalog_items', (int) $have['id'], $fill);
 					$this->counts['catalog_filled']++;
 					$this->log[] = '  filled ' . implode(', ', array_keys($fill)) . ': ' . $have['name'];
+					if (!$this->dryRun) {
+						Activity::event('catalog_item', (int) $have['id'], 'Filled in by import: ' . implode(', ', array_keys($fill)), null);
+					}
 				} else {
 					$this->counts['catalog_skipped']++;
 				}
@@ -172,6 +180,9 @@ final class PresalesImporter
 			$row['tax_class'] = array_key_exists((string) $row['tax_class'], Presales::TAX_CLASSES) ? $row['tax_class'] : 'bos';
 			$row['needs_mlpe'] = (int) ($row['needs_mlpe'] ?? 0);
 			$row['segment'] = in_array($row['segment'], ['residential', 'commercial'], true) ? $row['segment'] : null;
+			if ($row['cec_name'] !== null && !$this->cecOk((string) $row['category'], (string) $row['cec_name'], (string) $row['name'])) {
+				$row['cec_name'] = $row['cec_units'] = null;
+			}
 			$id = Db::insert('catalog_items', $row);
 			if (!$this->dryRun) {
 				Activity::event('catalog_item', $id, 'Added by the buildsheet import', null);
@@ -179,6 +190,17 @@ final class PresalesImporter
 			$this->counts['catalog_added']++;
 		}
 		$this->log[] = '  catalog: ' . $this->counts['catalog_added'] . ' added, ' . $this->counts['catalog_filled'] . ' filled in, ' . $this->counts['catalog_skipped'] . ' unchanged';
+	}
+
+	/** A CEC model name is kept only when SAM's library lists it for that kind of item. */
+	private function cecOk(string $category, string $cec, string $item): bool
+	{
+		$kind = CecLibrary::kindFor($category);
+		if ($kind === null || (CecLibrary::available() && !CecLibrary::find($kind, $cec))) {
+			$this->log[] = '  skipped SAM model "' . $cec . '" for ' . $item . ': not in SAM\'s ' . ($kind ?? 'CEC') . ' library';
+			return false;
+		}
+		return true;
 	}
 }
 

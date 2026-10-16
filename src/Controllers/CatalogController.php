@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Activity;
 use App\Auth;
+use App\CecLibrary;
 use App\Db;
 use App\Presales;
 use App\Trench;
@@ -26,6 +27,9 @@ final class CatalogController
 		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant', 'needs_mlpe' => 'Needs optimizers',
 		'trench_part' => 'Trench builder part', 'part_size' => 'Part size', 'material' => 'Material',
 		'pricing' => 'Pricing', 'pays_sales' => 'Pays the salesperson',
+		'cec_name' => 'SAM (CEC) model', 'cec_units' => 'CEC units per inverter', 'degradation_first_pct' => 'First-year degradation %',
+		'degradation_annual_pct' => 'Annual degradation %', 'product_warranty_years' => 'Product warranty years',
+		'performance_warranty_years' => 'Performance warranty years',
 	];
 
 	public function index(): void
@@ -147,6 +151,14 @@ final class CatalogController
 	 * is none. Only the catalog list itself is accepted, never another page, and any #fragment is
 	 * dropped so the caller can add the item's own.
 	 */
+	/** SAM CEC library search for the catalog form's model picker: JSON. */
+	public function cec(): void
+	{
+		header('Content-Type: application/json');
+		$q = trim((string) ($_GET['q'] ?? ''));
+		echo json_encode(mb_strlen($q) < 2 ? [] : CecLibrary::search($q, 30));
+	}
+
 	public static function listBack(mixed $back): string
 	{
 		$back = explode('#', is_string($back) ? $back : '', 2)[0];
@@ -249,6 +261,32 @@ final class CatalogController
 				}
 			}
 		}
+		// Production modeling: the model's name in SAM's CEC library, degradation and warranty years
+		$kind = CecLibrary::kindFor($cat);
+		$cec = trim((string) ($p['cec_name'] ?? ''));
+		$data['cec_name'] = $kind !== null && $cec !== '' ? $cec : null;
+		if ($data['cec_name'] !== null && CecLibrary::available() && !CecLibrary::find((string) $kind, $data['cec_name'])) {
+			throw new \InvalidArgumentException('"' . $cec . '" is not ' . ($kind === 'modules' ? 'a module' : 'an inverter') . ' in SAM\'s CEC library. Pick one from the list as you type.');
+		}
+		$units = $num('cec_units', 'CEC units per inverter');
+		$data['cec_units'] = $cat === 'inverters' && $data['cec_name'] !== null && $units !== null && (int) $units > 1 ? (int) $units : null;
+		$data['degradation_first_pct'] = $cat === 'modules' ? $num('degradation_first_pct', 'First-year degradation') : null;
+		$data['degradation_annual_pct'] = $cat === 'modules' ? $num('degradation_annual_pct', 'Annual degradation') : null;
+		foreach (['degradation_first_pct', 'degradation_annual_pct'] as $k) {
+			if ($data[$k] !== null && $data[$k] > 10) {
+				throw new \InvalidArgumentException('Degradation is a percent a year, e.g. 2 for the first year and 0.4 after.');
+			}
+		}
+		$years = static function (string $k, string $label) use ($num): ?int {
+			$y = $num($k, $label);
+			if ($y !== null && ($y > 50 || floor($y) != $y)) {
+				throw new \InvalidArgumentException($label . ' must be whole years, 50 or less.');
+			}
+			return $y === null ? null : (int) $y;
+		};
+		$data['product_warranty_years'] = in_array($cat, ['modules', 'inverters', 'mlpe', 'batteries', 'racking', 'monitoring'], true) ? $years('product_warranty_years', 'Product warranty') : null;
+		$data['performance_warranty_years'] = $cat === 'modules' ? $years('performance_warranty_years', 'Performance warranty') : null;
+
 		if ($data['domestic_content_pct'] !== null && $data['domestic_content_pct'] > 100) {
 			throw new \InvalidArgumentException('Domestic content is a percent, 0 to 100.');
 		}
