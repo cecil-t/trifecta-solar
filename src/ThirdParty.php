@@ -20,7 +20,7 @@ final class ThirdParty
 			['group' => 'Inverter monitoring (Monitor page, collected every 15 minutes)', 'services' => self::monitoring()],
 			['group' => 'Addresses, maps and roofs', 'services' => [
 				[
-					'name' => 'US Census Geocoder', 'url' => 'https://geocoding.geo.census.gov/geocoder/',
+					'name' => 'US Census Geocoder', 'url' => 'https://www.census.gov/data/developers/data-sets/Geocoding-services.html',
 					'for' => 'Township or borough and county for project addresses',
 					'interface' => 'Geocoder REST API: onelineaddress and coordinates, benchmark Public_AR_Current, vintage Current_Current',
 					'access' => 'Free, no key', 'configured' => null,
