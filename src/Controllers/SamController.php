@@ -107,59 +107,102 @@ final class SamController
 		'40.7930,-77.8600' => 'State College, PA (West Penn Power)',
 		'40.5190,-78.3950' => 'Altoona, PA (Penelec)',
 		'39.6070,-75.8330' => 'Elkton, MD (Delmarva)',
-		'39.4500,-75.7160' => 'Middletown, DE (Delmarva)',
+		'39.7880,-75.6970' => 'Hockessin, DE (Delmarva)',
 	];
 
 	/**
-	 * How a point's rates changed over time: every version OpenEI has (retired ones too), each billed
-	 * by SAM at the same flat use, and the yearly change over 3 and 5 years. Also shows whether the
-	 * rates carry a sell (export) rate. Nothing is saved.
+	 * How rates changed over time, for any number of places and sectors in one run: every version
+	 * OpenEI has (retired ones too), each billed by SAM at the same flat use, and the yearly change
+	 * over 3 and 5 years (UtilityRates::trend). On screen, or as a text file (format=text). Nothing is saved.
 	 */
 	public function rateHistory(): void
 	{
-		$place = (string) ($_POST['place'] ?? '');
-		[$lat, $lon] = isset(self::HISTORY_PLACES[$place]) ? array_map('floatval', explode(',', $place)) : [
-			is_numeric($_POST['lat'] ?? null) ? (float) $_POST['lat'] : null, is_numeric($_POST['lon'] ?? null) ? (float) $_POST['lon'] : null];
-		$sector = in_array($_POST['sector'] ?? '', UtilityRates::SECTORS, true) ? (string) $_POST['sector'] : 'Residential';
+		$places = array_values(array_intersect(array_keys(self::HISTORY_PLACES), array_map('strval', (array) ($_POST['places'] ?? []))));
+		$sectors = array_values(array_intersect(UtilityRates::SECTORS, array_map('strval', (array) ($_POST['sectors'] ?? []))));
 		$kwh = is_numeric($_POST['kwh'] ?? null) && (float) $_POST['kwh'] > 0 ? min(1000000, (float) $_POST['kwh']) : 1000.0;
-		$form = ['place' => $place, 'lat' => $lat === null ? '' : (string) $lat, 'lon' => $lon === null ? '' : (string) $lon, 'sector' => $sector, 'kwh' => (string) $kwh];
-		$error = SolarResource::pointError($lat, $lon);
-		if ($error !== null) {
-			$this->render(['historyForm' => $form, 'historyError' => $error]);
+		$lat = is_numeric($_POST['lat'] ?? null) ? (float) $_POST['lat'] : null;
+		$lon = is_numeric($_POST['lon'] ?? null) ? (float) $_POST['lon'] : null;
+		$form = ['places' => $places, 'sectors' => $sectors, 'lat' => (string) ($_POST['lat'] ?? ''), 'lon' => (string) ($_POST['lon'] ?? ''), 'kwh' => (string) $kwh];
+		$points = [];
+		foreach ($places as $k) {
+			$points[] = [self::HISTORY_PLACES[$k], ...array_map('floatval', explode(',', $k))];
+		}
+		if ($lat !== null || $lon !== null) {
+			if ($err = SolarResource::pointError($lat, $lon)) {
+				$this->render(['historyForm' => $form, 'historyError' => 'Typed point: ' . $err]);
+				return;
+			}
+			$points[] = ['Typed point ' . $lat . ', ' . $lon, $lat, $lon];
+		}
+		if (!$points || !$sectors) {
+			$this->render(['historyForm' => $form, 'historyError' => 'Check at least one place (or type a point) and one sector.']);
 			return;
 		}
-		$found = UtilityRates::history($lat, $lon, $sector);
-		if (!$found['ok']) {
-			$this->render(['historyForm' => $form, 'historyError' => $found['error']]);
-			return;
-		}
-		set_time_limit(180);
-		$sam = Sam::call(['action' => 'bills', 'rates' => $found['items'], 'monthly_kwh' => $kwh], 150);
-		$bills = [];
-		$failed = 0;
-		foreach ($sam['ok'] ? $sam['bills'] : [] as $b) {
-			if (isset($b['annual_bill'])) {
-				$bills[(string) $b['label']] = (float) $b['annual_bill'];
-			} else {
-				$failed++;
+		set_time_limit(600);
+		$start = microtime(true);
+		$runs = [];
+		foreach ($points as [$label, $plat, $plon]) {
+			foreach ($sectors as $sector) {
+				$run = ['place' => $label, 'sector' => $sector, 'groups' => [], 'count' => 0, 'failed' => 0, 'error' => null];
+				$found = UtilityRates::history($plat, $plon, $sector);
+				if (!$found['ok']) {
+					$runs[] = ['error' => $found['error']] + $run;
+					continue;
+				}
+				$sam = $found['items'] ? Sam::call(['action' => 'bills', 'rates' => $found['items'], 'monthly_kwh' => $kwh], 150) : ['ok' => true, 'bills' => []];
+				$bills = [];
+				foreach ($sam['ok'] ? $sam['bills'] : [] as $b) {
+					if (isset($b['annual_bill'])) {
+						$bills[(string) $b['label']] = (float) $b['annual_bill'];
+					} else {
+						$run['failed']++;
+					}
+				}
+				$groups = [];
+				foreach ($found['items'] as $item) {
+					$key = strtolower(trim((string) ($item['utility'] ?? '')) . '|' . trim((string) ($item['name'] ?? '')));
+					$groups[$key]['utility'] = (string) ($item['utility'] ?? '');
+					$groups[$key]['name'] = (string) ($item['name'] ?? '');
+					$groups[$key]['versions'][] = $item;
+				}
+				foreach ($groups as $k => $g) {
+					$groups[$k] += UtilityRates::trend($g['versions'], $bills, $kwh);
+					unset($groups[$k]['versions']);
+				}
+				uasort($groups, static fn ($a, $b) => [$a['utility'], $a['name']] <=> [$b['utility'], $b['name']]);
+				$runs[] = ['groups' => $groups, 'count' => count($found['items']), 'error' => $sam['ok'] ? null : 'SAM: ' . $sam['error']] + $run;
 			}
 		}
-		$groups = [];
-		foreach ($found['items'] as $item) {
-			$key = strtolower(trim((string) ($item['utility'] ?? '')) . '|' . trim((string) ($item['name'] ?? '')));
-			$groups[$key]['utility'] = (string) ($item['utility'] ?? '');
-			$groups[$key]['name'] = (string) ($item['name'] ?? '');
-			$groups[$key]['versions'][] = $item;
+		$history = ['runs' => $runs, 'kwh' => $kwh, 'ms' => (int) round((microtime(true) - $start) * 1000), 'at' => date('m/d/Y g:i:s A')];
+		if (($_POST['format'] ?? '') === 'text') {
+			header('Content-Type: text/plain; charset=utf-8');
+			header('Content-Disposition: attachment; filename="rate-history-' . date('Y-m-d-His') . '.txt"');
+			echo self::historyText($history);
+			return;
 		}
-		foreach ($groups as $k => $g) {
-			$groups[$k] += UtilityRates::trend($g['versions'], $bills, $kwh);
-			unset($groups[$k]['versions']);
+		$this->render(['historyForm' => $form, 'history' => $history]);
+	}
+
+	/** The rate history run as plain text: a summary line per rate, then every version. */
+	private static function historyText(array $h): string
+	{
+		$pct = static fn (array $c): string => $c['pct'] === null ? 'n/a (' . $c['why'] . ')' : sprintf('%+.1f%%', $c['pct']) . sprintf(' (%.2f to %.2f cents, %d versions)', $c['from'], $c['to'], $c['versions']);
+		$out = ['Rate history (OpenEI), ' . $h['at'] . ', ' . number_format($h['kwh']) . ' kWh a month, ' . number_format($h['ms'] / 1000, 1) . ' s', ''];
+		foreach ($h['runs'] as $r) {
+			$out[] = '=== ' . $r['place'] . ', ' . $r['sector'] . ': ' . ($r['error'] ?? ($r['count'] . ' versions' . ($r['failed'] ? ', ' . $r['failed'] . ' SAM could not bill' : '')));
+			foreach ($r['groups'] as $g) {
+				$out[] = $g['utility'] . ': ' . $g['name'];
+				$out[] = '  3 years ' . $pct($g['y3']) . ' | 5 years ' . $pct($g['y5']) . ($g['generation'] !== null ? sprintf(' | generation now %.2f cents', $g['generation']) : '');
+				foreach ($g['rows'] as $row) {
+					$out[] = sprintf('  %s  %s  %-14s %s%s', $row['start'] ? gmdate('m/d/Y', $row['start']) : '          ', $row['end'] ? gmdate('m/d/Y', $row['end']) : 'current   ',
+						['full' => 'full service', 'delivery' => 'delivery only', 'bad' => 'bad data', 'none' => 'no bill'][$row['kind']] ?? '',
+						$row['cents'] !== null ? sprintf('%6.2f cents', $row['cents']) : '      n/a',
+						$row['sell'] ? '  sell ' . implode('/', array_map(static fn ($v) => sprintf('%.2f', $v * 100), $row['sell'])) : '');
+				}
+			}
+			$out[] = '';
 		}
-		uasort($groups, static fn ($a, $b) => [$a['utility'], $a['name']] <=> [$b['utility'], $b['name']]);
-		$this->render(['historyForm' => $form, 'history' => [
-			'groups' => $groups, 'count' => count($found['items']), 'failed' => $failed, 'samError' => $sam['ok'] ? null : $sam['error'],
-			'ms' => $found['ms'] + (int) ($sam['ms'] ?? 0), 'at' => date('m/d/Y g:i:s A'),
-		]]);
+		return implode("\n", $out) . "\n";
 	}
 
 	/** Google: geocode an address, then Solar API Building Insights at that point; the point fills the other forms. */

@@ -1726,3 +1726,8 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .project-form .if-new { display: none; }
 .project-form:has(.new-service:checked) .if-new { display: inline; }
 .project-form:has(.new-service:checked) .if-bill { display: none; }
+.history-form fieldset { border: 0; padding: 0; margin: 0 0 .6rem; }
+.history-run > summary { cursor: pointer; padding: .35rem 0; }
+.history-sum td { white-space: normal; }
+.history-sum td.num { min-width: 6.5rem; max-width: 11rem; }
+.history-sum td.nowrap { white-space: nowrap; }
