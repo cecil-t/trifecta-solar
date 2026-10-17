@@ -86,6 +86,7 @@
 				const r = await res.json();
 				if (mine !== seq) return;
 				if (!r.ok) { note.replaceChildren(el('span', 'muted', r.error || 'Lookup is unavailable right now.')); return; }
+				const src = { google: 'Google', census: 'the Census', osm: 'OpenStreetMap', osm_street: 'OpenStreetMap (road only)', parsed: '' }[r.source] || '';
 				filling = true;
 				['street', 'city', 'state', 'zip'].forEach((k) => set(k, r.parts[k]));
 				if (r.lat !== null && field('lat')) {
@@ -93,12 +94,13 @@
 					field('lon').value = r.lon;
 					mark(field('lat'));
 					mark(field('lon'));
+					const sum = form.querySelector('[data-point-summary]');
+					if (sum) sum.textContent = Number(r.lat).toFixed(5) + ', ' + Number(r.lon).toFixed(5) + ' (' + (src || 'lookup') + ')';
 					if (field('source')) field('source').value = r.source;
 				}
 				filling = false;
 				note.replaceChildren();
 				const where = el('div', 'small');
-				const src = { google: 'Google', census: 'the Census', osm: 'OpenStreetMap', osm_street: 'OpenStreetMap (road only)', parsed: '' }[r.source] || '';
 				if (src) {
 					where.append(el('span', 'muted', 'Found by ' + src + ': '), el('strong', '', [r.parts.street, r.parts.city, (r.parts.state + ' ' + r.parts.zip).trim()].filter(Boolean).join(', ')));
 					if (r.lat !== null) where.append(el('span', 'muted', ' · point ' + Number(r.lat).toFixed(5) + ', ' + Number(r.lon).toFixed(5)));
@@ -108,7 +110,11 @@
 				note.append(where);
 				if (form.querySelector('.is-auto')) note.append(el('div', 'small muted', 'Fields the lookup filled or changed are highlighted until you edit them.'));
 				if (r.note) note.append(el('div', 'small text-orange', r.note));
-				if (r.geo && r.geo.label && !form.querySelector('#geo-note')) note.append(el('div', 'small muted', 'Municipality: ' + r.geo.label));
+				if (form.querySelector('#geo-note') && window.TrifectaGeo) {
+					window.TrifectaGeo.show(r.geo || { ok: true, status: 'no_match' });
+				} else if (r.geo && r.geo.label) {
+					note.append(el('div', 'small muted', 'Municipality: ' + r.geo.label));
+				}
 				const u = utilityLine(r.utility);
 				if (u) note.append(u);
 				if (window.TrifectaRates) window.TrifectaRates.refresh();
@@ -134,6 +140,8 @@
 				field('lon').value = '';
 				field('lat').classList.remove('is-auto');
 				field('lon').classList.remove('is-auto');
+				const sum = form.querySelector('[data-point-summary]');
+				if (sum) sum.textContent = 'found again when you save';
 				if (field('source')) field('source').value = '';
 			});
 		});

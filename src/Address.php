@@ -124,8 +124,10 @@ final class Address
 		if (($geo === null || $geo['status'] !== 'found') && $out['lat'] !== null) {
 			$geo = Geo::atPoint((float) $out['lat'], (float) $out['lon']) ?? $geo;
 		}
-		if ($geo !== null && $geo['status'] === 'found') {
+		if ($geo !== null) {
 			$out['geo'] = Geo::forClient($geo);
+		}
+		if ($geo !== null && $geo['status'] === 'found') {
 			if ($out['lat'] === null && $geo['lat'] !== null) {
 				$out['lat'] = $geo['lat'];
 				$out['lon'] = $geo['lon'];

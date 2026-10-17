@@ -1721,3 +1721,5 @@ a[href^="tel:"] { white-space: nowrap; }
 	.muni-block > .geo-note { margin-top: 0; }
 }
 input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-shadow: 0 0 0 1px #e7b84a; }
+.point-box > summary { cursor: pointer; }
+.point-box[open] { padding-bottom: .3rem; }

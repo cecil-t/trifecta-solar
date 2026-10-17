@@ -156,6 +156,19 @@
 		}
 	}
 
+	// The full-address lookup (address.js) already has the Census answer: show it, and fill a blank
+	// municipality, without asking again. An explicit lookup fills a blank choice on edit pages too.
+	window.TrifectaGeo = {
+		show(data) {
+			seq++;
+			clearTimeout(timer);
+			result = data && data.ok ? data : null;
+			confirmedId = null;
+			if (result && result.status === 'found' && (muni.value === '' || muni.value === autoValue)) useLookup();
+			render();
+		},
+	};
+
 	async function firstCheck() {
 		render('Checking the township and county for this address...');
 		try {

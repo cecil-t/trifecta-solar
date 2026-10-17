@@ -140,15 +140,15 @@ $isNew = $id === null;
 				'value' => (string) $v('municipality_id'), 'municipalities' => $municipalities, 'counties' => $counties,
 				'newName' => (string) $v('new_muni_name'), 'newCounty' => (string) $v('new_muni_county_id'), 'geoAttrs' => 'data-geo="{}"',
 			]) ?>
-			<div class="checkfield span-2">
-				<span class="field-label">Map point</span>
-				<div class="point-pair">
+			<details class="point-box span-all">
+				<summary class="small muted">Map point: <span data-point-summary><?= $v('site_lat') !== '' && $v('site_lat') !== null ? e(number_format((float) $v('site_lat'), 5) . ', ' . number_format((float) $v('site_lon'), 5)) . ($v('geo_source') ? ' (' . e(App\Address::sourceLabel((string) $v('geo_source'))) . ')' : '') : 'found from the address when you save' ?></span> &middot; change</summary>
+				<div class="point-pair mt-xs">
 					<input type="text" name="site_lat" value="<?= e((string) $v('site_lat')) ?>" inputmode="decimal" placeholder="Latitude" aria-label="Latitude" data-addr="lat">
 					<input type="text" name="site_lon" value="<?= e((string) $v('site_lon')) ?>" inputmode="decimal" placeholder="Longitude" aria-label="Longitude" data-addr="lon">
 				</div>
 				<input type="hidden" name="geo_source" value="<?= e((string) $v('geo_source')) ?>" data-addr="source">
-				<small class="hint">Where production and utility rates are looked up. Filled by Look up<?= $v('geo_source') ? ' (the saved one is from ' . e(App\Address::sourceLabel((string) $v('geo_source'))) . ')' : '' ?>; type it in when the lookup misses (right-click the spot in Google Maps to copy it). Blank is found on save.</small>
-			</div>
+				<small class="hint">Set automatically from the address; production weather and utility rates use it. Only change it when the address can't be found (right-click the spot in Google Maps to copy it).</small>
+			</details>
 			<label class="span-2">Drive folder link <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/..."></label>
 			<label class="span-2">Notes <textarea name="notes" rows="3" data-autogrow><?= e($v('notes')) ?></textarea></label>
 		</div>
