@@ -128,14 +128,16 @@ $isNew = $id === null;
 			<?= App\View::partial('partials/address_full', ['value' => '']) ?>
 			<label class="span-2">Street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-addr="street" data-geo-field="street"></label>
 			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-addr="city" data-geo-field="city"></label>
-			<label>State
-				<select name="site_state" data-addr="state" data-geo-field="state">
-					<?php foreach (['PA', 'MD', 'DE'] as $st): ?>
-						<option value="<?= $st ?>" <?= $sel($v('site_state', 'PA'), $st) ?>><?= $st ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
-			<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" class="input-short" inputmode="numeric" data-addr="zip" data-geo-field="zip"></label>
+			<div class="grid-pair">
+				<label>State
+					<select name="site_state" data-addr="state" data-geo-field="state">
+						<?php foreach (['PA', 'MD', 'DE'] as $st): ?>
+							<option value="<?= $st ?>" <?= $sel($v('site_state', 'PA'), $st) ?>><?= $st ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" inputmode="numeric" data-addr="zip" data-geo-field="zip"></label>
+			</div>
 			<?= App\View::partial('partials/municipality_pick', [
 				'value' => (string) $v('municipality_id'), 'municipalities' => $municipalities, 'counties' => $counties,
 				'newName' => (string) $v('new_muni_name'), 'newCounty' => (string) $v('new_muni_county_id'), 'geoAttrs' => 'data-geo="{}"',

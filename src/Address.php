@@ -96,7 +96,7 @@ final class Address
 	public static function lookup(string $one): array
 	{
 		$parts = self::parse($one);
-		$out = ['ok' => true, 'parts' => $parts, 'lat' => null, 'lon' => null, 'source' => 'parsed', 'note' => null, 'geo' => null, 'utility' => null];
+		$out = ['ok' => true, 'parts' => $parts, 'lat' => null, 'lon' => null, 'source' => 'parsed', 'approx' => false, 'note' => null, 'geo' => null, 'utility' => null];
 		$line = Geo::address($parts['street'], $parts['city'], $parts['state'], $parts['zip']);
 
 		if (GoogleMaps::configured() && trim($one) !== '') {
@@ -110,7 +110,12 @@ final class Address
 				$out['note'] = $g['partial'] || !in_array($g['precision'], ['ROOFTOP', 'RANGE_INTERPOLATED'], true)
 					? 'Google matched only part of this address; check the point.' : null;
 			} elseif ($g['ok']) {
-				$out['note'] = 'Google found only a town or road, not the house.';
+				// The town or ZIP, not the house: close enough for weather (NSRDB cells are about 2 km), not for the municipality
+				$out['lat'] = $g['lat'];
+				$out['lon'] = $g['lon'];
+				$out['source'] = 'google_approx';
+				$out['approx'] = true;
+				$out['note'] = 'Google found the town or ZIP, not the house. That point is close enough for weather, but check the municipality and utility by hand.';
 			} else {
 				$out['note'] = $g['error'];
 			}
@@ -121,17 +126,20 @@ final class Address
 		if (Geo::address($p['street'], $p['city'], $p['state'], $p['zip']) !== '') {
 			$geo = Geo::lookup($p['street'], $p['city'], $p['state'], $p['zip']);
 		}
-		if (($geo === null || $geo['status'] !== 'found') && $out['lat'] !== null) {
+		if (($geo === null || $geo['status'] !== 'found') && $out['lat'] !== null && empty($out['approx'])) {
 			$geo = Geo::atPoint((float) $out['lat'], (float) $out['lon']) ?? $geo;
 		}
 		if ($geo !== null) {
 			$out['geo'] = Geo::forClient($geo);
 		}
 		if ($geo !== null && $geo['status'] === 'found') {
-			if ($out['lat'] === null && $geo['lat'] !== null) {
+			if (($out['lat'] === null || $out['approx']) && $geo['lat'] !== null) {
+				// the Census (or OpenStreetMap) found the house: better than Google's town or ZIP
 				$out['lat'] = $geo['lat'];
 				$out['lon'] = $geo['lon'];
 				$out['source'] = $geo['source'] ?: 'census';
+				$out['approx'] = false;
+				$out['note'] = null;
 			}
 		}
 
@@ -160,6 +168,7 @@ final class Address
 	{
 		return match ($source) {
 			'google' => 'Google',
+			'google_approx' => 'Google, town or ZIP only',
 			'census' => 'Census',
 			'osm' => 'OpenStreetMap',
 			'osm_street' => 'OpenStreetMap (road only)',

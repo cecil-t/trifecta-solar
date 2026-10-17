@@ -86,7 +86,7 @@
 				const r = await res.json();
 				if (mine !== seq) return;
 				if (!r.ok) { note.replaceChildren(el('span', 'muted', r.error || 'Lookup is unavailable right now.')); return; }
-				const src = { google: 'Google', census: 'the Census', osm: 'OpenStreetMap', osm_street: 'OpenStreetMap (road only)', parsed: '' }[r.source] || '';
+				const src = { google: 'Google', google_approx: 'Google (town or ZIP only)', census: 'the Census', osm: 'OpenStreetMap', osm_street: 'OpenStreetMap (road only)', parsed: '' }[r.source] || '';
 				filling = true;
 				['street', 'city', 'state', 'zip'].forEach((k) => set(k, r.parts[k]));
 				if (r.lat !== null && field('lat')) {

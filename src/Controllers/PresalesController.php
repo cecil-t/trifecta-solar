@@ -341,7 +341,7 @@ final class PresalesController
 			$src = (string) ($_POST['geo_source'] ?? '');
 			$same = $before && $before['site_lat'] !== null && abs((float) $before['site_lat'] - (float) $lat) < 0.000001 && abs((float) $before['site_lon'] - (float) $lon) < 0.000001;
 			return ['site_lat' => round((float) $lat, 6), 'site_lon' => round((float) $lon, 6),
-				'geo_source' => $same ? $before['geo_source'] : (in_array($src, ['google', 'census', 'osm', 'osm_street'], true) ? $src : 'manual'),
+				'geo_source' => $same ? $before['geo_source'] : (in_array($src, ['google', 'google_approx', 'census', 'osm', 'osm_street'], true) ? $src : 'manual'),
 				'geo_address' => $address ?: null];
 		}
 		if ($address === '') {

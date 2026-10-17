@@ -55,6 +55,17 @@
 		return Boolean(c && want && (c[0] !== want[1].toLowerCase() || c[1] !== want[2]));
 	}
 
+	// The "+ Add a municipality" choice names what it will add
+	const addOption = muni.querySelector('option[value="new"]');
+	const addText = addOption ? addOption.textContent : '';
+	const nameAdd = () => {
+		if (!addOption) return;
+		const n = newName ? newName.value.trim() : '';
+		addOption.textContent = n ? '+ Add: ' + n : addText;
+	};
+	if (newName) newName.addEventListener('input', nameAdd);
+	nameAdd();
+
 	function useLookup() {
 		if (!result || !result.name) return;
 		settingMuni = true;
@@ -64,6 +75,7 @@
 			muni.value = 'new';
 			if (newName) newName.value = result.name;
 			if (newCounty && result.county_id) newCounty.value = String(result.county_id);
+			nameAdd();
 		}
 		muni.dispatchEvent(new Event('change', { bubbles: true }));
 		settingMuni = false;
