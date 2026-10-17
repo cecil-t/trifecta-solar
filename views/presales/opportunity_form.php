@@ -185,6 +185,8 @@ $isNew = $id === null;
 					<button type="button" class="btn btn-secondary btn-small rate-find">Find rates</button>
 					<button type="button" class="btn btn-ghost btn-small rate-clear" <?= $v('rate_label') ? '' : 'hidden' ?>>Clear</button>
 				</div>
+				<?php $trend = json_decode((string) $v('rate_trend'), true); ?>
+				<?php if ($v('rate_label') && is_array($trend)): ?><small class="hint"><?= App\View::partial('partials/rate_trend', ['t' => $trend]) ?></small><?php endif; ?>
 				<small class="hint rate-status" aria-live="polite"></small>
 				<ul class="rate-list"></ul>
 			</div>

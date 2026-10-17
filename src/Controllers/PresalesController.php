@@ -299,7 +299,7 @@ final class PresalesController
 		}
 		$muni = (int) $muni && Db::value('SELECT 1 FROM municipalities WHERE id = ?', [(int) $muni]) ? (int) $muni : null;
 		$site = $this->sitePoint($street, $city, $state, $zip, $before);
-		$rate = $this->rateInput($before);
+		$rate = $this->rateInput($before, $site, (string) ($_POST['customer_type'] ?? ''));
 
 		return $site + $rate + [
 			'municipality_id' => $muni,
@@ -357,22 +357,33 @@ final class PresalesController
 		return ['site_lat' => $r['lat'], 'site_lon' => $r['lon'], 'geo_source' => $r['source'], 'geo_address' => $address];
 	}
 
-	/** The picked OpenEI rate: fetched in full when it changes, so bill math uses the rate as picked. */
-	private function rateInput(?array $before): array
+	/**
+	 * The picked OpenEI rate: fetched in full when it changes, so bill math uses the rate as picked,
+	 * with its history (UtilityRates::rateTrend). A history that can't be fetched now is left blank.
+	 */
+	private function rateInput(?array $before, array $site, string $customerType): array
 	{
 		$label = trim((string) ($_POST['rate_label'] ?? ''));
 		if ($label === '') {
-			return ['rate_label' => null, 'rate_name' => null, 'rate_utility' => null, 'rate_json' => null, 'rate_fetched_at' => null];
+			return ['rate_label' => null, 'rate_name' => null, 'rate_utility' => null, 'rate_json' => null, 'rate_fetched_at' => null, 'rate_trend' => null];
 		}
 		if ($before && $before['rate_label'] === $label && $before['rate_json']) {
-			return [];
+			return $before['rate_trend'] || $site['site_lat'] === null ? [] : $this->rateTrend($site, $customerType, (string) $before['rate_utility'], (string) $before['rate_name']);
 		}
 		$r = UtilityRates::rate($label);
 		if (!$r['ok']) {
 			throw new \InvalidArgumentException('Utility rate: ' . $r['error'] . ' Pick it again, or clear it.');
 		}
-		return ['rate_label' => $label, 'rate_name' => (string) ($r['rate']['name'] ?? ''), 'rate_utility' => (string) ($r['rate']['utility'] ?? ''),
-			'rate_json' => json_encode($r['rate']), 'rate_fetched_at' => now_utc()];
+		$out = ['rate_label' => $label, 'rate_name' => (string) ($r['rate']['name'] ?? ''), 'rate_utility' => (string) ($r['rate']['utility'] ?? ''),
+			'rate_json' => json_encode($r['rate']), 'rate_fetched_at' => now_utc(), 'rate_trend' => null];
+		return $site['site_lat'] === null ? $out : array_merge($out, $this->rateTrend($site, $customerType, $out['rate_utility'], $out['rate_name']));
+	}
+
+	private function rateTrend(array $site, string $customerType, string $utility, string $name): array
+	{
+		set_time_limit(120);
+		$t = UtilityRates::rateTrend((float) $site['site_lat'], (float) $site['site_lon'], $customerType !== '' && $customerType !== 'residential' ? 'Commercial' : 'Residential', $utility, $name);
+		return $t['ok'] ? ['rate_trend' => json_encode($t)] : [];
 	}
 
 	/** JSON for the rate picker: OpenEI's rates at a point for a utility and sector, one per rate name, newest version. */
@@ -387,29 +398,14 @@ final class PresalesController
 			return;
 		}
 		$sector = in_array($_GET['sector'] ?? '', UtilityRates::SECTORS, true) ? (string) $_GET['sector'] : 'Residential';
-		$found = UtilityRates::search($lat, $lon, $sector);
+		$ours = (string) (Db::value('SELECT name FROM utilities WHERE id = ?', [(int) ($_GET['utility_id'] ?? 0)]) ?? '');
+		$found = UtilityRates::pickerList($lat, $lon, $sector, $ours);
 		if (!$found['ok']) {
 			echo json_encode(['ok' => false, 'error' => $found['error']]);
 			return;
 		}
-		$ours = (string) (Db::value('SELECT name FROM utilities WHERE id = ?', [(int) ($_GET['utility_id'] ?? 0)]) ?? '');
-		$seen = [];
-		$list = [];
-		$others = 0;
-		foreach ($found['rates'] as $r) {
-			if ($ours !== '' && !UtilityRates::sameUtility($ours, $r['utility'])) {
-				$others++;
-				continue;
-			}
-			$key = strtolower($r['utility'] . '|' . $r['name']);
-			if (isset($seen[$key])) {
-				continue;
-			}
-			$seen[$key] = true;
-			$list[] = ['label' => $r['label'], 'name' => $r['name'], 'utility' => $r['utility'], 'about' => UtilityRates::describe($r),
-				'start' => $r['start'] ? date('m/d/Y', $r['start']) : ''];
-		}
-		usort($list, static fn ($a, $b) => [$a['utility'], $a['name']] <=> [$b['utility'], $b['name']]);
+		$list = $found['rates'];
+		$others = $found['other_utilities'];
 		echo json_encode(['ok' => true, 'rates' => $list, 'sector' => $sector, 'utility' => $ours, 'other_utilities' => $others]);
 	}
 

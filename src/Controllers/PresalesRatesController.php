@@ -36,6 +36,8 @@ final class PresalesRatesController
 			}, Presales::paymentTemplates()),
 			'rules' => $old['rules'] ?? Presales::contingencyRules(false),
 			'canEdit' => Presales::canEditRates(),
+			'utilities' => Db::all('SELECT id, name, price_to_compare, price_to_compare_at FROM utilities WHERE is_active = 1 ORDER BY sort_order, name'),
+			'ptcOld' => $old['ptc'] ?? null,
 			'activity' => Activity::feed('presales_rates', 1),
 		]);
 	}
@@ -134,6 +136,20 @@ final class PresalesRatesController
 			if ((string) $have !== $value && !(is_numeric($have) && is_numeric($value) && abs((float) $have - (float) $value) < 0.0000001)) {
 				Db::run('INSERT OR REPLACE INTO presales_settings (key, value, updated_at) VALUES (?, ?, ?)', [$k, $value, now_utc()]);
 				$changes[] = $label;
+			}
+		}
+
+		// Each utility's Price to Compare, for the true-up when OpenEI gives no generation part
+		foreach (Db::all('SELECT id, name, price_to_compare FROM utilities WHERE is_active = 1') as $u) {
+			$raw = trim((string) ($_POST['ptc'][$u['id']] ?? ''));
+			$v = $num($raw, $u['name'] . ' Price to Compare');
+			if ($v !== null && $v > 60) {
+				throw new \InvalidArgumentException($u['name'] . ' Price to Compare is in cents per kWh, e.g. 10.5.');
+			}
+			$have = $u['price_to_compare'] === null ? null : (float) $u['price_to_compare'];
+			if (($v === null) !== ($have === null) || ($v !== null && abs($v - $have) > 0.00001)) {
+				Db::update('utilities', (int) $u['id'], ['price_to_compare' => $v, 'price_to_compare_at' => $v === null ? null : date('Y-m-d')]);
+				$changes[] = $u['name'] . ' Price to Compare';
 			}
 		}
 

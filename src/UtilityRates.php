@@ -266,7 +266,8 @@ final class UtilityRates
 				return ['pct' => null, 'why' => 'no new version since ' . gmdate('m/Y', $current['start'])];
 			}
 			return ['pct' => (pow($current['cents'] / $then['cents'], 1 / $years) - 1) * 100, 'from' => $then['cents'], 'to' => $current['cents'],
-				'from_date' => $then['start'], 'versions' => count($window)];
+				'from_date' => $then['start'], 'versions' => count($window),
+				'unapproved' => count(array_filter($window, static fn ($r) => !$r['approved'])) > 0];
 		};
 
 		// Generation (roughly the Price to Compare): full service minus delivery only, for the current pair
@@ -294,6 +295,123 @@ final class UtilityRates
 			}
 		}
 		return array_values(array_unique($out));
+	}
+
+	/**
+	 * The rate picker's list for a point, sector and (optionally) our utility. One entry per rate
+	 * name: its approved version in effect now; else an unapproved one in effect now (OpenEI's
+	 * reviews run behind); else its latest version, marked as ended. Where OpenEI lists the rate
+	 * twice for the same dates, the full-service version (with default generation) is offered and the
+	 * delivery-only twin is left out.
+	 *
+	 * @return array{ok:bool, error?:string, rates?:list<array>, other_utilities?:int}
+	 */
+	public static function pickerList(float $lat, float $lon, string $sector, string $ours): array
+	{
+		$found = self::history($lat, $lon, $sector, false);
+		return $found['ok'] ? self::pickerFromItems($found['items'], $ours) : $found;
+	}
+
+	/** pickerList() for a list of URDB items already fetched. */
+	public static function pickerFromItems(array $items, string $ours, ?int $now = null): array
+	{
+		$now ??= time();
+		$found = ['items' => $items];
+		$byName = [];
+		$others = 0;
+		foreach ($found['items'] as $item) {
+			if ($ours !== '' && !self::sameUtility($ours, (string) ($item['utility'] ?? ''))) {
+				$others++;
+				continue;
+			}
+			$byName[strtolower(trim((string) ($item['utility'] ?? '')) . '|' . trim((string) ($item['name'] ?? '')))][] = $item;
+		}
+		$list = [];
+		foreach ($byName as $items) {
+			$end = static fn (array $i): ?int => isset($i['enddate']) && is_numeric($i['enddate']) && (int) gmdate('Y', (int) $i['enddate']) >= 1990 ? (int) $i['enddate'] : null;
+			$isCurrent = static fn (array $i): bool => ($e = $end($i)) === null || $e >= $now;
+			$approved = static fn (array $i): bool => !array_key_exists('approved', $i) || !empty($i['approved']);
+			$pick = array_values(array_filter($items, static fn ($i) => $isCurrent($i) && $approved($i)));
+			$status = 'current';
+			if (!$pick) {
+				$pick = array_values(array_filter($items, $isCurrent));
+				$status = 'unapproved';
+			}
+			if (!$pick) {
+				$latest = max(array_map(static fn ($i) => (int) ($i['startdate'] ?? 0), $items));
+				$pick = array_values(array_filter($items, static fn ($i) => (int) ($i['startdate'] ?? 0) === $latest));
+				$status = 'ended';
+			}
+			// the newest start date among the picks, and at it the full-service twin (the higher price)
+			$newest = max(array_map(static fn ($i) => (int) ($i['startdate'] ?? 0), $pick));
+			$twins = array_values(array_filter($pick, static fn ($i) => (int) ($i['startdate'] ?? 0) === $newest));
+			usort($twins, static fn ($a, $b) => self::roughCents($b) <=> self::roughCents($a));
+			$best = $twins[0];
+			$sum = self::summary($best);
+			$list[] = ['label' => $sum['label'], 'name' => $sum['name'], 'utility' => $sum['utility'], 'about' => self::describe($sum),
+				'start' => $sum['start'] ? gmdate('m/d/Y', $sum['start']) : '', 'status' => $status === 'ended' ? 'ended' : ($approved($best) ? 'current' : 'unapproved'),
+				'ended' => $status === 'ended' && $end($best) ? gmdate('m/d/Y', (int) $end($best)) : '',
+				'delivery_twin' => count($twins) > 1 && self::roughCents($twins[1]) < 0.75 * self::roughCents($best)];
+		}
+		$rank = ['current' => 0, 'unapproved' => 1, 'ended' => 2];
+		usort($list, static fn ($a, $b) => [$rank[$a['status']], $a['utility'], $a['name']] <=> [$rank[$b['status']], $b['utility'], $b['name']]);
+		return ['ok' => true, 'rates' => $list, 'other_utilities' => $others];
+	}
+
+	/** A quick cents per kWh at 1,000 kWh a month from a URDB rate (average tier price plus the customer charge), for telling twins apart. */
+	private static function roughCents(array $item): float
+	{
+		$s = self::summary($item);
+		$energy = $s['energy_min'] !== null ? ($s['energy_min'] + $s['energy_max']) / 2 : 0.0;
+		return ($energy + (float) ($s['fixed'] ?? 0) / 1000) * 100;
+	}
+
+	/**
+	 * SAM's no-solar annual bill for each rate (label => bill, or null when SAM can't bill it), in
+	 * batches of 20; a batch that fails (a rate can stop SAM outright) is retried one rate at a time.
+	 */
+	public static function billAll(array $rates, float $kwh): array
+	{
+		$out = [];
+		foreach (array_chunk($rates, 20) as $batch) {
+			$r = Sam::call(['action' => 'bills', 'rates' => $batch, 'monthly_kwh' => $kwh], 120);
+			if ($r['ok']) {
+				foreach ($r['bills'] as $b) {
+					$out[(string) $b['label']] = isset($b['annual_bill']) ? (float) $b['annual_bill'] : null;
+				}
+				continue;
+			}
+			foreach ($batch as $rate) {
+				$one = Sam::call(['action' => 'bills', 'rates' => [$rate], 'monthly_kwh' => $kwh], 60);
+				$out[(string) $rate['label']] = $one['ok'] && isset($one['bills'][0]['annual_bill']) ? (float) $one['bills'][0]['annual_bill'] : null;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * The history of one picked rate (by its utility and name, approved and unapproved versions),
+	 * kept on the opportunity: the 3 and 5 year change when the data allows it, whether unapproved
+	 * versions are in it, and the generation part now (full service minus delivery only), which the
+	 * net metering true-up uses as the Price to Compare.
+	 */
+	public static function rateTrend(float $lat, float $lon, string $sector, string $utility, string $name): array
+	{
+		$found = self::history($lat, $lon, $sector, false);
+		if (!$found['ok']) {
+			return ['ok' => false, 'error' => $found['error']];
+		}
+		$versions = array_values(array_filter($found['items'], static fn ($i) => strcasecmp(trim((string) ($i['utility'] ?? '')), trim($utility)) === 0
+			&& strcasecmp(trim((string) ($i['name'] ?? '')), trim($name)) === 0));
+		if (!$versions) {
+			return ['ok' => false, 'error' => 'OpenEI has no versions of this rate at the site.'];
+		}
+		$kwh = 1000.0;
+		$t = self::trend($versions, array_filter(self::billAll($versions, $kwh), static fn ($b) => $b !== null), $kwh);
+		$keep = static fn (array $c): array => $c['pct'] === null ? ['pct' => null, 'why' => $c['why']]
+			: ['pct' => round($c['pct'], 2), 'from' => round($c['from'], 2), 'to' => round($c['to'], 2), 'versions' => $c['versions'], 'from_date' => $c['from_date'], 'unapproved' => $c['unapproved']];
+		return ['ok' => true, 'y3' => $keep($t['y3']), 'y5' => $keep($t['y5']), 'generation' => $t['generation'] !== null ? round($t['generation'], 2) : null,
+			'versions' => count($versions), 'kwh' => $kwh, 'at' => now_utc()];
 	}
 
 	/** Our utility names as OpenEI spells the company (FirstEnergy's PA companies go by their legal names there). */

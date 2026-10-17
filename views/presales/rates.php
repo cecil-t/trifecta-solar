@@ -10,6 +10,8 @@ use App\Presales;
  * @var array $templates   schedule rows with 'lines' text
  * @var array $rules       contingency rules
  * @var bool  $canEdit
+ * @var array $utilities  active utilities with price_to_compare, price_to_compare_at
+ * @var ?array $ptcOld    typed Price to Compare values after a failed save
  * @var array $activity
  * @var string $templateDefault    row index of the default schedule
  */
@@ -119,6 +121,19 @@ $rules = $rules ?: [[]];
 			<label>Module degradation when the catalog has none (% a year) <input type="text" name="settings[degradation_default]" value="<?= e($n($s('degradation_default'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
 				<small class="hint">For savings over the years. A module's own Annual degradation in the catalog (from its performance warranty) wins over this.</small>
 			</label>
+		</div>
+	</section>
+
+	<section class="card band" id="ptc">
+		<h2>Price to Compare</h2>
+		<p class="hint">For the net metering true-up (excess credit left at May 31 is paid at the Price to Compare). Savings use the generation part of the picked OpenEI rate (full service minus delivery only); these are used only when OpenEI gives none for a rate. In cents per kWh, from the utility's posted Price to Compare (it changes each June and December).</p>
+		<div class="grid-form">
+			<?php foreach ($utilities as $u): ?>
+				<label><?= e($u['name']) ?> (cents per kWh)
+					<input type="text" name="ptc[<?= (int) $u['id'] ?>]" value="<?= e((string) ($ptcOld[$u['id']] ?? ($u['price_to_compare'] !== null ? $n($u['price_to_compare'], 4) : ''))) ?>" inputmode="decimal" placeholder="Not set" <?= $dis ?>>
+					<?php if ($u['price_to_compare_at']): ?><small class="hint">Set <?= e(fmt_date((string) $u['price_to_compare_at'])) ?></small><?php endif; ?>
+				</label>
+			<?php endforeach; ?>
 		</div>
 	</section>
 

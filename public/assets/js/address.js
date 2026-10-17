@@ -204,16 +204,18 @@
 				return;
 			}
 			status.textContent = r.rates.length + ' ' + r.sector.toLowerCase() + ' rate' + (r.rates.length === 1 ? '' : 's') + ' for ' + r.utility
-				+ '. Pick the one on the customer’s bill. Rates listed with and without generation: the full-service one (higher cents) is what a customer on the default supply pays.';
+				+ '. Pick the one on the customer’s bill. Prices are full service (delivery plus the utility’s default generation).';
 			r.rates.forEach((rate) => {
 				const li = el('li');
 				const b = el('button', 'rate-option', '');
 				b.type = 'button';
 				b.append(el('strong', '', rate.name), el('span', 'muted small', ' ' + rate.about + (rate.start ? ', from ' + rate.start : '')));
+				if (rate.status === 'unapproved') b.append(el('span', 'chip chip-orange', 'Not yet approved by OpenEI'));
+				if (rate.status === 'ended') b.append(el('span', 'chip chip-orange', 'OpenEI’s latest, ended ' + rate.ended));
 				b.addEventListener('click', () => {
 					label.value = rate.label;
 					if (tariff && (tariff.value === '' || tariff.dataset.fromRate === '1')) { tariff.value = rate.name; tariff.dataset.fromRate = '1'; }
-					showChosen(rate.name, rate.about);
+					showChosen(rate.name, rate.about + (rate.status === 'unapproved' ? ' (not yet approved by OpenEI)' : rate.status === 'ended' ? ' (OpenEI’s latest, ended ' + rate.ended + ')' : ''));
 					list.replaceChildren();
 					status.textContent = 'Picked. Saving the opportunity keeps the full rate as it is today.';
 					form.dispatchEvent(new Event('change', { bubbles: true }));

@@ -151,7 +151,7 @@ final class SamController
 					continue;
 				}
 				$bills = [];
-				foreach (self::billAll($found['items'], $kwh) as $rateLabel => $bill) {
+				foreach (UtilityRates::billAll($found['items'], $kwh) as $rateLabel => $bill) {
 					if ($bill === null) {
 						$run['failed']++;
 					} else {
@@ -182,29 +182,6 @@ final class SamController
 			return;
 		}
 		$this->render(['historyForm' => $form, 'history' => $history]);
-	}
-
-	/**
-	 * SAM's no-solar annual bill for each rate (label => bill, or null when SAM can't bill it), in
-	 * batches of 20; a batch that fails (a rate can stop SAM outright) is retried one rate at a time.
-	 */
-	private static function billAll(array $rates, float $kwh): array
-	{
-		$out = [];
-		foreach (array_chunk($rates, 20) as $batch) {
-			$r = Sam::call(['action' => 'bills', 'rates' => $batch, 'monthly_kwh' => $kwh], 120);
-			if ($r['ok']) {
-				foreach ($r['bills'] as $b) {
-					$out[(string) $b['label']] = isset($b['annual_bill']) ? (float) $b['annual_bill'] : null;
-				}
-				continue;
-			}
-			foreach ($batch as $rate) {
-				$one = Sam::call(['action' => 'bills', 'rates' => [$rate], 'monthly_kwh' => $kwh], 60);
-				$out[(string) $rate['label']] = $one['ok'] && isset($one['bills'][0]['annual_bill']) ? (float) $one['bills'][0]['annual_bill'] : null;
-			}
-		}
-		return $out;
 	}
 
 	/** The rate history run as plain text: a summary line per rate, then every version. */
