@@ -122,7 +122,8 @@ final class SamController
 		$kwh = is_numeric($_POST['kwh'] ?? null) && (float) $_POST['kwh'] > 0 ? min(1000000, (float) $_POST['kwh']) : 1000.0;
 		$lat = is_numeric($_POST['lat'] ?? null) ? (float) $_POST['lat'] : null;
 		$lon = is_numeric($_POST['lon'] ?? null) ? (float) $_POST['lon'] : null;
-		$form = ['places' => $places, 'sectors' => $sectors, 'lat' => (string) ($_POST['lat'] ?? ''), 'lon' => (string) ($_POST['lon'] ?? ''), 'kwh' => (string) $kwh];
+		$all = !empty($_POST['unapproved']);
+		$form = ['places' => $places, 'sectors' => $sectors, 'lat' => (string) ($_POST['lat'] ?? ''), 'lon' => (string) ($_POST['lon'] ?? ''), 'kwh' => (string) $kwh, 'unapproved' => $all];
 		$points = [];
 		foreach ($places as $k) {
 			$points[] = [self::HISTORY_PLACES[$k], ...array_map('floatval', explode(',', $k))];
@@ -144,7 +145,7 @@ final class SamController
 		foreach ($points as [$label, $plat, $plon]) {
 			foreach ($sectors as $sector) {
 				$run = ['place' => $label, 'sector' => $sector, 'groups' => [], 'count' => 0, 'failed' => 0, 'error' => null];
-				$found = UtilityRates::history($plat, $plon, $sector);
+				$found = UtilityRates::history($plat, $plon, $sector, !$all);
 				if (!$found['ok']) {
 					$runs[] = ['error' => $found['error']] + $run;
 					continue;
@@ -173,7 +174,7 @@ final class SamController
 				$runs[] = ['groups' => $groups, 'count' => count($found['items']), 'error' => $sam['ok'] ? null : 'SAM: ' . $sam['error']] + $run;
 			}
 		}
-		$history = ['runs' => $runs, 'kwh' => $kwh, 'ms' => (int) round((microtime(true) - $start) * 1000), 'at' => date('m/d/Y g:i:s A')];
+		$history = ['runs' => $runs, 'kwh' => $kwh, 'unapproved' => $all, 'ms' => (int) round((microtime(true) - $start) * 1000), 'at' => date('m/d/Y g:i:s A')];
 		if (($_POST['format'] ?? '') === 'text') {
 			header('Content-Type: text/plain; charset=utf-8');
 			header('Content-Disposition: attachment; filename="rate-history-' . date('Y-m-d-His') . '.txt"');
@@ -210,7 +211,7 @@ final class SamController
 	private static function historyText(array $h): string
 	{
 		$pct = static fn (array $c): string => $c['pct'] === null ? 'n/a (' . $c['why'] . ')' : sprintf('%+.1f%%', $c['pct']) . sprintf(' (%.2f to %.2f cents, %d versions)', $c['from'], $c['to'], $c['versions']);
-		$out = ['Rate history (OpenEI), ' . $h['at'] . ', ' . number_format($h['kwh']) . ' kWh a month, ' . number_format($h['ms'] / 1000, 1) . ' s', ''];
+		$out = ['Rate history (OpenEI), ' . $h['at'] . ', ' . number_format($h['kwh']) . ' kWh a month' . (!empty($h['unapproved']) ? ', unapproved versions included' : ', approved versions only') . ', ' . number_format($h['ms'] / 1000, 1) . ' s', ''];
 		foreach ($h['runs'] as $r) {
 			$out[] = '=== ' . $r['place'] . ', ' . $r['sector'] . ': ' . ($r['error'] ?? ($r['count'] . ' versions' . ($r['failed'] ? ', ' . $r['failed'] . ' SAM could not bill' : '')));
 			foreach ($r['groups'] as $g) {
@@ -220,7 +221,8 @@ final class SamController
 					$out[] = sprintf('  %s  %s  %-14s %s%s', $row['start'] ? gmdate('m/d/Y', $row['start']) : '          ', $row['end'] ? gmdate('m/d/Y', $row['end']) : 'current   ',
 						['full' => 'full service', 'delivery' => 'delivery only', 'dup' => 'same date', 'bad' => 'bad data', 'none' => 'no bill'][$row['kind']] ?? '',
 						$row['cents'] !== null ? sprintf('%6.2f cents', $row['cents']) : '      n/a',
-						$row['sell'] ? '  sell ' . implode('/', array_map(static fn ($v) => sprintf('%.2f', $v * 100), $row['sell'])) : '');
+						$row['sell'] ? '  sell ' . implode('/', array_map(static fn ($v) => sprintf('%.2f', $v * 100), $row['sell'])) : '')
+						. ($row['approved'] ? '' : '  UNAPPROVED');
 				}
 			}
 			$out[] = '';

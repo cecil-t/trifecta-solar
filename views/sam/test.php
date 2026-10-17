@@ -319,6 +319,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 			<label>Also a point: latitude <input type="text" name="lat" value="<?= e($hf['lat']) ?>" inputmode="decimal" placeholder="optional"></label>
 			<label>Longitude <input type="text" name="lon" value="<?= e($hf['lon']) ?>" inputmode="decimal" placeholder="optional"></label>
 			<label>kWh a month <input type="text" name="kwh" value="<?= e($hf['kwh']) ?>" inputmode="decimal"></label>
+			<label class="boxwrap"><input type="checkbox" name="unapproved" value="1"<?= !empty($hf['unapproved']) ? ' checked' : '' ?>> Include unapproved versions</label>
 			<button type="submit" class="btn btn-primary">Show history</button>
 			<button type="submit" name="format" value="text" class="btn btn-secondary">Download as text</button>
 		</div>
@@ -331,7 +332,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		$why = static fn (array $c): string => $c['pct'] === null ? $c['why'] : number_format($c['from'], 2) . ' to ' . number_format($c['to'], 2) . ' cents, ' . (int) $c['versions'] . ' versions';
 		$kinds = ['full' => 'Full service', 'delivery' => 'Delivery only', 'dup' => 'Skipped: same date', 'bad' => 'Skipped: bad data', 'none' => 'No bill'];
 		?>
-		<p class="muted small mt"><?= e($history['at']) ?>: <?= count($history['runs']) ?> runs at <?= e(number_format($history['kwh'])) ?> kWh a month, <?= e(number_format($history['ms'] / 1000, 1)) ?> s</p>
+		<p class="muted small mt"><?= e($history['at']) ?>: <?= count($history['runs']) ?> runs at <?= e(number_format($history['kwh'])) ?> kWh a month<?= !empty($history['unapproved']) ? ', unapproved versions included' : '' ?>, <?= e(number_format($history['ms'] / 1000, 1)) ?> s</p>
 		<h3>Summary: rates with a current version</h3>
 		<div class="table-wrap"><table class="table table-tight table-refs history-sum">
 			<thead><tr><th>Place</th><th>Sector</th><th>Rate</th><th class="num">3 years</th><th class="num">5 years</th><th class="num">Generation now</th></tr></thead>
@@ -367,7 +368,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 							<tr>
 								<td class="nowrap"><?= $row['start'] ? e(gmdate('m/d/Y', $row['start'])) : '' ?></td>
 								<td class="nowrap"><?= $row['end'] ? e(gmdate('m/d/Y', $row['end'])) : '<span class="muted">current</span>' ?></td>
-								<td class="small<?= $row['kind'] === 'full' ? '' : ' muted' ?>"><?= e($kinds[$row['kind']] ?? '') ?></td>
+								<td class="small<?= $row['kind'] === 'full' ? '' : ' muted' ?>"><?= e($kinds[$row['kind']] ?? '') ?><?= $row['approved'] ? '' : ' <span class="chip chip-orange">Unapproved</span>' ?></td>
 								<td class="num"><?= $row['cents'] !== null ? ($row['kind'] === 'full' ? '<strong>' . e(number_format($row['cents'], 2)) . '</strong>' : e(number_format($row['cents'], 2))) : '<span class="muted">no bill</span>' ?></td>
 								<td class="num"><?= $row['bill'] !== null ? '$' . e(number_format($row['bill'])) : '' ?></td>
 								<td class="small"><?= $row['sell'] ? e(implode(', ', array_map(static fn ($v) => number_format($v * 100, 2) . ' cents', $row['sell']))) : '<span class="muted">none</span>' ?></td>

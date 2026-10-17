@@ -132,18 +132,23 @@ final class UtilityRates
 	}
 
 	/**
-	 * Every approved version of the rates at a point for one sector (retired ones too), in full,
+	 * Every version of the rates at a point for one sector (retired ones too; approved ones only
+	 * unless $approvedOnly is false), in full,
 	 * oldest first, for the rate history check.
 	 *
 	 * @return array{ok:bool, error?:string, items?:list<array>, ms:int}
 	 */
-	public static function history(float $lat, float $lon, string $sector): array
+	public static function history(float $lat, float $lon, string $sector, bool $approvedOnly = true): array
 	{
-		$r = self::get([
+		$q = [
 			'lat' => sprintf('%.4F', $lat), 'lon' => sprintf('%.4F', $lon),
 			'sector' => in_array($sector, self::SECTORS, true) ? $sector : 'Residential',
-			'approved' => 'true', 'detail' => 'full', 'limit' => 500, 'orderby' => 'startdate', 'direction' => 'asc',
-		]);
+			'detail' => 'full', 'limit' => 500, 'orderby' => 'startdate', 'direction' => 'asc',
+		];
+		if ($approvedOnly) {
+			$q['approved'] = 'true';
+		}
+		$r = self::get($q);
 		if (!$r['ok']) {
 			return $r;
 		}
@@ -182,6 +187,7 @@ final class UtilityRates
 				'label' => $v['label'], 'start' => $start, 'end' => $end, 'bill' => $bill, 'cents' => $cents,
 				'kind' => $cents === null || $start === null ? 'none' : ($cents < 1 || $cents > 60 ? 'bad' : 'full'),
 				'sell' => self::sellRates($v), 'uri' => (string) ($v['uri'] ?? ''),
+				'approved' => !array_key_exists('approved', $v) || !empty($v['approved']),
 			];
 		}
 		usort($rows, static fn ($a, $b) => [(int) $a['start'], -(float) $a['cents']] <=> [(int) $b['start'], -(float) $b['cents']]);
