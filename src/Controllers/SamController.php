@@ -149,15 +149,15 @@ final class SamController
 					$runs[] = ['error' => $found['error']] + $run;
 					continue;
 				}
-				$sam = $found['items'] ? Sam::call(['action' => 'bills', 'rates' => $found['items'], 'monthly_kwh' => $kwh], 150) : ['ok' => true, 'bills' => []];
 				$bills = [];
-				foreach ($sam['ok'] ? $sam['bills'] : [] as $b) {
-					if (isset($b['annual_bill'])) {
-						$bills[(string) $b['label']] = (float) $b['annual_bill'];
-					} else {
+				foreach (self::billAll($found['items'], $kwh) as $label => $bill) {
+					if ($bill === null) {
 						$run['failed']++;
+					} else {
+						$bills[$label] = $bill;
 					}
 				}
+				$sam = ['ok' => true];
 				$groups = [];
 				foreach ($found['items'] as $item) {
 					$key = strtolower(trim((string) ($item['utility'] ?? '')) . '|' . trim((string) ($item['name'] ?? '')));
@@ -183,6 +183,29 @@ final class SamController
 		$this->render(['historyForm' => $form, 'history' => $history]);
 	}
 
+	/**
+	 * SAM's no-solar annual bill for each rate (label => bill, or null when SAM can't bill it), in
+	 * batches of 20; a batch that fails (a rate can stop SAM outright) is retried one rate at a time.
+	 */
+	private static function billAll(array $rates, float $kwh): array
+	{
+		$out = [];
+		foreach (array_chunk($rates, 20) as $batch) {
+			$r = Sam::call(['action' => 'bills', 'rates' => $batch, 'monthly_kwh' => $kwh], 120);
+			if ($r['ok']) {
+				foreach ($r['bills'] as $b) {
+					$out[(string) $b['label']] = isset($b['annual_bill']) ? (float) $b['annual_bill'] : null;
+				}
+				continue;
+			}
+			foreach ($batch as $rate) {
+				$one = Sam::call(['action' => 'bills', 'rates' => [$rate], 'monthly_kwh' => $kwh], 60);
+				$out[(string) $rate['label']] = $one['ok'] && isset($one['bills'][0]['annual_bill']) ? (float) $one['bills'][0]['annual_bill'] : null;
+			}
+		}
+		return $out;
+	}
+
 	/** The rate history run as plain text: a summary line per rate, then every version. */
 	private static function historyText(array $h): string
 	{
@@ -195,7 +218,7 @@ final class SamController
 				$out[] = '  3 years ' . $pct($g['y3']) . ' | 5 years ' . $pct($g['y5']) . ($g['generation'] !== null ? sprintf(' | generation now %.2f cents', $g['generation']) : '');
 				foreach ($g['rows'] as $row) {
 					$out[] = sprintf('  %s  %s  %-14s %s%s', $row['start'] ? gmdate('m/d/Y', $row['start']) : '          ', $row['end'] ? gmdate('m/d/Y', $row['end']) : 'current   ',
-						['full' => 'full service', 'delivery' => 'delivery only', 'bad' => 'bad data', 'none' => 'no bill'][$row['kind']] ?? '',
+						['full' => 'full service', 'delivery' => 'delivery only', 'dup' => 'same date', 'bad' => 'bad data', 'none' => 'no bill'][$row['kind']] ?? '',
 						$row['cents'] !== null ? sprintf('%6.2f cents', $row['cents']) : '      n/a',
 						$row['sell'] ? '  sell ' . implode('/', array_map(static fn ($v) => sprintf('%.2f', $v * 100), $row['sell'])) : '');
 				}

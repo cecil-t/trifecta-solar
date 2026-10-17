@@ -159,7 +159,8 @@ final class UtilityRates
 	 * A rate's versions as a history. OpenEI lists most PA rates twice for the same dates, with and
 	 * without the default generation; the higher one at each start date is the full-service version,
 	 * and the yearly change uses only those. Each row gets cents per kWh at the use given (from
-	 * $bills, label => annual bill) and a kind: full, delivery (delivery only) or bad (cents outside
+	 * $bills, label => annual bill) and a kind: full, delivery (delivery only), dup (another version
+	 * with the same start date and a similar price; left out) or bad (cents outside
 	 * 1 to 60, so a data entry error). The 3 and 5 year change is the compound yearly change from the
 	 * full-service version in effect then to the one in effect now, shown only with enough data: a
 	 * current version, one in effect at the start of the window, at least TREND_MIN_VERSIONS versions
@@ -196,10 +197,14 @@ final class UtilityRates
 		$pairedFull = [];
 		foreach ($byStart as $st => $idx) {
 			if (count($idx) > 1) {
+				$top = $rows[$idx[0]]['cents'];
 				foreach (array_slice($idx, 1) as $i) {
-					$rows[$i]['kind'] = 'delivery';
+					// well under the top one: the delivery-only twin; close to it: another variant of the same rate
+					$rows[$i]['kind'] = $rows[$i]['cents'] < 0.75 * $top ? 'delivery' : 'dup';
+					if ($rows[$i]['kind'] === 'delivery') {
+						$pairedFull[$st] = $top;
+					}
 				}
-				$pairedFull[$st] = $rows[$idx[0]]['cents'];
 			}
 		}
 		if ($pairedFull) {

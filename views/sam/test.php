@@ -329,7 +329,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<?php
 		$pct = static fn (array $c): string => $c['pct'] === null ? 'n/a' : sprintf('%+.1f%%', $c['pct']);
 		$why = static fn (array $c): string => $c['pct'] === null ? $c['why'] : number_format($c['from'], 2) . ' to ' . number_format($c['to'], 2) . ' cents, ' . (int) $c['versions'] . ' versions';
-		$kinds = ['full' => 'Full service', 'delivery' => 'Delivery only', 'bad' => 'Skipped: bad data', 'none' => 'No bill'];
+		$kinds = ['full' => 'Full service', 'delivery' => 'Delivery only', 'dup' => 'Skipped: same date', 'bad' => 'Skipped: bad data', 'none' => 'No bill'];
 		?>
 		<p class="muted small mt"><?= e($history['at']) ?>: <?= count($history['runs']) ?> runs at <?= e(number_format($history['kwh'])) ?> kWh a month, <?= e(number_format($history['ms'] / 1000, 1)) ?> s</p>
 		<h3>Summary: rates with a current version</h3>
