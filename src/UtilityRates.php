@@ -353,6 +353,15 @@ final class UtilityRates
 				'ended' => $status === 'ended' && $end($best) ? gmdate('m/d/Y', (int) $end($best)) : '',
 				'delivery_twin' => count($twins) > 1 && self::roughCents($twins[1]) < 0.75 * self::roughCents($best)];
 		}
+		// Ended rates only when the utility has nothing in effect: otherwise they are old names (PECO's
+		// "Residential Service", ended 2015, beside the current "Residential Service (R)")
+		$live = [];
+		foreach ($list as $r) {
+			if ($r['status'] !== 'ended') {
+				$live[strtolower($r['utility'])] = true;
+			}
+		}
+		$list = array_values(array_filter($list, static fn ($r) => $r['status'] !== 'ended' || empty($live[strtolower($r['utility'])])));
 		$rank = ['current' => 0, 'unapproved' => 1, 'ended' => 2];
 		usort($list, static fn ($a, $b) => [$rank[$a['status']], $a['utility'], $a['name']] <=> [$rank[$b['status']], $b['utility'], $b['name']]);
 		return ['ok' => true, 'rates' => $list, 'other_utilities' => $others];
