@@ -59,7 +59,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 				<?php if ($o['lead_source'] === 'self_gen' && Presales::isRepeatCustomer($o)): ?><div class="small text-orange">We already did a job for this customer, so no self-generated bonus applies.</div><?php endif; ?></dd>
 			<dt>Utility bill</dt><dd><?php if ($o['bill_name'] || $o['utility_id'] || $o['utility_account'] || $o['annual_usage_kwh']): ?>
 				<?= implode(' &middot; ', array_map('e', array_filter([$o['bill_name'], $o['utility_name']]))) ?>
-				<?php if ($o['annual_usage_kwh']): ?><div><?= number_format((int) $o['annual_usage_kwh']) ?> kWh, last 12 months</div><?php endif; ?>
+				<?php if ($o['annual_usage_kwh']): ?><div><?= number_format((int) $o['annual_usage_kwh']) ?> kWh, <?= $o['new_service'] ? 'expected yearly use (new service)' : 'last 12 months' ?></div><?php endif; ?>
 				<?php if ($o['utility_account'] || $o['utility_meter']): ?><div class="small muted"><?= $o['utility_account'] ? 'Account ' . e($o['utility_account']) : '' ?><?= $o['utility_account'] && $o['utility_meter'] ? ' &middot; ' : '' ?><?= $o['utility_meter'] ? 'Meter ' . e($o['utility_meter']) : '' ?><?= $o['utility_tariff'] ? ' &middot; Rate ' . e($o['utility_tariff']) : '' ?></div><?php endif; ?>
 				<?php if ($o['rate_label']): ?><div class="small muted">OpenEI rate: <?= e((string) $o['rate_name']) ?> <a href="https://apps.openei.org/USURDB/rate/view/<?= e((string) $o['rate_label']) ?>" target="_blank" rel="noopener">view &#8599;</a></div><?php endif; ?>
 				<?php if ($o['service_address']): ?><div class="small muted">Service address <?= e($o['service_address']) ?></div><?php endif; ?>

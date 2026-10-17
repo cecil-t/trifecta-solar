@@ -1723,3 +1723,6 @@ a[href^="tel:"] { white-space: nowrap; }
 input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-shadow: 0 0 0 1px #e7b84a; }
 .point-box > summary { cursor: pointer; }
 .point-box[open] { padding-bottom: .3rem; }
+.project-form .if-new { display: none; }
+.project-form:has(.new-service:checked) .if-new { display: inline; }
+.project-form:has(.new-service:checked) .if-bill { display: none; }

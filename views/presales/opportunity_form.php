@@ -67,17 +67,15 @@ $isNew = $id === null;
 				</select>
 				<small class="hint">Commercial, agricultural, government and non-profit jobs are all Non-Residential: that decides the deposit and which BOS, permit and interconnection items show.</small>
 			</label>
+			<div class="checkfield">
+				<span class="field-label">Agricultural</span>
+				<label class="boxwrap"><input type="checkbox" name="is_agricultural" value="1" <?= $v('is_agricultural') ? 'checked' : '' ?>> Farm / agricultural</label>
+			</div>
 		</div>
 		<div id="new-customer" class="grid-form reveal" hidden>
 			<label class="span-2">New customer name <input type="text" name="new_customer_name" value="<?= e($v('new_customer_name')) ?>"></label>
 			<label>Phone <input type="tel" name="new_customer_phone" value="<?= e($v('new_customer_phone')) ?>"></label>
 			<label>Email <input type="email" name="new_customer_email" value="<?= e($v('new_customer_email')) ?>"></label>
-		</div>
-		<div class="grid-form mt-sm">
-			<div class="checkfield">
-				<span class="field-label">Agricultural</span>
-				<label class="boxwrap"><input type="checkbox" name="is_agricultural" value="1" <?= $v('is_agricultural') ? 'checked' : '' ?>> Farm / agricultural</label>
-			</div>
 		</div>
 	</section>
 
@@ -151,15 +149,22 @@ $isNew = $id === null;
 				<input type="hidden" name="geo_source" value="<?= e((string) $v('geo_source')) ?>" data-addr="source">
 				<small class="hint">Set automatically from the address; production weather and utility rates use it. Only change it when the address can't be found (right-click the spot in Google Maps to copy it).</small>
 			</details>
-			<label class="span-2">Drive folder link <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/..."></label>
+			<label class="span-2">Drive folder link <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/...">
+				<small class="hint">Electric bill, site photos, etc. should be stored in Google Drive.</small>
+			</label>
 			<label class="span-2">Notes <textarea name="notes" rows="3" data-autogrow><?= e($v('notes')) ?></textarea></label>
 		</div>
 	</section>
 
 	<section class="card band">
 		<h2>Utility bill</h2>
-		<p class="hint">From the customer's electric bill. It all carries into the project.</p>
+		<p class="hint">From the customer's electric bill. Required for the savings estimates on the proposal.</p>
 		<div class="grid-form">
+			<div class="checkfield span-2">
+				<span class="field-label">New service</span>
+				<label class="boxwrap"><input type="checkbox" name="new_service" value="1" class="new-service" <?= $v('new_service') ? 'checked' : '' ?>> New electric service: no bill yet</label>
+				<small class="hint">A new building or meter. Still pick the utility and its rate; enter the use you expect instead of the last 12 months.</small>
+			</div>
 			<label class="span-2">Name on utility bill <input type="text" name="bill_name" value="<?= e($v('bill_name')) ?>"></label>
 			<label>Utility
 				<select name="utility_id" data-addr="utility">
@@ -169,7 +174,7 @@ $isNew = $id === null;
 					<?php endforeach; ?>
 				</select>
 			</label>
-			<label>Last 12 months usage (kWh) <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric" placeholder="e.g. 14,200"></label>
+			<label><span class="if-bill">Last 12 months usage (kWh)</span><span class="if-new">Expected yearly use (kWh)</span> <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric" placeholder="e.g. 14,200"></label>
 			<label>Account # <input type="text" name="utility_account" value="<?= e($v('utility_account')) ?>"></label>
 			<label>Meter # <input type="text" name="utility_meter" value="<?= e($v('utility_meter')) ?>"></label>
 			<div class="checkfield span-all rate-picker" data-rate-picker="/presales/utility-rates">

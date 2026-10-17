@@ -28,7 +28,7 @@ final class PresalesController
 		'site_zip' => 'ZIP', 'drive_url' => 'Drive folder', 'notes' => 'Notes',
 		'utility_id' => 'Utility', 'bill_name' => 'Name on utility bill', 'utility_account' => 'Utility account #',
 		'utility_meter' => 'Meter #', 'utility_tariff' => 'Utility rate', 'service_address' => 'Service address',
-		'annual_usage_kwh' => 'Last 12 months usage (kWh)',
+		'annual_usage_kwh' => 'Last 12 months usage (kWh)', 'new_service' => 'New electric service',
 		'lead_source' => 'Lead source', 'lead_detail' => 'Lead came in by', 'referrer_org_id' => 'Referred by',
 		'referrer_name' => 'Referred by (name)', 'handoff_user_id' => 'Handed off by',
 		'municipality_id' => 'Municipality', 'site_lat' => 'Map point latitude', 'site_lon' => 'Map point longitude',
@@ -136,6 +136,7 @@ final class PresalesController
 				'salesperson_id' => static fn ($v) => Db::value('SELECT name FROM users WHERE id = ?', [$v]) ?? $v,
 				'utility_id' => static fn ($v) => Db::value('SELECT name FROM utilities WHERE id = ?', [$v]) ?? $v,
 				'is_agricultural' => static fn ($v) => $v ? 'Yes' : 'No',
+				'new_service' => static fn ($v) => $v ? 'Yes' : 'No',
 				'lead_source' => static fn ($v) => Presales::LEAD_SOURCES[$v] ?? $v,
 				'lead_detail' => static fn ($v) => Presales::LEAD_DETAILS[$v] ?? $v,
 				'referrer_org_id' => static fn ($v) => Db::value('SELECT name FROM organizations WHERE id = ?', [$v]) ?? $v,
@@ -325,6 +326,7 @@ final class PresalesController
 			'utility_tariff' => trim((string) ($_POST['utility_tariff'] ?? '')) ?: null,
 			'service_address' => trim((string) ($_POST['service_address'] ?? '')) ?: null,
 			'annual_usage_kwh' => $usage,
+			'new_service' => empty($_POST['new_service']) ? 0 : 1,
 		];
 	}
 
