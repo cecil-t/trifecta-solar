@@ -97,6 +97,71 @@ final class SamController
 		$this->render($vars);
 	}
 
+	/** Town points in the service area for the rate history check (approximate centers, one per utility). */
+	public const HISTORY_PLACES = [
+		'40.1630,-76.3950' => 'Manheim, PA (PPL)',
+		'40.2737,-76.8844' => 'Harrisburg, PA (PPL)',
+		'39.9600,-75.6050' => 'West Chester, PA (PECO)',
+		'40.3360,-75.9270' => 'Reading, PA (Met-Ed)',
+		'39.9630,-76.7280' => 'York, PA (Met-Ed)',
+		'40.7930,-77.8600' => 'State College, PA (West Penn Power)',
+		'40.5190,-78.3950' => 'Altoona, PA (Penelec)',
+		'39.6070,-75.8330' => 'Elkton, MD (Delmarva)',
+		'39.4500,-75.7160' => 'Middletown, DE (Delmarva)',
+	];
+
+	/**
+	 * How a point's rates changed over time: every version OpenEI has (retired ones too), each billed
+	 * by SAM at the same flat use, and the yearly change over 3 and 5 years. Also shows whether the
+	 * rates carry a sell (export) rate. Nothing is saved.
+	 */
+	public function rateHistory(): void
+	{
+		$place = (string) ($_POST['place'] ?? '');
+		[$lat, $lon] = isset(self::HISTORY_PLACES[$place]) ? array_map('floatval', explode(',', $place)) : [
+			is_numeric($_POST['lat'] ?? null) ? (float) $_POST['lat'] : null, is_numeric($_POST['lon'] ?? null) ? (float) $_POST['lon'] : null];
+		$sector = in_array($_POST['sector'] ?? '', UtilityRates::SECTORS, true) ? (string) $_POST['sector'] : 'Residential';
+		$kwh = is_numeric($_POST['kwh'] ?? null) && (float) $_POST['kwh'] > 0 ? min(1000000, (float) $_POST['kwh']) : 1000.0;
+		$form = ['place' => $place, 'lat' => $lat === null ? '' : (string) $lat, 'lon' => $lon === null ? '' : (string) $lon, 'sector' => $sector, 'kwh' => (string) $kwh];
+		$error = SolarResource::pointError($lat, $lon);
+		if ($error !== null) {
+			$this->render(['historyForm' => $form, 'historyError' => $error]);
+			return;
+		}
+		$found = UtilityRates::history($lat, $lon, $sector);
+		if (!$found['ok']) {
+			$this->render(['historyForm' => $form, 'historyError' => $found['error']]);
+			return;
+		}
+		set_time_limit(180);
+		$sam = Sam::call(['action' => 'bills', 'rates' => $found['items'], 'monthly_kwh' => $kwh], 150);
+		$bills = [];
+		$failed = 0;
+		foreach ($sam['ok'] ? $sam['bills'] : [] as $b) {
+			if (isset($b['annual_bill'])) {
+				$bills[(string) $b['label']] = (float) $b['annual_bill'];
+			} else {
+				$failed++;
+			}
+		}
+		$groups = [];
+		foreach ($found['items'] as $item) {
+			$key = strtolower(trim((string) ($item['utility'] ?? '')) . '|' . trim((string) ($item['name'] ?? '')));
+			$groups[$key]['utility'] = (string) ($item['utility'] ?? '');
+			$groups[$key]['name'] = (string) ($item['name'] ?? '');
+			$groups[$key]['versions'][] = $item;
+		}
+		foreach ($groups as $k => $g) {
+			$groups[$k] += UtilityRates::trend($g['versions'], $bills, $kwh);
+			unset($groups[$k]['versions']);
+		}
+		uasort($groups, static fn ($a, $b) => [$a['utility'], $a['name']] <=> [$b['utility'], $b['name']]);
+		$this->render(['historyForm' => $form, 'history' => [
+			'groups' => $groups, 'count' => count($found['items']), 'failed' => $failed, 'samError' => $sam['ok'] ? null : $sam['error'],
+			'ms' => $found['ms'] + (int) ($sam['ms'] ?? 0), 'at' => date('m/d/Y g:i:s A'),
+		]]);
+	}
+
 	/** Google: geocode an address, then Solar API Building Insights at that point; the point fills the other forms. */
 	public function google(): void
 	{
@@ -182,6 +247,10 @@ final class SamController
 			'address' => '',
 			'google' => null,
 			'googleError' => null,
+			'historyForm' => null,
+			'history' => null,
+			'historyError' => null,
+			'historyPlaces' => self::HISTORY_PLACES,
 		]);
 	}
 }

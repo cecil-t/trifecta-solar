@@ -15,6 +15,8 @@ Actions:
 	          SAM's default example system run on it fixed, single-axis and dual-axis (kWh per kW DC),
 	          as a sanity check of the weather, with PVWatts v8 set up to match each case for
 	          comparison. Not an estimate for any real system.
+	bills     {"rates": [URDB rates], "monthly_kwh": n}: the annual no-solar bill of each, for
+	          comparing a rate's versions over time.
 	bill      {"rate": one URDB rate (OpenEI, full detail), "monthly_kwh": n}: the rate converted
 	          for SAM (UtilityRateTools.URDBv8_to_ElectricityRates) and SAM's Utilityrate5 bill
 	          for a flat use of n kWh every month with no solar, as a check that the rate reads right.
@@ -548,7 +550,34 @@ def system(req):
 		'library_release': open(version_file).read().strip() if os.path.isfile(version_file) else None,
 	}
 
-ACTIONS = {'check': check, 'weather': weather, 'bill': bill, 'system': system}
+
+def bills(req):
+	"""The no-solar annual bill for several rates at the same flat monthly use, for comparing a rate's
+	versions over time. Each rate's error is reported on its own row."""
+	import PySAM.Utilityrate5 as utilityrate
+	from PySAM.UtilityRateTools import URDBv8_to_ElectricityRates
+
+	monthly_kwh = float(req.get('monthly_kwh') or 1000)
+	out = []
+	for rate in req.get('rates') or []:
+		try:
+			m = utilityrate.new()
+			m.ElectricityRates.assign(URDBv8_to_ElectricityRates(rate))
+			m.ElectricityRates.rate_escalation = [0]
+			m.Lifetime.analysis_period = 1
+			m.Lifetime.system_use_lifetime_output = 0
+			m.Lifetime.inflation_rate = 0
+			m.SystemOutput.gen = [0] * 8760
+			m.SystemOutput.degradation = [0]
+			m.Load.load = [monthly_kwh * 12 / 8760] * 8760
+			m.execute()
+			out.append({'label': rate.get('label'), 'annual_bill': round(m.Outputs.utility_bill_wo_sys_year1, 2)})
+		except Exception as e:
+			out.append({'label': rate.get('label'), 'error': '%s: %s' % (type(e).__name__, e)})
+	return {'monthly_kwh': monthly_kwh, 'bills': out}
+
+
+ACTIONS = {'check': check, 'weather': weather, 'bill': bill, 'bills': bills, 'system': system}
 
 
 def main():

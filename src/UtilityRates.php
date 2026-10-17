@@ -131,6 +131,79 @@ final class UtilityRates
 		return null;
 	}
 
+	/**
+	 * Every approved version of the rates at a point for one sector (retired ones too), in full,
+	 * oldest first, for the rate history check.
+	 *
+	 * @return array{ok:bool, error?:string, items?:list<array>, ms:int}
+	 */
+	public static function history(float $lat, float $lon, string $sector): array
+	{
+		$r = self::get([
+			'lat' => sprintf('%.4F', $lat), 'lon' => sprintf('%.4F', $lon),
+			'sector' => in_array($sector, self::SECTORS, true) ? $sector : 'Residential',
+			'approved' => 'true', 'detail' => 'full', 'limit' => 500, 'orderby' => 'startdate', 'direction' => 'asc',
+		]);
+		if (!$r['ok']) {
+			return $r;
+		}
+		$items = array_values(array_filter($r['items'], static fn ($i) => is_array($i) && !empty($i['label'])));
+		return ['ok' => true, 'items' => $items, 'ms' => $r['ms']];
+	}
+
+	/**
+	 * A rate's versions as a history: per version its dates and cents per kWh at the use given (from
+	 * $bills, label => annual bill), and the yearly change over 3 and 5 years between the version in
+	 * effect then and the one in effect now (compound, per year). Null where there is no version that old.
+	 */
+	public static function trend(array $versions, array $bills, float $monthlyKwh, ?int $now = null): array
+	{
+		$now ??= time();
+		$rows = [];
+		foreach ($versions as $v) {
+			$bill = $bills[$v['label']] ?? null;
+			$rows[] = [
+				'label' => $v['label'], 'start' => isset($v['startdate']) ? (int) $v['startdate'] : null,
+				'end' => isset($v['enddate']) && is_numeric($v['enddate']) ? (int) $v['enddate'] : null,
+				'bill' => $bill, 'cents' => $bill !== null ? $bill / ($monthlyKwh * 12) * 100 : null,
+				'sell' => self::sellRates($v), 'uri' => (string) ($v['uri'] ?? ''),
+			];
+		}
+		usort($rows, static fn ($a, $b) => (int) $a['start'] <=> (int) $b['start']);
+		$at = static function (int $t) use ($rows): ?array {
+			$hit = null;
+			foreach ($rows as $r) {
+				if ($r['start'] !== null && $r['start'] <= $t && $r['cents'] !== null) {
+					$hit = $r;
+				}
+			}
+			return $hit;
+		};
+		$change = static function (int $years) use ($at, $now): ?array {
+			$then = $at((int) strtotime('-' . $years . ' years', $now));
+			$today = $at($now);
+			if (!$then || !$today || $then['cents'] <= 0) {
+				return null;
+			}
+			return ['pct' => (pow($today['cents'] / $then['cents'], 1 / $years) - 1) * 100, 'from' => $then['cents'], 'to' => $today['cents']];
+		};
+		return ['rows' => $rows, 'y3' => $change(3), 'y5' => $change(5), 'oldest' => $rows[0]['start'] ?? null];
+	}
+
+	/** Sell (export) rates a URDB rate gives on its energy tiers, if any. */
+	public static function sellRates(array $item): array
+	{
+		$out = [];
+		foreach ((array) ($item['energyratestructure'] ?? []) as $period) {
+			foreach ((array) $period as $t) {
+				if (is_array($t) && isset($t['sell']) && is_numeric($t['sell'])) {
+					$out[] = (float) $t['sell'];
+				}
+			}
+		}
+		return array_values(array_unique($out));
+	}
+
 	/** Our utility names as OpenEI spells the company (FirstEnergy's PA companies go by their legal names there). */
 	private const ALIASES = [
 		'meted' => 'metropolitanedison', 'penelec' => 'pennsylvaniaelectric', 'westpennpower' => 'westpenn',

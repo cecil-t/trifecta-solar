@@ -24,6 +24,10 @@ use App\Csrf;
  * @var string  $address       the address typed in the Google form
  * @var ?array  $google        geo (GoogleMaps::geocode), building (GoogleMaps::buildingInsights), at
  * @var ?string $googleError
+ * @var ?array  $historyForm   place, lat, lon, sector, kwh
+ * @var ?array  $history       groups (utility, name, rows, y3, y5, oldest), count, failed, samError, ms, at
+ * @var ?string $historyError
+ * @var array   $historyPlaces
  */
 $test = $result['test_run'] ?? null;
 $rf = $rateForm ?? ['lat' => $point['lat'], 'lon' => $point['lon'], 'sector' => 'Residential', 'kwh' => '1000'];
@@ -283,6 +287,59 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 				</tbody>
 			</table></div>
 		<?php endif; ?>
+	<?php endif; ?>
+</section>
+
+<section class="card mt" id="history">
+	<h2>Rate history (OpenEI)</h2>
+	<p class="muted small">Every version OpenEI has of the rates at a place (retired ones too), each billed by SAM at the same use every month with no solar, so cents per kWh compare across years. The 3 and 5 year figures are the compound yearly change between the version in effect then and the one in effect now. Also shows whether a rate carries a sell (export) rate. Nothing is saved.</p>
+	<?php if ($historyError): ?>
+		<div class="flash flash-error"><?= e($historyError) ?></div>
+	<?php endif; ?>
+	<?php $hf = $historyForm ?? ['place' => array_key_first($historyPlaces), 'lat' => '', 'lon' => '', 'sector' => 'Residential', 'kwh' => '1000']; ?>
+	<form method="post" action="/admin/proposal-apis/rate-history#history" class="sam-point">
+		<?= Csrf::field() ?>
+		<label>Place
+			<select name="place">
+				<?php foreach ($historyPlaces as $k => $label): ?><option value="<?= e($k) ?>"<?= $hf['place'] === $k ? ' selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+				<option value=""<?= $hf['place'] === '' ? ' selected' : '' ?>>The point typed here</option>
+			</select>
+		</label>
+		<label>Latitude <input type="text" name="lat" value="<?= e($hf['place'] === '' ? $hf['lat'] : '') ?>" inputmode="decimal" placeholder="40.1600"></label>
+		<label>Longitude <input type="text" name="lon" value="<?= e($hf['place'] === '' ? $hf['lon'] : '') ?>" inputmode="decimal" placeholder="-76.3900"></label>
+		<label>Sector
+			<select name="sector">
+				<?php foreach ($sectors as $sct): ?><option value="<?= e($sct) ?>"<?= $hf['sector'] === $sct ? ' selected' : '' ?>><?= e($sct) ?></option><?php endforeach; ?>
+			</select>
+		</label>
+		<label>kWh a month <input type="text" name="kwh" value="<?= e($hf['kwh']) ?>" inputmode="decimal"></label>
+		<button type="submit" class="btn btn-primary">Show history</button>
+	</form>
+	<p class="hint mt-xs">Places are approximate town centers, one or two per utility; a point typed in uses "The point typed here". A place takes about 10 to 30 seconds.</p>
+
+	<?php if ($history): ?>
+		<p class="muted small mt"><?= e($history['at']) ?>: <?= (int) $history['count'] ?> rate versions, <?= e(number_format($history['ms'] / 1000, 1)) ?> s<?= $history['failed'] ? ', ' . (int) $history['failed'] . ' SAM could not bill' : '' ?></p>
+		<?php if ($history['samError']): ?><div class="flash flash-error"><?= e($history['samError']) ?></div><?php endif; ?>
+		<?php $pct = static fn (?array $c): string => $c === null ? 'not enough history' : sprintf('%+.1f%% a year', $c['pct']) . ' (' . number_format($c['from'], 2) . ' to ' . number_format($c['to'], 2) . ' cents)'; ?>
+		<?php foreach ($history['groups'] as $g): ?>
+			<h3 class="mt"><?= e($g['utility']) ?>: <?= e($g['name']) ?></h3>
+			<p class="small"><strong>3 years:</strong> <?= e($pct($g['y3'])) ?> &middot; <strong>5 years:</strong> <?= e($pct($g['y5'])) ?> &middot; <?= count($g['rows']) ?> version<?= count($g['rows']) === 1 ? '' : 's' ?><?= $g['oldest'] ? ', oldest from ' . e(gmdate('m/d/Y', (int) $g['oldest'])) : '' ?></p>
+			<div class="table-wrap"><table class="table table-tight table-refs">
+				<thead><tr><th>From</th><th>Until</th><th class="num">Cents/kWh</th><th class="num">Year's bill</th><th>Sell rate</th><th></th></tr></thead>
+				<tbody>
+				<?php foreach ($g['rows'] as $row): ?>
+					<tr>
+						<td class="nowrap"><?= $row['start'] ? e(gmdate('m/d/Y', $row['start'])) : '' ?></td>
+						<td class="nowrap"><?= $row['end'] ? e(gmdate('m/d/Y', $row['end'])) : '<span class="muted">current</span>' ?></td>
+						<td class="num"><?= $row['cents'] !== null ? e(number_format($row['cents'], 2)) : '<span class="muted">no bill</span>' ?></td>
+						<td class="num"><?= $row['bill'] !== null ? '$' . e(number_format($row['bill'])) : '' ?></td>
+						<td class="small"><?= $row['sell'] ? e(implode(', ', array_map(static fn ($v) => number_format($v * 100, 2) . ' cents', $row['sell']))) : '<span class="muted">none</span>' ?></td>
+						<td><?php if (safe_url($row['uri']) !== null): ?><a href="<?= e(safe_url($row['uri'])) ?>" target="_blank" rel="noopener" class="small">OpenEI</a><?php endif; ?></td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table></div>
+		<?php endforeach; ?>
 	<?php endif; ?>
 </section>
 

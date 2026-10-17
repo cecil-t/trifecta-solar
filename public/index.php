@@ -220,6 +220,7 @@ $r->get('/admin/proposal-apis', [SamController::class, 'test'], 'admin');
 $r->post('/admin/proposal-apis', [SamController::class, 'run'], 'admin');
 $r->post('/admin/proposal-apis/weather', [SamController::class, 'weather'], 'admin');
 $r->post('/admin/proposal-apis/rates', [SamController::class, 'rates'], 'admin');
+$r->post('/admin/proposal-apis/rate-history', [SamController::class, 'rateHistory'], 'admin');
 $r->post('/admin/proposal-apis/pdf', [SamController::class, 'pdf'], 'admin');
 $r->post('/admin/proposal-apis/google', [SamController::class, 'google'], 'admin');
 $r->get('/admin/proposal-apis/aerial', [SamController::class, 'aerial'], 'admin');
