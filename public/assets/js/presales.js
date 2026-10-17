@@ -423,6 +423,19 @@
 		toggle('cont-floor', st.floor);
 		toggle('cont-overridden', st.overridden);
 		toggle('panels-mismatch', st.mismatch);
+		// Production estimate: what is still missing, and whether the saved estimate is out of date
+		if (res.production) {
+			const box = document.getElementById('prod-ready');
+			const ul = document.getElementById('prod-missing');
+			const run = document.getElementById('prod-run');
+			const stale = document.getElementById('prod-stale');
+			if (ul) {
+				ul.replaceChildren(...res.production.missing.map((t) => { const li = document.createElement('li'); li.textContent = t; return li; }));
+				box.hidden = res.production.missing.length === 0;
+			}
+			if (run) run.disabled = res.production.missing.length > 0;
+			if (stale) stale.hidden = !res.production.stale;
+		}
 		const count = document.getElementById('arrays-count');
 		if (count) count.textContent = st.arrays_panels + ' panels on arrays, ' + res.v.panels + ' modules';
 

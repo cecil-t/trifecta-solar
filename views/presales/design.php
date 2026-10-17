@@ -427,6 +427,8 @@ $folded = [];
 			<p class="hint mt-xs">Azimuth is degrees from true north (180 = south). Tilt takes degrees or a roof pitch like 6/12; over <?= e($deg($steep)) ?>° shows red. Trackers have no fixed tilt or azimuth. Shading is the share of a year's production lost to shade on that array (0 = none); it's a judgment, so note how it was made. <span class="text-red" id="panels-mismatch" <?= $calc['panels_mismatch'] ? '' : 'hidden' ?>>Panels on arrays don't match the module count.</span></p>
 		</section>
 
+		<?= App\View::partial('presales/_production', ['o' => $o, 'd' => $d, 'prodIn' => $prodIn, 'prod' => $prod, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
+
 		<?php
 		$trows = $calc['trench_rows'];
 		$tv = $trenchView;

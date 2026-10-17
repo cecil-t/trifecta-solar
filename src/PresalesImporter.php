@@ -132,7 +132,7 @@ final class PresalesImporter
 		$cols = ['category', 'name', 'notes', 'print_notes', 'price', 'shipping', 'setup_cost', 'min_total', 'qty_rule', 'tax_class',
 			'watts', 'ac_kw', 'kwh', 'kw', 'warranty_text', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'is_solarinsure',
 			'price_updated_at', 'price_source', 'sort_order', 'segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'trench_part', 'part_size', 'material',
-			'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
+			'cec_name', 'cec_units', 'spec', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
 		$fillable = ['segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe',
 			'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
 		foreach ($items as $it) {

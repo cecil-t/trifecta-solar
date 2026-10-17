@@ -22,6 +22,83 @@ final class CecLibrary
 		};
 	}
 
+	/**
+	 * Spec-sheet fields for items SAM's CEC library doesn't list: [key => [label, unit, min, max, required]].
+	 * Watts (modules) and AC kW (inverters) come from the item's own fields.
+	 */
+	public const SPEC_MODULE = [
+		'vmp' => ['Vmp', 'V', 1, 1500, true],
+		'imp' => ['Imp', 'A', 0.1, 50, true],
+		'voc' => ['Voc', 'V', 1, 1500, true],
+		'isc' => ['Isc', 'A', 0.1, 50, true],
+		'gamma_pmp_pct' => ['Pmax temperature coefficient', '%/°C', -1.5, 0, true],
+		'beta_voc_pct' => ['Voc temperature coefficient', '%/°C', -1.5, 0, true],
+		'alpha_isc_pct' => ['Isc temperature coefficient', '%/°C', 0, 0.5, true],
+		'cells' => ['Cells in series', '', 10, 400, true],
+		'noct' => ['NOCT (or NMOT)', '°C', 30, 70, true],
+		'length_mm' => ['Length', 'mm', 300, 4000, true],
+		'width_mm' => ['Width', 'mm', 300, 3000, true],
+	];
+	public const SPEC_INVERTER = [
+		'eff_pct' => ['CEC weighted efficiency', '%', 80, 99.9, true],
+		'vdc_nominal' => ['Nominal DC voltage', 'V', 20, 1500, true],
+		'mppt_low' => ['MPPT voltage, low', 'V', 0, 1500, false],
+		'mppt_high' => ['MPPT voltage, high', 'V', 0, 1500, false],
+		'vdc_max' => ['Maximum DC voltage', 'V', 0, 2000, false],
+	];
+	public const CELL_TECH = ['mono' => 'Monocrystalline', 'poly' => 'Polycrystalline', 'cdte' => 'Thin film CdTe', 'cigs' => 'Thin film CIGS'];
+
+	/**
+	 * Spec-sheet values from a form ($in: field => typed value), checked, or null when the item
+	 * has no spec fields. Throws with a readable message.
+	 */
+	public static function specFromInput(string $kind, array $in, ?float $watts): ?array
+	{
+		$fields = $kind === 'modules' ? self::SPEC_MODULE : self::SPEC_INVERTER;
+		$out = [];
+		foreach ($fields as $k => [$label, $unit, $min, $max, $required]) {
+			$raw = trim(str_replace(',', '', (string) ($in[$k] ?? '')));
+			if ($raw === '') {
+				if ($required) {
+					throw new \InvalidArgumentException('Spec sheet: ' . $label . ' is required.');
+				}
+				continue;
+			}
+			if (!is_numeric($raw) || (float) $raw < $min || (float) $raw > $max) {
+				throw new \InvalidArgumentException('Spec sheet: ' . $label . ' must be a number from ' . $min . ' to ' . $max . ($unit !== '' ? ' ' . $unit : '') . '.');
+			}
+			$out[$k] = $k === 'cells' ? (int) $raw : (float) $raw;
+		}
+		if ($kind === 'modules') {
+			if ($out['vmp'] >= $out['voc'] || $out['imp'] >= $out['isc']) {
+				throw new \InvalidArgumentException('Spec sheet: Vmp must be below Voc, and Imp below Isc.');
+			}
+			if ($watts && abs($out['vmp'] * $out['imp'] - $watts) / $watts > 0.05) {
+				throw new \InvalidArgumentException('Spec sheet: Vmp x Imp is ' . round($out['vmp'] * $out['imp']) . ' W, more than 5% off the module\'s ' . round($watts) . ' W. Check the values.');
+			}
+			$tech = (string) ($in['tech'] ?? 'mono');
+			$out['tech'] = isset(self::CELL_TECH[$tech]) ? $tech : 'mono';
+			$out['bifacial'] = empty($in['bifacial']) ? 0 : 1;
+		} elseif (isset($out['mppt_low'], $out['mppt_high']) && $out['mppt_low'] >= $out['mppt_high']) {
+			throw new \InvalidArgumentException('Spec sheet: the MPPT low voltage must be below the high one.');
+		}
+		return $out;
+	}
+
+	/** One line describing saved spec-sheet values, for logs and the catalog list. */
+	public static function specSummary(?string $json): string
+	{
+		$s = json_decode((string) $json, true);
+		if (!is_array($s) || !$s) {
+			return '';
+		}
+		if (isset($s['vmp'])) {
+			return sprintf('Vmp %s V, Imp %s A, Voc %s V, Isc %s A, Pmax %s%%/°C, %d cells, %s x %s mm',
+				$s['vmp'], $s['imp'], $s['voc'], $s['isc'], $s['gamma_pmp_pct'], $s['cells'], $s['length_mm'], $s['width_mm']);
+		}
+		return sprintf('CEC efficiency %s%%, nominal %s V DC', $s['eff_pct'] ?? '', $s['vdc_nominal'] ?? '');
+	}
+
 	public static function available(): bool
 	{
 		return is_file(self::path('modules')) && is_file(self::path('inverters'));

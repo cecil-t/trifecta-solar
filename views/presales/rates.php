@@ -96,6 +96,29 @@ $rules = $rules ?: [[]];
 		</div>
 	</section>
 
+	<section class="card band" id="production">
+		<h2>Production estimate</h2>
+		<p class="hint">Defaults for the build sheet's production estimate (SAM's detailed model and PVWatts v8, both run every time). Shading is per array on the build sheet. Inverter losses come from each inverter's CEC data, so they are not set here. A build sheet's estimate keeps the values it ran with; running it again uses these.</p>
+		<div class="grid-form">
+			<label>Estimate the proposal uses
+				<select name="settings[production_model]" <?= $dis ?>>
+					<?php foreach (App\Production::MODELS as $k => $label): ?>
+						<option value="<?= $k ?>" <?= $s('production_model') === $k ? 'selected' : '' ?>><?= e($label) ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>Other system losses (%) <input type="text" name="settings[production_other_loss]" value="<?= e($n($s('production_other_loss'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Soiling, wiring, mismatch, connections, light-induced degradation, nameplate and availability together. OpenSolar's proposals used about 13 to 15%; PVWatts' own default is 14% (with 3% shading inside it).</small>
+			</label>
+			<label>Optimizer loss (%) <input type="text" name="settings[production_optimizer_loss]" value="<?= e($n($s('production_optimizer_loss'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Only on systems with module optimizers. OpenSolar used 1.2 to 1.4%.</small>
+			</label>
+			<label>Extra loss on SAM's detailed model (%) <input type="text" name="settings[production_sam_adjust]" value="<?= e($n($s('production_sam_adjust'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">A calibration for the detailed model alone. On the reference jobs it read 3 to 4% above real production outside the snow months; 0 leaves it as SAM computes it.</small>
+			</label>
+		</div>
+	</section>
+
 	<section class="card band">
 		<h2>Commission</h2>
 		<p class="hint">Tax-bracket style: each rate applies only to the part of the job inside its bracket, so there is no cliff at a threshold. Commission is figured on the price less pass-through items and extras without markup: what we don't mark up, we don't pay commission on. The build sheet solves the price so it covers the commission exactly. New build sheets copy this plan; saved ones keep the plan they were built with.</p>

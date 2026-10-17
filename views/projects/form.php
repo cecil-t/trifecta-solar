@@ -126,14 +126,15 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 	<section class="card">
 		<h2>Site and jurisdiction</h2>
 		<div class="grid-form">
-			<label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-geo-field="street"></label>
-			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-geo-field="city"></label>
+			<?= App\View::partial('partials/address_full', ['value' => '']) ?>
+			<label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-geo-field="street" data-addr="street"></label>
+			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-geo-field="city" data-addr="city"></label>
 			<div class="grid-pair">
-				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2" data-geo-field="state"></label>
-				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" data-geo-field="zip"></label>
+				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2" data-geo-field="state" data-addr="state"></label>
+				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" data-geo-field="zip" data-addr="zip"></label>
 			</div>
 			<label>Utility
-				<select name="utility_id">
+				<select name="utility_id" data-addr="utility">
 					<option value="">Choose</option>
 					<?php foreach ($utilities as $u): ?>
 						<option value="<?= (int) $u['id'] ?>" <?= $sel($v('utility_id'), $u['id']) ?>><?= e($u['name']) ?></option>
@@ -369,4 +370,5 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 </form>
 
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
+<script src="<?= asset('assets/js/address.js') ?>"></script>
 <script src="<?= asset('assets/js/geo.js') ?>"></script>

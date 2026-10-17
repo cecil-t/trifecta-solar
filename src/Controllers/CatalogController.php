@@ -27,7 +27,7 @@ final class CatalogController
 		'domestic_content_pct' => 'Domestic content %', 'feoc_ok' => 'FEOC compliant', 'needs_mlpe' => 'Needs optimizers',
 		'trench_part' => 'Trench builder part', 'part_size' => 'Part size', 'material' => 'Material',
 		'pricing' => 'Pricing', 'pays_sales' => 'Pays the salesperson',
-		'cec_name' => 'SAM (CEC) model', 'cec_units' => 'CEC units per inverter', 'degradation_first_pct' => 'First-year degradation %',
+		'cec_name' => 'SAM (CEC) model', 'spec' => 'Spec sheet values', 'cec_units' => 'CEC units per inverter', 'degradation_first_pct' => 'First-year degradation %',
 		'degradation_annual_pct' => 'Annual degradation %', 'product_warranty_years' => 'Product warranty years',
 		'performance_warranty_years' => 'Performance warranty years',
 	];
@@ -123,7 +123,7 @@ final class CatalogController
 			$data = $this->input($id, $before);
 			$data['updated_at'] = now_utc();
 			Db::update('catalog_items', $id, $data);
-			Activity::changes('catalog_item', $id, $before, $data, self::TRACKED);
+			Activity::changes('catalog_item', $id, $before, $data, self::TRACKED, ['spec' => static fn ($v) => CecLibrary::specSummary($v)]);
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_catalog'] = $_POST + ['id' => $id];
 			flash('error', $e->getMessage());
@@ -263,8 +263,16 @@ final class CatalogController
 		}
 		// Production modeling: the model's name in SAM's CEC library, degradation and warranty years
 		$kind = CecLibrary::kindFor($cat);
-		$cec = trim((string) ($p['cec_name'] ?? ''));
+		$fromSpec = $kind !== null && !empty($p['spec_mode']);
+		$cec = $fromSpec ? '' : trim((string) ($p['cec_name'] ?? ''));
 		$data['cec_name'] = $kind !== null && $cec !== '' ? $cec : null;
+		$data['spec'] = null;
+		if ($fromSpec) {
+			if ($kind === 'inverters' && !$data['ac_kw']) {
+				throw new \InvalidArgumentException('Spec sheet: fill in the AC kW (Specs and warranty) for this inverter.');
+			}
+			$data['spec'] = json_encode(CecLibrary::specFromInput($kind, (array) ($p['spec'] ?? []), $data['watts']));
+		}
 		if ($data['cec_name'] !== null && CecLibrary::available() && !CecLibrary::find((string) $kind, $data['cec_name'])) {
 			throw new \InvalidArgumentException('"' . $cec . '" is not ' . ($kind === 'modules' ? 'a module' : 'an inverter') . ' in SAM\'s CEC library. Pick one from the list as you type.');
 		}

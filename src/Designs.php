@@ -12,7 +12,7 @@ final class Designs
 	/** Fields copied from a catalog item into a line (the line's snapshot). */
 	public const SNAPSHOT = ['name', 'qty_rule', 'price', 'shipping', 'setup_cost', 'min_total', 'tax_class', 'watts', 'ac_kw',
 		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'pricing', 'pays_sales',
-		'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
+		'cec_name', 'cec_units', 'spec', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
 	/** The fields that make a line's price differ from the catalog today. */
 	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class', 'pricing', 'pays_sales'];
 

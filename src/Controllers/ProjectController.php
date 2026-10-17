@@ -574,6 +574,18 @@ final class ProjectController
 		echo json_encode(Geo::forClient(Geo::lookup($g('street'), $g('city'), $g('state'), $g('zip'))));
 	}
 
+	/** JSON: a one-line address split, found on the map, with its municipality and the utilities OpenEI lists there. */
+	public function addressLookup(): void
+	{
+		header('Content-Type: application/json');
+		$q = trim((string) ($_GET['q'] ?? ''));
+		if (mb_strlen($q) < 5 || mb_strlen($q) > 300) {
+			echo json_encode(['ok' => false, 'error' => 'Type the whole address.']);
+			return;
+		}
+		echo json_encode(\App\Address::lookup($q));
+	}
+
 	/** JSON: the one-time lookup for a saved project's address, stored on the project. */
 	public function geoCheck(int $id): void
 	{

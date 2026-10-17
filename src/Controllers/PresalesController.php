@@ -4,11 +4,16 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Activity;
+use App\Address;
 use App\Auth;
 use App\Db;
 use App\Designs;
+use App\Geo;
+use App\Municipalities;
 use App\Presales;
 use App\Projects;
+use App\SolarResource;
+use App\UtilityRates;
 use App\View;
 
 /**
@@ -26,6 +31,8 @@ final class PresalesController
 		'annual_usage_kwh' => 'Last 12 months usage (kWh)',
 		'lead_source' => 'Lead source', 'lead_detail' => 'Lead came in by', 'referrer_org_id' => 'Referred by',
 		'referrer_name' => 'Referred by (name)', 'handoff_user_id' => 'Handed off by',
+		'municipality_id' => 'Municipality', 'site_lat' => 'Map point latitude', 'site_lon' => 'Map point longitude',
+		'rate_name' => 'Utility rate (OpenEI)',
 	];
 
 	public function index(): void
@@ -94,6 +101,7 @@ final class PresalesController
 		View::render('presales/opportunity_form', [
 			'title' => $id ? 'Edit ' . $o['name'] : 'New opportunity', 'o' => $o, 'id' => $id,
 			'customers' => Projects::orgs('customer'), 'utilities' => Projects::utilities(),
+			'municipalities' => Projects::municipalities(), 'counties' => Projects::counties(),
 			'users' => Db::all('SELECT id, name, initials FROM users WHERE is_active = 1 AND (is_sales = 1 OR is_admin = 1) ORDER BY name'),
 			'canAssign' => Auth::isAdmin(),
 		]);
@@ -132,6 +140,7 @@ final class PresalesController
 				'lead_detail' => static fn ($v) => Presales::LEAD_DETAILS[$v] ?? $v,
 				'referrer_org_id' => static fn ($v) => Db::value('SELECT name FROM organizations WHERE id = ?', [$v]) ?? $v,
 				'handoff_user_id' => static fn ($v) => Db::value('SELECT name FROM users WHERE id = ?', [$v]) ?? $v,
+				'municipality_id' => static fn ($v) => Db::value("SELECT m.name || ' (' || c.name || ' Co.)' FROM municipalities m JOIN counties c ON c.id = m.county_id WHERE m.id = ?", [$v]) ?? $v,
 			]);
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_presales'] = $_POST + ['id' => $id];
@@ -146,8 +155,11 @@ final class PresalesController
 	{
 		$o = Db::one(
 			'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
-				u.name AS salesperson_name, p.project_number, p.name AS project_name, ut.name AS utility_name
+				u.name AS salesperson_name, p.project_number, p.name AS project_name, ut.name AS utility_name,
+				m.name AS municipality_name, co.name AS county_name
 			 FROM presales_opportunities o
+			 LEFT JOIN municipalities m ON m.id = o.municipality_id
+			 LEFT JOIN counties co ON co.id = m.county_id
 			 LEFT JOIN organizations c ON c.id = o.customer_id
 			 LEFT JOIN users u ON u.id = o.salesperson_id
 			 LEFT JOIN projects p ON p.id = o.project_id
@@ -273,7 +285,23 @@ final class PresalesController
 		$refName = $lead === 'referral' && !$refOrg ? (trim((string) ($_POST['referrer_name'] ?? '')) ?: null) : null;
 		$handoff = (int) ($_POST['handoff_user_id'] ?? 0);
 		$handoff = $handoff && $handoff !== $sales && Db::value('SELECT 1 FROM users WHERE id = ?', [$handoff]) ? $handoff : null;
-		return [
+		// Site: municipality, the map point (from the address lookup, typed in, or found now) and the rate
+		$street = trim((string) ($_POST['site_street'] ?? ''));
+		$city = trim((string) ($_POST['site_city'] ?? ''));
+		$state = in_array($_POST['site_state'] ?? '', ['PA', 'MD', 'DE'], true) ? (string) $_POST['site_state'] : 'PA';
+		$zip = trim((string) ($_POST['site_zip'] ?? ''));
+		$before = $id ? Db::one('SELECT * FROM presales_opportunities WHERE id = ?', [$id]) : null;
+		$muni = $_POST['municipality_id'] ?? '';
+		if ($muni === 'new') {
+			$m = Municipalities::findOrCreate((string) ($_POST['new_muni_name'] ?? ''), (int) ($_POST['new_muni_county_id'] ?? 0));
+			$muni = $m['id'];
+		}
+		$muni = (int) $muni && Db::value('SELECT 1 FROM municipalities WHERE id = ?', [(int) $muni]) ? (int) $muni : null;
+		$site = $this->sitePoint($street, $city, $state, $zip, $before);
+		$rate = $this->rateInput($before);
+
+		return $site + $rate + [
+			'municipality_id' => $muni,
 			'lead_source' => $lead,
 			'lead_detail' => $lead === 'trifecta' && array_key_exists($detail, Presales::LEAD_DETAILS) ? $detail : null,
 			'referrer_org_id' => $refOrg ?: null,
@@ -298,6 +326,89 @@ final class PresalesController
 			'service_address' => trim((string) ($_POST['service_address'] ?? '')) ?: null,
 			'annual_usage_kwh' => $usage,
 		];
+	}
+
+	/** The site's map point: as posted, else the saved one while the address is unchanged, else looked up now. */
+	private function sitePoint(string $street, string $city, string $state, string $zip, ?array $before): array
+	{
+		$address = Geo::address($street, $city, $state, $zip);
+		$lat = trim((string) ($_POST['site_lat'] ?? ''));
+		$lon = trim((string) ($_POST['site_lon'] ?? ''));
+		if ($lat !== '' || $lon !== '') {
+			if (!is_numeric($lat) || !is_numeric($lon) || ($err = SolarResource::pointError((float) $lat, (float) $lon)) !== null) {
+				throw new \InvalidArgumentException('Map point: ' . ($err ?? 'type a latitude and longitude, e.g. 40.1600 and -76.3900.'));
+			}
+			$src = (string) ($_POST['geo_source'] ?? '');
+			$same = $before && $before['site_lat'] !== null && abs((float) $before['site_lat'] - (float) $lat) < 0.000001 && abs((float) $before['site_lon'] - (float) $lon) < 0.000001;
+			return ['site_lat' => round((float) $lat, 6), 'site_lon' => round((float) $lon, 6),
+				'geo_source' => $same ? $before['geo_source'] : (in_array($src, ['google', 'census', 'osm', 'osm_street'], true) ? $src : 'manual'),
+				'geo_address' => $address ?: null];
+		}
+		if ($address === '') {
+			return ['site_lat' => null, 'site_lon' => null, 'geo_source' => null, 'geo_address' => null];
+		}
+		$r = Address::lookup($address);
+		if ($r['lat'] === null) {
+			flash('info', 'The map point for this address could not be found. Type it in on the opportunity\'s Edit page (Site, Map point) so production can run.');
+			return ['site_lat' => null, 'site_lon' => null, 'geo_source' => null, 'geo_address' => null];
+		}
+		return ['site_lat' => $r['lat'], 'site_lon' => $r['lon'], 'geo_source' => $r['source'], 'geo_address' => $address];
+	}
+
+	/** The picked OpenEI rate: fetched in full when it changes, so bill math uses the rate as picked. */
+	private function rateInput(?array $before): array
+	{
+		$label = trim((string) ($_POST['rate_label'] ?? ''));
+		if ($label === '') {
+			return ['rate_label' => null, 'rate_name' => null, 'rate_utility' => null, 'rate_json' => null, 'rate_fetched_at' => null];
+		}
+		if ($before && $before['rate_label'] === $label && $before['rate_json']) {
+			return [];
+		}
+		$r = UtilityRates::rate($label);
+		if (!$r['ok']) {
+			throw new \InvalidArgumentException('Utility rate: ' . $r['error'] . ' Pick it again, or clear it.');
+		}
+		return ['rate_label' => $label, 'rate_name' => (string) ($r['rate']['name'] ?? ''), 'rate_utility' => (string) ($r['rate']['utility'] ?? ''),
+			'rate_json' => json_encode($r['rate']), 'rate_fetched_at' => now_utc()];
+	}
+
+	/** JSON for the rate picker: OpenEI's rates at a point for a utility and sector, one per rate name, newest version. */
+	public function utilityRates(): void
+	{
+		Presales::requireUse();
+		header('Content-Type: application/json');
+		$lat = filter_var($_GET['lat'] ?? null, FILTER_VALIDATE_FLOAT);
+		$lon = filter_var($_GET['lon'] ?? null, FILTER_VALIDATE_FLOAT);
+		if ($lat === false || $lon === false || SolarResource::pointError($lat, $lon) !== null) {
+			echo json_encode(['ok' => false, 'error' => 'Find the site\'s map point first (Site, Look up).']);
+			return;
+		}
+		$sector = in_array($_GET['sector'] ?? '', UtilityRates::SECTORS, true) ? (string) $_GET['sector'] : 'Residential';
+		$found = UtilityRates::search($lat, $lon, $sector);
+		if (!$found['ok']) {
+			echo json_encode(['ok' => false, 'error' => $found['error']]);
+			return;
+		}
+		$ours = (string) (Db::value('SELECT name FROM utilities WHERE id = ?', [(int) ($_GET['utility_id'] ?? 0)]) ?? '');
+		$seen = [];
+		$list = [];
+		$others = 0;
+		foreach ($found['rates'] as $r) {
+			if ($ours !== '' && !UtilityRates::sameUtility($ours, $r['utility'])) {
+				$others++;
+				continue;
+			}
+			$key = strtolower($r['utility'] . '|' . $r['name']);
+			if (isset($seen[$key])) {
+				continue;
+			}
+			$seen[$key] = true;
+			$list[] = ['label' => $r['label'], 'name' => $r['name'], 'utility' => $r['utility'], 'about' => UtilityRates::describe($r),
+				'start' => $r['start'] ? date('m/d/Y', $r['start']) : ''];
+		}
+		usort($list, static fn ($a, $b) => [$a['utility'], $a['name']] <=> [$b['utility'], $b['name']]);
+		echo json_encode(['ok' => true, 'rates' => $list, 'sector' => $sector, 'utility' => $ours, 'other_utilities' => $others]);
 	}
 
 	private function find(int $id): array

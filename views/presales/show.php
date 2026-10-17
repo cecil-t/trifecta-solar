@@ -50,7 +50,9 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 			<?php if (!$contacts && ($o['customer_phone'] || $o['customer_email'])): ?>
 				<dt>Contact</dt><dd><?= e($o['customer_phone']) ?><?= $o['customer_phone'] && $o['customer_email'] ? '<br>' : '' ?><?= $o['customer_email'] ? '<a href="mailto:' . e($o['customer_email']) . '" class="small">' . e($o['customer_email']) . '</a>' : '' ?></dd>
 			<?php endif; ?>
-			<dt>Site</dt><dd><?= $siteAddr !== '' ? maps_link($siteAddr) : '<span class="muted">Not set</span>' ?></dd>
+			<dt>Site</dt><dd><?= $siteAddr !== '' ? maps_link($siteAddr) : '<span class="muted">Not set</span>' ?>
+				<?php if ($o['municipality_name']): ?><div class="small muted"><?= e($o['municipality_name'] . ', ' . $o['county_name'] . ' Co.') ?></div><?php endif; ?>
+				<div class="small muted"><?= $o['site_lat'] !== null ? 'Map point ' . e(number_format((float) $o['site_lat'], 5) . ', ' . number_format((float) $o['site_lon'], 5)) . ($o['geo_source'] ? ' (' . e(App\Address::sourceLabel((string) $o['geo_source'])) . ')' : '') : '<a href="/presales/' . (int) $o['id'] . '/edit">No map point yet</a>: production needs one' ?></div></dd>
 			<dt>Type</dt><dd><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?><?= $o['is_agricultural'] ? ' &middot; Agricultural' : '' ?><?php $cls = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']); ?><?= $cls === 'commercial' ? ' <span class="muted small">(Non-Residential)</span>' : '' ?></dd>
 			<dt>Salesperson</dt><dd><?= e($o['salesperson_name'] ?? '') ?><?= $o['handoff_user_id'] ? '<div class="small muted">Handed off by ' . e((string) App\Db::value('SELECT name FROM users WHERE id = ?', [(int) $o['handoff_user_id']])) . '</div>' : '' ?></dd>
 			<dt>Lead source</dt><dd><?= $o['lead_source'] ? e(Presales::leadLabel($o)) : '<a href="/presales/' . (int) $o['id'] . '/edit" class="small">Set the lead source</a>' ?>
@@ -59,6 +61,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 				<?= implode(' &middot; ', array_map('e', array_filter([$o['bill_name'], $o['utility_name']]))) ?>
 				<?php if ($o['annual_usage_kwh']): ?><div><?= number_format((int) $o['annual_usage_kwh']) ?> kWh, last 12 months</div><?php endif; ?>
 				<?php if ($o['utility_account'] || $o['utility_meter']): ?><div class="small muted"><?= $o['utility_account'] ? 'Account ' . e($o['utility_account']) : '' ?><?= $o['utility_account'] && $o['utility_meter'] ? ' &middot; ' : '' ?><?= $o['utility_meter'] ? 'Meter ' . e($o['utility_meter']) : '' ?><?= $o['utility_tariff'] ? ' &middot; Rate ' . e($o['utility_tariff']) : '' ?></div><?php endif; ?>
+				<?php if ($o['rate_label']): ?><div class="small muted">OpenEI rate: <?= e((string) $o['rate_name']) ?> <a href="https://apps.openei.org/USURDB/rate/view/<?= e((string) $o['rate_label']) ?>" target="_blank" rel="noopener">view &#8599;</a></div><?php endif; ?>
 				<?php if ($o['service_address']): ?><div class="small muted">Service address <?= e($o['service_address']) ?></div><?php endif; ?>
 			<?php else: ?><a href="/presales/<?= (int) $o['id'] ?>/edit" class="small">Add from the electric bill</a><?php endif; ?></dd>
 			<?php if ($customerProjects): ?>

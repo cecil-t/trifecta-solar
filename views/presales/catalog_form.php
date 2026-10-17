@@ -179,6 +179,40 @@ $dis = $canEdit ? '' : 'disabled';
 				</div>
 				<small class="hint">The same model in SAM's CEC library, so build sheets can estimate production. Pick from the list; for inverters, the 240 V or 208 V version the job uses.</small>
 			</div>
+			<?php
+			$specVals = $item['spec'] ?? null;
+			$specVals = is_array($specVals) ? $specVals : (json_decode((string) $specVals, true) ?: []);
+			$specOn = isset($item['spec_mode']) ? !empty($item['spec_mode']) : $specVals !== [];
+			$specIn = static function (string $k, array $f) use ($specVals, $dis): string {
+				[$label, $unit, , , $required] = $f;
+				return '<label>' . e($label) . ($unit !== '' ? ' (' . e($unit) . ')' : '') . ($required ? '' : ' <span class="muted small">optional</span>')
+					. ' <input type="text" name="spec[' . e($k) . ']" value="' . e((string) ($specVals[$k] ?? '')) . '" inputmode="decimal" ' . $dis . '></label>';
+			};
+			?>
+			<div class="checkfield span-2 cec-only">
+				<span class="field-label">Not in SAM's library?</span>
+				<label class="boxwrap"><input type="checkbox" name="spec_mode" value="1" class="spec-mode" <?= $specOn ? 'checked' : '' ?> <?= $dis ?>> Enter it from the spec sheet instead</label>
+				<small class="hint">For a module or inverter the CEC list doesn't have. SAM builds its model from these datasheet values.</small>
+			</div>
+			<div class="spec-fields spec-mod span-all">
+				<?php foreach (App\CecLibrary::SPEC_MODULE as $k => $f) { echo $specIn($k, $f); } ?>
+				<label>Cell type
+					<select name="spec[tech]" <?= $dis ?>>
+						<?php foreach (App\CecLibrary::CELL_TECH as $k => $label): ?>
+							<option value="<?= $k ?>" <?= ($specVals['tech'] ?? 'mono') === $k ? 'selected' : '' ?>><?= e($label) ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<div class="checkfield">
+					<span class="field-label">Bifacial</span>
+					<label class="boxwrap"><input type="checkbox" name="spec[bifacial]" value="1" <?= !empty($specVals['bifacial']) ? 'checked' : '' ?> <?= $dis ?>> Bifacial module</label>
+				</div>
+				<small class="hint span-all">From the electrical table at STC. Watts are the Module watts above; Vmp x Imp must be within 5% of them. Temperature coefficients are negative for Pmax and Voc, positive for Isc.</small>
+			</div>
+			<div class="spec-fields spec-inv span-all">
+				<?php foreach (App\CecLibrary::SPEC_INVERTER as $k => $f) { echo $specIn($k, $f); } ?>
+				<small class="hint span-all">AC rating is the kW AC above. Blank MPPT voltages are estimated from the nominal voltage; with optimizers or micros they don't matter.</small>
+			</div>
 			<label class="inv-only">CEC units per inverter
 				<input type="text" name="cec_units" value="<?= e($n($v('cec_units'), 0)) ?>" inputmode="numeric" placeholder="1" <?= $dis ?>>
 				<small class="hint">When the library lists the smaller units this inverter is built from (large SolarEdge commercial).</small>

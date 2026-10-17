@@ -7,6 +7,7 @@ use App\Activity;
 use App\Db;
 use App\Designs;
 use App\Presales;
+use App\Production;
 use App\Trench;
 use App\View;
 
@@ -31,7 +32,9 @@ final class DesignController
 		}
 		$calc = Designs::calc($d, $lines, $arrays, $trench);
 		$depositClass = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']);
+		$prodIn = Production::inputs($o, $lines, $arrays, $calc);
 		View::render('presales/design', [
+			'prodIn' => $prodIn, 'prod' => Production::saved($d),
 			'title' => $d['name'] . ' - ' . $o['name'],
 			'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
 			'flags' => self::flags($lines, $d, $calc),
@@ -70,8 +73,14 @@ final class DesignController
 
 	public function save(int $id, int $designId): void
 	{
-		$oppId = $id;
-		$id = $designId;
+		$calc = $this->persist($id, $designId);
+		flash('success', 'Build sheet saved. Final price ' . Presales::money($calc['price']) . '.');
+		redirect('/presales/' . $id . '/designs/' . $designId);
+	}
+
+	/** Save the build sheet from the form; on a problem, keep what was typed and go back to it. */
+	private function persist(int $oppId, int $id): array
+	{
 		[, $d] = $this->find($oppId, $id);
 		try {
 			[$f, $lines, $arrays, $trench] = Designs::fromInput($d, $_POST);
@@ -94,8 +103,32 @@ final class DesignController
 			flash('error', $e->getMessage() . ' Nothing was saved.');
 			redirect('/presales/' . $oppId . '/designs/' . $id);
 		}
-		flash('success', 'Build sheet saved. Final price ' . Presales::money($calc['price']) . '.');
-		redirect('/presales/' . $oppId . '/designs/' . $id);
+		return $calc;
+	}
+
+	/** Save the build sheet, then run its production estimate (SAM detailed and PVWatts). */
+	public function production(int $id, int $designId): void
+	{
+		$this->persist($id, $designId);
+		[$o, $d] = $this->find($id, $designId);
+		$lines = Designs::lines($designId);
+		$arrays = Designs::arrays($designId);
+		$in = Production::inputs($o, $lines, $arrays, Designs::calc($d, $lines, $arrays));
+		$back = '/presales/' . $id . '/designs/' . $designId . '#sec-production';
+		if ($in['missing']) {
+			flash('error', 'Saved, but production can\'t run yet. Still needed: ' . implode(' ', $in['missing']));
+			redirect($back);
+		}
+		set_time_limit(180);
+		$r = Production::run($o, $d, $in);
+		if (!$r['ok']) {
+			flash('error', 'Saved, but the production estimate failed: ' . $r['error']);
+			redirect($back);
+		}
+		Activity::event('presales', $id, 'Production estimate for "' . $d['name'] . '": SAM detailed ' . number_format((float) $r['detailed']['annual_kwh'])
+			. ' kWh, PVWatts ' . number_format((float) $r['pvwatts']['annual_kwh']) . ' kWh a year');
+		flash('success', 'Saved and ran the production estimate.');
+		redirect($back);
 	}
 
 	/** Log lines for price overrides that were added, changed or removed in this save. */
@@ -145,7 +178,10 @@ final class DesignController
 		$calc = Designs::calc($merged, $lines, $arrays, $trench);
 		$flags = self::flags($lines, $merged, $calc);
 		$depositOptions = Presales::depositOptions(Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']), $calc['dc_kw']);
-		echo json_encode(self::payload($calc, $flags, $lines, $depositOptions, $merged));
+		$prod = Production::inputs($o, $lines, $arrays, $calc);
+		echo json_encode(self::payload($calc, $flags, $lines, $depositOptions, $merged) + ['production' => [
+			'missing' => $prod['missing'], 'stale' => !empty($d['production_json']) && $prod['key'] !== $d['production_key'],
+		]]);
 	}
 
 	/** Values the editor shows, keyed for public/assets/js/presales.js. */

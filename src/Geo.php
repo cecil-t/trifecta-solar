@@ -135,6 +135,26 @@ final class Geo
 		return $lines;
 	}
 
+	/** Municipality and county at a point (Census boundaries), cached like address lookups; null when the Census is unreachable. */
+	public static function atPoint(float $lat, float $lon): ?array
+	{
+		$key = sprintf('point:%.5F,%.5F', $lat, $lon);
+		$hit = Db::one('SELECT result, fetched_at FROM geo_cache WHERE address_key = ?', [$key]);
+		if ($hit && strtotime($hit['fetched_at']) > time() - 365 * 86400) {
+			$r = json_decode($hit['result'], true);
+			if (is_array($r)) {
+				return $r;
+			}
+		}
+		$r = self::census('coordinates', ['x' => $lon, 'y' => $lat]);
+		if ($r !== null) {
+			Db::run('INSERT INTO geo_cache (address_key, result, fetched_at) VALUES (?, ?, ?)
+					 ON CONFLICT(address_key) DO UPDATE SET result = excluded.result, fetched_at = excluded.fetched_at',
+				[$key, json_encode($r), now_utc()]);
+		}
+		return $r;
+	}
+
 	/** Query the Census geocoder: an address match, or the geographies at a point. */
 	private static function census(string $kind, array $params): ?array
 	{

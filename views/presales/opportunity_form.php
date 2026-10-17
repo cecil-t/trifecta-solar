@@ -8,6 +8,8 @@ use App\Projects;
  * @var array    $customers  id, name
  * @var array    $users      salespeople and admins: id, name
  * @var bool     $canAssign  admins pick the salesperson; a salesperson's opportunities are their own
+ * @var array    $municipalities
+ * @var array    $counties
  */
 $v = static fn (string $k, $d = '') => $o[$k] ?? $d;
 $sel = static fn ($a, $b) => (string) $a === (string) $b && (string) $a !== '' ? 'selected' : '';
@@ -123,18 +125,49 @@ $isNew = $id === null;
 	<section class="card band">
 		<h2>Site</h2>
 		<div class="grid-form">
-			<label class="span-2">Street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>"></label>
-			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>"></label>
+			<?= App\View::partial('partials/address_full', ['value' => '']) ?>
+			<label class="span-2">Street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-addr="street" data-geo-field="street"></label>
+			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-addr="city" data-geo-field="city"></label>
 			<label>State
-				<select name="site_state">
+				<select name="site_state" data-addr="state" data-geo-field="state">
 					<?php foreach (['PA', 'MD', 'DE'] as $st): ?>
 						<option value="<?= $st ?>" <?= $sel($v('site_state', 'PA'), $st) ?>><?= $st ?></option>
 					<?php endforeach; ?>
 				</select>
 			</label>
-			<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" class="input-short" inputmode="numeric"></label>
+			<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" class="input-short" inputmode="numeric" data-addr="zip" data-geo-field="zip"></label>
+			<label class="span-2">Municipality (AHJ)
+				<select name="municipality_id" data-reveal="new" data-target="#new-muni">
+					<option value="">Choose</option>
+					<option value="new" <?= $sel($v('municipality_id'), 'new') ?>>+ Add a municipality</option>
+					<?php foreach ($municipalities as $m): ?>
+						<option value="<?= (int) $m['id'] ?>" <?= $sel($v('municipality_id'), $m['id']) ?>><?= e(App\Municipalities::label($m)) ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<div class="checkfield span-2">
+				<span class="field-label">Map point</span>
+				<div class="point-pair">
+					<input type="text" name="site_lat" value="<?= e((string) $v('site_lat')) ?>" inputmode="decimal" placeholder="Latitude" aria-label="Latitude" data-addr="lat">
+					<input type="text" name="site_lon" value="<?= e((string) $v('site_lon')) ?>" inputmode="decimal" placeholder="Longitude" aria-label="Longitude" data-addr="lon">
+				</div>
+				<input type="hidden" name="geo_source" value="<?= e((string) $v('geo_source')) ?>" data-addr="source">
+				<small class="hint">Where production and utility rates are looked up. Filled by Look up<?= $v('geo_source') ? ' (now from ' . e(App\Address::sourceLabel((string) $v('geo_source'))) . ')' : '' ?>; type it in when the lookup misses (right-click the spot in Google Maps to copy it). Blank is found on save.</small>
+			</div>
+			<div id="geo-note" class="geo-note span-all" aria-live="polite" hidden data-geo-url="/geo/lookup" data-geo="{}"></div>
 			<label class="span-2">Drive folder link <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/..."></label>
 			<label class="span-2">Notes <textarea name="notes" rows="3" data-autogrow><?= e($v('notes')) ?></textarea></label>
+		</div>
+		<div id="new-muni" class="grid-form reveal" hidden>
+			<label class="span-2">Municipality name <input type="text" name="new_muni_name" value="<?= e($v('new_muni_name')) ?>" placeholder="e.g. Penn Township"></label>
+			<label>County
+				<select name="new_muni_county_id">
+					<option value="">Choose</option>
+					<?php foreach ($counties as $c): ?>
+						<option value="<?= (int) $c['id'] ?>" <?= $sel($v('new_muni_county_id'), $c['id']) ?>><?= e($c['name'] . ' (' . $c['state_code'] . ')') ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
 		</div>
 	</section>
 
@@ -144,7 +177,7 @@ $isNew = $id === null;
 		<div class="grid-form">
 			<label class="span-2">Name on utility bill <input type="text" name="bill_name" value="<?= e($v('bill_name')) ?>"></label>
 			<label>Utility
-				<select name="utility_id">
+				<select name="utility_id" data-addr="utility">
 					<option value="">Choose</option>
 					<?php foreach ($utilities as $u): ?>
 						<option value="<?= (int) $u['id'] ?>" <?= $sel($v('utility_id'), $u['id']) ?>><?= e($u['name']) ?></option>
@@ -154,7 +187,20 @@ $isNew = $id === null;
 			<label>Last 12 months usage (kWh) <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric" placeholder="e.g. 14,200"></label>
 			<label>Account # <input type="text" name="utility_account" value="<?= e($v('utility_account')) ?>"></label>
 			<label>Meter # <input type="text" name="utility_meter" value="<?= e($v('utility_meter')) ?>"></label>
-			<label>Rate (optional) <input type="text" name="utility_tariff" value="<?= e($v('utility_tariff')) ?>" placeholder="e.g. RS"></label>
+			<div class="checkfield span-all rate-picker" data-rate-picker="/presales/utility-rates">
+				<span class="field-label">Utility rate (OpenEI)</span>
+				<input type="hidden" name="rate_label" value="<?= e((string) $v('rate_label')) ?>">
+				<div class="rate-row">
+					<span class="rate-chosen"><?= $v('rate_label') ? '<strong>' . e((string) $v('rate_name')) . '</strong>' . ($v('rate_utility') ? ' <span class="muted small">' . e((string) $v('rate_utility')) . '</span>' : '') : '<span class="muted">No rate picked.</span>' ?></span>
+					<button type="button" class="btn btn-secondary btn-small rate-find">Find rates</button>
+					<button type="button" class="btn btn-ghost btn-small rate-clear" <?= $v('rate_label') ? '' : 'hidden' ?>>Clear</button>
+				</div>
+				<small class="hint rate-status" aria-live="polite"></small>
+				<ul class="rate-list"></ul>
+			</div>
+			<label>Rate name on the bill <input type="text" name="utility_tariff" value="<?= e($v('utility_tariff')) ?>" placeholder="e.g. RS" <?= $v('rate_label') && $v('utility_tariff') === $v('rate_name') ? 'data-from-rate="1"' : '' ?>>
+				<small class="hint">Filled from the picked rate; type it if OpenEI doesn't list it.</small>
+			</label>
 			<label>Service address, if not the site <input type="text" name="service_address" value="<?= e($v('service_address')) ?>"></label>
 		</div>
 	</section>
@@ -166,3 +212,5 @@ $isNew = $id === null;
 </form>
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
 <script src="<?= asset('assets/js/picker.js') ?>"></script>
+<script src="<?= asset('assets/js/address.js') ?>"></script>
+<script src="<?= asset('assets/js/geo.js') ?>"></script>

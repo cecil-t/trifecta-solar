@@ -106,6 +106,10 @@ final class Presales
 		'trench_dc_volts'        => ['400', 'Trench builder: DC string voltage (V)'],
 		'trench_ac_neutral'      => ['1', 'Trench builder: AC circuits carry a neutral'],
 		'trench_comms_conduit'   => ['1', 'Trench builder: comms conduit size (in)'],
+		'production_model'       => ['detailed', 'Production: estimate the proposal uses'],
+		'production_other_loss'  => ['14', 'Production: other system losses (%)'],
+		'production_optimizer_loss' => ['1.2', 'Production: optimizer loss (%)'],
+		'production_sam_adjust'  => ['0', 'Production: extra loss on SAM\'s detailed model (%)'],
 	];
 
 	private static ?array $settings = null;

@@ -105,11 +105,12 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 			<label>Email <input type="email" name="new_customer_email" value="<?= e($v('new_customer_email')) ?>"></label>
 		</div>
 		<div class="grid-form mt-sm">
-			<label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>"></label>
-			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>"></label>
+			<?= App\View::partial('partials/address_full', ['value' => '']) ?>
+			<label class="span-2">Site street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-addr="street"></label>
+			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-addr="city"></label>
 			<div class="grid-pair">
-				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2"></label>
-				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>"></label>
+				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2" data-addr="state"></label>
+				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" data-addr="zip"></label>
 			</div>
 			<label>Trifecta install?
 				<select name="trifecta_install">
@@ -166,3 +167,4 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 </form>
 
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
+<script src="<?= asset('assets/js/address.js') ?>"></script>

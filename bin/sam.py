@@ -18,15 +18,23 @@ Actions:
 	bill      {"rate": one URDB rate (OpenEI, full detail), "monthly_kwh": n}: the rate converted
 	          for SAM (UtilityRateTools.URDBv8_to_ElectricityRates) and SAM's Utilityrate5 bill
 	          for a flat use of n kWh every month with no solar, as a check that the rate reads right.
-	system    One real system on a weather file: both SAM's detailed PV model (Pvsamv1, CEC module
-	          and inverter from SAM's library) and PVWatts v8, year one by month. Request:
-	          {"weather_file", "module": CEC name, "inverter": CEC name, "inverter_count",
-	           "arrays": [{"azimuth", "tilt", "modules", "mount": "roof" | "ground"}],
-	           "losses": {"total", "inverter", "optimizer", "shading"} (percent, as an OpenSolar
-	           proposal states them: its total covers inverter, optimizer and the other losses, and
-	           shading comes on top of it), "optimizers": true for module-level optimizers}.
-	          Losses other than inverter, optimizer and shading go in as one DC loss, shading as a
-	          flat loss (soiling slot), so both models carry the same assumptions.
+	system    One real system on a weather file: both SAM's detailed PV model (Pvsamv1) and PVWatts
+	          v8, year one by month. Request:
+	          {"weather_file",
+	           "module": CEC library name, or {"spec": {watts, vmp, imp, voc, isc, alpha_isc_pct,
+	              beta_voc_pct, gamma_pmp_pct, cells, noct, length_mm, width_mm, tech, bifacial}}
+	              from a spec sheet (SAM's user-entered module model),
+	           "inverter": CEC library name, or {"spec": {ac_w, eff_pct, vdc_nominal, mppt_low,
+	              mppt_high, vdc_max}} (SAM's inverter datasheet model),
+	           "inverter_count", "mlpe": "none" | "optimizers" | "micro" ("optimizers": true also
+	              works), "arrays": [{"azimuth", "tilt", "modules", "mount": roof | ground | carport
+	              | pole | tracker, "shading": percent}],
+	           "losses": {"other", "inverter", "optimizer", "shading"} percent; or "total" in
+	              place of "other", as an OpenSolar proposal states it (its total covers inverter,
+	              optimizer and other losses; shading comes on top), "sam_adjust": extra percent
+	              taken off the detailed model only}.
+	          Other losses go in as one DC loss and shading as a flat loss (soiling slot), so both
+	          models carry the same assumptions. Trackers are single-axis, north-south, backtracking.
 
 SAM_LIB (environment) is the folder holding cec_modules.csv, cec_inverters.csv and VERSION.
 """
@@ -265,37 +273,110 @@ def weather_columns(path):
 		return next(csv.reader([f.readline()]))
 
 
-def group_arrays(arrays):
-	"""Arrays merged by orientation (same mount, tilt within 1 degree and azimuth within 3), then the
-	smallest groups folded into their nearest neighbor until at most 4 remain (SAM's subarray limit)."""
+MOUNTS = ('roof', 'ground', 'carport', 'pole', 'tracker')
+
+
+def group_arrays(arrays, default_shading=0.0):
+	"""Arrays merged by orientation (same mount, tilt within 1 degree and azimuth within 3; trackers
+	all together), shading averaged by modules, then the smallest groups folded into their nearest
+	neighbor until at most 4 remain (SAM's subarray limit)."""
 	groups = []
 	for a in arrays:
 		n = int(a.get('modules') or 0)
 		if n <= 0:
 			continue
-		mount = 'ground' if a.get('mount') == 'ground' else 'roof'
+		mount = a.get('mount') if a.get('mount') in MOUNTS else 'roof'
 		az, tilt = float(a.get('azimuth') or 180) % 360, float(a.get('tilt') or 0)
+		if mount == 'tracker':
+			az, tilt = 180.0, 0.0
+		shade = max(0.0, min(90.0, float(a['shading'] if a.get('shading') not in (None, '') else default_shading)))
 		for g in groups:
 			d = abs((g['azimuth'] - az + 180) % 360 - 180)
 			if g['mount'] == mount and abs(g['tilt'] - tilt) <= 1 and d <= 3:
+				g['shading'] = (g['shading'] * g['modules'] + shade * n) / (g['modules'] + n)
 				g['modules'] += n
 				break
 		else:
-			groups.append({'azimuth': az, 'tilt': tilt, 'modules': n, 'mount': mount})
+			groups.append({'azimuth': az, 'tilt': tilt, 'modules': n, 'mount': mount, 'shading': shade})
 	merged = []
 	while len(groups) > 4:
 		groups.sort(key=lambda g: g['modules'])
 		small = groups.pop(0)
 		def dist(g):
-			return abs((g['azimuth'] - small['azimuth'] + 180) % 360 - 180) + abs(g['tilt'] - small['tilt']) * 3
+			return abs((g['azimuth'] - small['azimuth'] + 180) % 360 - 180) + abs(g['tilt'] - small['tilt']) * 3 + (0 if g['mount'] == small['mount'] else 1000)
 		target = min(groups, key=dist)
 		merged.append('%d modules at %d/%d folded into %d/%d' % (small['modules'], small['azimuth'], small['tilt'], target['azimuth'], target['tilt']))
+		target['shading'] = (target['shading'] * target['modules'] + small['shading'] * small['modules']) / (target['modules'] + small['modules'])
 		target['modules'] += small['modules']
+	for g in groups:
+		g['shading'] = round(g['shading'], 2)
 	return groups, merged
 
 
 def monthly(hourly_or_monthly):
 	return [round(v) for v in hourly_or_monthly]
+
+
+CELL_TECH = {'mono': 0, 'poly': 1, 'cdte': 2, 'cis': 3, 'cigs': 4, 'amorphous': 5}
+
+
+def spec_num(spec, key, label, low=None, high=None):
+	try:
+		v = float(spec.get(key))
+	except (TypeError, ValueError):
+		raise ValueError('Spec sheet: %s is missing.' % label)
+	if (low is not None and v < low) or (high is not None and v > high):
+		raise ValueError('Spec sheet: %s looks wrong (%g).' % (label, v))
+	return v
+
+
+def module_source(src):
+	"""The module, from SAM's library or a spec sheet: {kind, values, w, vmp, voc, bifacial, label}."""
+	if isinstance(src, dict) and isinstance(src.get('spec'), dict):
+		sp = src['spec']
+		vmp = spec_num(sp, 'vmp', 'Vmp', 1, 1500)
+		imp = spec_num(sp, 'imp', 'Imp', 0.1, 50)
+		voc = spec_num(sp, 'voc', 'Voc', 1, 1500)
+		isc = spec_num(sp, 'isc', 'Isc', 0.1, 50)
+		if vmp >= voc or imp >= isc:
+			raise ValueError('Spec sheet: Vmp must be below Voc and Imp below Isc.')
+		area = spec_num(sp, 'length_mm', 'length', 300, 4000) * spec_num(sp, 'width_mm', 'width', 300, 3000) / 1e6
+		values = {
+			'sixpar_celltech': CELL_TECH.get(str(sp.get('tech') or 'mono'), 0),
+			'sixpar_vmp': vmp, 'sixpar_imp': imp, 'sixpar_voc': voc, 'sixpar_isc': isc,
+			'sixpar_bvoc': spec_num(sp, 'beta_voc_pct', 'Voc temperature coefficient', -1.5, 0) / 100 * voc,
+			'sixpar_aisc': spec_num(sp, 'alpha_isc_pct', 'Isc temperature coefficient', 0, 0.5) / 100 * isc,
+			'sixpar_gpmp': spec_num(sp, 'gamma_pmp_pct', 'Pmax temperature coefficient', -1.5, 0),
+			'sixpar_nser': int(spec_num(sp, 'cells', 'cells in series', 10, 400)),
+			'sixpar_area': area,
+			'sixpar_tnoct': spec_num(sp, 'noct', 'NOCT', 30, 70),
+		}
+		return {'kind': 'spec', 'values': values, 'w': vmp * imp, 'vmp': vmp, 'voc': voc,
+			'bifacial': bool(sp.get('bifacial')), 'label': 'spec sheet'}
+	name = str(src or '')
+	row = cec_row('cec_modules.csv', name)
+	return {'kind': 'cec', 'values': row, 'w': row['cec_v_mp_ref'] * row['cec_i_mp_ref'], 'vmp': row['cec_v_mp_ref'],
+		'voc': row['cec_v_oc_ref'], 'bifacial': row.get('lib_is_bifacial') == 1, 'label': name}
+
+
+def inverter_source(src):
+	"""The inverter, from SAM's library or a spec sheet: {kind, values, paco, eff_pct, vdco, mppt_low, mppt_high, label}."""
+	if isinstance(src, dict) and isinstance(src.get('spec'), dict):
+		sp = src['spec']
+		paco = spec_num(sp, 'ac_w', 'AC rating', 100, 2000000)
+		eff = spec_num(sp, 'eff_pct', 'CEC efficiency', 80, 99.9)
+		vdco = spec_num(sp, 'vdc_nominal', 'nominal DC voltage', 20, 1500)
+		low = float(sp.get('mppt_low') or vdco * 0.6)
+		high = float(sp.get('mppt_high') or vdco * 1.3)
+		vmax = float(sp.get('vdc_max') or max(high, vdco) * 1.2)
+		values = {'inv_ds_paco': paco, 'inv_ds_eff': eff, 'inv_ds_pnt': paco * 0.0005, 'inv_ds_pso': paco * 0.002,
+			'inv_ds_vdco': vdco, 'inv_ds_vdcmax': vmax}
+		return {'kind': 'spec', 'values': values, 'paco': paco, 'eff_pct': eff, 'vdco': vdco, 'mppt_low': low, 'mppt_high': high,
+			'label': 'spec sheet'}
+	name = str(src or '')
+	row = cec_row('cec_inverters.csv', name)
+	return {'kind': 'cec', 'values': row, 'paco': row['inv_snl_paco'], 'eff_pct': row['inv_snl_paco'] / row['inv_snl_pdco'] * 100,
+		'vdco': row['inv_snl_vdco'], 'mppt_low': row['inv_snl_mppt_low'], 'mppt_high': row['inv_snl_mppt_hi'], 'label': name}
 
 
 def system(req):
@@ -307,54 +388,81 @@ def system(req):
 	path = req.get('weather_file')
 	if not path or not os.path.isfile(path):
 		raise ValueError('Weather file not found.')
-	groups, merged = group_arrays(req.get('arrays') or [])
+	L = req.get('losses') or {}
+	groups, merged = group_arrays(req.get('arrays') or [], float(L.get('shading') or 0))
 	if not groups:
 		raise ValueError('No arrays with modules.')
-	mod = cec_row('cec_modules.csv', req.get('module') or '')
-	inv = cec_row('cec_inverters.csv', req.get('inverter') or '')
+	mod = module_source(req.get('module'))
+	inv = inverter_source(req.get('inverter'))
 	inv_count = max(1, int(req.get('inverter_count') or 1))
-	L = req.get('losses') or {}
+	mlpe = req.get('mlpe') or ('optimizers' if req.get('optimizers') else 'none')
+	fixed_v = mlpe in ('optimizers', 'micro')
 	pct = lambda k: max(0.0, min(99.0, float(L.get(k) or 0)))
-	total, inv_loss, opt_loss, shade = pct('total'), pct('inverter'), pct('optimizer'), pct('shading')
-	optimizers = bool(req.get('optimizers'))
-	# what is left of the stated total once inverter and optimizer are taken out; OpenSolar's total
-	# leaves shading out (its shaded jobs show about 5 points less "other" loss if it were inside)
-	keep_other = (1 - total / 100) / ((1 - inv_loss / 100) * (1 - opt_loss / 100)) if total else 1.0
-	other = max(0.0, (1 - keep_other) * 100)
+	inv_loss, opt_loss = pct('inverter'), pct('optimizer') if mlpe == 'optimizers' else 0.0
+	if L.get('other') is not None:
+		other = pct('other')
+	else:
+		# OpenSolar's stated total covers inverter, optimizer and other losses; shading is on top of it
+		total = pct('total')
+		keep_other = (1 - total / 100) / ((1 - inv_loss / 100) * (1 - opt_loss / 100)) if total else 1.0
+		other = max(0.0, (1 - keep_other) * 100)
+	sam_adjust = max(0.0, min(50.0, float(req.get('sam_adjust') or 0)))
 	modules = sum(g['modules'] for g in groups)
-	module_w = mod['cec_v_mp_ref'] * mod['cec_i_mp_ref']
-	kw_dc = modules * module_w / 1000
-	kw_ac = inv_count * inv['inv_snl_paco'] / 1000
+	kw_dc = modules * mod['w'] / 1000
+	kw_ac = inv_count * inv['paco'] / 1000
 	cols = weather_columns(path)
 	snow = any('snow' in c.lower() for c in cols)
+	any_ground = any(g['mount'] != 'roof' for g in groups)
 
 	# Detailed model
 	t0 = time.time()
 	m = pvsam.default('FlatPlatePVNone')
 	m.SolarResource.solar_resource_file = path
-	m.Module.module_model = 1
-	cec = m.CECPerformanceModelWithModuleDatabase
-	for k, v in mod.items():
-		if k.startswith('cec_') and k in cec.export():
-			cec.__setattr__(k, v)
-	ground = any(g['mount'] == 'ground' for g in groups)
-	cec.cec_is_bifacial = 1 if (ground and mod.get('lib_is_bifacial') == 1) else 0
-	cec.cec_bifaciality = 0.7
-	cec.cec_temp_corr_mode = 0
-	cec.cec_standoff = 6 if ground else 1   # rack, or roof with more than 3.5 in. of standoff
-	cec.cec_height = 1 if ground else 0
-	m.Inverter.inverter_model = 0
-	db = m.InverterCECDatabase
-	for k, v in inv.items():
-		if k.startswith('inv_snl_') and k in db.export():
-			db.__setattr__(k, v)
-	if optimizers:
-		# Optimizers hold the string at the inverter's fixed input voltage: no voltage window to fall
-		# out of, and the inverter's efficiency at its rated DC voltage.
-		db.inv_snl_c1 = db.inv_snl_c2 = db.inv_snl_c3 = 0
-		db.inv_snl_vdcmax = 100000
-	m.Inverter.mppt_low_inverter = 0 if optimizers else inv['inv_snl_mppt_low']
-	m.Inverter.mppt_hi_inverter = 100000 if optimizers else inv['inv_snl_mppt_hi']
+	if mod['kind'] == 'cec':
+		m.Module.module_model = 1
+		cec = m.CECPerformanceModelWithModuleDatabase
+		names = cec.export()
+		for k, v in mod['values'].items():
+			if k.startswith('cec_') and k in names:
+				cec.__setattr__(k, v)
+		cec.cec_is_bifacial = 1 if (any_ground and mod['bifacial']) else 0
+		cec.cec_bifaciality = 0.7
+		cec.cec_temp_corr_mode = 0
+		cec.cec_standoff = 6 if any_ground else 1   # rack, or roof with more than 3.5 in. of standoff
+		cec.cec_height = 1 if any_ground else 0
+	else:
+		m.Module.module_model = 2
+		sx = m.CECPerformanceModelWithUserEnteredSpecifications
+		for k, v in mod['values'].items():
+			sx.__setattr__(k, v)
+		sx.sixpar_standoff = 6 if any_ground else 1
+		sx.sixpar_mounting = 0
+		sx.sixpar_is_bifacial = 1 if (any_ground and mod['bifacial']) else 0
+		sx.sixpar_bifaciality = 0.7
+		sx.sixpar_bifacial_transmission_factor = 0.013
+		sx.sixpar_bifacial_ground_clearance_height = 1
+		sx.sixpar_transient_thermal_model_unit_mass = 11.0919
+	if inv['kind'] == 'cec':
+		m.Inverter.inverter_model = 0
+		db = m.InverterCECDatabase
+		names = db.export()
+		for k, v in inv['values'].items():
+			if k.startswith('inv_snl_') and k in names:
+				db.__setattr__(k, v)
+		if fixed_v:
+			# Optimizers and micros hold the string at a fixed voltage: no voltage window to fall
+			# out of, and the inverter's efficiency at its rated DC voltage.
+			db.inv_snl_c1 = db.inv_snl_c2 = db.inv_snl_c3 = 0
+			db.inv_snl_vdcmax = 100000
+	else:
+		m.Inverter.inverter_model = 1
+		ds = m.InverterDatasheet
+		for k, v in inv['values'].items():
+			ds.__setattr__(k, v)
+		if fixed_v:
+			ds.inv_ds_vdcmax = 100000
+	m.Inverter.mppt_low_inverter = 0 if fixed_v else inv['mppt_low']
+	m.Inverter.mppt_hi_inverter = 100000 if fixed_v else inv['mppt_high']
 	m.Inverter.inv_num_mppt = 1
 	m.Inverter.inverter_count = inv_count
 	sd = m.SystemDesign
@@ -366,26 +474,30 @@ def system(req):
 			m.value('subarray%d_enable' % i, 1 if g else 0)
 		if not g:
 			continue
-		if optimizers:
+		if mlpe == 'micro':
+			per_string, strings = 1, g['modules']
+		elif fixed_v:
 			per_string, strings = g['modules'], 1
 		else:
-			per_string = max(1, round(inv['inv_snl_vdco'] / mod['cec_v_mp_ref']))
+			per_string = max(1, round(inv['vdco'] / mod['vmp']))
 			strings = max(1, round(g['modules'] / per_string))
+		tracker = g['mount'] == 'tracker'
 		for k, v in (('modules_per_string', per_string), ('nstrings', strings), ('tilt', g['tilt']), ('azimuth', g['azimuth']),
-				('track_mode', 0), ('mppt_input', 1), ('gcr', 0.4 if g['mount'] == 'ground' else 0.9)):
+				('track_mode', 1 if tracker else 0), ('backtrack', 1 if tracker else 0), ('rotlim', 52), ('mppt_input', 1),
+				('gcr', 0.35 if tracker else (0.4 if g['mount'] != 'roof' else 0.9))):
 			m.value('subarray%d_%s' % (i, k), v)
 		for k, v in (('mismatch_loss', 0), ('diodeconn_loss', 0), ('dcwiring_loss', other), ('tracking_loss', 0), ('nameplate_loss', 0),
 				('rear_soiling_loss', 0), ('rack_shading', 0), ('electrical_mismatch', 0)):
 			m.value('subarray%d_%s' % (i, k), v)
-		m.value('subarray%d_soiling' % i, [shade] * 12)
+		m.value('subarray%d_soiling' % i, [g['shading']] * 12)
 	sd.system_capacity = kw_dc
-	m.Losses.dcoptimizer_loss = opt_loss if optimizers else 0
+	m.Losses.dcoptimizer_loss = opt_loss
 	m.Losses.acwiring_loss = 0
 	m.Losses.transmission_loss = 0
 	m.Losses.calculate_rack_shading = 0
 	m.Losses.en_snow_model = 1 if snow else 0
 	m.Losses.use_snow_weather_file = 1 if snow else 0
-	m.AdjustmentFactors.adjust_constant = 0
+	m.AdjustmentFactors.adjust_constant = sam_adjust
 	m.execute()
 	detailed = {
 		'model': 'Pvsamv1 (SAM detailed PV)',
@@ -395,24 +507,21 @@ def system(req):
 		'seconds': round(time.time() - t0, 2),
 	}
 
-	# PVWatts v8: whole system as one array per group, run once per group and added up
+	# PVWatts v8: one run per group, added up
 	t1 = time.time()
-	cec_eff = inv['inv_snl_paco'] / inv['inv_snl_pdco'] * 100   # rated-point efficiency, used only when the proposal gives no inverter loss
-	inv_eff = 100 - inv_loss if inv_loss else cec_eff
-	keep = (1 - other / 100) * (1 - shade / 100) * (1 - opt_loss / 100)
+	inv_eff = 100 - inv_loss if inv_loss else inv['eff_pct']
 	pv_monthly = [0.0] * 12
-	pv_clip = 0.0
 	for g in groups:
+		keep = (1 - other / 100) * (1 - g['shading'] / 100) * (1 - opt_loss / 100)
 		w = pvwatts.default('PVWattsNone')
 		w.SolarResource.solar_resource_file = path
 		s = w.SystemDesign
-		share = g['modules'] / modules
-		s.system_capacity = kw_dc * share
+		s.system_capacity = kw_dc * g['modules'] / modules
 		s.dc_ac_ratio = kw_dc / kw_ac
-		s.array_type = 0 if g['mount'] == 'ground' else 1
+		s.array_type = 3 if g['mount'] == 'tracker' else (1 if g['mount'] == 'roof' else 0)
 		s.tilt = g['tilt']
 		s.azimuth = g['azimuth']
-		s.gcr = 0.4
+		s.gcr = 0.35 if g['mount'] == 'tracker' else 0.4
 		s.inv_eff = min(99.5, max(90.0, inv_eff))
 		s.losses = (1 - keep) * 100
 		s.module_type = 1
@@ -429,16 +538,15 @@ def system(req):
 	version_file = os.path.join(LIB, 'VERSION')
 	return {
 		'kw_dc': round(kw_dc, 3), 'kw_ac': round(kw_ac, 3), 'dc_ac': round(kw_dc / kw_ac, 3),
-		'module_w': round(module_w, 1), 'modules': modules,
-		'groups': groups, 'merged': merged,
-		'other_loss_percent': round(other, 2),
+		'module_w': round(mod['w'], 1), 'modules': modules, 'module_source': mod['kind'], 'inverter_source': inv['kind'],
+		'mlpe': mlpe, 'groups': groups, 'merged': merged,
+		'other_loss_percent': round(other, 2), 'sam_adjust_percent': sam_adjust,
 		'snow_modeled': snow,
 		'weather_columns': cols,
 		'detailed': detailed, 'pvwatts': pvw,
 		'pysam': PySAM.__version__,
 		'library_release': open(version_file).read().strip() if os.path.isfile(version_file) else None,
 	}
-
 
 ACTIONS = {'check': check, 'weather': weather, 'bill': bill, 'system': system}
 
