@@ -136,15 +136,10 @@ $isNew = $id === null;
 				</select>
 			</label>
 			<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" class="input-short" inputmode="numeric" data-addr="zip" data-geo-field="zip"></label>
-			<label class="span-2">Municipality (AHJ)
-				<select name="municipality_id" data-reveal="new" data-target="#new-muni">
-					<option value="">Choose</option>
-					<option value="new" <?= $sel($v('municipality_id'), 'new') ?>>+ Add a municipality</option>
-					<?php foreach ($municipalities as $m): ?>
-						<option value="<?= (int) $m['id'] ?>" <?= $sel($v('municipality_id'), $m['id']) ?>><?= e(App\Municipalities::label($m)) ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
+			<?= App\View::partial('partials/municipality_pick', [
+				'value' => (string) $v('municipality_id'), 'municipalities' => $municipalities, 'counties' => $counties,
+				'newName' => (string) $v('new_muni_name'), 'newCounty' => (string) $v('new_muni_county_id'), 'geoAttrs' => 'data-geo="{}"',
+			]) ?>
 			<div class="checkfield span-2">
 				<span class="field-label">Map point</span>
 				<div class="point-pair">
@@ -152,22 +147,10 @@ $isNew = $id === null;
 					<input type="text" name="site_lon" value="<?= e((string) $v('site_lon')) ?>" inputmode="decimal" placeholder="Longitude" aria-label="Longitude" data-addr="lon">
 				</div>
 				<input type="hidden" name="geo_source" value="<?= e((string) $v('geo_source')) ?>" data-addr="source">
-				<small class="hint">Where production and utility rates are looked up. Filled by Look up<?= $v('geo_source') ? ' (now from ' . e(App\Address::sourceLabel((string) $v('geo_source'))) . ')' : '' ?>; type it in when the lookup misses (right-click the spot in Google Maps to copy it). Blank is found on save.</small>
+				<small class="hint">Where production and utility rates are looked up. Filled by Look up<?= $v('geo_source') ? ' (the saved one is from ' . e(App\Address::sourceLabel((string) $v('geo_source'))) . ')' : '' ?>; type it in when the lookup misses (right-click the spot in Google Maps to copy it). Blank is found on save.</small>
 			</div>
-			<div id="geo-note" class="geo-note span-all" aria-live="polite" hidden data-geo-url="/geo/lookup" data-geo="{}"></div>
 			<label class="span-2">Drive folder link <input type="url" name="drive_url" value="<?= e($v('drive_url')) ?>" placeholder="https://drive.google.com/..."></label>
 			<label class="span-2">Notes <textarea name="notes" rows="3" data-autogrow><?= e($v('notes')) ?></textarea></label>
-		</div>
-		<div id="new-muni" class="grid-form reveal" hidden>
-			<label class="span-2">Municipality name <input type="text" name="new_muni_name" value="<?= e($v('new_muni_name')) ?>" placeholder="e.g. Penn Township"></label>
-			<label>County
-				<select name="new_muni_county_id">
-					<option value="">Choose</option>
-					<?php foreach ($counties as $c): ?>
-						<option value="<?= (int) $c['id'] ?>" <?= $sel($v('new_muni_county_id'), $c['id']) ?>><?= e($c['name'] . ' (' . $c['state_code'] . ')') ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
 		</div>
 	</section>
 

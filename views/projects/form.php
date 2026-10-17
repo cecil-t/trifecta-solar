@@ -147,15 +147,6 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 			<label>Last 12 months usage (kWh) <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric"></label>
 			<label>Utility rate (optional) <input type="text" name="utility_tariff" value="<?= e($v('utility_tariff')) ?>" placeholder="e.g. RS"></label>
 			<label class="span-2">Service address, if not the site <input type="text" name="service_address" value="<?= e($v('service_address')) ?>"></label>
-			<label class="span-2">Municipality (AHJ)
-				<select name="municipality_id" data-reveal="new" data-target="#new-muni">
-					<option value="">Choose</option>
-					<option value="new" <?= $sel($v('municipality_id'), 'new') ?>>+ Add a municipality</option>
-					<?php foreach ($municipalities as $m): ?>
-						<option value="<?= (int) $m['id'] ?>" <?= $sel($v('municipality_id'), $m['id']) ?>><?= e(Municipalities::label($m)) ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
 			<label class="span-2-phone">SREC provider
 				<select name="srec_provider">
 					<option value="">Choose</option>
@@ -164,21 +155,11 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 					<?php endforeach; ?>
 				</select>
 			</label>
-			<div id="geo-note" class="geo-note span-all" aria-live="polite" hidden
-				data-geo-url="/geo/lookup"
-				<?php if (!$isNew): ?>data-geo-check="/projects/<?= (int) $id ?>/geo-check" data-csrf="<?= e(Csrf::token()) ?>"<?php endif; ?>
-				data-geo="<?= e(json_encode($geo ?? new stdClass())) ?>"></div>
-		</div>
-		<div id="new-muni" class="grid-form reveal" hidden>
-			<label class="span-2">Municipality name <input type="text" name="new_muni_name" value="<?= e($v('new_muni_name')) ?>" placeholder="e.g. Penn Township"></label>
-			<label>County
-				<select name="new_muni_county_id">
-					<option value="">Choose</option>
-					<?php foreach ($counties as $c): ?>
-						<option value="<?= (int) $c['id'] ?>" <?= $sel($v('new_muni_county_id'), $c['id']) ?>><?= e($c['name'] . ' (' . $c['state_code'] . ')') ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
+			<?= App\View::partial('partials/municipality_pick', [
+				'value' => (string) $v('municipality_id'), 'municipalities' => $municipalities, 'counties' => $counties,
+				'newName' => (string) $v('new_muni_name'), 'newCounty' => (string) $v('new_muni_county_id'),
+				'geoAttrs' => ($isNew ? '' : 'data-geo-check="/projects/' . (int) $id . '/geo-check" data-csrf="' . e(Csrf::token()) . '" ') . 'data-geo="' . e(json_encode($geo ?? new stdClass())) . '"',
+			]) ?>
 		</div>
 
 		<?php if (!$isNew): ?>

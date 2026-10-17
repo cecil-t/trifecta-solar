@@ -1711,3 +1711,13 @@ a[href^="tel:"] { white-space: nowrap; }
 .prod-legend .key-det { background: var(--blue); }
 .prod-legend .key-pvw { background: var(--green-600); margin-left: .6rem; }
 .prod-table th, .prod-table td { padding: .4rem .45rem; font-size: .82rem; }
+
+/* Municipality choice with its lookup note and add fields; fields a lookup filled */
+.muni-block { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem 1rem; align-items: start; }
+.muni-block > .muni-new { grid-column: 1 / -1; padding: .7rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+.muni-block > .geo-note { margin-top: 1.35rem; }
+@media (max-width: 760px) {
+	.muni-block { grid-template-columns: 1fr; }
+	.muni-block > .geo-note { margin-top: 0; }
+}
+input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-shadow: 0 0 0 1px #e7b84a; }

@@ -67,6 +67,10 @@
 		}
 		muni.dispatchEvent(new Event('change', { bubbles: true }));
 		settingMuni = false;
+		if (window.TrifectaMarkAuto) {
+			window.TrifectaMarkAuto(muni);
+			if (muni.value === 'new') { if (newName) window.TrifectaMarkAuto(newName); if (newCounty && newCounty.value) window.TrifectaMarkAuto(newCounty); }
+		}
 		autoValue = muni.value;
 		render();
 	}

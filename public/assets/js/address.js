@@ -19,6 +19,16 @@
 		return n;
 	};
 
+	// Fields a lookup filled are highlighted until the user changes them (programmatic events are not trusted)
+	const mark = (f) => { f.classList.add('is-auto'); f.title = 'Filled in by the lookup: check it'; };
+	window.TrifectaMarkAuto = mark;
+	['input', 'change'].forEach((type) => document.addEventListener(type, (e) => {
+		if (e.isTrusted && e.target.classList && e.target.classList.contains('is-auto')) {
+			e.target.classList.remove('is-auto');
+			e.target.removeAttribute('title');
+		}
+	}));
+
 	document.querySelectorAll('[data-address]').forEach((box) => {
 		const form = box.closest('form');
 		const input = box.querySelector('.addr-full');
@@ -35,6 +45,7 @@
 			if (f.value === String(v)) return;
 			f.value = String(v);
 			f.dispatchEvent(new Event('change', { bubbles: true }));
+			mark(f);
 		};
 
 		function utilityLine(u) {
@@ -80,6 +91,8 @@
 				if (r.lat !== null && field('lat')) {
 					field('lat').value = r.lat;
 					field('lon').value = r.lon;
+					mark(field('lat'));
+					mark(field('lon'));
 					if (field('source')) field('source').value = r.source;
 				}
 				filling = false;
@@ -93,6 +106,7 @@
 					where.append(el('span', 'muted', 'Split into the fields below; the map lookup found no match. Check them, and type the map point if you have it.'));
 				}
 				note.append(where);
+				if (form.querySelector('.is-auto')) note.append(el('div', 'small muted', 'Fields the lookup filled or changed are highlighted until you edit them.'));
 				if (r.note) note.append(el('div', 'small text-orange', r.note));
 				if (r.geo && r.geo.label && !form.querySelector('#geo-note')) note.append(el('div', 'small muted', 'Municipality: ' + r.geo.label));
 				const u = utilityLine(r.utility);
@@ -118,6 +132,8 @@
 				if (filling || !field('lat')) return;
 				field('lat').value = '';
 				field('lon').value = '';
+				field('lat').classList.remove('is-auto');
+				field('lon').classList.remove('is-auto');
 				if (field('source')) field('source').value = '';
 			});
 		});
