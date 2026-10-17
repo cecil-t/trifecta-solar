@@ -110,6 +110,7 @@ final class Presales
 		'production_other_loss'  => ['14', 'Production: other system losses (%)'],
 		'production_optimizer_loss' => ['1.2', 'Production: optimizer loss (%)'],
 		'production_sam_adjust'  => ['0', 'Production: extra loss on SAM\'s detailed model (%)'],
+		'degradation_default'    => ['0.5', 'Module degradation when the catalog has none (% a year)'],
 	];
 
 	private static ?array $settings = null;

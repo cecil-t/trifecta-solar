@@ -116,6 +116,9 @@ $rules = $rules ?: [[]];
 			<label>Extra loss on SAM's detailed model (%) <input type="text" name="settings[production_sam_adjust]" value="<?= e($n($s('production_sam_adjust'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
 				<small class="hint">A calibration for the detailed model alone. On the reference jobs it read 3 to 4% above real production outside the snow months; 0 leaves it as SAM computes it.</small>
 			</label>
+			<label>Module degradation when the catalog has none (% a year) <input type="text" name="settings[degradation_default]" value="<?= e($n($s('degradation_default'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">For savings over the years. A module's own Annual degradation in the catalog (from its performance warranty) wins over this.</small>
+			</label>
 		</div>
 	</section>
 

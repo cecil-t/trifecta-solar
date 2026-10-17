@@ -89,10 +89,13 @@
 			return;
 		}
 		const line = el('div');
-		line.append(el('span', 'muted', 'Address lookup: '), el('strong', '', result.label));
+		line.append(el('span', 'muted', 'Municipality and county (Census): '), el('strong', '', result.label));
 		if (result.source === 'osm_street') line.append(el('span', 'muted', ' (approximate: found the road, not the house)'));
 		note.append(line);
 
+		if (!result.municipality_id && result.name && muni.value === 'new') {
+			note.append(el('div', 'small', result.name + ' isn\u2019t in the Municipalities list yet. Saving adds it with the name and county below.'));
+		}
 		const bad = mismatch();
 		if (muni.value !== '' && muni.value !== 'new' && !bad) {
 			note.classList.add('geo-ok');
@@ -132,7 +135,7 @@
 	async function lookup() {
 		if (!complete()) return;
 		const mine = ++seq;
-		render('Looking up the township and county...');
+		render('Looking up the municipality and county...');
 		const q = new URLSearchParams();
 		for (const k of Object.keys(addr)) if (addr[k]) q.set(k, addr[k].value.trim());
 		try {

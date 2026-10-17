@@ -79,7 +79,7 @@ final class PresalesRatesController
 		$percent = ['tax_rate' => true, 'markup_default' => true, 'markup_floor' => true, 'handoff_share' => true];
 		$numeric = ['tax_rate', 'markup_default', 'markup_floor', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to',
 			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts', 'referral_bonus', 'handoff_share',
-			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust'];
+			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust', 'degradation_default'];
 		$skip = ['commission_tiers' => true, 'self_gen_tiers' => true, 'site_visit' => true];
 		// Trench builder choices come from fixed lists
 		$post = (array) ($_POST['settings'] ?? []);
@@ -104,10 +104,11 @@ final class PresalesRatesController
 		if (!isset(\App\Production::MODELS[(string) ($post['production_model'] ?? '')])) {
 			throw new \InvalidArgumentException('Pick which production estimate the proposal uses.');
 		}
-		foreach (['production_other_loss' => 'Other system losses', 'production_optimizer_loss' => 'Optimizer loss', 'production_sam_adjust' => 'Extra loss on SAM\'s detailed model'] as $k => $label) {
+		foreach (['production_other_loss' => [40, 'Other system losses'], 'production_optimizer_loss' => [40, 'Optimizer loss'],
+			'production_sam_adjust' => [40, 'Extra loss on SAM\'s detailed model'], 'degradation_default' => [5, 'Module degradation']] as $k => [$max, $label]) {
 			$v = trim((string) ($post[$k] ?? ''));
-			if ($v === '' || !is_numeric($v) || (float) $v < 0 || (float) $v > 40) {
-				throw new \InvalidArgumentException($label . ' must be a percent from 0 to 40.');
+			if ($v === '' || !is_numeric($v) || (float) $v < 0 || (float) $v > $max) {
+				throw new \InvalidArgumentException($label . ' must be a percent from 0 to ' . $max . '.');
 			}
 		}
 		$floorIn = $num((string) ($_POST['settings']['markup_floor'] ?? ''), 'Markup floor');
