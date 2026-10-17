@@ -151,10 +151,19 @@ final class UtilityRates
 		return ['ok' => true, 'items' => $items, 'ms' => $r['ms']];
 	}
 
+	/** The 3 and 5 year change needs this many full-service versions in the window, and no longer gap between them. */
+	public const TREND_MIN_VERSIONS = 3;
+	public const TREND_MAX_GAP_DAYS = 548;   // about 18 months, for versions with no end date; PA rates change at least yearly
+
 	/**
-	 * A rate's versions as a history: per version its dates and cents per kWh at the use given (from
-	 * $bills, label => annual bill), and the yearly change over 3 and 5 years between the version in
-	 * effect then and the one in effect now (compound, per year). Null where there is no version that old.
+	 * A rate's versions as a history. OpenEI lists most PA rates twice for the same dates, with and
+	 * without the default generation; the higher one at each start date is the full-service version,
+	 * and the yearly change uses only those. Each row gets cents per kWh at the use given (from
+	 * $bills, label => annual bill) and a kind: full, delivery (delivery only) or bad (cents outside
+	 * 1 to 60, so a data entry error). The 3 and 5 year change is the compound yearly change from the
+	 * full-service version in effect then to the one in effect now, shown only with enough data: a
+	 * current version, one in effect at the start of the window, at least TREND_MIN_VERSIONS versions
+	 * and no gap over TREND_MAX_GAP_DAYS; otherwise a reason.
 	 */
 	public static function trend(array $versions, array $bills, float $monthlyKwh, ?int $now = null): array
 	{
@@ -162,32 +171,104 @@ final class UtilityRates
 		$rows = [];
 		foreach ($versions as $v) {
 			$bill = $bills[$v['label']] ?? null;
+			$start = isset($v['startdate']) && is_numeric($v['startdate']) ? (int) $v['startdate'] : null;
+			$end = isset($v['enddate']) && is_numeric($v['enddate']) ? (int) $v['enddate'] : null;
+			if ($end !== null && ($start === null || $end < $start || (int) gmdate('Y', $end) < 1990)) {
+				$end = null;   // a typo'd end date (year 0024, or before the start) says nothing
+			}
+			$cents = $bill !== null ? $bill / ($monthlyKwh * 12) * 100 : null;
 			$rows[] = [
-				'label' => $v['label'], 'start' => isset($v['startdate']) ? (int) $v['startdate'] : null,
-				'end' => isset($v['enddate']) && is_numeric($v['enddate']) ? (int) $v['enddate'] : null,
-				'bill' => $bill, 'cents' => $bill !== null ? $bill / ($monthlyKwh * 12) * 100 : null,
+				'label' => $v['label'], 'start' => $start, 'end' => $end, 'bill' => $bill, 'cents' => $cents,
+				'kind' => $cents === null || $start === null ? 'none' : ($cents < 1 || $cents > 60 ? 'bad' : 'full'),
 				'sell' => self::sellRates($v), 'uri' => (string) ($v['uri'] ?? ''),
 			];
 		}
-		usort($rows, static fn ($a, $b) => (int) $a['start'] <=> (int) $b['start']);
-		$at = static function (int $t) use ($rows): ?array {
+		usort($rows, static fn ($a, $b) => [(int) $a['start'], -(float) $a['cents']] <=> [(int) $b['start'], -(float) $b['cents']]);
+
+		// Full service vs delivery only: the highest at each start date is full; a lone version is
+		// delivery only when it is under 75% of the nearest paired full-service version
+		$byStart = [];
+		foreach ($rows as $i => $r) {
+			if ($r['kind'] === 'full') {
+				$byStart[$r['start']][] = $i;
+			}
+		}
+		$pairedFull = [];
+		foreach ($byStart as $st => $idx) {
+			if (count($idx) > 1) {
+				foreach (array_slice($idx, 1) as $i) {
+					$rows[$i]['kind'] = 'delivery';
+				}
+				$pairedFull[$st] = $rows[$idx[0]]['cents'];
+			}
+		}
+		if ($pairedFull) {
+			foreach ($byStart as $st => $idx) {
+				if (count($idx) === 1) {
+					$near = null;
+					foreach ($pairedFull as $pst => $c) {
+						if ($near === null || abs($pst - $st) < abs($near[0] - $st)) {
+							$near = [$pst, $c];
+						}
+					}
+					if ($rows[$idx[0]]['cents'] < 0.75 * $near[1]) {
+						$rows[$idx[0]]['kind'] = 'delivery';
+					}
+				}
+			}
+		}
+		$full = array_values(array_filter($rows, static fn ($r) => $r['kind'] === 'full'));
+		$inEffect = static function (int $t) use ($full): ?array {
 			$hit = null;
-			foreach ($rows as $r) {
-				if ($r['start'] !== null && $r['start'] <= $t && $r['cents'] !== null) {
+			foreach ($full as $r) {
+				if ($r['start'] <= $t && ($r['end'] === null || $r['end'] >= $t - 31 * 86400)) {
 					$hit = $r;
 				}
 			}
 			return $hit;
 		};
-		$change = static function (int $years) use ($at, $now): ?array {
-			$then = $at((int) strtotime('-' . $years . ' years', $now));
-			$today = $at($now);
-			if (!$then || !$today || $then['cents'] <= 0) {
-				return null;
+		$latest = $full ? $full[count($full) - 1] : null;
+		$current = $latest && ($latest['end'] === null || $latest['end'] >= $now) ? $latest : null;
+
+		$change = static function (int $years) use ($full, $inEffect, $current, $latest, $now): array {
+			$from = (int) strtotime('-' . $years . ' years', $now);
+			if (!$current) {
+				return ['pct' => null, 'why' => $latest ? 'no current version (the latest ended ' . gmdate('m/d/Y', (int) $latest['end']) . ')' : 'no full-service versions'];
 			}
-			return ['pct' => (pow($today['cents'] / $then['cents'], 1 / $years) - 1) * 100, 'from' => $then['cents'], 'to' => $today['cents']];
+			$then = $inEffect($from);
+			if (!$then) {
+				return ['pct' => null, 'why' => 'no version in effect ' . $years . ' years ago'];
+			}
+			$window = array_values(array_filter($full, static fn ($r) => $r['start'] >= $then['start'] && $r['start'] <= $now));
+			if (count($window) < self::TREND_MIN_VERSIONS) {
+				return ['pct' => null, 'why' => 'only ' . count($window) . ' version' . (count($window) === 1 ? '' : 's') . ' in ' . $years . ' years'];
+			}
+			// A gap: a version ended over a month before the next began, or (no end date) the next came over 18 months later
+			for ($i = 1, $n = count($window); $i < $n; $i++) {
+				$prev = $window[$i - 1];
+				$gap = $prev['end'] !== null ? $window[$i]['start'] - $prev['end'] > 31 * 86400 : $window[$i]['start'] - $prev['start'] > self::TREND_MAX_GAP_DAYS * 86400;
+				if ($gap) {
+					return ['pct' => null, 'why' => 'gap from ' . gmdate('m/Y', $prev['end'] ?? $prev['start']) . ' to ' . gmdate('m/Y', $window[$i]['start'])];
+				}
+			}
+			if ($current['start'] - $window[count($window) - 1]['start'] > 0 || $now - $current['start'] > self::TREND_MAX_GAP_DAYS * 86400) {
+				return ['pct' => null, 'why' => 'no new version since ' . gmdate('m/Y', $current['start'])];
+			}
+			return ['pct' => (pow($current['cents'] / $then['cents'], 1 / $years) - 1) * 100, 'from' => $then['cents'], 'to' => $current['cents'],
+				'from_date' => $then['start'], 'versions' => count($window)];
 		};
-		return ['rows' => $rows, 'y3' => $change(3), 'y5' => $change(5), 'oldest' => $rows[0]['start'] ?? null];
+
+		// Generation (roughly the Price to Compare): full service minus delivery only, for the current pair
+		$generation = null;
+		if ($current) {
+			foreach ($rows as $r) {
+				if ($r['kind'] === 'delivery' && $r['start'] === $current['start']) {
+					$generation = $current['cents'] - $r['cents'];
+				}
+			}
+		}
+		return ['rows' => $rows, 'y3' => $change(3), 'y5' => $change(5), 'oldest' => $rows[0]['start'] ?? null,
+			'current' => $current, 'generation' => $generation];
 	}
 
 	/** Sell (export) rates a URDB rate gives on its energy tiers, if any. */

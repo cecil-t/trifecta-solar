@@ -292,7 +292,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 
 <section class="card mt" id="history">
 	<h2>Rate history (OpenEI)</h2>
-	<p class="muted small">Every version OpenEI has of the rates at a place (retired ones too), each billed by SAM at the same use every month with no solar, so cents per kWh compare across years. The 3 and 5 year figures are the compound yearly change between the version in effect then and the one in effect now. Also shows whether a rate carries a sell (export) rate. Nothing is saved.</p>
+	<p class="muted small">Every version OpenEI has of the rates at a place (retired ones too), each billed by SAM at the same use every month with no solar, so cents per kWh compare across years. The 3 and 5 year figures are the compound yearly change in the full-service version (delivery plus default generation) from then to now, shown only with enough data: a current version, one in effect at the start, at least <?= (int) App\UtilityRates::TREND_MIN_VERSIONS ?> versions in the window and no gap over 18 months. Also shows whether a rate carries a sell (export) rate. Nothing is saved.</p>
 	<?php if ($historyError): ?>
 		<div class="flash flash-error"><?= e($historyError) ?></div>
 	<?php endif; ?>
@@ -320,18 +320,21 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 	<?php if ($history): ?>
 		<p class="muted small mt"><?= e($history['at']) ?>: <?= (int) $history['count'] ?> rate versions, <?= e(number_format($history['ms'] / 1000, 1)) ?> s<?= $history['failed'] ? ', ' . (int) $history['failed'] . ' SAM could not bill' : '' ?></p>
 		<?php if ($history['samError']): ?><div class="flash flash-error"><?= e($history['samError']) ?></div><?php endif; ?>
-		<?php $pct = static fn (?array $c): string => $c === null ? 'not enough history' : sprintf('%+.1f%% a year', $c['pct']) . ' (' . number_format($c['from'], 2) . ' to ' . number_format($c['to'], 2) . ' cents)'; ?>
+		<?php $pct = static fn (array $c): string => $c['pct'] === null ? 'not shown: ' . $c['why'] : sprintf('%+.1f%% a year', $c['pct']) . ' (' . number_format($c['from'], 2) . ' cents from ' . gmdate('m/Y', (int) $c['from_date']) . ' to ' . number_format($c['to'], 2) . ' now, ' . (int) $c['versions'] . ' versions)'; ?>
+		<?php $kinds = ['full' => 'Full service', 'delivery' => 'Delivery only', 'bad' => 'Skipped: bad data', 'none' => 'No bill']; ?>
 		<?php foreach ($history['groups'] as $g): ?>
 			<h3 class="mt"><?= e($g['utility']) ?>: <?= e($g['name']) ?></h3>
-			<p class="small"><strong>3 years:</strong> <?= e($pct($g['y3'])) ?> &middot; <strong>5 years:</strong> <?= e($pct($g['y5'])) ?> &middot; <?= count($g['rows']) ?> version<?= count($g['rows']) === 1 ? '' : 's' ?><?= $g['oldest'] ? ', oldest from ' . e(gmdate('m/d/Y', (int) $g['oldest'])) : '' ?></p>
+			<p class="small"><strong>3 years:</strong> <?= e($pct($g['y3'])) ?><br><strong>5 years:</strong> <?= e($pct($g['y5'])) ?><br>
+				<span class="muted"><?= count($g['rows']) ?> version<?= count($g['rows']) === 1 ? '' : 's' ?><?= $g['oldest'] ? ', oldest from ' . e(gmdate('m/d/Y', (int) $g['oldest'])) : '' ?><?= $g['current'] ? '' : ', none current' ?><?= $g['generation'] !== null ? ' &middot; generation now about ' . e(number_format($g['generation'], 2)) . ' cents (full service minus delivery only)' : '' ?></span></p>
 			<div class="table-wrap"><table class="table table-tight table-refs">
-				<thead><tr><th>From</th><th>Until</th><th class="num">Cents/kWh</th><th class="num">Year's bill</th><th>Sell rate</th><th></th></tr></thead>
+				<thead><tr><th>From</th><th>Until</th><th>Version</th><th class="num">Cents/kWh</th><th class="num">Year's bill</th><th>Sell rate</th><th></th></tr></thead>
 				<tbody>
 				<?php foreach ($g['rows'] as $row): ?>
 					<tr>
 						<td class="nowrap"><?= $row['start'] ? e(gmdate('m/d/Y', $row['start'])) : '' ?></td>
 						<td class="nowrap"><?= $row['end'] ? e(gmdate('m/d/Y', $row['end'])) : '<span class="muted">current</span>' ?></td>
-						<td class="num"><?= $row['cents'] !== null ? e(number_format($row['cents'], 2)) : '<span class="muted">no bill</span>' ?></td>
+						<td class="small<?= $row['kind'] === 'full' ? '' : ' muted' ?>"><?= e($kinds[$row['kind']] ?? '') ?></td>
+						<td class="num"><?= $row['cents'] !== null ? ($row['kind'] === 'full' ? '<strong>' . e(number_format($row['cents'], 2)) . '</strong>' : e(number_format($row['cents'], 2))) : '<span class="muted">no bill</span>' ?></td>
 						<td class="num"><?= $row['bill'] !== null ? '$' . e(number_format($row['bill'])) : '' ?></td>
 						<td class="small"><?= $row['sell'] ? e(implode(', ', array_map(static fn ($v) => number_format($v * 100, 2) . ' cents', $row['sell']))) : '<span class="muted">none</span>' ?></td>
 						<td><?php if (safe_url($row['uri']) !== null): ?><a href="<?= e(safe_url($row['uri'])) ?>" target="_blank" rel="noopener" class="small">OpenEI</a><?php endif; ?></td>
