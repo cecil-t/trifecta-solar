@@ -151,11 +151,11 @@ final class SamController
 					continue;
 				}
 				$bills = [];
-				foreach (self::billAll($found['items'], $kwh) as $label => $bill) {
+				foreach (self::billAll($found['items'], $kwh) as $rateLabel => $bill) {
 					if ($bill === null) {
 						$run['failed']++;
 					} else {
-						$bills[$label] = $bill;
+						$bills[$rateLabel] = $bill;
 					}
 				}
 				$sam = ['ok' => true];
