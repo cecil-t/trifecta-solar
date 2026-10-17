@@ -156,7 +156,7 @@ final class UtilityRates
 		return ['ok' => true, 'items' => $items, 'ms' => $r['ms']];
 	}
 
-	/** The 3 and 5 year change needs this many full-service versions in the window, and no longer gap between them. */
+	/** The 3, 5 and 10 year change needs this many full-service versions in the window, and no longer gap between them. */
 	public const TREND_MIN_VERSIONS = 3;
 	public const TREND_MAX_GAP_DAYS = 548;   // about 18 months, for versions with no end date; PA rates change at least yearly
 
@@ -166,7 +166,7 @@ final class UtilityRates
 	 * and the yearly change uses only those. Each row gets cents per kWh at the use given (from
 	 * $bills, label => annual bill) and a kind: full, delivery (delivery only), dup (another version
 	 * with the same start date and a similar price; left out) or bad (cents outside
-	 * 1 to 60, so a data entry error). The 3 and 5 year change is the compound yearly change from the
+	 * 1 to 60, so a data entry error). The 3, 5 and 10 year change is the compound yearly change from the
 	 * full-service version in effect then to the one in effect now, shown only with enough data: a
 	 * current version, one in effect at the start of the window, at least TREND_MIN_VERSIONS versions
 	 * and no gap over TREND_MAX_GAP_DAYS; otherwise a reason.
@@ -279,7 +279,7 @@ final class UtilityRates
 				}
 			}
 		}
-		return ['rows' => $rows, 'y3' => $change(3), 'y5' => $change(5), 'oldest' => $rows[0]['start'] ?? null,
+		return ['rows' => $rows, 'y3' => $change(3), 'y5' => $change(5), 'y10' => $change(10), 'oldest' => $rows[0]['start'] ?? null,
 			'current' => $current, 'generation' => $generation];
 	}
 
@@ -400,7 +400,7 @@ final class UtilityRates
 
 	/**
 	 * The history of one picked rate (by its utility and name, approved and unapproved versions),
-	 * kept on the opportunity: the 3 and 5 year change when the data allows it, whether unapproved
+	 * kept on the opportunity: the 3, 5 and 10 year change when the data allows it, whether unapproved
 	 * versions are in it, and the generation part now (full service minus delivery only), which the
 	 * net metering true-up uses as the Price to Compare.
 	 */
@@ -419,7 +419,7 @@ final class UtilityRates
 		$t = self::trend($versions, array_filter(self::billAll($versions, $kwh), static fn ($b) => $b !== null), $kwh);
 		$keep = static fn (array $c): array => $c['pct'] === null ? ['pct' => null, 'why' => $c['why']]
 			: ['pct' => round($c['pct'], 2), 'from' => round($c['from'], 2), 'to' => round($c['to'], 2), 'versions' => $c['versions'], 'from_date' => $c['from_date'], 'unapproved' => $c['unapproved']];
-		return ['ok' => true, 'y3' => $keep($t['y3']), 'y5' => $keep($t['y5']), 'generation' => $t['generation'] !== null ? round($t['generation'], 2) : null,
+		return ['ok' => true, 'y3' => $keep($t['y3']), 'y5' => $keep($t['y5']), 'y10' => $keep($t['y10']), 'generation' => $t['generation'] !== null ? round($t['generation'], 2) : null,
 			'versions' => count($versions), 'kwh' => $kwh, 'at' => now_utc()];
 	}
 

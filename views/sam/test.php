@@ -292,7 +292,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 
 <section class="card mt" id="history">
 	<h2>Rate history (OpenEI)</h2>
-	<p class="muted small">Every version OpenEI has of the rates at a place (retired ones too), each billed by SAM at the same use every month with no solar, so cents per kWh compare across years. The 3 and 5 year figures are the compound yearly change in the full-service version (delivery plus default generation) from then to now, shown only with enough data: a current version, one in effect at the start, at least <?= (int) App\UtilityRates::TREND_MIN_VERSIONS ?> versions in the window and no gap over 18 months. Also shows whether a rate carries a sell (export) rate. Nothing is saved.</p>
+	<p class="muted small">Every version OpenEI has of the rates at a place (retired ones too), each billed by SAM at the same use every month with no solar, so cents per kWh compare across years. The 3, 5 and 10 year figures are the compound yearly change in the full-service version (delivery plus default generation) from then to now, shown only with enough data: a current version, one in effect at the start, at least <?= (int) App\UtilityRates::TREND_MIN_VERSIONS ?> versions in the window and no gap over 18 months. Also shows whether a rate carries a sell (export) rate. Nothing is saved.</p>
 	<?php if ($historyError): ?>
 		<div class="flash flash-error"><?= e($historyError) ?></div>
 	<?php endif; ?>
@@ -335,11 +335,11 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<p class="muted small mt"><?= e($history['at']) ?>: <?= count($history['runs']) ?> runs at <?= e(number_format($history['kwh'])) ?> kWh a month<?= !empty($history['unapproved']) ? ', unapproved versions included' : '' ?>, <?= e(number_format($history['ms'] / 1000, 1)) ?> s</p>
 		<h3>Summary: rates with a current version</h3>
 		<div class="table-wrap"><table class="table table-tight table-refs history-sum">
-			<thead><tr><th>Place</th><th>Sector</th><th>Rate</th><th class="num">3 years</th><th class="num">5 years</th><th class="num">Generation now</th></tr></thead>
+			<thead><tr><th>Place</th><th>Sector</th><th>Rate</th><th class="num">3 years</th><th class="num">5 years</th><th class="num">10 years</th><th class="num">Generation now</th></tr></thead>
 			<tbody>
 			<?php foreach ($history['runs'] as $r): ?>
 				<?php if ($r['error']): ?>
-					<tr><td class="small nowrap"><?= e($r['place']) ?></td><td class="small nowrap"><?= e($r['sector']) ?></td><td colspan="4" class="text-red small"><?= e($r['error']) ?></td></tr>
+					<tr><td class="small nowrap"><?= e($r['place']) ?></td><td class="small nowrap"><?= e($r['sector']) ?></td><td colspan="5" class="text-red small"><?= e($r['error']) ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ($r['groups'] as $g): if (!$g['current']) { continue; } ?>
 					<tr>
@@ -347,6 +347,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 						<td class="small"><?= e($g['utility'] . ': ' . $g['name']) ?></td>
 						<td class="num" title="<?= e($why($g['y3'])) ?>"><?= $g['y3']['pct'] === null ? '<span class="muted small">' . e($g['y3']['why']) . '</span>' : '<strong>' . e($pct($g['y3'])) . '</strong>' ?></td>
 						<td class="num" title="<?= e($why($g['y5'])) ?>"><?= $g['y5']['pct'] === null ? '<span class="muted small">' . e($g['y5']['why']) . '</span>' : '<strong>' . e($pct($g['y5'])) . '</strong>' ?></td>
+						<td class="num" title="<?= e($why($g['y10'])) ?>"><?= $g['y10']['pct'] === null ? '<span class="muted small">' . e($g['y10']['why']) . '</span>' : '<strong>' . e($pct($g['y10'])) . '</strong>' ?></td>
 						<td class="num"><?= $g['generation'] !== null ? e(number_format($g['generation'], 2)) . '&cent;' : '' ?></td>
 					</tr>
 				<?php endforeach; ?>
@@ -360,7 +361,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 				<summary><strong><?= e($r['place']) ?>, <?= e($r['sector']) ?></strong> <span class="muted small"><?= $r['error'] ? e($r['error']) : (int) $r['count'] . ' versions, ' . count($r['groups']) . ' rates' . ($r['failed'] ? ', ' . (int) $r['failed'] . ' SAM could not bill' : '') ?></span></summary>
 				<?php foreach ($r['groups'] as $g): ?>
 					<h4 class="mt-sm"><?= e($g['utility']) ?>: <?= e($g['name']) ?></h4>
-					<p class="small"><strong>3 years:</strong> <?= e($pct($g['y3'])) ?> <span class="muted">(<?= e($why($g['y3'])) ?>)</span><br><strong>5 years:</strong> <?= e($pct($g['y5'])) ?> <span class="muted">(<?= e($why($g['y5'])) ?>)</span><?= $g['generation'] !== null ? '<br><span class="muted">Generation now about ' . e(number_format($g['generation'], 2)) . ' cents (full service minus delivery only)</span>' : '' ?></p>
+					<p class="small"><strong>3 years:</strong> <?= e($pct($g['y3'])) ?> <span class="muted">(<?= e($why($g['y3'])) ?>)</span><br><strong>5 years:</strong> <?= e($pct($g['y5'])) ?> <span class="muted">(<?= e($why($g['y5'])) ?>)</span><br><strong>10 years:</strong> <?= e($pct($g['y10'])) ?> <span class="muted">(<?= e($why($g['y10'])) ?>)</span><?= $g['generation'] !== null ? '<br><span class="muted">Generation now about ' . e(number_format($g['generation'], 2)) . ' cents (full service minus delivery only)</span>' : '' ?></p>
 					<div class="table-wrap"><table class="table table-tight table-refs">
 						<thead><tr><th>From</th><th>Until</th><th>Version</th><th class="num">Cents/kWh</th><th class="num">Year's bill</th><th>Sell rate</th><th></th></tr></thead>
 						<tbody>

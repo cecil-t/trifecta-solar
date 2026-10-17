@@ -113,7 +113,7 @@ final class SamController
 	/**
 	 * How rates changed over time, for any number of places and sectors in one run: every version
 	 * OpenEI has (retired ones too), each billed by SAM at the same flat use, and the yearly change
-	 * over 3 and 5 years (UtilityRates::trend). On screen, or as a text file (format=text). Nothing is saved.
+	 * over 3, 5 and 10 years (UtilityRates::trend). On screen, or as a text file (format=text). Nothing is saved.
 	 */
 	public function rateHistory(): void
 	{
@@ -193,7 +193,7 @@ final class SamController
 			$out[] = '=== ' . $r['place'] . ', ' . $r['sector'] . ': ' . ($r['error'] ?? ($r['count'] . ' versions' . ($r['failed'] ? ', ' . $r['failed'] . ' SAM could not bill' : '')));
 			foreach ($r['groups'] as $g) {
 				$out[] = $g['utility'] . ': ' . $g['name'];
-				$out[] = '  3 years ' . $pct($g['y3']) . ' | 5 years ' . $pct($g['y5']) . ($g['generation'] !== null ? sprintf(' | generation now %.2f cents', $g['generation']) : '');
+				$out[] = '  3 years ' . $pct($g['y3']) . ' | 5 years ' . $pct($g['y5']) . ' | 10 years ' . $pct($g['y10']) . ($g['generation'] !== null ? sprintf(' | generation now %.2f cents', $g['generation']) : '');
 				foreach ($g['rows'] as $row) {
 					$out[] = sprintf('  %s  %s  %-14s %s%s', $row['start'] ? gmdate('m/d/Y', $row['start']) : '          ', $row['end'] ? gmdate('m/d/Y', $row['end']) : 'current   ',
 						['full' => 'full service', 'delivery' => 'delivery only', 'dup' => 'same date', 'bad' => 'bad data', 'none' => 'no bill'][$row['kind']] ?? '',
