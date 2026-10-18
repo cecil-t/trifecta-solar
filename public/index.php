@@ -30,6 +30,7 @@ use App\Controllers\MunicipalityController;
 use App\Controllers\OrganizationController;
 use App\Controllers\PresalesController;
 use App\Controllers\PresalesRatesController;
+use App\Controllers\ProposalController;
 use App\Controllers\ProjectController;
 use App\Controllers\SearchController;
 use App\Controllers\SetupController;
@@ -111,6 +112,8 @@ $r->post('/presales/catalog/{id}/confirm', [CatalogController::class, 'confirm']
 $r->get('/presales/rates', [PresalesRatesController::class, 'show']);
 $r->get('/presales/utility-rates', [PresalesController::class, 'utilityRates']);
 $r->post('/presales/rates', [PresalesRatesController::class, 'save']);
+$r->get('/presales/terms', [ProposalController::class, 'terms']);
+$r->post('/presales/terms', [ProposalController::class, 'saveTerms']);
 $r->get('/presales/{id}', [PresalesController::class, 'show']);
 $r->get('/presales/{id}/edit', [PresalesController::class, 'edit']);
 $r->post('/presales/{id}', [PresalesController::class, 'update']);
@@ -125,6 +128,8 @@ $r->post('/presales/{id}/designs/{designId}/calc', [DesignController::class, 'ca
 $r->post('/presales/{id}/designs/{designId}/duplicate', [DesignController::class, 'duplicate']);
 $r->post('/presales/{id}/designs/{designId}/reprice', [DesignController::class, 'reprice']);
 $r->post('/presales/{id}/designs/{designId}/delete', [DesignController::class, 'delete']);
+$r->get('/presales/{id}/designs/{designId}/proposal', [ProposalController::class, 'show']);
+$r->get('/presales/{id}/designs/{designId}/proposal/pdf', [ProposalController::class, 'pdf']);
 
 // Projects
 $r->get('/projects', [ProjectController::class, 'index']);

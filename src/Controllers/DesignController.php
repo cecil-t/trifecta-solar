@@ -8,6 +8,7 @@ use App\Db;
 use App\Designs;
 use App\Presales;
 use App\Production;
+use App\Savings;
 use App\Trench;
 use App\View;
 
@@ -33,8 +34,11 @@ final class DesignController
 		$calc = Designs::calc($d, $lines, $arrays, $trench);
 		$depositClass = Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural']);
 		$prodIn = Production::inputs($o, $lines, $arrays, $calc);
+		$saved = Designs::calc($d, Designs::lines($id), Designs::arrays($id));
 		View::render('presales/design', [
 			'prodIn' => $prodIn, 'prod' => Production::saved($d),
+			'sav' => Savings::forDesign($o, $d, Designs::lines($id), $saved),
+			'contacts' => $o['customer_id'] ? Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [(int) $o['customer_id']]) : [],
 			'title' => $d['name'] . ' - ' . $o['name'],
 			'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
 			'flags' => self::flags($lines, $d, $calc),
@@ -97,6 +101,9 @@ final class DesignController
 				$changes[] = 'price ' . Presales::money((float) $d['price_total']) . ' to ' . Presales::money($calc['price']);
 			}
 			$changes = [...$changes, ...self::overrideChanges($before, $lines, $calc)];
+			if ((int) $d['guarantee_on'] !== (int) $f['guarantee_on']) {
+				$changes[] = 'production guarantee ' . ($f['guarantee_on'] ? 'turned on' : 'turned off');
+			}
 			Activity::event('presales', $oppId, 'Build sheet "' . $f['name'] . '" saved' . ($changes ? ': ' . implode(', ', $changes) : ''));
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['design_failed'][$id] = $_POST;

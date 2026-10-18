@@ -29,6 +29,7 @@ final class PresalesController
 		'utility_id' => 'Utility', 'bill_name' => 'Name on utility bill', 'utility_account' => 'Utility account #',
 		'utility_meter' => 'Meter #', 'utility_tariff' => 'Utility rate', 'service_address' => 'Service address',
 		'annual_usage_kwh' => 'Last 12 months usage (kWh)', 'new_service' => 'New electric service',
+		'usage_profile' => 'Usage profile', 'monthly_usage' => 'Monthly use from the bill',
 		'lead_source' => 'Lead source', 'lead_detail' => 'Lead came in by', 'referrer_org_id' => 'Referred by',
 		'referrer_name' => 'Referred by (name)', 'handoff_user_id' => 'Handed off by',
 		'municipality_id' => 'Municipality', 'site_lat' => 'Map point latitude', 'site_lon' => 'Map point longitude',
@@ -137,6 +138,8 @@ final class PresalesController
 				'utility_id' => static fn ($v) => Db::value('SELECT name FROM utilities WHERE id = ?', [$v]) ?? $v,
 				'is_agricultural' => static fn ($v) => $v ? 'Yes' : 'No',
 				'new_service' => static fn ($v) => $v ? 'Yes' : 'No',
+				'usage_profile' => static fn ($v) => \App\Savings::PROFILES[$v][0] ?? $v,
+				'monthly_usage' => static fn ($v) => is_array($m = json_decode((string) $v, true)) ? implode(', ', array_map(static fn ($x) => number_format((float) $x), $m)) . ' kWh' : $v,
 				'lead_source' => static fn ($v) => Presales::LEAD_SOURCES[$v] ?? $v,
 				'lead_detail' => static fn ($v) => Presales::LEAD_DETAILS[$v] ?? $v,
 				'referrer_org_id' => static fn ($v) => Db::value('SELECT name FROM organizations WHERE id = ?', [$v]) ?? $v,
@@ -273,6 +276,26 @@ final class PresalesController
 			throw new \InvalidArgumentException('Last 12 months usage must be a number of kWh.');
 		}
 		$usage = $usage === null ? null : (int) round($usage);
+		// The 12 months from the bill (all or none); when given, the yearly use is their total
+		$months = [];
+		foreach (range(0, 11) as $i) {
+			$raw = trim((string) ($_POST['monthly_usage'][$i] ?? ''));
+			$v = Projects::parseNumber($raw);
+			if ($raw !== '' && ($v === null || $v < 0)) {
+				throw new \InvalidArgumentException('Monthly use for ' . \App\Savings::MONTHS[$i] . ' must be a number of kWh.');
+			}
+			$months[] = $raw === '' ? null : (float) $v;
+		}
+		$filled = count(array_filter($months, static fn ($v) => $v !== null));
+		if ($filled > 0 && $filled < 12) {
+			throw new \InvalidArgumentException('Enter all 12 months of use from the bill, or none (the yearly use is then spread by the usage profile).');
+		}
+		$monthly = $filled === 12 ? json_encode(array_map(static fn ($v) => round($v), $months)) : null;
+		if ($monthly !== null) {
+			$usage = (int) round(array_sum($months));
+		}
+		$profile = (string) ($_POST['usage_profile'] ?? '');
+		$profile = isset(\App\Savings::PROFILES[$profile]) ? $profile : null;
 		$sales = (int) ($_POST['salesperson_id'] ?? 0);
 		// Only admins assign or reassign the salesperson; a salesperson's own opportunities stay theirs
 		if (!Auth::isAdmin()) {
@@ -326,6 +349,8 @@ final class PresalesController
 			'utility_tariff' => trim((string) ($_POST['utility_tariff'] ?? '')) ?: null,
 			'service_address' => trim((string) ($_POST['service_address'] ?? '')) ?: null,
 			'annual_usage_kwh' => $usage,
+			'monthly_usage' => $monthly,
+			'usage_profile' => $profile,
 			'new_service' => empty($_POST['new_service']) ? 0 : 1,
 		];
 	}

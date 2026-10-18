@@ -96,6 +96,13 @@ final class Designs
 			$row = $d;
 			unset($row['id']);
 			$row['name'] = $name;
+			// A copy is a new proposal: its own quote number and dates; the guarantee isn't copied
+			$row['quote_number'] = null;
+			$row['proposal_date'] = null;
+			$row['valid_until'] = null;
+			$row['guarantee_on'] = 0;
+			$row['guarantee_by'] = null;
+			$row['guarantee_at'] = null;
 			$row['sort_order'] = (int) Db::value('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM presales_designs WHERE opportunity_id = ?', [$d['opportunity_id']]);
 			$row['created_by'] = Auth::id();
 			$row['updated_by'] = Auth::id();
@@ -179,6 +186,7 @@ final class Designs
 			throw new \InvalidArgumentException('Markup can\'t go below ' . Presales::pct($floor) . ', the floor on the Rates page.');
 		}
 		$f['notes'] = trim((string) ($post['notes'] ?? '')) ?: null;
+		$f += self::proposalInput($d, $post, $num, $strict);
 
 		// Commission: build sheets with a plan keep it; older ones pick one of the old single rates
 		$rate = empty($d['commission_plan']) ? $num($post['commission_rate'] ?? '', 'Commission') : null;
@@ -412,6 +420,114 @@ final class Designs
 		$f['trench_basis'] = $d['trench_basis'] ?? null;
 
 		return [$f, $lines, $arrays, ['trenches' => $trenches, 'circuits' => $circuits]];
+	}
+
+	/** Longest customer notes on a proposal (they must fit on the System Summary page). */
+	public const NOTES_MAX = 800;
+
+	/**
+	 * The build sheet's proposal and savings fields: the production estimate it leads with, its own
+	 * savings assumptions, incentives, financing, the contact, dates and customer notes. The
+	 * production guarantee changes only for admins.
+	 */
+	private static function proposalInput(array $d, array $post, callable $num, bool $strict): array
+	{
+		$fail = static function (string $msg) use ($strict): void {
+			if ($strict) {
+				throw new \InvalidArgumentException($msg);
+			}
+		};
+		$f = [];
+		$model = (string) ($post['production_model'] ?? '');
+		$f['production_model'] = isset(Production::MODELS[$model]) ? $model : null;
+
+		$own = [];
+		foreach (Savings::ASSUMPTIONS as $k => [, $label, $unit, $low, $high]) {
+			$v = $num($post['savings'][$k] ?? '', $label);
+			if ($v === null) {
+				continue;
+			}
+			if ($v < $low || $v > $high) {
+				$fail($label . ' must be ' . $low . ' to ' . $high . ' (' . $unit . ').');
+				continue;
+			}
+			$own[$k] = $v;
+		}
+		$f['savings_inputs'] = $own ? json_encode($own) : null;
+
+		$inc = [];
+		foreach ((array) ($post['incentives'] ?? []) as $r) {
+			$label = trim((string) ($r['label'] ?? ''));
+			$v = $num($r['value'] ?? '', 'Incentive amount');
+			if ($label === '' && $v === null) {
+				continue;
+			}
+			$kind = ($r['kind'] ?? '') === 'pct' ? 'pct' : 'amount';
+			if ($v === null || $v <= 0 || ($kind === 'pct' && $v > 100)) {
+				$fail('Each incentive needs an amount (dollars, or a percent of the price up to 100).');
+				continue;
+			}
+			$inc[] = ['label' => mb_substr($label ?: 'Incentive', 0, 80), 'kind' => $kind, 'value' => $v,
+				'timing' => ($r['timing'] ?? '') === 'year1' ? 'year1' : 'upfront'];
+		}
+		$f['incentives'] = $inc ? json_encode($inc) : null;
+
+		$f['finance_down'] = $num($post['finance_down'] ?? '', 'Down payment');
+		$f['finance_rate'] = $num($post['finance_rate'] ?? '', 'Interest rate');
+		$years = $num($post['finance_years'] ?? '', 'Loan term');
+		$f['finance_years'] = $years === null ? null : (int) round($years);
+		if ($f['finance_rate'] !== null && ($f['finance_rate'] < 0 || $f['finance_rate'] > 40)) {
+			$fail('The loan rate is a yearly percent, 0 to 40.');
+		}
+		if ($f['finance_years'] !== null && ($f['finance_years'] < 1 || $f['finance_years'] > 30)) {
+			$fail('The loan term is 1 to 30 years.');
+		}
+
+		$notes = trim(str_replace("\r\n", "\n", (string) ($post['customer_notes'] ?? '')));
+		if (mb_strlen($notes) > self::NOTES_MAX) {
+			$fail('Notes for the customer can be at most ' . self::NOTES_MAX . ' characters (they must fit on the System Summary page).');
+			$notes = mb_substr($notes, 0, self::NOTES_MAX);
+		}
+		$f['customer_notes'] = $notes !== '' ? $notes : null;
+
+		$contact = (int) ($post['contact_id'] ?? 0);
+		$f['contact_id'] = $contact && Db::value("SELECT 1 FROM contacts c JOIN presales_opportunities o ON o.customer_id = c.owner_id
+			WHERE c.id = ? AND c.owner_type = 'organization' AND o.id = ?", [$contact, (int) $d['opportunity_id']]) ? $contact : null;
+
+		$date = static function (string $raw, string $label) use ($fail): ?string {
+			$raw = trim($raw);
+			if ($raw === '') {
+				return null;
+			}
+			$t = \DateTime::createFromFormat('!m/d/Y', $raw) ?: \DateTime::createFromFormat('!Y-m-d', $raw);
+			if (!$t) {
+				$fail($label . ': type a date like ' . date('m/d/Y') . '.');
+				return null;
+			}
+			return $t->format('Y-m-d');
+		};
+		$f['proposal_date'] = $date((string) ($post['proposal_date'] ?? ''), 'Proposal date');
+		$f['valid_until'] = $date((string) ($post['valid_until'] ?? ''), 'Valid until');
+		if ($f['valid_until'] !== null) {
+			$from = $f['proposal_date'] ?? date('Y-m-d');
+			$max = (int) Presales::num('proposal_valid_max');
+			if ($f['valid_until'] < $from) {
+				$fail('Valid until can\'t be before the proposal date.');
+			} elseif ((strtotime($f['valid_until']) - strtotime($from)) / 86400 > $max) {
+				$fail('Valid until can be at most ' . $max . ' days after the proposal date.');
+			}
+		}
+
+		$f['guarantee_on'] = (int) ($d['guarantee_on'] ?? 0);
+		if (Auth::isAdmin() && array_key_exists('guarantee_present', $post)) {
+			$on = empty($post['guarantee_on']) ? 0 : 1;
+			if ($on !== $f['guarantee_on']) {
+				$f['guarantee_on'] = $on;
+				$f['guarantee_by'] = Auth::id();
+				$f['guarantee_at'] = now_utc();
+			}
+		}
+		return $f;
 	}
 
 	/** Save a build sheet read by fromInput(); lines, arrays and trench rows are replaced as a set. */

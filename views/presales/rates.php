@@ -137,6 +137,54 @@ $rules = $rules ?: [[]];
 		</div>
 	</section>
 
+	<section class="card band" id="savings">
+		<h2>Savings</h2>
+		<p class="hint">Defaults for the proposal's savings and 30-year projection. A build sheet can change any of them for its own proposal. The rate increase applies to the bill and the true-up credit; SRECs are paid on each MWh produced.</p>
+		<div class="grid-form">
+			<?php foreach (App\Savings::ASSUMPTIONS as [$k, $label, $unit]): ?>
+				<label><?= e($label) ?> (<?= e($unit) ?>) <input type="text" name="settings[<?= e($k) ?>]" value="<?= e($n($s($k), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<?php endforeach; ?>
+		</div>
+	</section>
+
+	<section class="card band" id="proposal">
+		<h2>Proposal</h2>
+		<p class="hint">The company block, cover letter and next steps on every proposal. The Clarifications and Terms &amp; Conditions are on <a href="/presales/terms">Proposal terms</a>.</p>
+		<div class="grid-form">
+			<label>Valid for (days) <input type="text" name="settings[proposal_valid_days]" value="<?= e($n($s('proposal_valid_days'), 0)) ?>" inputmode="numeric" <?= $dis ?>>
+				<small class="hint">The default "valid until" date after the proposal date.</small>
+			</label>
+			<label>Longest a salesperson can set (days) <input type="text" name="settings[proposal_valid_max]" value="<?= e($n($s('proposal_valid_max'), 0)) ?>" inputmode="numeric" <?= $dis ?>></label>
+			<label>Legal name <input type="text" name="settings[company_legal_name]" value="<?= e($s('company_legal_name')) ?>" placeholder="Example Solar LLC" <?= $dis ?>></label>
+			<label>PA HIC registration <input type="text" name="settings[company_hic]" value="<?= e($s('company_hic')) ?>" placeholder="PA000000" <?= $dis ?>>
+				<small class="hint">Printed in the opening sentence of the Terms &amp; Conditions.</small>
+			</label>
+			<label class="span-2">Address <textarea name="settings[company_address]" rows="2" <?= $dis ?>><?= e($s('company_address')) ?></textarea></label>
+			<label>Phone <input type="text" name="settings[company_phone]" value="<?= e($s('company_phone')) ?>" <?= $dis ?>></label>
+			<label>Email <input type="text" name="settings[company_email]" value="<?= e($s('company_email')) ?>" <?= $dis ?>></label>
+			<label>Website <input type="text" name="settings[company_website]" value="<?= e($s('company_website')) ?>" placeholder="example.com" <?= $dis ?>></label>
+			<label class="span-all">Cover letter <textarea name="settings[cover_letter]" rows="4" <?= $dis ?>><?= e($s('cover_letter')) ?></textarea>
+				<small class="hint">On the cover after "Dear (first name),". Blank lines start new paragraphs.</small>
+			</label>
+			<label class="span-all">Next steps <textarea name="settings[next_steps]" rows="7" <?= $dis ?>><?= e($s('next_steps')) ?></textarea>
+				<small class="hint">One step per line, as "Title: what happens". Blank uses the built-in steps.</small>
+			</label>
+			<label class="span-all">Insurance sentence <textarea name="settings[insurance_text]" rows="2" <?= $dis ?>><?= e($s('insurance_text')) ?></textarea>
+				<small class="hint">Fills {insurance} in the terms.</small>
+			</label>
+			<label>Insurance policies end <input type="text" name="settings[insurance_expires]" value="<?= e($s('insurance_expires') !== '' ? date('m/d/Y', (int) strtotime($s('insurance_expires'))) : '') ?>" placeholder="01/28/2027" <?= $dis ?>>
+				<small class="hint">Build sheets warn once this date has passed.</small>
+			</label>
+		</div>
+		<h3>Production guarantee</h3>
+		<p class="hint">Offered on some jobs only; an admin turns it on per build sheet. The guarantee is on the PVWatts v8 estimate.</p>
+		<div class="grid-form">
+			<label>Percent of PVWatts production <input type="text" name="settings[guarantee_pct]" value="<?= e($n($s('guarantee_pct'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label>Years <input type="text" name="settings[guarantee_years]" value="<?= e($n($s('guarantee_years'), 0)) ?>" inputmode="numeric" <?= $dis ?>></label>
+			<label>Payout ($ per kWh short) <input type="text" name="settings[guarantee_rate]" value="<?= e($n($s('guarantee_rate'), 4)) ?>" inputmode="decimal" <?= $dis ?>></label>
+		</div>
+	</section>
+
 	<section class="card band">
 		<h2>Commission</h2>
 		<p class="hint">Tax-bracket style: each rate applies only to the part of the job inside its bracket, so there is no cliff at a threshold. Commission is figured on the price less pass-through items and extras without markup: what we don't mark up, we don't pay commission on. The build sheet solves the price so it covers the commission exactly. New build sheets copy this plan; saved ones keep the plan they were built with.</p>

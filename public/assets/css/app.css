@@ -1731,3 +1731,36 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .history-sum td { white-space: normal; }
 .history-sum td.num { min-width: 6.5rem; max-width: 11rem; }
 .history-sum td.nowrap { white-space: nowrap; }
+
+/* Opportunity: 12 months of use from the bill */
+.monthly-usage > summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+.month-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem .8rem; margin: .5rem 0 .3rem; }
+@media (max-width: 760px) {
+	.month-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Build sheet: savings and proposal */
+.sav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: .6rem .9rem; }
+.sav-inc { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr); gap: .4rem .6rem; align-items: end; }
+.sav-inc .sav-inc-head { font-size: .75rem; font-weight: 600; color: var(--muted); }
+@media (max-width: 760px) {
+	.sav-inc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+	.sav-inc .sav-inc-head { display: none; }
+}
+.sav-table th, .sav-table td { padding: .35rem .45rem; font-size: .82rem; }
+.is-changed { background: #fff7dd; border-color: #e7b84a; }
+.prop-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.guarantee-box { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+
+/* Proposal terms page */
+.terms-rows { display: flex; flex-direction: column; gap: .9rem; }
+.terms-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: .6rem 1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--border); }
+.terms-row.is-new { border-bottom-style: dashed; }
+.terms-meta { display: flex; flex-direction: column; gap: .4rem; }
+.terms-meta label:first-child input { max-width: 6rem; }
+.terms-text { display: flex; flex-direction: column; gap: .4rem; }
+.terms-help summary { cursor: pointer; font-weight: 600; }
+.terms-help code { font-size: .78rem; }
+@media (max-width: 760px) {
+	.terms-row { grid-template-columns: 1fr; }
+}

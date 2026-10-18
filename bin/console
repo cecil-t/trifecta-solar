@@ -16,6 +16,7 @@ declare(strict_types=1);
  *   import:updates <file.json> [--dry-run]    Fill blank fields on existing projects (never overwrites)
  *   import:reference-jobs <file.json> [--dry-run]  Add production reference jobs (never changes existing ones)
  *   import:presales <file.json> [--dry-run]   Add Pre-Sales catalog items and buildsheet rates (never changes existing ones)
+ *   import:terms <file.json> [--new-version] [--dry-run]  Add the proposal terms (only when there are none, unless --new-version)
  *   import:commissions <file.json> [--paid-on=YYYY-MM-DD] [--paid-before=YYYY-MM-DD] [--dry-run]
  *                                             Add sold jobs from the salespeople's commission sheets (never changes
  *                                             existing ones). Jobs marked paid in the file (green on the sheet), and
@@ -162,6 +163,20 @@ try {
 			$dry = in_array('--dry-run', $args, true);
 			try {
 				$res = (new App\ProductionRefImporter($dry))->run($data);
+			} catch (\InvalidArgumentException $e) {
+				fail($e->getMessage());
+			}
+			foreach ($res['log'] as $line) { out($line); }
+			out(($dry ? 'DRY RUN (nothing saved): ' : 'Done: ') . json_encode($res['counts']));
+			break;
+
+		case 'import:terms':
+			$file = $args[1] ?? fail('Usage: import:terms <file.json> [--new-version] [--dry-run]');
+			if (!is_file($file)) { fail("No such file: $file"); }
+			$data = json_decode((string) file_get_contents($file), true) ?? fail('That file is not valid JSON.');
+			$dry = in_array('--dry-run', $args, true);
+			try {
+				$res = App\ProposalTerms::import($data, $dry, in_array('--new-version', $args, true));
 			} catch (\InvalidArgumentException $e) {
 				fail($e->getMessage());
 			}

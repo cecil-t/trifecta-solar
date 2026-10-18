@@ -125,6 +125,7 @@ $folded = [];
 		<?php endif; ?>
 	</div>
 	<div class="head-actions">
+		<a href="<?= $base ?>/proposal" class="btn btn-primary" title="The customer proposal (saved values)">Proposal</a>
 		<a href="<?= $base ?>/summary" class="btn btn-secondary" title="Everything on one sheet, to read or print (saved values)">Summary</a>
 		<form method="post" action="<?= $base ?>/duplicate">
 			<?= Csrf::field() ?>
@@ -428,6 +429,7 @@ $folded = [];
 		</section>
 
 		<?= App\View::partial('presales/_production', ['o' => $o, 'd' => $d, 'prodIn' => $prodIn, 'prod' => $prod, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
+		<?= App\View::partial('presales/_savings', ['o' => $o, 'd' => $d, 'calc' => $calc, 'sav' => $sav, 'contacts' => $contacts, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
 
 		<?php
 		$trows = $calc['trench_rows'];

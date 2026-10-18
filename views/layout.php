@@ -50,6 +50,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : (str_sta
 				<a href="/directory">Directory (third parties)</a>
 				<a href="/presales/catalog">Sales catalog</a>
 				<a href="/presales/rates">Sales rates</a>
+				<a href="/presales/terms">Proposal terms</a>
 				<?php if (App\Commissions::canUse()): ?><a href="/commissions">Sales commissions</a><?php endif; ?>
 				<?php if (Auth::isAdmin()): ?>
 					<a href="/admin/template" class="menu-admin">Task template <span class="menu-tag">Admin</span></a>

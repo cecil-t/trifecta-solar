@@ -16,7 +16,7 @@ $missing = $prodIn['missing'];
 $stale = $prod && $prodIn['key'] !== $d['production_key'];
 $kwh = static fn ($v): string => number_format((float) $v);
 $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-$chosen = $prod ? Production::chosen($prod) : null;
+$chosen = $prod ? App\Savings::model($d) : null;
 $annual = $prod ? (float) $prod[$chosen]['annual_kwh'] : null;
 $usage = (int) ($o['annual_usage_kwh'] ?? 0);
 ?>

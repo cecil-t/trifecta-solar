@@ -175,6 +175,29 @@ $isNew = $id === null;
 				</select>
 			</label>
 			<label><span class="if-bill">Last 12 months usage (kWh)</span><span class="if-new">Expected yearly use (kWh)</span> <input type="text" name="annual_usage_kwh" value="<?= e($v('annual_usage_kwh')) ?>" inputmode="numeric" placeholder="e.g. 14,200"></label>
+			<label>Usage profile
+				<select name="usage_profile">
+					<option value="">By customer type</option>
+					<?php foreach (App\Savings::PROFILES as $pk => [$plabel]): ?>
+						<option value="<?= e($pk) ?>" <?= $sel($v('usage_profile'), $pk) ?>><?= e($plabel) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small class="hint">The typical monthly shape the yearly use is spread by when the 12 months below are blank (shown as estimated on the proposal).</small>
+			</label>
+			<?php
+			$billMonths = $o['monthly_usage'] ?? null;
+			$billMonths = is_array($billMonths) ? $billMonths : (json_decode((string) $billMonths, true) ?: []);
+			$anyMonth = (bool) array_filter($billMonths, static fn ($x) => $x !== null && $x !== '');
+			?>
+			<details class="span-all monthly-usage"<?= $anyMonth ? ' open' : '' ?>>
+				<summary>Monthly use from the bill (optional)</summary>
+				<div class="month-grid">
+					<?php foreach (App\Savings::MONTHS as $mi => $mo): ?>
+						<label><?= e($mo) ?> <input type="text" name="monthly_usage[<?= $mi ?>]" value="<?= e((string) ($billMonths[$mi] ?? '')) ?>" inputmode="numeric" aria-label="<?= e($mo) ?> use in kWh"></label>
+					<?php endforeach; ?>
+				</div>
+				<small class="hint">All 12 months in kWh, or none. When entered, the yearly use becomes their total.</small>
+			</details>
 			<label>Account # <input type="text" name="utility_account" value="<?= e($v('utility_account')) ?>"></label>
 			<label>Meter # <input type="text" name="utility_meter" value="<?= e($v('utility_meter')) ?>"></label>
 			<div class="checkfield span-all rate-picker" data-rate-picker="/presales/utility-rates">

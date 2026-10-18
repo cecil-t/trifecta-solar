@@ -81,7 +81,9 @@ final class PresalesRatesController
 		$percent = ['tax_rate' => true, 'markup_default' => true, 'markup_floor' => true, 'handoff_share' => true];
 		$numeric = ['tax_rate', 'markup_default', 'markup_floor', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to',
 			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts', 'referral_bonus', 'handoff_share',
-			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust', 'degradation_default'];
+			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust', 'degradation_default',
+			'savings_escalation', 'savings_srec_price', 'savings_srec_decline', 'savings_srec_years', 'savings_years', 'savings_discount',
+			'proposal_valid_days', 'proposal_valid_max', 'guarantee_pct', 'guarantee_years', 'guarantee_rate'];
 		$skip = ['commission_tiers' => true, 'self_gen_tiers' => true, 'site_visit' => true];
 		// Trench builder choices come from fixed lists
 		$post = (array) ($_POST['settings'] ?? []);
@@ -112,6 +114,33 @@ final class PresalesRatesController
 			if ($v === '' || !is_numeric($v) || (float) $v < 0 || (float) $v > $max) {
 				throw new \InvalidArgumentException($label . ' must be a percent from 0 to ' . $max . '.');
 			}
+		}
+		// Savings assumptions (App\Savings::ASSUMPTIONS) and the proposal's limits
+		foreach (\App\Savings::ASSUMPTIONS as [$k, $label, $unit, $low, $high]) {
+			$v = trim((string) ($post[$k] ?? ''));
+			if ($v === '' || !is_numeric($v) || (float) $v < $low || (float) $v > $high) {
+				throw new \InvalidArgumentException($label . ' must be ' . $low . ' to ' . $high . ' (' . $unit . ').');
+			}
+		}
+		$days = (int) ($post['proposal_valid_days'] ?? 0);
+		$max = (int) ($post['proposal_valid_max'] ?? 0);
+		if ($days < 1 || $max < $days || $max > 365) {
+			throw new \InvalidArgumentException('Proposal days: valid for at least 1 day, and the longest a salesperson can set from that up to 365.');
+		}
+		foreach (['guarantee_pct' => [1, 100, 'Production guarantee percent'], 'guarantee_years' => [1, 30, 'Production guarantee years'],
+			'guarantee_rate' => [0, 5, 'Production guarantee payout']] as $k => [$low, $high, $label]) {
+			$v = trim((string) ($post[$k] ?? ''));
+			if ($v === '' || !is_numeric($v) || (float) $v < $low || (float) $v > $high) {
+				throw new \InvalidArgumentException($label . ' must be ' . $low . ' to ' . $high . '.');
+			}
+		}
+		$ins = trim((string) ($post['insurance_expires'] ?? ''));
+		if ($ins !== '') {
+			$t = \DateTime::createFromFormat('!m/d/Y', $ins) ?: \DateTime::createFromFormat('!Y-m-d', $ins);
+			if (!$t) {
+				throw new \InvalidArgumentException('Insurance end date: type it as 01/28/2027.');
+			}
+			$_POST['settings']['insurance_expires'] = $t->format('Y-m-d');
 		}
 		$floorIn = $num((string) ($_POST['settings']['markup_floor'] ?? ''), 'Markup floor');
 		$defaultIn = $num((string) ($_POST['settings']['markup_default'] ?? ''), 'Default markup');
