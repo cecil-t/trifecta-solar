@@ -24,7 +24,7 @@ final class Proposal
 		. "Installation: we schedule and install your system.\n"
 		. "Inspection and permission to operate: the inspection passes and the utility lets the system turn on.";
 
-	/** The build sheet's quote number, given (year and the next 4-digit number) the first time it is needed. */
+	/** The build sheet's proposal number (stored as quote_number), given (year and the next 4-digit number) the first time it is needed. */
 	public static function quoteNumber(array $d): string
 	{
 		if (!empty($d['quote_number'])) {
@@ -41,7 +41,7 @@ final class Proposal
 				continue;   // another build sheet took the number at the same moment
 			}
 		}
-		throw new \RuntimeException('Could not give the proposal a quote number.');
+		throw new \RuntimeException('Could not give the proposal a number.');
 	}
 
 	/** Proposal date and valid-until date (Y-m-d) as they will print. */
@@ -71,6 +71,9 @@ final class Proposal
 		}
 		foreach ($savings['missing'] as $m) {
 			$warnings[] = 'Savings need: ' . $m;
+		}
+		foreach ($calc['checks'] ?? [] as $m) {
+			$warnings[] = 'Build sheet: ' . $m;
 		}
 
 		$customer = $o['customer_id'] ? Db::one('SELECT * FROM organizations WHERE id = ?', [(int) $o['customer_id']]) : null;
@@ -146,6 +149,7 @@ final class Proposal
 			'hic' => Presales::setting('company_hic'),
 			'insurance' => Presales::setting('insurance_text'),
 			'customer' => $customerName,
+			'proposal_number' => $quote,
 			'quote_number' => $quote,
 			'deposit' => $deposit !== null ? '$' . number_format($deposit, 2) : '',
 			'price' => '$' . number_format((float) $calc['price'], 2),

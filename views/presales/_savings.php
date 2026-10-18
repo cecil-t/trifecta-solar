@@ -38,11 +38,11 @@ $model = Savings::model($d);
 		<p class="small"><strong>Savings need:</strong></p>
 		<ul class="prod-missing"><?php foreach ($sav['missing'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
 	<?php else: $y1 = $r['first_year']; ?>
-		<div class="prod-tiles">
+		<div class="prod-tiles sav-tiles">
 			<div class="prod-tile is-chosen"><span class="m-label">First-year savings</span><span class="m-num"><?= e($m0($y1['savings'])) ?></span><span class="muted small">bill <?= e($m0($y1['bill_savings'])) ?>, SRECs <?= e($m0($y1['srec'])) ?></span></div>
 			<div class="prod-tile"><span class="m-label">Payback</span><span class="m-num"><?= $r['payback_years'] !== null ? e(number_format($r['payback_years'], 1)) . ' <small>years</small>' : '-' ?></span><span class="muted small">discounted <?= $r['discounted_payback_years'] !== null ? e(number_format($r['discounted_payback_years'], 1)) . ' years' : '-' ?></span></div>
 			<div class="prod-tile"><span class="m-label"><?= (int) $a['years'] ?>-year net savings</span><span class="m-num"><?= e($m0($r['net_savings'])) ?></span><span class="muted small">NPV <?= e($m0($r['npv'])) ?>, IRR <?= $r['irr'] !== null ? e(number_format($r['irr'], 1)) . '%' : '-' ?></span></div>
-			<div class="prod-tile"><span class="m-label">Energy from solar</span><span class="m-num"><?= e(number_format((float) $r['offset_pct'])) ?>%</span><span class="muted small"><?= e(Production::MODELS[$sav['model']]) ?>; use <?= $sav['usage']['source'] === 'bill' ? 'from the bill' : 'spread by ' . e(strtolower(Savings::PROFILES[$sav['usage']['profile']][0])) ?></span></div>
+			<div class="prod-tile"><span class="m-label">Energy from solar</span><span class="m-num"><?= e(number_format((float) $r['offset_pct'])) ?>%</span><span class="muted small"><?= e(Production::MODELS[$sav['model']]) ?></span></div>
 		</div>
 		<div class="table-wrap mt-sm"><table class="table table-tight sav-table">
 			<thead><tr><th>Year one</th><?php foreach ($r['months'] as $mo): ?><th class="num"><?= e($mo['label']) ?></th><?php endforeach; ?><th class="num">Year</th></tr></thead>
@@ -89,13 +89,13 @@ $model = Savings::model($d);
 <section class="card band" id="sec-proposal">
 	<div class="card-head card-head-plain band-head">
 		<h2><?= $foldBtn('sec-proposal', 'Proposal', false) ?>Proposal</h2>
-		<span class="small band-head-fill"><?= $d['quote_number'] ? 'Quote ' . e($d['quote_number']) . ' &middot; ' : '' ?>valid until <?= e(date('m/d/Y', (int) strtotime($pUntil))) ?><?= $d['guarantee_on'] ? ' &middot; guarantee' : '' ?></span>
+		<span class="small band-head-fill"><?= $d['quote_number'] ? 'Proposal ' . e($d['quote_number']) . ' &middot; ' : '' ?>valid until <?= e(date('m/d/Y', (int) strtotime($pUntil))) ?><?= $d['guarantee_on'] ? ' &middot; guarantee' : '' ?></span>
 		<div class="prop-actions">
 			<a href="<?= e($base) ?>/proposal" class="btn btn-secondary btn-small" data-save-then="proposal" title="The proposal as the customer gets it (saves the build sheet first)">Open proposal</a>
 			<a href="<?= e($base) ?>/proposal/pdf" class="btn btn-secondary btn-small">PDF</a>
 		</div>
 	</div>
-	<p class="hint">Opening the proposal saves the build sheet first.<?= $d['quote_number'] ? ' Quote ' . e($d['quote_number']) . '.' : ' The quote number is given the first time the proposal opens.' ?></p>
+	<p class="hint">Opening the proposal saves the build sheet first.<?= $d['quote_number'] ? ' Proposal ' . e($d['quote_number']) . '.' : ' The proposal number is given the first time the proposal opens.' ?></p>
 	<div class="grid-form">
 		<label>Proposal date <input type="text" name="proposal_date" value="<?= $d['proposal_date'] ? e(date('m/d/Y', (int) strtotime($d['proposal_date']))) : '' ?>" placeholder="<?= e(date('m/d/Y')) ?> (today)"></label>
 		<label>Valid until <input type="text" name="valid_until" value="<?= $d['valid_until'] ? e(date('m/d/Y', (int) strtotime($d['valid_until']))) : '' ?>" placeholder="<?= e(date('m/d/Y', (int) strtotime($pUntil))) ?>">

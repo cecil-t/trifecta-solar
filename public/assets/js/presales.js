@@ -288,6 +288,8 @@
 		exempt.addEventListener('change', () => {
 			document.getElementById('tax-rate').readOnly = exempt.checked;
 			if (exempt.checked) document.getElementById('tax-note').value = '';
+			const flag = document.getElementById('dt-exempt');
+			if (flag) flag.hidden = !exempt.checked;
 		});
 	}
 
@@ -478,6 +480,8 @@
 			}
 			if (run) run.disabled = res.production.missing.length > 0;
 			if (stale) stale.hidden = !res.production.stale;
+			const pill = document.getElementById('prod-stale-pill');
+			if (pill) pill.hidden = !res.production.stale;
 		}
 		const count = document.getElementById('arrays-count');
 		if (count) count.textContent = st.arrays_panels + ' panels on arrays, ' + res.v.panels + ' modules';

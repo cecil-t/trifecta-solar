@@ -42,7 +42,7 @@
 		sel: null,     // selected array key
 		selM: null,    // selected measurement index
 		face: null,    // highlighted Google roof face index
-		showRoof: true,
+		showRoof: !(saved && saved.roof_shown === false),
 		draft: null,
 	};
 	const notes = [];
@@ -361,6 +361,15 @@
 		m.az = Math.round(s.az * 100) / 100;
 		return m;
 	};
+	// Sloped when the roof's slope makes it at least half an inch longer than it looks from above
+	const isSloped = (m) => trueLength(m) - Math.hypot(m.x2 - m.x1, m.y2 - m.y1) >= IN / 2;
+	const slopeText = (m) => {
+		const s = slopeOf(m);
+		if (!s.pitch) {
+			return 'flat';
+		}
+		return isSloped(m) ? 'up the slope of ' + s.label : 'flat: across the slope of ' + s.label;
+	};
 	const trueLength = (m) => {
 		const s = slopeOf(m);
 		const dx = m.x2 - m.x1;
@@ -611,7 +620,7 @@
 	};
 	const drawMeasure = (m, g, i) => {
 		const px = S.view.mpp;
-		const grp = el('g', { class: 'm' + (i === S.selM ? ' is-sel' : '') + (i === undefined ? ' is-draft' : '') }, g);
+		const grp = el('g', { class: 'm' + (isSloped(m) ? ' is-sloped' : ' is-flat') + (i === S.selM ? ' is-sel' : '') + (i === undefined ? ' is-draft' : '') }, g);
 		if (i !== undefined) {
 			grp.dataset.m = String(i);
 			el('line', { x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2, class: 'measure-hit' }, grp);
@@ -623,9 +632,8 @@
 				c.dataset.end = String(k + 1);
 			}
 		});
-		const s = slopeOf(m);
 		const t = el('text', { x: (m.x1 + m.x2) / 2, y: (m.y1 + m.y2) / 2 - 6 * px, 'font-size': 13 * px, class: 'measure-label' }, grp);
-		t.textContent = ftIn(trueLength(m)) + (s.pitch ? '' : ' flat');
+		t.textContent = ftIn(trueLength(m));
 	};
 	const drawMeasures = () => {
 		clear(L.measures);
@@ -742,13 +750,9 @@
 		const mc = $('layout-modcounts');
 		mc.replaceChildren();
 		const keys = Object.keys(S.modules);
-		for (const m of cfg.modules) {
-			const drawn = S.arrays.filter((a) => a.mod === m.key).reduce((t, a) => t + a.cells.length, 0);
-			const off = n > 0 && m.manual && Math.round(m.qty) !== drawn;
-			if (keys.length > 1 || off) {
-				const li = html('li', off ? 'text-red' : '', m.name + ': ' + drawn + ' drawn'
-					+ (off ? '. The build sheet has ' + Math.round(m.qty) + '; saving sets it to ' + drawn + '.' : ''));
-				mc.append(li);
+		if (keys.length > 1) {
+			for (const [k, m] of Object.entries(S.modules)) {
+				mc.append(html('li', '', m.name + ': ' + S.arrays.filter((a) => a.mod === k).reduce((t, a) => t + a.cells.length, 0) + '\u00a0panels'));
 			}
 		}
 		const note = [...notes];
@@ -802,10 +806,9 @@
 		const ml = $('measure-list');
 		ml.replaceChildren();
 		S.measures.forEach((m, i) => {
-			const s = slopeOf(m);
-			const li = html('li', i === S.selM ? 'is-sel' : '');
-			li.append(button('linklike', ftIn(trueLength(m)), 'Select this measurement', () => selectMeasure(i)),
-				html('span', 'small muted', s.pitch ? ' along ' + s.label : ' flat'),
+			const li = html('li', (i === S.selM ? 'is-sel ' : '') + (isSloped(m) ? 'm-sloped' : 'm-flat'));
+			li.append(html('span', 'm-key'), button('linklike', ftIn(trueLength(m)), 'Select this measurement', () => selectMeasure(i)),
+				html('span', 'small muted', ' ' + slopeText(m)),
 				button('btn btn-ghost btn-small', '×', 'Remove this measurement', () => removeMeasure(i)));
 			li.lastChild.setAttribute('aria-label', 'Remove this measurement');
 			ml.append(li);
@@ -900,10 +903,10 @@
 	const future = [];
 	function serialize() {
 		S.measures.forEach(settle);
-		return { origin: S.origin, module: S.modules[firstMod], modules: S.modules, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof };
+		return { origin: S.origin, module: S.modules[firstMod], modules: S.modules, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof, roof_shown: S.showRoof };
 	}
 	// What needs saving: the drawing, not where the map was moved to
-	const drawingState = () => JSON.stringify({ modules: S.modules, gap: S.gap, arrays: S.arrays, measures: S.measures });
+	const drawingState = () => JSON.stringify({ modules: S.modules, gap: S.gap, arrays: S.arrays, measures: S.measures, shown: S.showRoof });
 	const savedState = drawingState();
 	let dirty = false;
 	function markDirty() {
@@ -991,7 +994,7 @@
 		}
 		const b = JSON.parse(JSON.stringify(a));
 		b.key = newKey();
-		b.name = isDefaultName(a.name) ? nextName(a.mount) : a.name + ' copy';
+		b.name = isDefaultName(a.name) ? nextName(a.mount) : uniqueName(a.name + ' copy');
 		// Beside it along the eave, a foot past its far edge (trackers: clear of its sweep)
 		const box = localBox(a);
 		const step = a.mount === 'tracker' ? 2 * sweep(a).r + 1 : (box.x1 - box.x0) + 0.3048;
@@ -1016,8 +1019,26 @@
 			}
 		});
 	};
+	const nameTaken = (name, except) => S.arrays.some((x) => x !== except && x.name.toLowerCase() === name.toLowerCase());
+	const uniqueName = (base, except) => {
+		let name = base;
+		for (let i = 2; nameTaken(name, except); i++) {
+			name = base + ' ' + i;
+		}
+		return name;
+	};
 	onField('sel-name', (a, v) => { a.name = v.trim().slice(0, 60) || a.name; }, true);
-	$('sel-name').addEventListener('change', commit);
+	$('sel-name').addEventListener('change', () => {
+		const a = selected();
+		if (a && nameTaken(a.name, a)) {
+			const want = a.name;
+			a.name = uniqueName(want, a);
+			$('sel-name').value = a.name;
+			drawArrays();
+			hint('Another array is already called ' + want + ', so this one is ' + a.name + '. Array names must be different.');
+		}
+		commit();
+	});
 	onField('sel-mount', (a, v) => keepCenter(a, () => {
 		const rename = isDefaultName(a.name);
 		a.mount = v;
@@ -1530,9 +1551,19 @@
 		}
 		drawRoof();
 		drawSide();
+		markDirty();
 		hint(S.showRoof ? 'Google roof faces shown. New boxes started on a face line up with it.' : 'Google roof faces hidden. New boxes don\'t line up with them while hidden.');
 	});
-	const fetchRoof = async () => {
+	const fetchRoof = async (ask) => {
+		if (ask && S.roof) {
+			const [bx, by] = toLocal(S.roof.lat, S.roof.lon);
+			const same = Math.hypot(bx - S.view.cx, by - S.view.cy) < 25;
+			if (!window.confirm(same
+				? 'Google roof faces for this building are already loaded. Look them up again? Each lookup is a call to Google\'s Solar API.'
+				: 'Replace the roof faces with the building in the middle of the map? Each lookup is a call to Google\'s Solar API.')) {
+				return;
+			}
+		}
 		const btn = $('btn-roof');
 		const [lat, lon] = toLatLon(S.view.cx, S.view.cy);
 		btn.disabled = true;
@@ -1564,7 +1595,7 @@
 		}
 		btn.disabled = false;
 	};
-	$('btn-roof').addEventListener('click', fetchRoof);
+	$('btn-roof').addEventListener('click', () => fetchRoof(true));
 
 	// ---------- Start ----------
 	if (typeof ResizeObserver !== 'undefined') {
@@ -1589,6 +1620,6 @@
 	toolHint();
 	// A new layout looks up Google's roof faces at the map point once (saved with the layout after that)
 	if (cfg.autoRoof) {
-		fetchRoof();
+		fetchRoof(false);
 	}
 })();

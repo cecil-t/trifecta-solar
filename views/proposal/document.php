@@ -45,8 +45,8 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 </head>
 <body class="proposal">
 
-<div class="run-head"><img src="<?= e($assets) ?>assets/img/logo-horizontal.svg" alt="Trifecta Solar"><span>Quote for <?= e($customerName) ?> - <?= e($d['name']) ?></span></div>
-<div class="run-foot"><?= e($salesLine) ?><?= $salesLine ? ' &nbsp;|&nbsp; ' : '' ?>Quote <?= e($quote) ?><?= $termsVersion ? ' &nbsp;|&nbsp; Terms v' . (int) $termsVersion : '' ?></div>
+<div class="run-head"><img src="<?= e($assets) ?>assets/img/logo-horizontal.svg" alt="Trifecta Solar"><span>Proposal for <?= e($customerName) ?> - <?= e($d['name']) ?></span></div>
+<div class="run-foot"><?= e($salesLine) ?><?= $salesLine ? ' &nbsp;|&nbsp; ' : '' ?>Proposal <?= e($quote) ?><?= $termsVersion ? ' &nbsp;|&nbsp; Terms v' . (int) $termsVersion : '' ?></div>
 
 <!-- 1. Cover -->
 <section class="page cover">
@@ -61,10 +61,11 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		</div>
 		<div>
 			<table class="kv">
-				<tr><th>Quote #</th><td><strong><?= e($quote) ?></strong></td></tr>
+				<tr><th>Proposal #</th><td><strong><?= e($quote) ?></strong></td></tr>
 				<tr><th>System</th><td><?= e($d['name']) ?></td></tr>
 				<tr><th>Date</th><td><?= e($longDate($date)) ?></td></tr>
 				<tr><th>Valid until</th><td><?= e($longDate($until)) ?></td></tr>
+				<?php if (!empty($d['tax_exempt'])): ?><tr><th>Sales tax</th><td>Tax exempt</td></tr><?php endif; ?>
 			</table>
 		</div>
 	</div>
@@ -95,7 +96,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<h1><?= e($d['name']) ?></h1>
 	<div class="tiles">
 		<div class="tile tile-orange"><span class="t-num"><?= $r && $r['offset_pct'] !== null ? e($p1($r['offset_pct'], 0)) : '-' ?></span><span class="t-label">Energy from solar</span><span class="t-sub">of your yearly use, year one</span></div>
-		<div class="tile"><span class="t-num"><?= e($m0($price)) ?></span><span class="t-label">Total system price</span><span class="t-sub"><?= e(number_format($kwDc, 2)) ?> kW DC</span></div>
+		<div class="tile"><span class="t-num"><?= e($m0($price)) ?></span><span class="t-label">Total system price</span><span class="t-sub"><?= e(number_format($kwDc, 2)) ?> kW DC<?= !empty($d['tax_exempt']) ? ', tax exempt' : '' ?></span></div>
 		<div class="tile tile-green"><span class="t-num"><?= e($m0($netCost)) ?><?= $star ?></span><span class="t-label">Net cost</span><span class="t-sub"><?= $hasInc ? 'after incentives' : 'no incentives apply' ?></span></div>
 		<div class="tile"><span class="t-num"><?= $r && $r['payback_years'] !== null ? e(number_format($r['payback_years'], 1)) . ' <small>years</small>' : '-' ?></span><span class="t-label">Payback</span><span class="t-sub">when savings repay the net cost</span></div>
 	</div>
@@ -287,7 +288,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<div>
 			<h2>Cash price</h2>
 			<table class="kv kv-money">
-				<tr><th>Total system price</th><td class="num"><strong><?= e($m2($price)) ?></strong></td></tr>
+				<tr><th>Total system price<?php if (!empty($d['tax_exempt'])): ?><div class="small">Priced as tax exempt (requires your exemption certificate)</div><?php endif; ?></th><td class="num"><strong><?= e($m2($price)) ?></strong></td></tr>
 				<tr><th>Price per watt</th><td class="num"><?= $kwDc > 0 ? e($m2($price / ($kwDc * 1000))) : '' ?></td></tr>
 				<?php foreach ($r['incentives'] ?? [] as $x): ?>
 					<tr><th><?= e($x['label']) ?><div class="small"><?= $x['timing'] === 'year1' ? 'Tax credit, claimed for year one' : 'Reduces the cost up front' ?></div></th><td class="num">&minus;<?= e($m2($x['amount'])) ?></td></tr>
@@ -362,7 +363,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<?php foreach ($terms['authorization'] as $b): ?><div class="block"><?= $b['heading'] ? '<h3>' . $b['heading'] . '</h3>' : '' ?><?= $b['html'] ?></div><?php endforeach; ?>
 	<?php endif; ?>
 	<div class="signatures">
-		<p class="small">By signing, the Customer accepts this proposal (quote <?= e($quote) ?>, <?= e($d['name']) ?>, <?= e($m2($price)) ?>) and the terms above.</p>
+		<p class="small">By signing, the Customer accepts this proposal (<?= e($quote) ?>, <?= e($d['name']) ?>, <?= e($m2($price)) ?>) and the terms above.</p>
 		<div class="sig-row"><div class="sig"><span>Customer signature</span></div><div class="sig sig-date"><span>Date</span></div></div>
 		<div class="sig-row"><div class="sig"><span>Printed name<?= $residential ? '' : ' and title' ?></span></div><div class="sig sig-date"></div></div>
 		<div class="sig-row"><div class="sig"><span>Trifecta Solar representative</span></div><div class="sig sig-date"><span>Date</span></div></div>

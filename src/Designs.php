@@ -664,7 +664,39 @@ final class Designs
 		if ($roof && !$hasMlpe && !$needs && $calc['panels'] > 0) {
 			$out[] = 'Rooftop arrays need rapid shutdown. Add an optimizer, microinverter or rapid shutdown line.';
 		}
+		// Is the quote complete: the core equipment, labor, permits and interconnection
+		$has = [];
+		foreach ($calc['lines'] as $l) {
+			if (($l['qty_resolved'] ?? 0) > 0) {
+				$has[$l['category']] = true;
+				if ($l['category'] === 'mlpe' && (float) ($l['ac_kw'] ?? 0) > 0) {
+					$has['inverters'] = true;   // microinverters
+				}
+			}
+		}
+		$missing = [];
+		foreach (['modules' => 'modules', 'inverters' => 'inverters or microinverters', 'racking' => 'racking', 'bos' => 'balance of system',
+			'permits' => 'permits', 'interconnection' => 'interconnection'] as $cat => $label) {
+			if (empty($has[$cat])) {
+				$missing[] = $label;
+			}
+		}
+		if ((float) ($calc['labor'] ?? 0) <= 0) {
+			$missing[] = 'labor';
+		}
+		if ($missing) {
+			$out[] = 'Nothing for ' . self::listing($missing) . ' yet. Add ' . (count($missing) === 1 ? 'it' : 'them') . ' unless this job really has none.';
+		}
+		if (!empty($has['modules']) && !empty($has['inverters']) && $calc['ratio'] !== null && ($calc['ratio'] > 1.5 || $calc['ratio'] < 0.8)) {
+			$out[] = 'The DC/AC ratio is ' . number_format($calc['ratio'], 2) . ', outside the usual 0.8 to 1.5. Check the inverter size.';
+		}
 		return $out;
+	}
+
+	/** "a, b and c" */
+	private static function listing(array $items): string
+	{
+		return count($items) > 1 ? implode(', ', array_slice($items, 0, -1)) . ' and ' . end($items) : (string) ($items[0] ?? '');
 	}
 
 	/**

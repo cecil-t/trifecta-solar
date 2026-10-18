@@ -43,7 +43,7 @@ final class ProposalController
 			redirect('/presales/' . $id . '/designs/' . $designId . '/proposal');
 		}
 		if (!$inline) {
-			Activity::event('presales', $id, 'Proposal PDF for "' . $d['name'] . '" (quote ' . $data['quote'] . ')' . ($data['terms']['version'] ? ', terms version ' . $data['terms']['version']['id'] : ''));
+			Activity::event('presales', $id, 'Proposal PDF for "' . $d['name'] . '" (' . $data['quote'] . ')' . ($data['terms']['version'] ? ', terms version ' . $data['terms']['version']['id'] : ''));
 		}
 		$name = preg_replace('/[^A-Za-z0-9 ._-]+/', '', 'Trifecta Solar Proposal ' . $data['quote'] . ' - ' . $data['customerName']) ?: 'Proposal';
 		header('Content-Type: application/pdf');

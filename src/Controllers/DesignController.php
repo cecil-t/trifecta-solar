@@ -256,7 +256,7 @@ final class DesignController
 				'warranty_cost' => $m($c['warranty_cost']),
 				'labor' => $m($c['labor']),
 				'labor_pw' => $c['dc_watts'] > 0 ? Presales::perWatt($c['labor'] / $c['dc_watts']) : '-',
-				'man_hours' => $c['man_hours'] === null ? '-' : number_format($c['man_hours'], 1) . ' man-hours',
+				'man_hours' => self::manHoursText($c['man_hours']),
 				'site_visit' => $m($c['site_visit']),
 				'expenses' => $m($c['overnight'] + $c['per_diem']),
 				'overnight' => $m($c['overnight']),
@@ -359,6 +359,12 @@ final class DesignController
 	}
 
 	/** "Commission $1,500 + self-generated bonus $300 + Site visit $100": what the salesperson is paid. */
+	/** "156.8 man-hours (19.6 man-days)" from the labor price and rate; 8-hour days. */
+	public static function manHoursText(?float $hours): string
+	{
+		return $hours === null ? 'Set a labor rate to see man-hours.' : number_format($hours, 1) . ' man-hours (' . number_format($hours / 8, 1) . ' man-days)';
+	}
+
 	public static function payoutText(array $c): string
 	{
 		if ($c['to_salesperson'] <= 0) {

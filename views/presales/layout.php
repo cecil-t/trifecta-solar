@@ -120,6 +120,9 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 								<option value="tracker">Tracker</option>
 							</select>
 						</label>
+						<label id="sel-material-wrap">Roof material
+							<select id="sel-material"></select>
+						</label>
 						<label class="span-2" id="sel-mod-wrap" hidden>Module
 							<select id="sel-mod"></select>
 						</label>
@@ -129,16 +132,13 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 								<option value="landscape">Landscape</option>
 							</select>
 						</label>
+						<label>Shading (%) <input type="text" id="sel-shade" inputmode="decimal" placeholder="0" title="Share of a year's production lost to shade on this array"></label>
 						<label><span id="sel-pitch-label">Pitch</span> <input type="text" id="sel-pitch" inputmode="decimal" title="A roof pitch like 6/12, or a plain number for degrees"></label>
 						<label>Azimuth (&deg;) <input type="text" id="sel-az" inputmode="decimal" title="The way the panels face, degrees from true north (180 = south). Turning the array changes it."></label>
 						<label class="span-2" id="sel-face-wrap" hidden>Pitch from Google roof face
 							<select id="sel-face"></select>
 						</label>
 						<p class="small muted span-2" id="sel-pitch-note"></p>
-						<label id="sel-material-wrap">Roof material
-							<select id="sel-material"></select>
-						</label>
-						<label>Shading (%) <input type="text" id="sel-shade" inputmode="decimal" placeholder="0" title="Share of a year's production lost to shade on this array"></label>
 						<label class="span-2">Shading note <input type="text" id="sel-shade-note" maxlength="200" placeholder="How it was judged: trees, chimney, Solar API, site visit"></label>
 						<p class="small span-2" id="sel-stats"></p>
 						<div class="span-2 layout-sel-actions">
@@ -154,7 +154,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 				</section>
 				<section class="layout-box">
 					<h2>Measurements</h2>
-					<p class="small muted">Rounded down to the inch. The slope comes from the array or Google roof face under it, or a pitch you type; flat with none. Click one to move its ends or change its slope.</p>
+					<p class="small muted">Rounded down to the inch. Yellow ones are stretched by the roof's slope (measured up the roof); blue ones are flat (across the slope, or no slope). The slope comes from the array or Google roof face under it, or a pitch you type. Click one to move its ends or change its slope.</p>
 					<ul class="layout-list" id="measure-list"></ul>
 					<div class="layout-fields mt-xs" id="msel" hidden>
 						<label class="span-2">Slope

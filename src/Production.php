@@ -65,12 +65,19 @@ final class Production
 		$moduleW = 0.0;
 		if (!$mods) {
 			$missing[] = 'A module line with a quantity.';
-		} elseif (count(array_unique(array_map(static fn ($m) => (string) ($m[1]['catalog_item_id'] ?? $m[1]['name']), $mods))) > 1) {
-			$missing[] = 'One module type: production models a single module, and this build sheet has ' . count($mods) . '.';
+		} elseif (count(array_unique(array_map(static function ($m) use ($model) {
+			// Lines of the same module (domestic content or B-grade versions of one panel) model as one
+			$mm = $model($m[1]);
+			return $mm === null ? 'line:' . ($m[1]['catalog_item_id'] ?? $m[1]['name']) : (isset($mm['cec']) ? 'cec:' . $mm['cec'] : 'spec:' . json_encode($mm['spec']));
+		}, $mods))) > 1) {
+			$missing[] = 'One module model: production models a single module, and this build sheet\'s modules are different models (SAM CEC model or spec sheet).';
 		} else {
 			[$i, $l] = $mods[0];
 			$moduleCount = (int) round(array_sum(array_map(static fn ($m) => $qty($m[0]), $mods)));
 			$moduleW = (float) $l['watts'];
+			if (count($mods) > 1) {
+				$notes[] = count($mods) . ' module lines of the same model are modeled together as ' . $l['name'] . '.';
+			}
 			$m = $model($l);
 			if (!$m) {
 				$missing[] = 'A SAM model for the module "' . $l['name'] . '": set its SAM (CEC) model, or enter its spec sheet, in the catalog.';

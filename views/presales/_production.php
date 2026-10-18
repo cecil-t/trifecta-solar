@@ -22,7 +22,7 @@ $usage = (int) ($o['annual_usage_kwh'] ?? 0);
 ?>
 <section class="card band" id="sec-production">
 	<div class="card-head card-head-plain band-head">
-		<h2><?= $foldBtn('sec-production', 'Production estimate', false) ?>Production estimate</h2>
+		<h2><?= $foldBtn('sec-production', 'Production estimate', false) ?>Production estimate <span class="chip chip-orange band-pill" id="prod-stale-pill" title="The build sheet changed since this estimate ran" <?= $stale ? '' : 'hidden' ?>>Out of date</span></h2>
 		<span class="small"><?= $prod ? e($kwh($annual)) . ' kWh a year' . ($usage ? ', ' . e(number_format($annual / $usage * 100)) . '% of use' : '') : 'Not run yet' ?></span>
 	</div>
 

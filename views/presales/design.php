@@ -171,7 +171,7 @@ $folded = [];
 
 	<aside class="design-summary" aria-label="Totals">
 		<div class="card design-totals">
-			<div class="dt-price-label">Final retail price</div>
+			<div class="dt-price-label">Final retail price <span class="chip chip-purple dt-exempt" id="dt-exempt" title="The customer has a tax-exempt certificate. Balance of system materials are still taxed." <?= $d['tax_exempt'] ? '' : 'hidden' ?>>Tax exempt</span></div>
 			<div class="dt-price">
 				<span data-v="price"><?= e($m($calc['price'])) ?></span>
 				<button type="button" class="copy-btn" data-copy-from="price-plain" title="Copy the price" aria-label="Copy the price"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M3 11V3.5A1.5 1.5 0 0 1 4.5 2H11"/></svg></button>
@@ -198,7 +198,7 @@ $folded = [];
 				<tr><th>Commission</th><td data-v="commission"><?= e($m($calc['commission'])) ?></td></tr>
 				<tr><th>Pass-through items</th><td data-v="pass_total"><?= e($m($calc['pass_total'])) ?></td></tr>
 				<tr><th>Extras without markup</th><td data-v="extras_total"><?= e($m($calc['extras_total'])) ?></td></tr>
-				<tr><th>Rounded up</th><td data-v="rounding"><?= e($m($calc['rounding'])) ?></td></tr>
+				<tr><th>Rounded up to the next $<?= e(number_format(max(1.0, Presales::num('round_to')))) ?></th><td data-v="rounding"><?= e($m($calc['rounding'])) ?></td></tr>
 				<tr class="dt-total"><th>Retail price</th><td data-v="price"><?= e($m($calc['price'])) ?></td></tr>
 				</tbody>
 			</table>
@@ -307,6 +307,7 @@ $folded = [];
 				<h2><?= $foldBtn('sec-equipment', 'Equipment and materials', false) ?>Equipment and materials</h2>
 				<span class="small"><?= e($eqSummary) ?><?= $eqSummary !== '' ? ' &middot; ' : '' ?>cost <strong data-v="equipment_cost"><?= e($m($calc['equipment_cost'])) ?></strong></span>
 			</div>
+			<p class="hint mb-xs"><?= $layoutMaster ? 'Module quantities come from the <a href="' . $base . '/layout" data-save-then="layout">site layout</a>: pick the modules here and draw the arrays there.' : 'Pick the modules here and draw the arrays in the <a href="' . $base . '/layout" data-save-then="layout">site layout</a>, which then sets the module quantities.' ?></p>
 			<div class="flash flash-warn design-checks" id="design-checks" <?= $calc['checks'] ? '' : 'hidden' ?>>
 				<ul><?php foreach ($calc['checks'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
 			</div>
@@ -602,10 +603,11 @@ $folded = [];
 				</div>
 				<label>Labor price
 					<input type="text" name="labor_value" value="<?= e(Presales::fixed((float) $d['labor_value'], $d['labor_mode'] === 'total' ? 2 : 4)) ?>" inputmode="decimal" placeholder="<?= $d['labor_mode'] === 'total' ? '0.00' : '0.0000' ?>" data-dec="<?= $d['labor_mode'] === 'total' ? 2 : 4 ?>" id="labor-value">
-					<small class="hint"><span data-v="labor"><?= e($m($calc['labor'])) ?></span> &middot; <span data-v="labor_pw"><?= $calc['dc_watts'] > 0 ? e(Presales::perWatt($calc['labor'] / $calc['dc_watts'])) : '-' ?></span>/W &middot; <span data-v="man_hours"><?= $calc['man_hours'] === null ? '-' : e(number_format($calc['man_hours'], 1)) . ' man-hours' ?></span></small>
+					<small class="hint"><span data-v="labor"><?= e($m($calc['labor'])) ?></span> &middot; <span data-v="labor_pw"><?= $calc['dc_watts'] > 0 ? e(Presales::perWatt($calc['labor'] / $calc['dc_watts'])) : '-' ?></span>/W</small>
 				</label>
 				<label>Labor rate ($/man-hour)
 					<input type="text" name="labor_rate" value="<?= e($pf((float) $d['labor_rate'], 2)) ?>" inputmode="decimal">
+					<small class="hint" data-v="man_hours"><?= e(App\Controllers\DesignController::manHoursText($calc['man_hours'])) ?></small>
 					<?php if (Presales::setting('labor_guideline') !== ''): ?><small class="hint"><?= e(Presales::setting('labor_guideline')) ?></small><?php endif; ?>
 				</label>
 				<?php if (empty($d['commission_plan'])): ?>

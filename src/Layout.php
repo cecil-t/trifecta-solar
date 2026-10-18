@@ -179,6 +179,7 @@ final class Layout
 			'arrays' => [],
 			'measures' => [],
 			'roof' => null,
+			'roof_shown' => !array_key_exists('roof_shown', $in) || !empty($in['roof_shown']),
 		];
 		if ($out['module']['width'] > $out['module']['length']) {
 			[$out['module']['length'], $out['module']['width']] = [$out['module']['width'], $out['module']['length']];
@@ -195,6 +196,7 @@ final class Layout
 		}
 		$firstMod = (string) (array_key_first($out['modules']) ?? '');
 		$keys = [];
+		$names = [];
 		$total = 0;
 		foreach ((array) ($in['arrays'] ?? []) as $a) {
 			if (!is_array($a)) {
@@ -219,6 +221,10 @@ final class Layout
 			$keys[$key] = true;
 			$total += count($cells);
 			$name = trim(preg_replace('/\s+/', ' ', (string) ($a['name'] ?? '')) ?? '');
+			if ($name !== '' && isset($names[mb_strtolower($name)])) {
+				throw new \InvalidArgumentException('Two arrays are called "' . $name . '". Give each array its own name.');
+			}
+			$names[mb_strtolower($name)] = true;
 			$out['arrays'][] = [
 				'key' => $key,
 				'name' => mb_substr($name !== '' ? $name : 'Array ' . (count($out['arrays']) + 1), 0, 60),

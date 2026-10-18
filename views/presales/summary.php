@@ -142,7 +142,7 @@ foreach ($lines as $i => $l) {
 			<tr><td>Commission <span class="muted">(<?= $calc['plan'] !== null ? e(App\Commission::describe($calc['plan']['commission'])) . ', on ' . e($m($calc['commissionable'])) : e(Presales::pct((float) $d['commission_rate'])) ?>)</span></td><td class="num"><?= e($m($calc['commission'])) ?></td></tr>
 			<?php if ($calc['pass_total'] > 0): ?><tr><td>Pass-through items <span class="muted">(no markup, no commission)</span></td><td class="num"><?= e($m($calc['pass_total'])) ?></td></tr><?php endif; ?>
 			<?php foreach ($calc['extras'] as $x): ?><tr><td>Extra, no markup: <?= e($x['name']) ?></td><td class="num"><?= e($m($x['amount'])) ?></td></tr><?php endforeach; ?>
-			<tr><td>Rounded up</td><td class="num"><?= e($m($calc['rounding'])) ?></td></tr>
+			<tr><td>Rounded up to the next $<?= e(number_format(max(1.0, App\Presales::num('round_to')))) ?></td><td class="num"><?= e($m($calc['rounding'])) ?></td></tr>
 			<tr class="sheet-final"><td>Retail price</td><td class="num"><?= e($m($calc['price'])) ?></td></tr>
 			</tbody>
 		</table>
