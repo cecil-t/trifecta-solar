@@ -117,17 +117,11 @@
 
 	if (!form) return;
 
-	// ---- Sections fold from their blue header: the +/- button, or a click on the header's title
-	form.addEventListener('click', (e) => {
-		let btn = e.target.closest('.fold-btn');
-		if (!btn) {
-			const head = e.target.closest('.band > h2:first-child, .band > .band-head:first-child h2');
-			btn = head && head.querySelector('.fold-btn');
-		}
-		if (!btn) return;
+	// ---- Sections fold from their blue header: the +/- button, or a click on the header's title.
+	// "Collapse all" / "Expand all" above the sections do every section at once.
+	function setFold(btn, folded) {
 		const sec = document.getElementById(btn.getAttribute('aria-controls'));
 		if (!sec) return;
-		const folded = !sec.classList.contains('is-folded');
 		sec.classList.toggle('is-folded', folded);
 		btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
 		btn.firstElementChild.textContent = folded ? '+' : '\u2212';
@@ -135,6 +129,22 @@
 		btn.title = (folded ? 'Show ' : 'Hide ') + label;
 		btn.lastElementChild.textContent = btn.title;
 		if (!folded && sec.id === 'trench-builder') trDraw();   // the drawing needs the section's width
+	}
+	form.addEventListener('click', (e) => {
+		const all = e.target.closest('[data-fold-all]');
+		if (all) {
+			const fold = all.dataset.foldAll === 'collapse';
+			form.querySelectorAll('.band .fold-btn').forEach((b) => setFold(b, fold));
+			return;
+		}
+		let btn = e.target.closest('.fold-btn');
+		if (!btn) {
+			const head = e.target.closest('.band > h2:first-child, .band > .band-head:first-child h2');
+			btn = head && head.querySelector('.fold-btn');
+		}
+		if (!btn) return;
+		const sec = document.getElementById(btn.getAttribute('aria-controls'));
+		if (sec) setFold(btn, !sec.classList.contains('is-folded'));
 	});
 
 	// ---- A line's controls follow the picked item: quantity box or automatic, custom fields, extended warranty, notes

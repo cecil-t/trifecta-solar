@@ -209,6 +209,10 @@ $folded = [];
 	</aside>
 
 	<div class="design-main">
+		<div class="fold-all">
+			<button type="button" class="link-btn" data-fold-all="collapse">Collapse all</button>
+			<button type="button" class="link-btn" data-fold-all="expand">Expand all</button>
+		</div>
 		<section class="card band" id="sec-setup">
 			<h2><?= $foldBtn('sec-setup', 'Setup', false) ?>Setup</h2>
 			<div class="grid-form">
