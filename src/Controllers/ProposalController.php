@@ -15,30 +15,47 @@ use App\View;
 /** A build sheet's customer proposal (page and PDF), and the proposal terms page. */
 final class ProposalController
 {
-	/** The proposal in the browser, with what to fix before sending. */
+	/**
+	 * The proposal in the browser, with what to fix before sending, as web pages. ?view=pdf shows the
+	 * PDF itself instead (exactly what the customer gets, with the header, footer and page numbers).
+	 */
 	public function show(int $id, int $designId): void
 	{
 		[$o, $d] = $this->find($id, $designId);
 		$data = Proposal::data($o, $d);
+		$base = '/presales/' . $id . '/designs/' . $designId;
 		header('X-Robots-Tag: noindex, nofollow');
-		echo View::partial('proposal/document', $data + ['assets' => '/', 'screen' => true, 'base' => '/presales/' . $id . '/designs/' . $designId]);
+		if (($_GET['view'] ?? '') === 'pdf') {
+			echo View::partial('proposal/preview', $data + ['base' => $base]);
+			return;
+		}
+		echo View::partial('proposal/document', $data + ['assets' => '/', 'screen' => true, 'base' => $base]);
 	}
 
-	/** The proposal as a PDF (WeasyPrint). */
+	/** The proposal as a PDF (WeasyPrint): a download, or ?inline=1 for the preview. */
 	public function pdf(int $id, int $designId): void
 	{
 		[$o, $d] = $this->find($id, $designId);
 		$data = Proposal::data($o, $d);
+		$inline = ($_GET['inline'] ?? '') === '1';
 		set_time_limit(120);
 		$r = Pdf::fromHtml(View::partial('proposal/document', $data + ['assets' => '', 'screen' => false, 'base' => '']), 90);
 		if (!$r['ok']) {
+			if ($inline) {
+				http_response_code(500);
+				header('Content-Type: text/plain; charset=utf-8');
+				echo 'The PDF could not be made: ' . $r['error'];
+				return;
+			}
 			flash('error', 'The PDF could not be made: ' . $r['error']);
 			redirect('/presales/' . $id . '/designs/' . $designId . '/proposal');
 		}
-		Activity::event('presales', $id, 'Proposal PDF for "' . $d['name'] . '" (quote ' . $data['quote'] . ')' . ($data['terms']['version'] ? ', terms version ' . $data['terms']['version']['id'] : ''));
+		if (!$inline) {
+			Activity::event('presales', $id, 'Proposal PDF for "' . $d['name'] . '" (quote ' . $data['quote'] . ')' . ($data['terms']['version'] ? ', terms version ' . $data['terms']['version']['id'] : ''));
+		}
 		$name = preg_replace('/[^A-Za-z0-9 ._-]+/', '', 'Trifecta Solar Proposal ' . $data['quote'] . ' - ' . $data['customerName']) ?: 'Proposal';
 		header('Content-Type: application/pdf');
-		header('Content-Disposition: attachment; filename="' . $name . '.pdf"');
+		header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $name . '.pdf"');
 		header('Content-Length: ' . strlen($r['pdf']));
 		header('X-Robots-Tag: noindex, nofollow');
 		echo $r['pdf'];

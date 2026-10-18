@@ -44,13 +44,14 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<meta charset="utf-8">
 	<title>Proposal <?= e($quote) ?> - <?= e($customerName) ?></title>
 	<?php if ($screen): ?><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-	<link rel="stylesheet" href="<?= e($assets) ?>assets/css/proposal.css">
+	<link rel="stylesheet" href="<?= $screen ? asset('assets/css/proposal.css') : 'assets/css/proposal.css' ?>">
 </head>
 <body class="proposal<?= $screen ? ' is-screen' : '' ?>">
 <?php if ($screen): ?>
 	<div class="toolbar">
 		<a href="<?= e($base) ?>" class="tb-back">&larr; Build sheet</a>
 		<span class="tb-title">Proposal <?= e($quote) ?></span>
+		<a href="<?= e($base) ?>/proposal?view=pdf" class="tb-link">PDF preview</a>
 		<a href="<?= e($base) ?>/proposal/pdf" class="tb-btn">Download PDF</a>
 	</div>
 	<?php if ($warnings): ?>
