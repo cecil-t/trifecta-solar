@@ -257,17 +257,75 @@
 	};
 	const hasCell = (a, r, c) => a.cells.some((x) => x[0] === r && x[1] === c);
 	const panelCount = () => S.arrays.reduce((n, a) => n + a.cells.length, 0);
-	// Outer edge length of an array's panels on the roof (true length up the slope), for critter
-	// guard and the like: every panel side with no panel next to it
+	// Outer edge of an array's panels on the roof, as a tape measure around it would read: gaps
+	// between neighboring panels count, up-slope lengths are true (not shortened), and holes left by
+	// removed panels inside the array don't add to it
 	const perimeter = (a) => {
 		const m = modOf(a);
-		const along = a.orient === 'landscape' ? m.length : m.width;
-		const slope = a.orient === 'landscape' ? m.width : m.length;
+		const u = a.orient === 'landscape' ? m.length : m.width;
+		const v = a.orient === 'landscape' ? m.width : m.length;
+		const su = u + S.gap.panel;
+		const sv = v + S.gap.row;
 		const has = new Set(a.cells.map(([r, c]) => r + ',' + c));
-		let len = 0;
+		const on = (r, c) => has.has(r + ',' + c);
+		// Rectangles: each panel, the gaps between neighbors, and the gap crossing inside 2 x 2 blocks
+		const rects = [];
 		for (const [r, c] of a.cells) {
-			len += (has.has(r + ',' + (c - 1)) ? 0 : slope) + (has.has(r + ',' + (c + 1)) ? 0 : slope)
-				+ (has.has((r - 1) + ',' + c) ? 0 : along) + (has.has((r + 1) + ',' + c) ? 0 : along);
+			rects.push([c * su, c * su + u, r * sv, r * sv + v]);
+			if (on(r, c + 1)) rects.push([c * su + u, (c + 1) * su, r * sv, r * sv + v]);
+			if (on(r + 1, c)) rects.push([c * su, c * su + u, r * sv + v, (r + 1) * sv]);
+			if (on(r, c + 1) && on(r + 1, c) && on(r + 1, c + 1)) rects.push([c * su + u, (c + 1) * su, r * sv + v, (r + 1) * sv]);
+		}
+		if (!rects.length) {
+			return 0;
+		}
+		// Union on a grid of the rectangles' edges (padded by one cell all round)
+		const uniq = (vals) => [...new Set(vals.map((x) => Math.round(x * 1e6) / 1e6))].sort((p, q) => p - q);
+		const xs = uniq(rects.flatMap((q) => [q[0], q[1]]));
+		const ys = uniq(rects.flatMap((q) => [q[2], q[3]]));
+		const W = xs.length + 1;
+		const H = ys.length + 1;
+		const fill = new Uint8Array(W * H);   // grid cell (i, j) spans xs[i-1]..xs[i], ys[j-1]..ys[j]
+		const ix = (x) => xs.indexOf(Math.round(x * 1e6) / 1e6) + 1;
+		const iy = (y) => ys.indexOf(Math.round(y * 1e6) / 1e6) + 1;
+		for (const q of rects) {
+			for (let i = ix(q[0]); i < ix(q[1]); i++) {
+				for (let j = iy(q[2]); j < iy(q[3]); j++) {
+					fill[j * W + i] = 1;
+				}
+			}
+		}
+		// Outside: flood from the padded border, so inner holes stay apart
+		const out = new Uint8Array(W * H);
+		const stack = [0];
+		out[0] = 1;
+		while (stack.length) {
+			const k = stack.pop();
+			const i = k % W;
+			const j = (k - i) / W;
+			for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+				const ni = i + di;
+				const nj = j + dj;
+				const nk = nj * W + ni;
+				if (ni >= 0 && nj >= 0 && ni < W && nj < H && !out[nk] && !fill[nk]) {
+					out[nk] = 1;
+					stack.push(nk);
+				}
+			}
+		}
+		const wOf = (i) => (i <= 0 || i >= W - 1 ? 0 : xs[i] - xs[i - 1]);
+		const hOf = (j) => (j <= 0 || j >= H - 1 ? 0 : ys[j] - ys[j - 1]);
+		let len = 0;
+		for (let j = 0; j < H; j++) {
+			for (let i = 0; i < W; i++) {
+				if (!fill[j * W + i]) {
+					continue;
+				}
+				if (i + 1 < W && out[j * W + i + 1]) len += hOf(j);
+				if (i > 0 && out[j * W + i - 1]) len += hOf(j);
+				if (j + 1 < H && out[(j + 1) * W + i]) len += wOf(i);
+				if (j > 0 && out[(j - 1) * W + i]) len += wOf(i);
+			}
 		}
 		return len;
 	};
