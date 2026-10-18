@@ -104,6 +104,10 @@
 		b.addEventListener('click', fn);
 		return b;
 	};
+	const ftInUp = (m) => {   // rounded up, for material lengths
+		const total = Math.ceil(m / IN - 1e-6);
+		return Math.floor(total / 12) + '\' ' + (total % 12) + '"';
+	};
 	const ftIn = (m) => {
 		const total = Math.floor(m / IN + 1e-6);   // round down: never more room than there is
 		const ft = Math.floor(total / 12);
@@ -253,6 +257,20 @@
 	};
 	const hasCell = (a, r, c) => a.cells.some((x) => x[0] === r && x[1] === c);
 	const panelCount = () => S.arrays.reduce((n, a) => n + a.cells.length, 0);
+	// Outer edge length of an array's panels on the roof (true length up the slope), for critter
+	// guard and the like: every panel side with no panel next to it
+	const perimeter = (a) => {
+		const m = modOf(a);
+		const along = a.orient === 'landscape' ? m.length : m.width;
+		const slope = a.orient === 'landscape' ? m.width : m.length;
+		const has = new Set(a.cells.map(([r, c]) => r + ',' + c));
+		let len = 0;
+		for (const [r, c] of a.cells) {
+			len += (has.has(r + ',' + (c - 1)) ? 0 : slope) + (has.has(r + ',' + (c + 1)) ? 0 : slope)
+				+ (has.has((r - 1) + ',' + c) ? 0 : along) + (has.has((r + 1) + ',' + c) ? 0 : along);
+		}
+		return len;
+	};
 	const kwOf = (a) => a.cells.length * (modOf(a).watts || 0) / 1000;
 	const inArray = (a, x, y) => {
 		const b = localBox(a);
@@ -749,6 +767,11 @@
 		$('layout-totals').textContent = n + '\u00a0panels · ' + kw.toFixed(2) + '\u00a0kW\u00a0DC · ' + S.arrays.length + '\u00a0' + (S.arrays.length === 1 ? 'array' : 'arrays');
 		const mc = $('layout-modcounts');
 		mc.replaceChildren();
+		const roofEdge = S.arrays.filter((a) => a.mount === 'roof').reduce((t, a) => t + perimeter(a), 0);
+		if (S.arrays.length) {
+			mc.append(html('li', '', 'Array perimeters: ' + ftInUp(S.arrays.reduce((t, a) => t + perimeter(a), 0))
+				+ (roofEdge && roofEdge < S.arrays.reduce((t, a) => t + perimeter(a), 0) ? ' (roof arrays ' + ftInUp(roofEdge) + ')' : '')));
+		}
 		const keys = Object.keys(S.modules);
 		if (keys.length > 1) {
 			for (const [k, m] of Object.entries(S.modules)) {
@@ -800,6 +823,7 @@
 			$('sel-pitch-note').textContent = pitchNote(a.pitch, a.mount);
 			let stats = a.cells.length + ' panels, ' + kwOf(a).toFixed(2) + ' kW';
 			stats += a.mount === 'tracker' ? '. Sweep: ' + ftIn(sweep(a).r * 2) + ' across.' : ', facing ' + compass(a.az) + '.';
+			stats += ' Perimeter ' + ftInUp(perimeter(a)) + '.';
 			$('sel-stats').textContent = stats;
 		}
 
@@ -840,7 +864,7 @@
 		const rl = $('roof-list');
 		rl.replaceChildren();
 		if (S.roof) {
-			$('roof-info').textContent = 'Google: ' + S.roof.quality.toLowerCase() + ' quality, imagery from ' + S.roof.date + ', ' + faces().length
+			$('roof-info').textContent = 'Google: ' + buildings().map((b) => b.quality.toLowerCase() + ' quality, imagery from ' + b.date).join('; ') + '. ' + faces().length
 				+ ' roof faces. Click one to highlight it. Arrays drawn starting on a face line up with it and take its pitch.';
 			faces().forEach((s, i) => {
 				const li = html('li', i === S.face ? 'is-sel' : '');
@@ -907,7 +931,7 @@
 	}
 	// What needs saving: the drawing, not where the map was moved to
 	const drawingState = () => JSON.stringify({ modules: S.modules, gap: S.gap, arrays: S.arrays, measures: S.measures, shown: S.showRoof });
-	const savedState = drawingState();
+	const savedState = cfg.unsaved ? '' : drawingState();   // after a failed save the drawing is still unsaved
 	let dirty = false;
 	function markDirty() {
 		dirty = drawingState() !== savedState;
@@ -965,7 +989,20 @@
 			e.returnValue = '';
 		}
 	});
-	$('layout-form').addEventListener('submit', () => {
+	$('layout-form').addEventListener('submit', (e) => {
+		// Array names must differ: stop here (nothing lost) rather than at the server
+		const seen = new Map();
+		for (const a of S.arrays) {
+			const k = a.name.trim().replace(/\s+/g, ' ').toLowerCase();
+			if (seen.has(k)) {
+				e.preventDefault();
+				selectArray(a.key, true);
+				$('sel-name').focus();
+				hint('Two arrays are called ' + a.name + '. Rename this one, then save.');
+				return;
+			}
+			seen.set(k, true);
+		}
 		$('layout-json').value = JSON.stringify(serialize());
 		dirty = false;
 	});
@@ -1554,15 +1591,22 @@
 		markDirty();
 		hint(S.showRoof ? 'Google roof faces shown. New boxes started on a face line up with it.' : 'Google roof faces hidden. New boxes don\'t line up with them while hidden.');
 	});
+	// Roof faces can come from several buildings; each lookup adds the building in the middle of the
+	// map, or refreshes it when it is already there
+	const buildings = () => {
+		if (S.roof && !S.roof.buildings) {   // saved before buildings were kept apart
+			S.roof.buildings = [{ lat: S.roof.lat, lon: S.roof.lon, quality: S.roof.quality, date: S.roof.date }];
+		}
+		return S.roof ? S.roof.buildings : [];
+	};
+	const buildingNear = (x, y, within) => buildings().findIndex((b) => {
+		const [bx, by] = toLocal(b.lat, b.lon);
+		return Math.hypot(bx - x, by - y) < within;
+	});
 	const fetchRoof = async (ask) => {
-		if (ask && S.roof) {
-			const [bx, by] = toLocal(S.roof.lat, S.roof.lon);
-			const same = Math.hypot(bx - S.view.cx, by - S.view.cy) < 25;
-			if (!window.confirm(same
-				? 'Google roof faces for this building are already loaded. Look them up again? Each lookup is a call to Google\'s Solar API.'
-				: 'Replace the roof faces with the building in the middle of the map? Each lookup is a call to Google\'s Solar API.')) {
-				return;
-			}
+		if (ask && buildingNear(S.view.cx, S.view.cy, 25) >= 0 && !window.confirm(
+			'Google roof faces for this building are already loaded. Look them up again? Each lookup is a call to Google\'s Solar API.')) {
+			return;
 		}
 		const btn = $('btn-roof');
 		const [lat, lon] = toLatLon(S.view.cx, S.view.cy);
@@ -1572,7 +1616,27 @@
 			const r = await fetch(cfg.roof + '?' + new URLSearchParams({ lat: lat.toFixed(7), lon: lon.toFixed(7) }), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
 			const j = await r.json();
 			if (j.ok) {
-				S.roof = j.roof;
+				const nb = j.roof;
+				const [nx, ny] = toLocal(nb.lat, nb.lon);
+				const tag = nb.lat.toFixed(6) + ',' + nb.lon.toFixed(6);
+				const segs = nb.segments.map((x) => ({ ...x, bld: tag }));
+				const entry = { lat: nb.lat, lon: nb.lon, quality: nb.quality, date: nb.date };
+				if (!S.roof) {
+					S.roof = { ...nb, segments: segs, buildings: [entry] };
+				} else {
+					const list = buildings();
+					const fallback = list[0].lat.toFixed(6) + ',' + list[0].lon.toFixed(6);
+					S.roof.segments.forEach((x) => { x.bld = x.bld || fallback; });
+					const same = buildingNear(nx, ny, 5);
+					if (same >= 0) {   // the same building again: its faces are replaced
+						const old = list[same].lat.toFixed(6) + ',' + list[same].lon.toFixed(6);
+						S.roof.segments = S.roof.segments.filter((x) => x.bld !== old);
+						list.splice(same, 1);
+					}
+					S.roof.segments.push(...segs);
+					list.push(entry);
+					Object.assign(S.roof, { quality: nb.quality, date: nb.date, lat: nb.lat, lon: nb.lon });
+				}
 				S.face = null;
 				S.measures.forEach((m) => {   // measurements that were flat may sit on a face now
 					if (m.src === 'flat' || !m.src) {
@@ -1586,7 +1650,7 @@
 				markDirty();
 				const [x, y] = toLocal(j.roof.lat, j.roof.lon);
 				const off = Math.hypot(x - S.view.cx, y - S.view.cy);
-				hint('Google found ' + faces().length + ' roof faces' + (off > 40 ? ' on a building ' + Math.round(off * 3.28084) + ' ft from the map center; check it is the right one' : '') + '.');
+				hint('Google found ' + segs.length + ' roof faces on this building' + (buildings().length > 1 ? ' (' + buildings().length + ' buildings loaded)' : '') + (off > 40 ? ' on a building ' + Math.round(off * 3.28084) + ' ft from the map center; check it is the right one' : '') + '.');
 			} else {
 				$('roof-info').textContent = j.error || 'Google had no roof data here.';
 			}
@@ -1618,6 +1682,7 @@
 	drawArrays();
 	updateUndo();
 	toolHint();
+	markDirty();
 	// A new layout looks up Google's roof faces at the map point once (saved with the layout after that)
 	if (cfg.autoRoof) {
 		fetchRoof(false);

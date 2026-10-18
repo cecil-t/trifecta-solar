@@ -27,6 +27,11 @@ final class LayoutController
 		$lines = Designs::lines($designId);
 		$module = Layout::module($lines);
 		$layout = Layout::decode($d['layout_json']);
+		$failed = Layout::decode($_SESSION['layout_failed'][$designId] ?? null);
+		unset($_SESSION['layout_failed'][$designId]);
+		if ($failed && isset($failed['origin']['lat'], $failed['origin']['lon'])) {
+			$layout = $failed;   // shown as unsaved changes
+		}
 		$origin = $layout['origin'] ?? null;
 		$originNote = '';
 		if (!$origin && $o['site_lat'] !== null && $o['site_lon'] !== null) {
@@ -49,6 +54,7 @@ final class LayoutController
 			'autoRoof' => GoogleMaps::configured() && empty($layout['roof']),
 			'gap' => ['panel' => Presales::num('layout_gap_in') * 0.0254, 'row' => Presales::num('layout_row_gap_in') * 0.0254],
 			'layout' => $layout,
+			'unsaved' => (bool) $failed,
 			'tiles' => '/presales/layout-tiles/',
 			'viewport' => '/presales/layout-viewport',
 			'roof' => $base . '/layout/roof',
@@ -68,7 +74,9 @@ final class LayoutController
 		try {
 			$layout = Layout::fromInput((string) ($_POST['layout'] ?? ''));
 		} catch (\InvalidArgumentException $e) {
-			flash('error', $e->getMessage() . ' Nothing was saved.');
+			// Keep the drawing as it was sent, so a problem doesn't throw away the work
+			$_SESSION['layout_failed'][$designId] = mb_substr((string) ($_POST['layout'] ?? ''), 0, 2000000);
+			flash('error', $e->getMessage() . ' Nothing was saved yet; fix it and save again.');
 			redirect($base . '/layout');
 		}
 		$before = Layout::decode($d['layout_json']);

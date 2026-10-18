@@ -132,6 +132,12 @@ final class Designs
 		});
 	}
 
+	/** Quantities are whole numbers, except per-foot categories, equipment rental (half days) and Other. */
+	public static function fractionsOk(string $category): bool
+	{
+		return (Presales::CATEGORIES[$category][1] ?? 'ea') === 'ft' || in_array($category, ['equipment', 'misc'], true);
+	}
+
 	/** A line's snapshot taken from a catalog item now. */
 	public static function snapshot(array $item): array
 	{
@@ -277,6 +283,12 @@ final class Designs
 			foreach ((array) $rows as $r) {
 				$itemKey = (string) ($r['item'] ?? '');
 				$qty = $num($r['qty'] ?? '', 'Quantity');
+				if ($qty !== null && floor($qty) != $qty && !self::fractionsOk($cat)) {
+					if ($strict) {
+						throw new \InvalidArgumentException(Presales::CATEGORIES[$cat][0] . ' take whole numbers (' . rtrim(rtrim(number_format($qty, 2), '0'), '.') . ' was typed).');
+					}
+					$qty = round($qty);
+				}
 				$lineId = (int) ($r['id'] ?? 0);
 				if ($itemKey === 'custom' || ($itemKey === '' && trim((string) ($r['name'] ?? '')) !== '')) {
 					$name = trim((string) ($r['name'] ?? ''));
@@ -687,8 +699,8 @@ final class Designs
 		if ($missing) {
 			$out[] = 'Nothing for ' . self::listing($missing) . ' yet. Add ' . (count($missing) === 1 ? 'it' : 'them') . ' unless this job really has none.';
 		}
-		if (!empty($has['modules']) && !empty($has['inverters']) && $calc['ratio'] !== null && ($calc['ratio'] > 1.5 || $calc['ratio'] < 0.8)) {
-			$out[] = 'The DC/AC ratio is ' . number_format($calc['ratio'], 2) . ', outside the usual 0.8 to 1.5. Check the inverter size.';
+		if (!empty($has['modules']) && !empty($has['inverters']) && $calc['ratio'] !== null && ($calc['ratio'] > 2 || $calc['ratio'] < 0.95)) {
+			$out[] = 'The DC/AC ratio is ' . number_format($calc['ratio'], 2) . ', outside 0.95 to 2. Check the inverter size.';
 		}
 		return $out;
 	}

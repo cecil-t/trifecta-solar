@@ -126,6 +126,7 @@ $folded = [];
 			<span class="chip chip-blue"><?= e($classLabel) ?></span>
 			<?php if ($o['customer_type'] && $o['customer_type'] !== 'residential' && $o['customer_type'] !== 'commercial'): ?><span class="chip"><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?></span><?php endif; ?>
 			<?php if ($o['is_agricultural']): ?><span class="chip">Agricultural</span><?php endif; ?>
+			<span class="chip chip-purple" id="dt-exempt" title="The customer has a tax-exempt certificate. Balance of system materials are still taxed." <?= $d['tax_exempt'] ? '' : 'hidden' ?>>Tax exempt</span>
 		</div>
 		<p class="muted small design-dates">Created <?= e(fmt_dt($d['created_at'], 'm/d/Y g:i A')) ?><?= !empty($who['created_name']) ? ' by ' . e($who['created_name']) : '' ?> &middot; Updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= !empty($who['updated_name']) ? ' by ' . e($who['updated_name']) : '' ?> &middot; <button type="button" class="link-btn" data-fold-all="collapse">Collapse all</button> &middot; <button type="button" class="link-btn" data-fold-all="expand">Expand all</button></p>
 		<?php if (count($siblings) > 1): ?>
@@ -171,7 +172,7 @@ $folded = [];
 
 	<aside class="design-summary" aria-label="Totals">
 		<div class="card design-totals">
-			<div class="dt-price-label">Final retail price <span class="chip chip-purple dt-exempt" id="dt-exempt" title="The customer has a tax-exempt certificate. Balance of system materials are still taxed." <?= $d['tax_exempt'] ? '' : 'hidden' ?>>Tax exempt</span></div>
+			<div class="dt-price-label">Final retail price</div>
 			<div class="dt-price">
 				<span data-v="price"><?= e($m($calc['price'])) ?></span>
 				<button type="button" class="copy-btn" data-copy-from="price-plain" title="Copy the price" aria-label="Copy the price"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M3 11V3.5A1.5 1.5 0 0 1 4.5 2H11"/></svg></button>
@@ -185,7 +186,7 @@ $folded = [];
 			</div>
 			<table class="dt-table">
 				<tbody>
-				<tr><th>Equipment and materials</th><td data-v="equipment_cost"><?= e($m($calc['equipment_cost'])) ?></td></tr>
+				<tr><th>Line items</th><td data-v="equipment_cost"><?= e($m($calc['equipment_cost'])) ?></td></tr>
 				<tr class="dt-sub"><th>includes sales tax</th><td data-v="tax_total"><?= e($m($calc['tax_total'])) ?></td></tr>
 				<tr><th>Warranty program</th><td data-v="warranty_cost"><?= e($m($calc['warranty_cost'])) ?></td></tr>
 				<tr><th>Labor</th><td data-v="labor"><?= e($m($calc['labor'])) ?></td></tr>
@@ -304,7 +305,7 @@ $folded = [];
 
 		<section class="card band" id="sec-equipment">
 			<div class="card-head card-head-plain band-head">
-				<h2><?= $foldBtn('sec-equipment', 'Equipment and materials', false) ?>Equipment and materials</h2>
+				<h2><?= $foldBtn('sec-equipment', 'Line items', false) ?>Line items</h2>
 				<span class="small"><?= e($eqSummary) ?><?= $eqSummary !== '' ? ' &middot; ' : '' ?>cost <strong data-v="equipment_cost"><?= e($m($calc['equipment_cost'])) ?></strong></span>
 			</div>
 			<p class="hint mb-xs"><?= $layoutMaster ? 'Module quantities come from the <a href="' . $base . '/layout" data-save-then="layout">site layout</a>: pick the modules here and draw the arrays there.' : 'Pick the modules here and draw the arrays in the <a href="' . $base . '/layout" data-save-then="layout">site layout</a>, which then sets the module quantities.' ?></p>
@@ -367,7 +368,7 @@ $folded = [];
 									<span class="pl-flags"><?= $lineFlag($fl, $c) ?></span>
 								</div>
 								<div class="pl-qty">
-									<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][qty]" value="<?= e($l && $l['qty'] !== null ? $pf((float) $l['qty'], 2) : '') ?>" inputmode="decimal" aria-label="Quantity" class="pl-qty-input" <?= $rule === 'manual' ? '' : 'hidden' ?><?= $layoutMaster && $cat === 'modules' ? ' readonly title="Set by the site layout"' : '' ?>>
+									<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][qty]" value="<?= e($l && $l['qty'] !== null ? $pf((float) $l['qty'], 2) : '') ?>" inputmode="<?= App\Designs::fractionsOk($cat) ? 'decimal' : 'numeric' ?>" aria-label="Quantity" class="pl-qty-input" <?= $rule === 'manual' ? '' : 'hidden' ?><?= $layoutMaster && $cat === 'modules' ? ' readonly title="Set by the site layout"' : '' ?>>
 									<span class="pl-qty-auto muted" <?= $rule === 'manual' ? 'hidden' : '' ?> title="Automatic quantity"><span data-l="qty"><?= $c ? e(Presales::field($c['qty_resolved'], 2)) : '' ?></span> <?= $rule === 'dc_watts' ? 'W' : 'auto' ?></span>
 								</div>
 								<div class="num pl-unit<?= $c && $c['overridden'] ? ' is-overridden' : '' ?>">

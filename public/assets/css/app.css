@@ -1886,4 +1886,3 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .sav-tiles .m-num { font-size: 1.2rem; }
 .band-head .band-pill { margin-left: .4rem; font-size: .7rem; font-weight: 700; }
 .pl-qty-input[readonly] { background: transparent; border-color: transparent; box-shadow: none; font-weight: 650; cursor: default; }
-.dt-exempt { font-size: .68rem; vertical-align: middle; margin-left: .3rem; text-transform: none; letter-spacing: 0; }

@@ -235,7 +235,7 @@ final class Layout
 				'y' => round($num($a['y'] ?? 0, -5000, 5000, 'position'), 4),
 				'orient' => ($a['orient'] ?? '') === 'landscape' ? 'landscape' : 'portrait',
 				'mod' => isset($out['modules'][(string) ($a['mod'] ?? '')]) ? (string) $a['mod'] : $firstMod,
-				'face' => isset($a['face']) && $a['face'] !== null && $a['face'] !== '' ? (int) $num($a['face'], 0, 79, 'roof face') : null,
+				'face' => isset($a['face']) && $a['face'] !== null && $a['face'] !== '' ? (int) $num($a['face'], 0, 199, 'roof face') : null,
 				'material' => array_key_exists((string) ($a['material'] ?? ''), Projects::ROOF_MATERIALS) ? (string) $a['material'] : null,
 				'shade' => isset($a['shade']) && $a['shade'] !== null && $a['shade'] !== '' ? round($num($a['shade'], 0, 90, 'shading (0 to 90%)'), 1) : null,
 				'shade_note' => mb_substr(trim((string) ($a['shade_note'] ?? '')), 0, 200) ?: null,
@@ -262,7 +262,7 @@ final class Layout
 		$roof = $in['roof'] ?? null;
 		if (is_array($roof) && is_array($roof['segments'] ?? null)) {
 			$segs = [];
-			foreach (array_slice($roof['segments'], 0, 80) as $s) {
+			foreach (array_slice($roof['segments'], 0, 200) as $s) {
 				if (!is_array($s) || !is_array($s['box'] ?? null) || count($s['box']) !== 4) {
 					continue;
 				}
@@ -270,10 +270,18 @@ final class Layout
 					'area_m2' => round($num($s['area_m2'] ?? 0, 0, 1e6, 'roof area'), 1),
 					'box' => array_map(static fn ($v) => round($num($v, -180, 180, 'roof box'), 7), array_values($s['box'])),
 					'hull' => is_array($s['hull'] ?? null) ? array_map(static fn ($pt) => !is_array($pt) ? throw new \InvalidArgumentException('The layout has a bad roof outline.') : [round($num($pt[0] ?? null, -85, 85, 'roof outline'), 7),
-						round($num($pt[1] ?? null, -180, 180, 'roof outline'), 7)], array_slice(array_values($s['hull']), 0, 80)) : null];
+						round($num($pt[1] ?? null, -180, 180, 'roof outline'), 7)], array_slice(array_values($s['hull']), 0, 80)) : null,
+					'bld' => preg_match('/^-?\d{1,3}\.\d{1,7},-?\d{1,3}\.\d{1,7}$/', (string) ($s['bld'] ?? '')) ? (string) $s['bld'] : null];
+			}
+			$blds = [];
+			foreach (array_slice((array) ($roof['buildings'] ?? []), 0, 20) as $b) {
+				if (is_array($b)) {
+					$blds[] = ['lat' => $num($b['lat'] ?? null, -85, 85, 'building point'), 'lon' => $num($b['lon'] ?? null, -180, 180, 'building point'),
+						'quality' => mb_substr((string) ($b['quality'] ?? ''), 0, 20), 'date' => mb_substr((string) ($b['date'] ?? ''), 0, 10)];
+				}
 			}
 			$out['roof'] = ['quality' => mb_substr((string) ($roof['quality'] ?? ''), 0, 20), 'date' => mb_substr((string) ($roof['date'] ?? ''), 0, 10),
-				'lat' => $num($roof['lat'] ?? 0, -85, 85, 'roof point'), 'lon' => $num($roof['lon'] ?? 0, -180, 180, 'roof point'), 'segments' => $segs];
+				'lat' => $num($roof['lat'] ?? 0, -85, 85, 'roof point'), 'lon' => $num($roof['lon'] ?? 0, -180, 180, 'roof point'), 'segments' => $segs] + ($blds ? ['buildings' => $blds] : []);
 		}
 		return $out;
 	}

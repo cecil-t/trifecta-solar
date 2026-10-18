@@ -84,7 +84,7 @@ foreach ($lines as $i => $l) {
 </div>
 
 <section class="sheet-sec sheet-wide">
-	<h2>Equipment and materials</h2>
+	<h2>Line items</h2>
 	<table class="sheet-table">
 		<thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Tax</th><th class="num">Cost</th><th class="num">Retail</th></tr></thead>
 		<?php foreach (Presales::CATEGORIES as $cat => [$label]): if (empty($byCat[$cat])) { continue; } $t = $calc['categories'][$cat]; ?>
@@ -122,7 +122,7 @@ foreach ($lines as $i => $l) {
 			<?php endforeach; ?>
 			</tbody>
 		<?php endif; ?>
-		<tfoot><tr><td>Equipment and materials</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'cost')))) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'retail')))) ?></td></tr></tfoot>
+		<tfoot><tr><td>Line items</td><td></td><td></td><td class="num"><?= e($m($calc['tax_total'])) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'cost')))) ?></td><td class="num"><?= e($m(array_sum(array_column($calc['categories'], 'retail')))) ?></td></tr></tfoot>
 	</table>
 </section>
 
@@ -131,7 +131,7 @@ foreach ($lines as $i => $l) {
 		<h2>Cost to price</h2>
 		<table class="sheet-table sheet-compact">
 			<tbody>
-			<tr><td>Equipment and materials <span class="muted">(with tax)</span></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td></tr>
+			<tr><td>Line items <span class="muted">(with tax)</span></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td></tr>
 			<tr><td>Warranty program</td><td class="num"><?= e($m($calc['warranty_cost'])) ?></td></tr>
 			<tr><td>Labor<?= $calc['man_hours'] !== null ? ' <span class="muted">(' . e(number_format($calc['man_hours'], 1)) . ' man-hours)</span>' : '' ?></td><td class="num"><?= e($m($calc['labor'])) ?></td></tr>
 			<?php if ($calc['plan'] === null || $calc['site_visit'] > 0): ?><tr><td>Site visit</td><td class="num"><?= e($m($calc['site_visit'])) ?></td></tr><?php endif; ?>

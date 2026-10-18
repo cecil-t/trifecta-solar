@@ -236,6 +236,7 @@ final class Proposal
 				'phone' => Presales::setting('company_phone'),
 				'email' => Presales::setting('company_email'),
 				'website' => Presales::setting('company_website'),
+				'hic' => Presales::setting('company_hic'),
 			],
 			'cover' => array_values(array_filter(array_map('trim', preg_split("/\n\s*\n/", trim(Presales::setting('cover_letter')) ?: 'Thank you for the opportunity to present your Solar Energy System Proposal.')))),
 			'warnings' => $warnings,

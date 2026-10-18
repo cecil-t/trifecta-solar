@@ -43,6 +43,11 @@ img { max-width: 100%; }
 .cover-name { font-size: 15pt; font-weight: bold; color: #025586; }
 .letter { font-size: 10pt; margin: 0 0 16pt; }
 .letter p { margin-bottom: 8pt; }
+.toc { margin: 0 0 16pt; padding: 8pt 0 0; border-top: 1px solid #dfe5e8; }
+.toc ol { columns: 2; column-gap: 28pt; margin: 4pt 0 0; padding: 0; list-style: none; font-size: 9pt; }
+.toc li { padding: 1.5pt 0; break-inside: avoid; }
+.toc a { color: #1c2830; text-decoration: none; }
+.toc a::after { content: leader('.') target-counter(attr(href), page); color: #5d6a72; }
 .cover-foot { display: flex; gap: 20pt; justify-content: space-between; align-items: flex-end; }
 .card-person { border-left: 3pt solid #69b545; padding: 4pt 0 4pt 10pt; }
 .card-person strong { font-size: 11pt; }

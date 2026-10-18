@@ -74,6 +74,19 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<?php foreach ($cover as $para): ?><p><?= nl2br(e($para), false) ?></p><?php endforeach; ?>
 		<p>Best regards,<br><?= e($sales['name'] ?? 'Trifecta Solar') ?><br>Trifecta Solar</p>
 	</div>
+	<?php
+	// Contents, with page numbers WeasyPrint fills in (target-counter in proposal.css)
+	$toc = [['p-summary', 'System Summary'], ['p-performance', 'System Performance'], ['p-savings', 'Electric Bill Savings']];
+	if ($r) {
+		$toc[] = ['p-roi', 'Return on Investment'];
+		$toc[] = ['p-projection', (int) $a['years'] . '-Year Projection'];
+	}
+	array_push($toc, ['p-price', 'Price and Payments'], ['p-next', 'Next Steps'], ['p-clarifications', 'Clarifications'], ['p-terms', 'Terms and Signatures']);
+	?>
+	<nav class="toc" aria-label="Contents">
+		<div class="label">Contents</div>
+		<ol><?php foreach ($toc as [$id, $label]): ?><li><a href="#<?= $id ?>"><?= e($label) ?></a></li><?php endforeach; ?></ol>
+	</nav>
 	<div class="cover-foot">
 		<?php if ($sales): ?>
 			<div class="card-person">
@@ -87,13 +100,14 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 			<strong><?= e($company['legal']) ?></strong>
 			<?php if ($company['address'] !== ''): ?><div><?= nl2br(e($company['address']), false) ?></div><?php endif; ?>
 			<div><?= e(implode(' · ', array_filter([$company['phone'], $company['email'], $company['website']]))) ?></div>
+			<?php if ($company['hic'] !== ''): ?><div><?= e(preg_match('/^\d/', $company['hic']) ? 'PA HIC #' . $company['hic'] : 'HIC ' . $company['hic']) ?></div><?php endif; ?>
 		</div>
 	</div>
 </section>
 
 <!-- 2. System summary -->
 <section class="page">
-	<h1><?= e($d['name']) ?></h1>
+	<h1 id="p-summary"><?= e($d['name']) ?></h1>
 	<div class="tiles">
 		<div class="tile tile-orange"><span class="t-num"><?= $r && $r['offset_pct'] !== null ? e($p1($r['offset_pct'], 0)) : '-' ?></span><span class="t-label">Energy from solar</span><span class="t-sub">of your yearly use, year one</span></div>
 		<div class="tile"><span class="t-num"><?= e($m0($price)) ?></span><span class="t-label">Total system price</span><span class="t-sub"><?= e(number_format($kwDc, 2)) ?> kW DC<?= !empty($d['tax_exempt']) ? ', tax exempt' : '' ?></span></div>
@@ -133,7 +147,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 3. System performance -->
 <section class="page">
-	<h1>System Performance</h1>
+	<h1 id="p-performance">System Performance</h1>
 	<?php if ($prod): ?>
 		<div class="tiles tiles-3">
 			<div class="tile tile-orange"><span class="t-num"><?= e($n0($annual)) ?> <small>kWh</small></span><span class="t-label">Year-one production</span><span class="t-sub"><?= e(Production::MODELS[$model]) ?></span></div>
@@ -179,7 +193,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 4. Electric bill savings -->
 <section class="page">
-	<h1>Electric Bill Savings</h1>
+	<h1 id="p-savings">Electric Bill Savings</h1>
 	<?php if ($r): $y1 = $r['first_year']; ?>
 		<div class="tiles tiles-3">
 			<div class="tile tile-green"><span class="t-num"><?= e($m0($y1['savings'])) ?></span><span class="t-label">First-year savings</span><span class="t-sub">bill savings <?= e($m0($y1['bill_savings'])) ?> + SRECs <?= e($m0($y1['srec'])) ?></span></div>
@@ -241,7 +255,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 <?php if ($r): ?>
 <!-- 5. Return on investment -->
 <section class="page">
-	<h1>Return on Investment</h1>
+	<h1 id="p-roi">Return on Investment</h1>
 	<div class="equation">
 		<div><span class="t-num"><?= e($m0($r['lifetime_savings'])) ?></span><span class="t-label">Savings over <?= (int) $a['years'] ?> years</span></div>
 		<div class="op">&minus;</div>
@@ -265,7 +279,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 6. Projection -->
 <section class="page">
-	<h1><?= (int) $a['years'] ?>-Year Projection</h1>
+	<h1 id="p-projection"><?= (int) $a['years'] ?>-Year Projection</h1>
 	<table class="data data-tight">
 		<thead><tr><th>Year</th><th class="num">Solar (kWh)</th><th class="num">Bill without solar</th><th class="num">Bill with solar</th><th class="num">Bill savings</th><th class="num">SRECs</th><?= $r['incentives_year1'] > 0 ? '<th class="num">Incentives</th>' : '' ?><th class="num">Cash flow</th><th class="num">Cumulative</th></tr></thead>
 		<tbody>
@@ -282,7 +296,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 7. Price and payments -->
 <section class="page">
-	<h1>Price and Payments</h1>
+	<h1 id="p-price">Price and Payments</h1>
 	<p class="lead"><?= e(number_format($kwDc, 2)) ?> kW DC solar energy system: <?= e(implode(', ', array_map(static fn ($q) => ($q['qty'] !== null ? $q['qty'] . ' x ' : '') . $q['name'], array_filter($equipment, static fn ($q) => in_array($q['category'], ['Solar panels', 'Inverters', 'Optimizers and microinverters', 'Batteries'], true))))) ?>.</p>
 	<div class="two-col">
 		<div>
@@ -326,7 +340,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 8. Next steps -->
 <section class="page">
-	<h1>Next Steps</h1>
+	<h1 id="p-next">Next Steps</h1>
 	<ol class="steps">
 		<?php foreach ($steps as $i => $s): ?>
 			<li><span class="step-num"><?= $i + 1 ?></span><div><strong><?= e($s['title']) ?></strong><?= $s['text'] !== '' ? '<div>' . e($s['text']) . '</div>' : '' ?></div></li>
@@ -343,7 +357,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 9. Clarifications -->
 <section class="page terms">
-	<h1>Clarifications</h1>
+	<h1 id="p-clarifications">Clarifications</h1>
 	<?php foreach ($terms['intro'] as $b): ?><div class="block"><?= $b['heading'] ? '<h3>' . $b['heading'] . '</h3>' : '' ?><?= $b['html'] ?></div><?php endforeach; ?>
 	<?php if ($terms['clarification']): ?>
 		<ul class="clar">
@@ -356,7 +370,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 <!-- 10. Terms and signatures -->
 <section class="page terms">
-	<h1>General Terms &amp; Conditions</h1>
+	<h1 id="p-terms">General Terms &amp; Conditions</h1>
 	<?php foreach ($terms['section'] as $b): ?><div class="block"><?= $b['heading'] ? '<h3>' . $b['heading'] . '</h3>' : '' ?><?= $b['html'] ?></div><?php endforeach; ?>
 	<?php if ($terms['authorization']): ?>
 		<h2>Final Authorizations and Consents</h2>
