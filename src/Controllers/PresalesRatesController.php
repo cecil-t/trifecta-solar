@@ -83,7 +83,7 @@ final class PresalesRatesController
 			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts', 'referral_bonus', 'handoff_share',
 			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust', 'degradation_default',
 			'savings_escalation', 'savings_srec_price', 'savings_srec_decline', 'savings_srec_years', 'savings_years', 'savings_discount',
-			'proposal_valid_days', 'proposal_valid_max', 'guarantee_pct', 'guarantee_years', 'guarantee_rate'];
+			'proposal_valid_days', 'proposal_valid_max', 'guarantee_pct', 'guarantee_years', 'guarantee_rate', 'layout_gap_in', 'layout_row_gap_in'];
 		$skip = ['commission_tiers' => true, 'self_gen_tiers' => true, 'site_visit' => true];
 		// Trench builder choices come from fixed lists
 		$post = (array) ($_POST['settings'] ?? []);
@@ -128,7 +128,8 @@ final class PresalesRatesController
 			throw new \InvalidArgumentException('Proposal days: valid for at least 1 day, and the longest a salesperson can set from that up to 365.');
 		}
 		foreach (['guarantee_pct' => [1, 100, 'Production guarantee percent'], 'guarantee_years' => [1, 30, 'Production guarantee years'],
-			'guarantee_rate' => [0, 5, 'Production guarantee payout']] as $k => [$low, $high, $label]) {
+			'guarantee_rate' => [0, 5, 'Production guarantee payout'], 'layout_gap_in' => [0, 12, 'Site layout gap between panels (inches)'],
+			'layout_row_gap_in' => [0, 120, 'Site layout gap between rows (inches)']] as $k => [$low, $high, $label]) {
 			$v = trim((string) ($post[$k] ?? ''));
 			if ($v === '' || !is_numeric($v) || (float) $v < $low || (float) $v > $high) {
 				throw new \InvalidArgumentException($label . ' must be ' . $low . ' to ' . $high . '.');

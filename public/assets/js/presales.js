@@ -59,6 +59,22 @@
 				else i.value = '';
 				if (i.dataset.defaultChecked) i.checked = true;
 			});
+			// A copy of an array drawn on the site layout is a typed array
+			if (clone.classList.contains('is-drawn')) {
+				clone.classList.remove('is-drawn');
+				clone.querySelectorAll('[data-drawn-only]').forEach((n) => n.remove());
+				clone.querySelectorAll('[readonly]').forEach((n) => {
+					n.readOnly = false;
+					n.removeAttribute('title');
+					if (/\[(azimuth|panels)\]$/.test(n.name)) {
+						n.type = 'number';
+						n.min = '0';
+						if (/azimuth/.test(n.name)) n.max = '359';
+					}
+				});
+				clone.querySelectorAll('select[data-name]').forEach((n) => { n.name = n.dataset.name; n.disabled = false; delete n.dataset.name; });
+				clone.querySelectorAll('[data-typed-only]').forEach((n) => { n.hidden = false; });
+			}
 			clone.classList.remove('has-flag', 'has-changed', 'is-steep');
 			clone.querySelectorAll('details').forEach((d) => { d.open = false; });
 			clone.querySelectorAll('.pl-ovr-pop').forEach((p) => { p.hidden = true; });

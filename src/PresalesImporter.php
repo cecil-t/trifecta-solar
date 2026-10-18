@@ -132,9 +132,11 @@ final class PresalesImporter
 		$cols = ['category', 'name', 'notes', 'print_notes', 'price', 'shipping', 'setup_cost', 'min_total', 'qty_rule', 'tax_class',
 			'watts', 'ac_kw', 'kwh', 'kw', 'warranty_text', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'is_solarinsure',
 			'price_updated_at', 'price_source', 'sort_order', 'segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'trench_part', 'part_size', 'material',
-			'cec_name', 'cec_units', 'spec', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
+			'cec_name', 'cec_units', 'spec', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years',
+			'length_mm', 'width_mm'];
 		$fillable = ['segment', 'mounts', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe',
-			'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
+			'cec_name', 'cec_units', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years',
+			'length_mm', 'width_mm'];
 		foreach ($items as $it) {
 			if (!isset(Presales::CATEGORIES[$it['category'] ?? '']) || trim((string) ($it['name'] ?? '')) === '') {
 				$this->log[] = '  catalog: skipped an item with an unknown category or no name';
@@ -151,6 +153,11 @@ final class PresalesImporter
 				}
 				if (isset($fill['segment']) && !in_array($fill['segment'], ['residential', 'commercial'], true)) {
 					unset($fill['segment']);
+				}
+				foreach (['length_mm', 'width_mm'] as $c) {
+					if (isset($fill[$c]) && ($have['category'] !== 'modules' || !is_numeric($fill[$c]) || (float) $fill[$c] < 300 || (float) $fill[$c] > 4000)) {
+						unset($fill[$c]);
+					}
 				}
 				if (isset($fill['cec_name']) && !$this->cecOk((string) $it['category'], (string) $fill['cec_name'], (string) $have['name'])) {
 					unset($fill['cec_name'], $fill['cec_units']);

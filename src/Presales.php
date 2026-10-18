@@ -132,6 +132,8 @@ final class Presales
 		'guarantee_pct'          => ['85', 'Production guarantee: percent of PVWatts'],
 		'guarantee_years'        => ['10', 'Production guarantee: years'],
 		'guarantee_rate'         => ['0.15', 'Production guarantee: payout ($ per kWh short)'],
+		'layout_gap_in'          => ['0.5', 'Site layout: gap between panels in a row (inches)'],
+		'layout_row_gap_in'      => ['0.5', 'Site layout: gap between rows (inches)'],
 	];
 
 	private static ?array $settings = null;

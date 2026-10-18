@@ -191,6 +191,32 @@ final class CecLibrary
 		return null;
 	}
 
+	/**
+	 * A module's size from the library (Length and Width, meters), or null when the library has none
+	 * (most entries leave them blank).
+	 *
+	 * @return array{0:float, 1:float}|null  length, width in millimeters
+	 */
+	public static function moduleSize(string $name): ?array
+	{
+		$path = self::path('modules');
+		if ($name === '' || !is_file($path) || !($f = fopen($path, 'r'))) {
+			return null;
+		}
+		$col = array_flip(fgetcsv($f, null, ',', '"', '') ?: []);
+		$out = null;
+		while (($row = fgetcsv($f, null, ',', '"', '')) !== false) {
+			if (($row[0] ?? '') === $name) {
+				$l = (float) ($row[$col['Length'] ?? -1] ?? 0);
+				$w = (float) ($row[$col['Width'] ?? -1] ?? 0);
+				$out = $l > 0.3 && $w > 0.3 ? [max($l, $w) * 1000, min($l, $w) * 1000] : null;
+				break;
+			}
+		}
+		fclose($f);
+		return $out;
+	}
+
 	/** Short description for a picker line: module watts and bifacial, or inverter kW AC and voltage. */
 	public static function describe(string $kind, array $r): string
 	{

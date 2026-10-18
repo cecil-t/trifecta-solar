@@ -113,7 +113,14 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<div class="tile tile-green"><span class="t-num"><?= e($m0($netCost)) ?><?= $star ?></span><span class="t-label">Net cost</span><span class="t-sub"><?= $hasInc ? 'after incentives' : 'no incentives apply' ?></span></div>
 		<div class="tile"><span class="t-num"><?= $r && $r['payback_years'] !== null ? e(number_format($r['payback_years'], 1)) . ' <small>years</small>' : '-' ?></span><span class="t-label">Payback</span><span class="t-sub">when savings repay the net cost</span></div>
 	</div>
-	<div class="aerial-placeholder"><span>Site layout drawing</span><small>The aerial view with the panel layout goes here.</small></div>
+	<?php if (!empty($drawing)): ?>
+		<figure class="aerial">
+			<div class="aerial-frame"><?= $drawing['svg'] /* built by App\Layout::drawing from numbers and base64 tiles only */ ?></div>
+			<figcaption><?= e($drawing['attribution'] ?? '') ?><?= $drawing['trackers'] ? '<span class="sweep-key">Dashed red circle: the space each tracker sweeps as it turns.</span>' : '' ?></figcaption>
+		</figure>
+	<?php else: ?>
+		<div class="aerial-placeholder"><span>Site layout drawing</span><small>The aerial view with the panel layout goes here.</small></div>
+	<?php endif; ?>
 	<div class="two-col">
 		<div>
 			<h2>Equipment</h2>

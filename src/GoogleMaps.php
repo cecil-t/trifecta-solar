@@ -6,8 +6,9 @@ namespace App;
 /**
  * Google Maps Platform, called only from the server (the key never reaches a browser, so the
  * Content Security Policy stays as is): Geocoding (address to point and parts), Solar API Building
- * Insights (roof segments with pitch, azimuth, area and sun) and Maps Static (an aerial image, passed
- * through to the browser, never stored).
+ * Insights (roof segments with pitch, azimuth, area and sun), Maps Static (an aerial image, passed
+ * through to the browser, never stored) and Map Tiles (satellite tiles for the site layout, passed
+ * through the same way; only the tile session token is kept, in a file next to the database).
  *
  * Needs GOOGLE_MAPS_API_KEY in .env: a key restricted to the server's IP and to those APIs.
  */
@@ -16,6 +17,9 @@ final class GoogleMaps
 	private const GEOCODE = 'https://maps.googleapis.com/maps/api/geocode/json';
 	private const BUILDING = 'https://solar.googleapis.com/v1/buildingInsights:findClosest';
 	private const STATIC_MAP = 'https://maps.googleapis.com/maps/api/staticmap';
+	private const TILE_SESSION = 'https://tile.googleapis.com/v1/createSession';
+	private const TILES = 'https://tile.googleapis.com/v1/2dtiles/';
+	private const VIEWPORT = 'https://tile.googleapis.com/tile/v1/viewport';
 	private const TIMEOUT = 30;
 
 	public static function configured(): bool
@@ -92,6 +96,10 @@ final class GoogleMaps
 				'area_m2' => (float) ($s['stats']['areaMeters2'] ?? 0),
 				'sun_median' => $q ? (float) $q[intdiv(count($q), 2)] : null,
 				'height_m' => isset($s['planeHeightAtCenterMeters']) ? (float) $s['planeHeightAtCenterMeters'] : null,
+				'center' => isset($s['center']['latitude']) ? [(float) $s['center']['latitude'], (float) $s['center']['longitude']] : null,
+				'box' => isset($s['boundingBox']['sw']['latitude'], $s['boundingBox']['ne']['latitude'])
+					? [(float) $s['boundingBox']['sw']['latitude'], (float) $s['boundingBox']['sw']['longitude'], (float) $s['boundingBox']['ne']['latitude'], (float) $s['boundingBox']['ne']['longitude']]
+					: null,
 			];
 		}
 		usort($segments, static fn ($a, $b) => $b['area_m2'] <=> $a['area_m2']);
@@ -128,6 +136,79 @@ final class GoogleMaps
 		return ['ok' => true, 'type' => $type, 'bytes' => $body];
 	}
 
+	/**
+	 * One satellite map tile (Web Mercator, 256 px) for the site layout, as bytes for passing to the
+	 * browser, with Google's cache header. Starts a tile session when there is none or it expired.
+	 *
+	 * @return array{ok:bool, status:int, error?:string, type?:string, bytes?:string, cache?:string}
+	 */
+	public static function tile(int $z, int $x, int $y): array
+	{
+		if (!self::configured()) {
+			return ['ok' => false, 'status' => 503, 'error' => 'Add GOOGLE_MAPS_API_KEY to the server .env file.'];
+		}
+		for ($try = 0; $try < 2; $try++) {
+			$session = self::tileSession($try > 0);
+			if ($session === null) {
+				return ['ok' => false, 'status' => 502, 'error' => 'Google would not start a Map Tiles session. Is the Map Tiles API enabled for the key?'];
+			}
+			[$status, $type, $body, $headers] = self::fetch(self::TILES . $z . '/' . $x . '/' . $y . '?' . http_build_query(['session' => $session, 'key' => Config::get('GOOGLE_MAPS_API_KEY')]));
+			if ($status === 200 && str_starts_with($type, 'image/') && $body !== '') {
+				return ['ok' => true, 'status' => 200, 'type' => $type, 'bytes' => $body, 'cache' => (string) ($headers['cache-control'] ?? '')];
+			}
+			if (!in_array($status, [400, 401, 403], true)) {
+				break;  // 404: no imagery at this zoom here
+			}
+		}
+		return ['ok' => false, 'status' => $status === 404 ? 404 : 502, 'error' => 'Map Tiles said: HTTP ' . $status];
+	}
+
+	/**
+	 * Attribution and the deepest imagery zoom for an area (Map Tiles viewport information).
+	 *
+	 * @return array{ok:bool, error?:string, copyright?:string, max_zoom?:int}
+	 */
+	public static function tileViewport(int $zoom, float $north, float $south, float $east, float $west): array
+	{
+		$session = self::configured() ? self::tileSession() : null;
+		if ($session === null) {
+			return ['ok' => false, 'error' => self::configured() ? 'No Map Tiles session.' : 'Add GOOGLE_MAPS_API_KEY to the server .env file.'];
+		}
+		$r = self::get(self::VIEWPORT, ['session' => $session, 'zoom' => $zoom, 'north' => sprintf('%.6F', $north), 'south' => sprintf('%.6F', $south),
+			'east' => sprintf('%.6F', $east), 'west' => sprintf('%.6F', $west)]);
+		if (!$r['ok']) {
+			return $r;
+		}
+		$max = null;
+		$lat = ($north + $south) / 2;
+		$lon = ($east + $west) / 2;
+		foreach ((array) ($r['json']['maxZoomRects'] ?? []) as $rect) {
+			if ($lat <= (float) ($rect['north'] ?? 0) && $lat >= (float) ($rect['south'] ?? 0) && $lon <= (float) ($rect['east'] ?? 0) && $lon >= (float) ($rect['west'] ?? 0)) {
+				$max = max($max ?? 0, (int) ($rect['maxZoom'] ?? 0));
+			}
+		}
+		return ['ok' => true, 'copyright' => (string) ($r['json']['copyright'] ?? ''), 'max_zoom' => $max];
+	}
+
+	/** The Map Tiles session token (satellite), kept until shortly before it expires. */
+	private static function tileSession(bool $fresh = false): ?string
+	{
+		$file = dirname(Db::path()) . '/google-tiles-session.json';
+		$have = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+		if (!$fresh && is_array($have) && ($have['expiry'] ?? 0) > time() + 3600 && ($have['session'] ?? '') !== '') {
+			return (string) $have['session'];
+		}
+		[$status, , $body] = self::fetch(self::TILE_SESSION . '?' . http_build_query(['key' => Config::get('GOOGLE_MAPS_API_KEY')]), 'POST',
+			(string) json_encode(['mapType' => 'satellite', 'language' => 'en-US', 'region' => 'US']));
+		$j = json_decode($body, true);
+		if ($status !== 200 || !is_array($j) || empty($j['session'])) {
+			return null;
+		}
+		@file_put_contents($file . '.tmp', (string) json_encode(['session' => $j['session'], 'expiry' => (int) ($j['expiry'] ?? time() + 86400)]))
+			&& @rename($file . '.tmp', $file);
+		return (string) $j['session'];
+	}
+
 	/** GET a JSON API; ok and json, or ok false and a readable error. The key is never shown. */
 	private static function get(string $endpoint, array $query): array
 	{
@@ -154,26 +235,28 @@ final class GoogleMaps
 		return $done(['ok' => true, 'json' => $j]);
 	}
 
-	/** @return array{0:int, 1:string, 2:string} status, content type, body */
-	private static function fetch(string $url): array
+	/** @return array{0:int, 1:string, 2:string, 3:array<string,string>} status, content type, body, headers (lowercase names) */
+	private static function fetch(string $url, string $method = 'GET', ?string $json = null): array
 	{
 		$ctx = stream_context_create(['http' => [
-			'method' => 'GET',
+			'method' => $method,
 			'timeout' => self::TIMEOUT,
 			'ignore_errors' => true,
-			'header' => "User-Agent: TrifectaTracker/1.0\r\n",
-		]]);
+			'header' => "User-Agent: TrifectaTracker/1.0\r\n" . ($json !== null ? "Content-Type: application/json\r\n" : ''),
+		] + ($json !== null ? ['content' => $json] : [])]);
 		$body = @file_get_contents($url, false, $ctx);
 		$status = 0;
-		$type = '';
+		$headers = [];
 		foreach ($http_response_header ?? [] as $h) {
 			if (preg_match('#^HTTP/\S+\s+(\d{3})#', $h, $m)) {
 				$status = (int) $m[1];
-			} elseif (stripos($h, 'Content-Type:') === 0) {
-				$type = strtolower(trim(substr($h, 13)));
+				$headers = [];
+			} elseif (str_contains($h, ':')) {
+				[$k, $v] = explode(':', $h, 2);
+				$headers[strtolower(trim($k))] = trim($v);
 			}
 		}
-		return [$status, $type, $body === false ? '' : $body];
+		return [$status, strtolower($headers['content-type'] ?? ''), $body === false ? '' : $body, $headers];
 	}
 
 	private static function mask(string $msg): string

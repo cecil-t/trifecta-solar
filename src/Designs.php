@@ -12,7 +12,8 @@ final class Designs
 	/** Fields copied from a catalog item into a line (the line's snapshot). */
 	public const SNAPSHOT = ['name', 'qty_rule', 'price', 'shipping', 'setup_cost', 'min_total', 'tax_class', 'watts', 'ac_kw',
 		'kwh', 'kw', 'ext_warranty_years', 'ext_warranty_cost', 'siw_cost', 'warranty_text', 'domestic_content_pct', 'feoc_ok', 'needs_mlpe', 'pricing', 'pays_sales',
-		'cec_name', 'cec_units', 'spec', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years'];
+		'cec_name', 'cec_units', 'spec', 'degradation_first_pct', 'degradation_annual_pct', 'product_warranty_years', 'performance_warranty_years',
+		'length_mm', 'width_mm'];
 	/** The fields that make a line's price differ from the catalog today. */
 	private const PRICE_FIELDS = ['price', 'shipping', 'setup_cost', 'min_total', 'ext_warranty_cost', 'siw_cost', 'tax_class', 'pricing', 'pays_sales'];
 
@@ -337,7 +338,33 @@ final class Designs
 		}
 
 		$arrays = [];
+		// Arrays drawn on the site layout keep what the drawing says; only material and shading come from the form
+		$drawn = [];
+		foreach (isset($d['id']) ? Db::all('SELECT * FROM presales_design_arrays WHERE design_id = ? AND layout_key IS NOT NULL ORDER BY sort_order, id', [(int) $d['id']]) : [] as $r) {
+			$drawn[$r['layout_key']] = $r;
+		}
+		$drawnRow = static function (array $r, array $a = []) use (&$arrays, $strict, $num): array {
+			$shade = $num($a['shading_pct'] ?? '', 'Shading');
+			if ($shade !== null && ($shade < 0 || $shade > 90)) {
+				if ($strict) {
+					throw new \InvalidArgumentException('Shading is a percent loss, 0 to 90.');
+				}
+				$shade = null;
+			}
+			$note = trim((string) ($a['shading_note'] ?? ''));
+			return ['name' => $r['name'], 'mount' => $r['mount'],
+				'material' => $r['mount'] === 'roof' && array_key_exists((string) ($a['material'] ?? ''), Projects::ROOF_MATERIALS) ? $a['material'] : ($a ? null : $r['material']),
+				'azimuth' => $r['azimuth'], 'tilt' => $r['tilt'], 'panels' => $r['panels'],
+				'shading_pct' => $a ? $shade : $r['shading_pct'], 'shading_note' => $a ? ($note !== '' ? mb_substr($note, 0, 200) : null) : $r['shading_note'],
+				'layout_key' => $r['layout_key'], 'sort_order' => count($arrays) + 1];
+		};
 		foreach ((array) ($post['arrays'] ?? []) as $i => $a) {
+			$lk = (string) ($a['layout_key'] ?? '');
+			if ($lk !== '' && isset($drawn[$lk])) {
+				$arrays[] = $drawnRow($drawn[$lk], $a);
+				unset($drawn[$lk]);
+				continue;
+			}
 			$name = trim((string) ($a['name'] ?? ''));
 			$panels = $num($a['panels'] ?? '', 'Panels');
 			$tiltRaw = trim((string) ($a['tilt'] ?? ''));
@@ -371,6 +398,9 @@ final class Designs
 				'panels' => $panels === null ? null : (int) $panels,
 				'shading_pct' => $shade, 'shading_note' => $shadeNote !== '' ? mb_substr($shadeNote, 0, 200) : null,
 				'sort_order' => count($arrays) + 1];
+		}
+		foreach ($drawn as $r) {   // drawn arrays not on the form stay as they are
+			$arrays[] = $drawnRow($r);
 		}
 
 		// Trench builder: segments (keys stay as the page made them) and the circuits in them

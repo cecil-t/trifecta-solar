@@ -136,6 +136,7 @@ $folded = [];
 		<?php endif; ?>
 	</div>
 	<div class="head-actions">
+		<a href="<?= $base ?>/layout" class="btn btn-secondary" title="Draw the panels on the satellite view">Site layout</a>
 		<a href="<?= $base ?>/proposal" class="btn btn-primary" title="The customer proposal (saved values)">Proposal</a>
 		<a href="<?= $base ?>/summary" class="btn btn-secondary" title="Everything on one sheet, to read or print (saved values)">Summary</a>
 		<form method="post" action="<?= $base ?>/duplicate">
@@ -414,13 +415,22 @@ $folded = [];
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-arrays', 'Arrays', false) ?>Arrays</h2>
 				<span class="small" id="arrays-count"><?= $arrays ? (int) $calc['arrays_panels'] . ' panels on arrays, ' . (int) $calc['panels'] . ' modules' : '' ?></span>
+				<a href="<?= $base ?>/layout" class="btn btn-small btn-secondary band-head-btn"><?= $d['layout_json'] ? 'Edit site layout' : 'Draw on the map' ?></a>
 			</div>
+			<?php $nDrawn = count(array_filter($arrays, static fn ($a) => !empty($a['layout_key']))); ?>
+			<?php if ($nDrawn && $nDrawn < count($arrays)): ?>
+				<p class="hint text-red mb-xs">Both drawn and typed arrays count toward the panels. Remove any typed array the drawing replaces.</p>
+			<?php endif; ?>
 			<div class="eq eq-arrays" data-rows>
 				<div class="eq-head"><span>Array / face</span><span>Mount</span><span>Roof material</span><span>Azimuth</span><span>Tilt</span><span>Panels</span><span>Shade %</span><span>Orientation</span><span></span></div>
-				<?php foreach ($arrays ?: [['mount' => $d['install_type'] === 'ground' ? 'ground' : ($d['install_type'] === 'tracker' ? 'tracker' : 'roof')]] as $i => $a): $tilt = isset($a['tilt']) && $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = isset($a['azimuth']) && $a['azimuth'] !== null && $a['azimuth'] !== '' ? (int) $a['azimuth'] : null; ?>
-					<div class="eq-row array-row<?= $tilt !== null && $tilt > $steep ? ' is-steep' : '' ?>" data-mount="<?= e($a['mount'] ?? 'roof') ?>">
-						<input type="text" name="arrays[<?= $i ?>][name]" value="<?= e($a['name'] ?? '') ?>" placeholder="e.g. South roof, Barn" aria-label="Array or face">
-						<select name="arrays[<?= $i ?>][mount]" aria-label="Mount" class="array-mount">
+				<?php foreach ($arrays ?: [['mount' => $d['install_type'] === 'ground' ? 'ground' : ($d['install_type'] === 'tracker' ? 'tracker' : 'roof')]] as $i => $a): $tilt = isset($a['tilt']) && $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = isset($a['azimuth']) && $a['azimuth'] !== null && $a['azimuth'] !== '' ? (int) $a['azimuth'] : null; $drawn = !empty($a['layout_key']); $ro = $drawn ? 'readonly title="From the site layout; change it there"' : ''; ?>
+					<div class="eq-row array-row<?= $tilt !== null && $tilt > $steep ? ' is-steep' : '' ?><?= $drawn ? ' is-drawn' : '' ?>" data-mount="<?= e($a['mount'] ?? 'roof') ?>">
+						<?php if ($drawn): ?>
+							<input type="hidden" name="arrays[<?= $i ?>][layout_key]" value="<?= e($a['layout_key']) ?>" data-drawn-only>
+							<input type="hidden" name="arrays[<?= $i ?>][mount]" value="<?= e($a['mount']) ?>" data-drawn-only>
+						<?php endif; ?>
+						<input type="text" name="arrays[<?= $i ?>][name]" value="<?= e($a['name'] ?? '') ?>" placeholder="e.g. South roof, Barn" aria-label="Array or face" <?= $ro ?>>
+						<select <?= $drawn ? 'data-name="arrays[' . $i . '][mount]" disabled' : 'name="arrays[' . $i . '][mount]"' ?> aria-label="Mount" class="array-mount">
 							<?php foreach (Presales::MOUNTS as $k => $label): ?>
 								<option value="<?= $k ?>" <?= $sel($a['mount'] ?? 'roof', $k) ?>><?= e($label) ?></option>
 							<?php endforeach; ?>
@@ -431,12 +441,15 @@ $folded = [];
 								<option value="<?= $k ?>" <?= $sel($a['material'] ?? '', $k) ?>><?= e($label) ?></option>
 							<?php endforeach; ?>
 						</select>
-						<input type="number" name="arrays[<?= $i ?>][azimuth]" value="<?= e($a['azimuth'] ?? '') ?>" min="0" max="359" placeholder="180" aria-label="Azimuth in degrees" class="array-fixed-only array-az">
-						<input type="text" name="arrays[<?= $i ?>][tilt]" value="<?= e($tilt === null ? '' : $deg($tilt)) ?>" placeholder="6/12" aria-label="Tilt in degrees or pitch" class="array-fixed-only array-tilt">
-						<input type="number" name="arrays[<?= $i ?>][panels]" value="<?= e($a['panels'] ?? '') ?>" min="0" placeholder="0" aria-label="Panels on this array">
+						<input type="<?= $drawn ? 'text' : 'number' ?>" name="arrays[<?= $i ?>][azimuth]" value="<?= e($a['azimuth'] ?? '') ?>" <?= $drawn ? '' : 'min="0" max="359"' ?> placeholder="180" aria-label="Azimuth in degrees" class="array-fixed-only array-az" <?= $ro ?>>
+						<input type="text" name="arrays[<?= $i ?>][tilt]" value="<?= e($tilt === null ? '' : $deg($tilt)) ?>" placeholder="6/12" aria-label="Tilt in degrees or pitch" class="array-fixed-only array-tilt" <?= $ro ?>>
+						<input type="<?= $drawn ? 'text' : 'number' ?>" name="arrays[<?= $i ?>][panels]" value="<?= e($a['panels'] ?? '') ?>" <?= $drawn ? '' : 'min="0"' ?> placeholder="0" aria-label="Panels on this array" <?= $ro ?>>
 						<input type="text" name="arrays[<?= $i ?>][shading_pct]" value="<?= e(isset($a['shading_pct']) && $a['shading_pct'] !== null && $a['shading_pct'] !== '' ? rtrim(rtrim(number_format((float) $a['shading_pct'], 1, '.', ''), '0'), '.') : '') ?>" inputmode="decimal" placeholder="0" aria-label="Shading loss in percent" class="array-shade">
 						<span class="array-pitch"><?= $orient($az, $tilt, (string) ($a['mount'] ?? 'roof')) ?></span>
-						<button type="button" class="btn btn-ghost btn-small row-del" title="Remove">&times;</button>
+						<?php if ($drawn): ?>
+							<a href="<?= $base ?>/layout" class="chip chip-blue array-drawn" title="Drawn on the site layout: change or remove it there" data-drawn-only>Drawn</a>
+						<?php endif; ?>
+						<button type="button" class="btn btn-ghost btn-small row-del" title="Remove" <?= $drawn ? 'hidden data-typed-only' : '' ?>>&times;</button>
 						<input type="text" name="arrays[<?= $i ?>][shading_note]" value="<?= e($a['shading_note'] ?? '') ?>" maxlength="200" placeholder="Shading note: how it was judged (trees, chimney, Solar API, site visit)" aria-label="Shading note" class="array-shade-note">
 					</div>
 				<?php endforeach; ?>

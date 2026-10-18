@@ -79,7 +79,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : (str_sta
 	</div>
 </header>
 
-<main class="page">
+<main class="page<?= !empty($wide) ? ' page-wide' : '' ?>">
 	<?= App\View::partial('partials/flashes') ?>
 	<?= $content ?>
 </main>

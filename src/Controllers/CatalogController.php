@@ -29,7 +29,7 @@ final class CatalogController
 		'pricing' => 'Pricing', 'pays_sales' => 'Pays the salesperson',
 		'cec_name' => 'SAM (CEC) model', 'spec' => 'Spec sheet values', 'cec_units' => 'CEC units per inverter', 'degradation_first_pct' => 'First-year degradation %',
 		'degradation_annual_pct' => 'Annual degradation %', 'product_warranty_years' => 'Product warranty years',
-		'performance_warranty_years' => 'Performance warranty years',
+		'performance_warranty_years' => 'Performance warranty years', 'length_mm' => 'Length (mm)', 'width_mm' => 'Width (mm)',
 	];
 
 	public function index(): void
@@ -297,6 +297,17 @@ final class CatalogController
 
 		if ($data['domestic_content_pct'] !== null && $data['domestic_content_pct'] > 100) {
 			throw new \InvalidArgumentException('Domestic content is a percent, 0 to 100.');
+		}
+		// Module size for the site layout; a spec-sheet item has it in its spec values already
+		$spec = json_decode((string) $data['spec'], true) ?: [];
+		foreach (['length_mm' => 'Length', 'width_mm' => 'Width'] as $k => $label) {
+			$data[$k] = $cat === 'modules' ? ($num($k, $label) ?? (isset($spec[$k]) ? (float) $spec[$k] : null)) : null;
+			if ($data[$k] !== null && ($data[$k] < 300 || $data[$k] > 4000)) {
+				throw new \InvalidArgumentException($label . ' is in millimeters, e.g. 1722 by 1134.');
+			}
+		}
+		if ($data['length_mm'] !== null && $data['width_mm'] !== null && $data['width_mm'] > $data['length_mm']) {
+			[$data['length_mm'], $data['width_mm']] = [$data['width_mm'], $data['length_mm']];
 		}
 		if ($cat === 'modules' && !$data['watts']) {
 			throw new \InvalidArgumentException('Modules need their watts (the build sheet sizes the system from them).');

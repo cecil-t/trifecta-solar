@@ -183,6 +183,12 @@ $rules = $rules ?: [[]];
 			<label>Years <input type="text" name="settings[guarantee_years]" value="<?= e($n($s('guarantee_years'), 0)) ?>" inputmode="numeric" <?= $dis ?>></label>
 			<label>Payout ($ per kWh short) <input type="text" name="settings[guarantee_rate]" value="<?= e($n($s('guarantee_rate'), 4)) ?>" inputmode="decimal" <?= $dis ?>></label>
 		</div>
+		<h3>Site layout</h3>
+		<p class="hint">Spacing the layout tool leaves between panels, measured on the roof (true length, not as seen from above). New layouts start with these; a saved layout keeps its own, which the rep can change in the layout.</p>
+		<div class="grid-form">
+			<label>Gap between panels in a row (inches) <input type="text" name="settings[layout_gap_in]" value="<?= e($n($s('layout_gap_in'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label>Gap between rows (inches) <input type="text" name="settings[layout_row_gap_in]" value="<?= e($n($s('layout_row_gap_in'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+		</div>
 	</section>
 
 	<section class="card band">

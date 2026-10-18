@@ -175,6 +175,30 @@ final class Proposal
 			$warnings[] = 'This proposal\'s valid-until date has passed.';
 		}
 
+		// The site layout drawing: satellite tiles fetched now (never stored), panels on top
+		$layout = Layout::decode($d['layout_json'] ?? null);
+		$drawing = null;
+		if (!$layout || !Layout::panels($layout)) {
+			$warnings[] = 'No site layout drawn yet, so the System Summary page shows an empty box.';
+		} else {
+			$drawing = Layout::drawing($layout, 7.3 / 3.1, static function (int $z, int $x, int $y): ?array {
+				$t = GoogleMaps::tile($z, $x, $y);
+				return $t['ok'] ? [$t['bytes'], $t['type']] : null;
+			});
+			if ($drawing && GoogleMaps::configured()) {
+				[$bx, $by, $bw, $bh] = $drawing['box'];
+				[$n, $w] = Layout::latLon($layout['origin'], $bx, $by);
+				[$s, $e] = Layout::latLon($layout['origin'], $bx + $bw, $by + $bh);
+				$vp = GoogleMaps::tileViewport($drawing['zoom'], $n, $s, $e, $w);
+				$drawing['attribution'] = 'Imagery: Google' . (!empty($vp['copyright']) ? ' · ' . $vp['copyright'] : '');
+			}
+			$drawing['trackers'] = (bool) Layout::sweeps($layout);
+			$mods = (int) round((float) $calc['panels']);
+			if (Layout::panels($layout) !== $mods) {
+				$warnings[] = 'The site layout has ' . Layout::panels($layout) . ' panels but the build sheet has ' . $mods . ' modules.';
+			}
+		}
+
 		$loan = null;
 		if ($d['finance_rate'] !== null && $d['finance_years']) {
 			$down = (float) ($d['finance_down'] ?? 0);
@@ -201,7 +225,7 @@ final class Proposal
 			'sales' => $sales, 'residential' => $residential,
 			'quote' => $quote, 'date' => $date, 'until' => $until,
 			'equipment' => $equipment, 'warranties' => $warranties, 'guarantee' => $guarantee,
-			'terms' => $terms, 'loan' => $loan, 'steps' => $steps,
+			'terms' => $terms, 'loan' => $loan, 'steps' => $steps, 'drawing' => $drawing,
 			'company' => [
 				'name' => 'Trifecta Solar',
 				'legal' => $vars['company'],

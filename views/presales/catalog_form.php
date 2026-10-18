@@ -167,6 +167,13 @@ $dis = $canEdit ? '' : 'disabled';
 		<h2>Specs and warranty</h2>
 		<div class="grid-form">
 			<label>Module watts <input type="text" name="watts" value="<?= e($n($v('watts'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
+			<label class="mod-only">Length (mm)
+				<input type="text" name="length_mm" value="<?= e($n($v('length_mm'), 0)) ?>" inputmode="decimal" placeholder="e.g. 1722" <?= $dis ?>>
+				<small class="hint">The long side, from the spec sheet. The site layout draws panels at this size.</small>
+			</label>
+			<label class="mod-only">Width (mm)
+				<input type="text" name="width_mm" value="<?= e($n($v('width_mm'), 0)) ?>" inputmode="decimal" placeholder="e.g. 1134" <?= $dis ?>>
+			</label>
 			<label>Inverter / micro kW AC <input type="text" name="ac_kw" value="<?= e($n($v('ac_kw'), 3)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Battery kWh <input type="text" name="kwh" value="<?= e($n($v('kwh'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<label>Battery kW <input type="text" name="kw" value="<?= e($n($v('kw'), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>

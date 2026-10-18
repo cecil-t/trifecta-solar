@@ -24,6 +24,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\DesignController;
 use App\Controllers\DisplayKeyController;
 use App\Controllers\HealthController;
+use App\Controllers\LayoutController;
 use App\Controllers\MonitorController;
 use App\Controllers\MonitorPageController;
 use App\Controllers\MunicipalityController;
@@ -112,6 +113,8 @@ $r->post('/presales/catalog/{id}/confirm', [CatalogController::class, 'confirm']
 $r->get('/presales/rates', [PresalesRatesController::class, 'show']);
 $r->get('/presales/utility-rates', [PresalesController::class, 'utilityRates']);
 $r->post('/presales/rates', [PresalesRatesController::class, 'save']);
+$r->get('/presales/layout-tiles/{z}/{x}/{y}', [LayoutController::class, 'tile']);
+$r->get('/presales/layout-viewport', [LayoutController::class, 'viewport']);
 $r->get('/presales/terms', [ProposalController::class, 'terms']);
 $r->post('/presales/terms', [ProposalController::class, 'saveTerms']);
 $r->get('/presales/{id}', [PresalesController::class, 'show']);
@@ -130,6 +133,9 @@ $r->post('/presales/{id}/designs/{designId}/reprice', [DesignController::class, 
 $r->post('/presales/{id}/designs/{designId}/delete', [DesignController::class, 'delete']);
 $r->get('/presales/{id}/designs/{designId}/proposal', [ProposalController::class, 'show']);
 $r->get('/presales/{id}/designs/{designId}/proposal/pdf', [ProposalController::class, 'pdf']);
+$r->get('/presales/{id}/designs/{designId}/layout', [LayoutController::class, 'show']);
+$r->post('/presales/{id}/designs/{designId}/layout', [LayoutController::class, 'save']);
+$r->get('/presales/{id}/designs/{designId}/layout/roof', [LayoutController::class, 'roof']);
 
 // Projects
 $r->get('/projects', [ProjectController::class, 'index']);
