@@ -505,7 +505,8 @@ final class Designs
 			$own['dep'] = $dep;
 		}
 		$method = (string) ($post['savings']['dep_method'] ?? '');
-		if (isset(Savings::DEP_METHODS[$method])) {
+		// Kept only when it differs from the Rates page, so the build sheet follows the default otherwise
+		if (isset(Savings::DEP_METHODS[$method]) && $method !== Savings::depreciationMethod(['savings_inputs' => null])) {
 			$own['dep_method'] = $method;
 		}
 		$f['savings_inputs'] = $own ? json_encode($own) : null;

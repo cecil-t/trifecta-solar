@@ -1741,11 +1741,12 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 
 /* Build sheet: savings and proposal */
 .sav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: .6rem .9rem; }
-.sav-inc { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr); gap: .4rem .6rem; align-items: end; }
-.sav-inc .sav-inc-head { font-size: .75rem; font-weight: 600; color: var(--muted); }
+.sav-inc { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }
+.sav-inc .sav-inc-headrow, .sav-inc .sav-inc-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) 2rem; gap: .4rem .6rem; align-items: end; width: 100%; max-width: none; }
+.sav-inc .sav-inc-headrow span { font-size: .75rem; font-weight: 600; color: var(--muted); }
 @media (max-width: 760px) {
-	.sav-inc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-	.sav-inc .sav-inc-head { display: none; }
+	.sav-inc .sav-inc-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2rem; }
+	.sav-inc .sav-inc-headrow { display: none; }
 }
 .sav-table th, .sav-table td { padding: .35rem .45rem; font-size: .82rem; }
 .is-changed { background: #fff7dd; border-color: #e7b84a; }

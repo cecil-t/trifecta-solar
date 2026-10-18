@@ -95,7 +95,8 @@
 	// then scroll. Dragging the corner still sizes one by hand, and from then on it stays that size.
 	const growBoxes = document.querySelectorAll('textarea[data-autogrow]');
 	const fit = (t) => {
-		if (t.dataset.userSized) return;
+		// A hidden box (in a folded section) has no height to measure; it is fitted when it shows
+		if (t.dataset.userSized || t.offsetParent === null) return;
 		const cs = getComputedStyle(t);
 		const frame = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
 		const line = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
@@ -111,9 +112,14 @@
 	if (growBoxes.length) {
 		// A height that differs from the last fit when a press ends means it was dragged.
 		document.addEventListener('pointerup', () => growBoxes.forEach((t) => {
-			if (!t.dataset.userSized && t.dataset.autoHeight && Math.abs(t.offsetHeight - Number(t.dataset.autoHeight)) > 1) t.dataset.userSized = '1';
+			if (!t.dataset.userSized && t.offsetParent !== null && t.dataset.autoHeight && Math.abs(t.offsetHeight - Number(t.dataset.autoHeight)) > 1) t.dataset.userSized = '1';
 		}));
 		window.addEventListener('resize', () => growBoxes.forEach(fit)); // narrower boxes wrap to more lines
+		// Boxes that were hidden (folded sections, closed details) are fitted when they come into view
+		if ('IntersectionObserver' in window) {
+			const seen = new IntersectionObserver((entries) => entries.forEach((en) => { if (en.isIntersecting) fit(en.target); }));
+			growBoxes.forEach((t) => seen.observe(t));
+		}
 		// The comment Edit box is inside a closed <details>, so fit it once it opens.
 		document.addEventListener('toggle', (e) => {
 			if (e.target.open) e.target.querySelectorAll('textarea[data-autogrow]').forEach(fit);

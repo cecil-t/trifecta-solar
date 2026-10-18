@@ -22,9 +22,7 @@ $a = $sav['assumptions'];
 $own = json_decode((string) ($d['savings_inputs'] ?? ''), true) ?: [];
 $m0 = static fn (?float $v): string => $v === null ? '' : ($v < 0 ? '-$' : '$') . number_format(abs($v));
 $f = static fn ($v, int $dec = 4) => Presales::field($v === null || $v === '' ? null : (float) $v, $dec);
-$inc = Savings::incentiveRows($d);
-$inc[] = [];
-$inc[] = [];
+$inc = Savings::incentiveRows($d) ?: [[]];   // one blank row when there are none; "+ Incentive" adds more
 [$pDate, $pUntil] = Proposal::dates($d);
 $isAdmin = App\Auth::isAdmin();
 $model = Savings::model($d);
@@ -45,7 +43,7 @@ $model = Savings::model($d);
 			<div class="prod-tile"><span class="m-label">Energy from solar</span><span class="m-num"><?= e(number_format((float) $r['offset_pct'])) ?>%</span><span class="muted small"><?= e(Production::MODELS[$sav['model']]) ?></span></div>
 		</div>
 		<?php if ($r['dep']): ?>
-			<p class="hint mt-sm">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(strtolower(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, the price less half the tax credits, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
+			<p class="hint mt-sm">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(lcfirst(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, the price less half the tax credits, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
 		<?php endif; ?>
 		<div class="table-wrap mt-sm"><table class="table table-tight sav-table">
 			<thead><tr><th>Year one</th><?php foreach ($r['months'] as $mo): ?><th class="num"><?= e($mo['label']) ?></th><?php endforeach; ?><th class="num">Year</th></tr></thead>
@@ -66,6 +64,7 @@ $model = Savings::model($d);
 		<?php foreach (Savings::ASSUMPTIONS as $k => [, $label, $unit]): ?>
 			<label><?= e($label) ?> (<?= e($unit) ?>)
 				<input type="text" name="savings[<?= e($k) ?>]" value="<?= isset($own[$k]) ? e($f($own[$k], 2)) : '' ?>" placeholder="<?= e($f($a['default_' . $k], 2)) ?>" inputmode="decimal" class="<?= in_array($k, $a['changed'], true) ? 'is-changed' : '' ?>">
+				<?php if ($k === 'dep_state_rate'): ?><small class="hint">The default is the personal income tax rate, which owners of LLCs, S corporations and sole proprietorships pay. A C corporation pays the corporate rate instead; type it here.</small><?php endif; ?>
 			</label>
 		<?php endforeach; ?>
 		<label>Depreciation
@@ -75,19 +74,20 @@ $model = Savings::model($d);
 				<option value="off" <?= ($own['dep'] ?? '') === 'off' ? 'selected' : '' ?>>Don't count it</option>
 			</select>
 		</label>
+		<?php $depDefault = Savings::depreciationMethod(['savings_inputs' => null]); ?>
 		<label>Federal depreciation
 			<select name="savings[dep_method]">
-				<option value="">Rates page (<?= e(strtolower(Savings::DEP_METHODS[Savings::depreciationMethod(['savings_inputs' => null])])) ?>)</option>
-				<?php foreach (Savings::DEP_METHODS as $k => $label): ?><option value="<?= e($k) ?>" <?= ($own['dep_method'] ?? '') === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+				<?php foreach (Savings::DEP_METHODS as $k => $label): ?><option value="<?= e($k) ?>" <?= Savings::depreciationMethod($d) === $k ? 'selected' : '' ?>><?= e($label) ?><?= $k === $depDefault ? ' (Rates page)' : '' ?></option><?php endforeach; ?>
 			</select>
 		</label>
 	</div>
 
 	<h3 class="mt-sm">Incentives</h3>
 	<p class="hint">Utility rebates, grants (USDA REAP) and tax credits (commercial ITC, with any bonus). Each is listed on the Price and Payments page; the net cost, payback and savings figures include them. Residential jobs have no federal credit for systems placed in service after 2025.</p>
-	<div class="sav-inc">
-		<span class="sav-inc-head">Incentive</span><span class="sav-inc-head">Amount</span><span class="sav-inc-head">As</span><span class="sav-inc-head">When</span>
+	<div class="sav-inc" data-rows>
+		<div class="sav-inc-headrow"><span>Incentive</span><span>Amount</span><span>As</span><span>When</span><span></span></div>
 		<?php foreach ($inc as $i => $x): ?>
+			<div class="eq-row sav-inc-row">
 			<input type="text" name="incentives[<?= $i ?>][label]" value="<?= e((string) ($x['label'] ?? '')) ?>" placeholder="e.g. Federal ITC (30%)" aria-label="Incentive name" maxlength="80">
 			<input type="text" name="incentives[<?= $i ?>][value]" value="<?= isset($x['value']) ? e($f($x['value'], 2)) : '' ?>" inputmode="decimal" aria-label="Incentive amount">
 			<select name="incentives[<?= $i ?>][kind]" aria-label="Dollars or percent of the price">
@@ -98,7 +98,10 @@ $model = Savings::model($d);
 				<option value="upfront" <?= ($x['timing'] ?? '') !== 'year1' ? 'selected' : '' ?>>Up front (rebate, grant)</option>
 				<option value="year1" <?= ($x['timing'] ?? '') === 'year1' ? 'selected' : '' ?>>Year one (tax credit)</option>
 			</select>
+			<button type="button" class="btn btn-ghost btn-small row-del" title="Remove" aria-label="Remove this incentive">&times;</button>
+			</div>
 		<?php endforeach; ?>
+		<button type="button" class="btn btn-ghost btn-small row-add">+ Incentive</button>
 	</div>
 </section>
 
