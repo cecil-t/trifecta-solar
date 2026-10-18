@@ -187,7 +187,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<h1>Electric Bill Savings</h1>
 	<?php if ($r): $y1 = $r['first_year']; ?>
 		<div class="tiles tiles-3">
-			<div class="tile"><span class="t-num"><?= e($m0($y1['savings'])) ?></span><span class="t-label">First-year savings</span><span class="t-sub">bill savings <?= e($m0($y1['bill_savings'])) ?> + SRECs <?= e($m0($y1['srec'])) ?></span></div>
+			<div class="tile tile-green"><span class="t-num"><?= e($m0($y1['savings'])) ?></span><span class="t-label">First-year savings</span><span class="t-sub">bill savings <?= e($m0($y1['bill_savings'])) ?> + SRECs <?= e($m0($y1['srec'])) ?></span></div>
 			<div class="tile"><span class="t-num"><?= e($m0($r['lifetime_savings'])) ?></span><span class="t-label">Savings over <?= (int) $a['years'] ?> years</span><span class="t-sub">bills and SRECs, before the system's cost</span></div>
 			<div class="tile tile-quiet"><span class="t-num"><?= e($m0($y1['bill_without'])) ?> &rarr; <?= $y1['bill_with'] - $y1['payout'] < 0 ? e($m0($y1['payout'] - $y1['bill_with'])) . ' <small>credit</small>' : e($m0($y1['bill_with'] - $y1['payout'])) ?></span><span class="t-label">Yearly electric bill</span><span class="t-sub">without solar &rarr; with solar, year one</span></div>
 		</div>
