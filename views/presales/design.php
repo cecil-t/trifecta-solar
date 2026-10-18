@@ -103,6 +103,17 @@ $foldTrench = !$hasTrench;
 $foldExtras = !array_filter($extras, static fn ($x) => trim((string) ($x['name'] ?? '')) !== '' || (float) ($x['price'] ?? 0) != 0);
 $foldContingency = !$calc['contingency_overridden'] && $d['contingency_override'] === null && !array_filter(array_map('intval', json_decode((string) ($d['contingency_manual'] ?? ''), true) ?: []));
 $always = ['modules', 'inverters', 'mlpe', 'racking', 'bos', 'permits', 'interconnection'];
+// One-line summaries for the folded section headers
+$eqCount = [];
+foreach ($calc['lines'] as $cl) {
+	if (in_array($cl['category'], ['modules', 'inverters', 'batteries'], true) && ($cl['qty_resolved'] ?? 0) > 0) {
+		$eqCount[$cl['category']] = ($eqCount[$cl['category']] ?? 0) + (int) round((float) $cl['qty_resolved']);
+	}
+}
+$eqWord = ['modules' => ['module', 'modules'], 'inverters' => ['inverter', 'inverters'], 'batteries' => ['battery', 'batteries']];
+$eqSummary = implode(', ', array_map(static fn ($k, $n) => $n . ' ' . $eqWord[$k][$n === 1 ? 0 : 1], array_keys($eqCount), $eqCount));
+$firstPay = $calc['payments'][0]['amount'] ?? null;
+$paySummary = implode(' · ', array_filter([$firstPay !== null ? 'Deposit ' . $m((float) $firstPay) : null, $d['payment_template_name'] ?: null, count($calc['payments']) . ' payments']));
 $folded = [];
 ?>
 <div class="project-head">
@@ -115,7 +126,7 @@ $folded = [];
 			<?php if ($o['customer_type'] && $o['customer_type'] !== 'residential' && $o['customer_type'] !== 'commercial'): ?><span class="chip"><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?></span><?php endif; ?>
 			<?php if ($o['is_agricultural']): ?><span class="chip">Agricultural</span><?php endif; ?>
 		</div>
-		<p class="muted small design-dates">Created <?= e(fmt_dt($d['created_at'], 'm/d/Y g:i A')) ?><?= !empty($who['created_name']) ? ' by ' . e($who['created_name']) : '' ?> &middot; Updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= !empty($who['updated_name']) ? ' by ' . e($who['updated_name']) : '' ?></p>
+		<p class="muted small design-dates">Created <?= e(fmt_dt($d['created_at'], 'm/d/Y g:i A')) ?><?= !empty($who['created_name']) ? ' by ' . e($who['created_name']) : '' ?> &middot; Updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= !empty($who['updated_name']) ? ' by ' . e($who['updated_name']) : '' ?> &middot; <button type="button" class="link-btn" data-fold-all="collapse">Collapse all</button> &middot; <button type="button" class="link-btn" data-fold-all="expand">Expand all</button></p>
 		<?php if (count($siblings) > 1): ?>
 			<nav class="tabs design-tabs" aria-label="Build sheets">
 				<?php foreach ($siblings as $s): ?>
@@ -209,12 +220,11 @@ $folded = [];
 	</aside>
 
 	<div class="design-main">
-		<div class="fold-all">
-			<button type="button" class="link-btn" data-fold-all="collapse">Collapse all</button>
-			<button type="button" class="link-btn" data-fold-all="expand">Expand all</button>
-		</div>
 		<section class="card band" id="sec-setup">
-			<h2><?= $foldBtn('sec-setup', 'Setup', false) ?>Setup</h2>
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-setup', 'Setup', false) ?>Setup</h2>
+				<span class="small"><?= e(implode(' · ', array_filter([Projects::INSTALL_TYPES[$d['install_type']] ?? 'Install type not set', $d['warranty_name'] ?: 'No warranty program', $d['tax_exempt'] ? 'Tax exempt' : null]))) ?> &middot; markup <strong data-v="markup_pct"><?= e(Presales::pct((float) $d['markup'])) ?></strong></span>
+			</div>
 			<div class="grid-form">
 				<label class="span-2">Build sheet name
 					<input type="text" name="name" value="<?= e($d['name']) ?>" maxlength="80">
@@ -291,7 +301,10 @@ $folded = [];
 		</section>
 
 		<section class="card band" id="sec-equipment">
-			<h2><?= $foldBtn('sec-equipment', 'Equipment and materials', false) ?>Equipment and materials</h2>
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-equipment', 'Equipment and materials', false) ?>Equipment and materials</h2>
+				<span class="small"><?= e($eqSummary) ?><?= $eqSummary !== '' ? ' &middot; ' : '' ?>cost <strong data-v="equipment_cost"><?= e($m($calc['equipment_cost'])) ?></strong></span>
+			</div>
 			<div class="flash flash-warn design-checks" id="design-checks" <?= $calc['checks'] ? '' : 'hidden' ?>>
 				<ul><?php foreach ($calc['checks'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
 			</div>
@@ -538,7 +551,10 @@ $folded = [];
 		</section>
 
 		<section class="card band" id="sec-labor">
-			<h2><?= $foldBtn('sec-labor', 'Labor, site visit and travel', false) ?>Labor, site visit and travel</h2>
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-labor', 'Labor, site visit and travel', false) ?>Labor, site visit and travel</h2>
+				<span class="small">Labor <strong data-v="labor"><?= e($m($calc['labor'])) ?></strong> (<span data-v="labor_pw"><?= $calc['dc_watts'] > 0 ? e(Presales::perWatt($calc['labor'] / $calc['dc_watts'])) : '-' ?></span>/W) &middot; travel <span data-v="expenses"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></span></span>
+			</div>
 			<div class="grid-form">
 				<div class="checkfield">
 					<span class="field-label">Labor priced</span>
@@ -635,7 +651,10 @@ $folded = [];
 		</section>
 
 		<section class="card band" id="sec-payments">
-			<h2><?= $foldBtn('sec-payments', 'Payment schedule', false) ?>Payment schedule</h2>
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-payments', 'Payment schedule', false) ?>Payment schedule</h2>
+				<span class="small"><?= e($paySummary) ?></span>
+			</div>
 			<div class="grid-form">
 				<label>Deposit
 					<select name="deposit" id="deposit-select">
@@ -672,6 +691,7 @@ $folded = [];
 		<section class="card band" id="sec-warranty">
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-warranty', 'Warranty summary', false) ?>Warranty summary</h2>
+				<span class="small band-head-fill"><?= e($d['warranty_is_solarinsure'] ? 'SolarInsure' : 'In-house warranty') ?></span>
 				<button type="button" class="btn btn-secondary btn-small" data-copy-from="warranty-summary">Copy</button>
 			</div>
 			<textarea id="warranty-summary" class="warranty-summary" rows="14" readonly aria-label="Warranty summary"><?= e($calc['warranty_summary']) ?></textarea>
@@ -679,7 +699,10 @@ $folded = [];
 		</section>
 
 		<section class="card band" id="sec-notes">
-			<h2><?= $foldBtn('sec-notes', 'Notes', false) ?>Notes</h2>
+			<div class="card-head card-head-plain band-head">
+				<h2><?= $foldBtn('sec-notes', 'Notes', false) ?>Notes</h2>
+				<span class="small"><?= e($d['notes'] ? mb_strimwidth(preg_replace('/\s+/', ' ', (string) $d['notes']), 0, 70, '...') : 'None') ?></span>
+			</div>
 			<textarea name="notes" rows="3" data-autogrow aria-label="Build sheet notes"><?= e((string) $d['notes']) ?></textarea>
 		</section>
 

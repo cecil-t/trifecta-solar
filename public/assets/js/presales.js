@@ -130,13 +130,13 @@
 		btn.lastElementChild.textContent = btn.title;
 		if (!folded && sec.id === 'trench-builder') trDraw();   // the drawing needs the section's width
 	}
-	form.addEventListener('click', (e) => {
+	document.addEventListener('click', (e) => {
 		const all = e.target.closest('[data-fold-all]');
-		if (all) {
-			const fold = all.dataset.foldAll === 'collapse';
-			form.querySelectorAll('.band .fold-btn').forEach((b) => setFold(b, fold));
-			return;
-		}
+		if (!all) return;
+		const fold = all.dataset.foldAll === 'collapse';
+		form.querySelectorAll('.band .fold-btn').forEach((b) => setFold(b, fold));
+	});
+	form.addEventListener('click', (e) => {
 		let btn = e.target.closest('.fold-btn');
 		if (!btn) {
 			const head = e.target.closest('.band > h2:first-child, .band > .band-head:first-child h2');

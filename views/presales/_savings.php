@@ -89,6 +89,7 @@ $model = Savings::model($d);
 <section class="card band" id="sec-proposal">
 	<div class="card-head card-head-plain band-head">
 		<h2><?= $foldBtn('sec-proposal', 'Proposal', false) ?>Proposal</h2>
+		<span class="small band-head-fill"><?= $d['quote_number'] ? 'Quote ' . e($d['quote_number']) . ' &middot; ' : '' ?>valid until <?= e(date('m/d/Y', (int) strtotime($pUntil))) ?><?= $d['guarantee_on'] ? ' &middot; guarantee' : '' ?></span>
 		<div class="prop-actions">
 			<a href="<?= e($base) ?>/proposal" class="btn btn-secondary btn-small" title="The saved build sheet as the customer sees it">Open proposal</a>
 			<a href="<?= e($base) ?>/proposal/pdf" class="btn btn-secondary btn-small">PDF</a>
