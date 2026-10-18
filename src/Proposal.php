@@ -190,7 +190,7 @@ final class Proposal
 				[$n, $w] = Layout::latLon($layout['origin'], $bx, $by);
 				[$s, $e] = Layout::latLon($layout['origin'], $bx + $bw, $by + $bh);
 				$vp = GoogleMaps::tileViewport($drawing['zoom'], $n, $s, $e, $w);
-				$drawing['attribution'] = 'Google Maps' . (!empty($vp['copyright']) ? ' · ' . $vp['copyright'] : '');
+				$drawing['attribution'] = (string) ($vp['copyright'] ?? '');   // the Google Maps logo is on the drawing
 			}
 			$drawing['trackers'] = (bool) Layout::sweeps($layout);
 		}

@@ -28,6 +28,7 @@ $m = static fn ($v) => Presales::money($v);
 $pf = static fn ($v, $dec = 4) => Presales::field($v === null ? null : (float) $v, $dec);
 $deg = static fn (float $v, int $dec = 1) => rtrim(rtrim(number_format($v, $dec), '0'), '.');
 $steep = (float) $d['steep_deg'];
+$layoutMaster = App\Layout::panels(App\Layout::decode($d['layout_json'])) > 0;   // the site layout sets arrays and module counts
 $classLabel = Presales::CLASS_LABELS[$depositClass];
 
 // Lines by category; the common categories always show a row, the rest open from a button
@@ -136,9 +137,9 @@ $folded = [];
 		<?php endif; ?>
 	</div>
 	<div class="head-actions">
-		<a href="<?= $base ?>/layout" class="btn btn-secondary" title="Draw the panels on the satellite view">Site layout</a>
-		<a href="<?= $base ?>/proposal" class="btn btn-primary" title="The customer proposal (saved values)">Proposal</a>
-		<a href="<?= $base ?>/summary" class="btn btn-secondary" title="Everything on one sheet, to read or print (saved values)">Summary</a>
+		<a href="<?= $base ?>/layout" class="btn btn-secondary" data-save-then="layout" title="Draw the panels on the satellite view (saves the build sheet first)">Site layout</a>
+		<a href="<?= $base ?>/proposal" class="btn btn-primary" data-save-then="proposal" title="The customer proposal (saves the build sheet first)">Proposal</a>
+		<a href="<?= $base ?>/summary" class="btn btn-secondary" data-save-then="summary" title="Everything on one sheet, to read or print (saves the build sheet first)">Summary</a>
 		<form method="post" action="<?= $base ?>/duplicate">
 			<?= Csrf::field() ?>
 			<button class="btn btn-ghost" title="Make a copy to try another design; this one stays as it is">Copy</button>
@@ -165,7 +166,7 @@ $folded = [];
 	</div>
 <?php endif; ?>
 
-<form method="post" action="<?= $base ?>" id="design-form" class="design-layout" data-calc-url="<?= $base ?>/calc" data-steep="<?= e((string) $steep) ?>" novalidate>
+<form method="post" action="<?= $base ?>" id="design-form" class="design-layout"<?= $layoutMaster ? ' data-layout-master="1"' : '' ?> data-calc-url="<?= $base ?>/calc" data-steep="<?= e((string) $steep) ?>" novalidate>
 	<?= Csrf::field() ?>
 
 	<aside class="design-summary" aria-label="Totals">
@@ -365,7 +366,7 @@ $folded = [];
 									<span class="pl-flags"><?= $lineFlag($fl, $c) ?></span>
 								</div>
 								<div class="pl-qty">
-									<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][qty]" value="<?= e($l && $l['qty'] !== null ? $pf((float) $l['qty'], 2) : '') ?>" inputmode="decimal" aria-label="Quantity" class="pl-qty-input" <?= $rule === 'manual' ? '' : 'hidden' ?>>
+									<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][qty]" value="<?= e($l && $l['qty'] !== null ? $pf((float) $l['qty'], 2) : '') ?>" inputmode="decimal" aria-label="Quantity" class="pl-qty-input" <?= $rule === 'manual' ? '' : 'hidden' ?><?= $layoutMaster && $cat === 'modules' ? ' readonly title="Set by the site layout"' : '' ?>>
 									<span class="pl-qty-auto muted" <?= $rule === 'manual' ? 'hidden' : '' ?> title="Automatic quantity"><span data-l="qty"><?= $c ? e(Presales::field($c['qty_resolved'], 2)) : '' ?></span> <?= $rule === 'dc_watts' ? 'W' : 'auto' ?></span>
 								</div>
 								<div class="num pl-unit<?= $c && $c['overridden'] ? ' is-overridden' : '' ?>">
@@ -415,9 +416,31 @@ $folded = [];
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-arrays', 'Arrays', false) ?>Arrays</h2>
 				<span class="small" id="arrays-count"><?= $arrays ? (int) $calc['arrays_panels'] . ' panels on arrays, ' . (int) $calc['panels'] . ' modules' : '' ?></span>
-				<a href="<?= $base ?>/layout" class="btn btn-small btn-secondary band-head-btn"><?= $d['layout_json'] ? 'Edit site layout' : 'Draw on the map' ?></a>
+				<a href="<?= $base ?>/layout" class="btn btn-small btn-secondary band-head-btn" data-save-then="layout"><?= $d['layout_json'] ? 'Edit site layout' : 'Draw on the map' ?></a>
 			</div>
 			<?php $nDrawn = count(array_filter($arrays, static fn ($a) => !empty($a['layout_key']))); ?>
+			<?php if ($layoutMaster): ?>
+				<p class="hint mb-xs">These come from the <a href="<?= $base ?>/layout" data-save-then="layout">site layout</a>, which also sets the module counts. Change them there, including roof material and shading.</p>
+				<div class="table-wrap">
+					<table class="table table-tight arrays-ro">
+						<thead><tr><th>Array</th><th>Mount</th><th>Roof material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th><th class="num">Shade %</th><th>Orientation</th></tr></thead>
+						<tbody>
+							<?php foreach ($arrays as $a): $tilt = $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = $a['azimuth'] !== null ? (int) $a['azimuth'] : null; ?>
+								<tr<?= $tilt !== null && $tilt > $steep ? ' class="is-steep"' : '' ?>>
+									<td><?= e($a['name']) ?><?= $a['shading_note'] ? '<div class="small muted">' . e($a['shading_note']) . '</div>' : '' ?><?= empty($a['layout_key']) ? ' <span class="chip">Typed</span>' : '' ?></td>
+									<td><?= e(Presales::MOUNTS[$a['mount']] ?? $a['mount']) ?></td>
+									<td><?= e($a['material'] ? (Projects::ROOF_MATERIALS[$a['material']] ?? $a['material']) : '') ?></td>
+									<td class="num"><?= $az !== null ? $az . '°' : '' ?></td>
+									<td class="num"><?= $tilt !== null ? e($deg($tilt)) . '°' : '' ?></td>
+									<td class="num"><?= (int) $a['panels'] ?></td>
+									<td class="num"><?= $a['shading_pct'] !== null ? e($deg((float) $a['shading_pct'])) : '' ?></td>
+									<td><span class="array-pitch"><?= $orient($az, $tilt, (string) $a['mount']) ?></span></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				</div>
+			<?php else: ?>
 			<?php if ($nDrawn && $nDrawn < count($arrays)): ?>
 				<p class="hint text-red mb-xs">Both drawn and typed arrays count toward the panels. Remove any typed array the drawing replaces.</p>
 			<?php endif; ?>
@@ -455,6 +478,7 @@ $folded = [];
 				<?php endforeach; ?>
 				<button type="button" class="btn btn-ghost btn-small row-add">+ Array</button>
 			</div>
+			<?php endif; ?>
 			<p class="hint mt-xs">Azimuth is degrees from true north (180 = south). Tilt takes degrees or a roof pitch like 6/12; over <?= e($deg($steep)) ?>° shows red. Trackers have no fixed tilt or azimuth. Shading is the share of a year's production lost to shade on that array (0 = none); it's a judgment, so note how it was made. <span class="text-red" id="panels-mismatch" <?= $calc['panels_mismatch'] ? '' : 'hidden' ?>>Panels on arrays don't match the module count.</span></p>
 		</section>
 

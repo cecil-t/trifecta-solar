@@ -14,7 +14,6 @@ use App\Csrf;
  * @var string      $originNote
  * @var string|null $who         who saved the layout last
  */
-$mm = static fn (?float $m): string => $m === null ? '' : (string) round($m * 1000);
 $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2, '.', ''), '0'), '.');
 ?>
 <div class="page-head layout-head">
@@ -59,6 +58,9 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			</div>
 			<div class="tool-group tool-new">
 				<span class="small muted">New arrays</span>
+				<label id="new-mod-wrap" hidden><span class="sr-only">Module</span>
+					<select id="new-mod"></select>
+				</label>
 				<label><span class="sr-only">Panel orientation</span>
 					<select id="new-orient">
 						<option value="portrait">Portrait</option>
@@ -76,6 +78,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			</div>
 			<div class="tool-group">
 				<button type="button" class="btn btn-small btn-secondary" id="btn-roof" title="Ask Google for the roof faces of the building in the middle of the map">Roof data</button>
+				<button type="button" class="btn btn-small btn-ghost" id="btn-roof-toggle" title="Show or hide Google's roof faces on the map" hidden>Hide faces</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-fit" title="Zoom to the arrays">Fit</button>
@@ -95,12 +98,14 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 					<g id="layer-handles"></g>
 				</svg>
 				<div class="layout-hint" id="layout-hint" role="status"></div>
+				<img class="layout-glogo" src="<?= asset('assets/img/google-maps-logo.svg') ?>" alt="Google Maps" width="86" height="18">
 				<div class="layout-scale" id="layout-scale"><span id="layout-scale-bar"></span><span id="layout-scale-text"></span></div>
 				<div class="layout-attrib" id="layout-attrib"></div>
 			</div>
 			<aside class="layout-side">
 				<div class="layout-box">
 					<p class="layout-totals" id="layout-totals"></p>
+					<ul class="layout-modcounts small" id="layout-modcounts"></ul>
 					<p class="small text-red" id="layout-module-note" hidden></p>
 				</div>
 				<section class="layout-box" id="sel-box">
@@ -115,6 +120,9 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 								<option value="tracker">Tracker</option>
 							</select>
 						</label>
+						<label class="span-2" id="sel-mod-wrap" hidden>Module
+							<select id="sel-mod"></select>
+						</label>
 						<label>Panels
 							<select id="sel-orient">
 								<option value="portrait">Portrait</option>
@@ -123,7 +131,15 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 						</label>
 						<label><span id="sel-pitch-label">Pitch</span> <input type="text" id="sel-pitch" inputmode="decimal" title="A roof pitch like 6/12, or a plain number for degrees"></label>
 						<label>Azimuth (&deg;) <input type="text" id="sel-az" inputmode="decimal" title="The way the panels face, degrees from true north (180 = south). Turning the array changes it."></label>
+						<label class="span-2" id="sel-face-wrap" hidden>Pitch from Google roof face
+							<select id="sel-face"></select>
+						</label>
 						<p class="small muted span-2" id="sel-pitch-note"></p>
+						<label id="sel-material-wrap">Roof material
+							<select id="sel-material"></select>
+						</label>
+						<label>Shading (%) <input type="text" id="sel-shade" inputmode="decimal" placeholder="0" title="Share of a year's production lost to shade on this array"></label>
+						<label class="span-2">Shading note <input type="text" id="sel-shade-note" maxlength="200" placeholder="How it was judged: trees, chimney, Solar API, site visit"></label>
 						<p class="small span-2" id="sel-stats"></p>
 						<div class="span-2 layout-sel-actions">
 							<button type="button" class="btn btn-small btn-secondary" id="sel-copy" title="Copy this array beside it (Ctrl+D)">Duplicate</button>
@@ -138,12 +154,13 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 				</section>
 				<section class="layout-box">
 					<h2>Measurements</h2>
-					<p class="small muted">Rounded down to the inch, along the slope of the array or Google roof face under it (flat with neither). Click one to move its ends or change its slope.</p>
+					<p class="small muted">Rounded down to the inch. The slope comes from the array or Google roof face under it, or a pitch you type; flat with none. Click one to move its ends or change its slope.</p>
 					<ul class="layout-list" id="measure-list"></ul>
 					<div class="layout-fields mt-xs" id="msel" hidden>
-						<label class="span-2">Measured along
+						<label class="span-2">Slope
 							<select id="msel-slope"></select>
 						</label>
+						<label class="span-2" id="msel-pitch-wrap" hidden>Pitch (up the line) <input type="text" id="msel-pitch" inputmode="decimal" placeholder="6/12"></label>
 						<div class="span-2 layout-sel-actions">
 							<button type="button" class="btn btn-small btn-ghost" id="msel-delete">Delete measurement</button>
 						</div>
@@ -155,15 +172,13 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 					<ul class="layout-list" id="roof-list"></ul>
 				</section>
 				<section class="layout-box">
-					<h2>Module and spacing</h2>
-					<p class="small" id="module-name"><?= e($module['name']) ?><?= $module['watts'] && !str_contains($module['name'], (string) round($module['watts'])) ? ', ' . e((string) round($module['watts'])) . ' W' : '' ?></p>
+					<h2>Modules and spacing</h2>
+					<div id="module-list"></div>
 					<div class="layout-fields">
-						<label>Length (mm) <input type="text" id="mod-length" inputmode="numeric" value="<?= e($mm($module['length'])) ?>"></label>
-						<label>Width (mm) <input type="text" id="mod-width" inputmode="numeric" value="<?= e($mm($module['width'])) ?>"></label>
 						<label>Panel gap (in) <input type="text" id="gap-panel" inputmode="decimal" value="<?= e($inch($config['gap']['panel'])) ?>"></label>
 						<label>Row gap (in) <input type="text" id="gap-row" inputmode="decimal" value="<?= e($inch($config['gap']['row'])) ?>"></label>
 					</div>
-					<p class="small muted">The size comes from the Sales catalog. Gaps are on the roof, not as seen from above.</p>
+					<p class="small muted">Modules come from the build sheet and their size from the Sales catalog. Gaps are on the roof, not as seen from above.</p>
 				</section>
 				<details class="layout-box layout-help">
 					<summary>Tips and shortcuts</summary>

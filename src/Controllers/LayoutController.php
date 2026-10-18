@@ -11,6 +11,7 @@ use App\Geo;
 use App\GoogleMaps;
 use App\Layout;
 use App\Presales;
+use App\Projects;
 use App\View;
 
 /**
@@ -43,6 +44,9 @@ final class LayoutController
 		$config = [
 			'origin' => $origin,
 			'module' => $module,
+			'modules' => Layout::modules($lines),
+			'materials' => Projects::ROOF_MATERIALS,
+			'autoRoof' => GoogleMaps::configured() && empty($layout['roof']),
 			'gap' => ['panel' => Presales::num('layout_gap_in') * 0.0254, 'row' => Presales::num('layout_row_gap_in') * 0.0254],
 			'layout' => $layout,
 			'tiles' => '/presales/layout-tiles/',
@@ -86,9 +90,7 @@ final class LayoutController
 		$what = $before ? 'saved' : 'drawn';
 		Activity::event('presales', $id, 'Site layout for "' . $d['name'] . '" ' . $what . ': ' . $n . ' panels on ' . count($layout['arrays']) . ' '
 			. (count($layout['arrays']) === 1 ? 'array' : 'arrays') . ($changes ? '; ' . implode(', ', $changes) : ''));
-		$typed = (int) Db::value('SELECT COUNT(*) FROM presales_design_arrays WHERE design_id = ? AND layout_key IS NULL', [$designId]);
-		flash('success', 'Layout saved: ' . $n . ' panels.' . ($changes ? ' Build sheet updated (' . implode(', ', $changes) . ').' : '')
-			. ($typed ? ' The build sheet also has ' . $typed . ' typed ' . ($typed === 1 ? 'array' : 'arrays') . ' that count too; remove any the drawing replaces.' : ''));
+		flash('success', 'Layout saved: ' . $n . ' panels.' . ($changes ? ' Build sheet updated (' . implode(', ', $changes) . ').' : ''));
 		redirect(($_POST['then'] ?? '') === 'sheet' ? $base . '#sec-arrays' : $base . '/layout');
 	}
 

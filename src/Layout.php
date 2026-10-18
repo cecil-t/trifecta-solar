@@ -21,19 +21,46 @@ final class Layout
 	public const MAX_MEASURES = 100;
 	private const EARTH = 156543.03392804097;   // meters per pixel at zoom 0 on the equator (256 px tiles)
 
+	/** Which module a line is: its catalog item, or (a custom line) its name. */
+	public static function moduleKey(array $line): string
+	{
+		return !empty($line['catalog_item_id']) ? 'c' . (int) $line['catalog_item_id'] : 'n' . substr(md5((string) $line['name']), 0, 10);
+	}
+
 	/**
-	 * The module the layout draws: the build sheet's first module line, with its size in meters from
-	 * the line, its spec values, the catalog item or SAM's library. Size is null when none of them has it.
+	 * The build sheet's modules, one entry per distinct module (lines of the same item add up), with
+	 * the size in meters from the line, its spec values, the catalog item or SAM's library (null when
+	 * none of them has it) and the quantity typed on the build sheet.
 	 *
-	 * @return array{name:string, watts:float, length:?float, width:?float, lines:int}|null
+	 * @return list<array{key:string, name:string, watts:float, length:?float, width:?float, qty:float, manual:bool}>
 	 */
+	public static function modules(array $lines): array
+	{
+		$out = [];
+		foreach ($lines as $l) {
+			if (($l['category'] ?? '') !== 'modules') {
+				continue;
+			}
+			$key = self::moduleKey($l);
+			if (isset($out[$key])) {
+				$out[$key]['qty'] += (float) ($l['qty'] ?? 0);
+				continue;
+			}
+			$out[$key] = ['key' => $key] + self::size($l) + ['name' => (string) $l['name'], 'watts' => (float) ($l['watts'] ?? 0),
+				'qty' => (float) ($l['qty'] ?? 0), 'manual' => ($l['qty_rule'] ?? 'manual') === 'manual'];
+		}
+		return array_values($out);
+	}
+
+	/** The first module (what older layouts were drawn with), or null. */
 	public static function module(array $lines): ?array
 	{
-		$mods = array_values(array_filter($lines, static fn ($l) => ($l['category'] ?? '') === 'modules'));
-		if (!$mods) {
-			return null;
-		}
-		$m = $mods[0];
+		return self::modules($lines)[0] ?? null;
+	}
+
+	/** @return array{length:?float, width:?float} meters */
+	private static function size(array $m): array
+	{
 		$len = (float) ($m['length_mm'] ?? 0);
 		$wid = (float) ($m['width_mm'] ?? 0);
 		if (!$len || !$wid) {
@@ -51,8 +78,53 @@ final class Layout
 			[$len, $wid] = CecLibrary::moduleSize((string) $m['cec_name']) ?? [0, 0];
 		}
 		$ok = $len >= 300 && $wid >= 300;
-		return ['name' => (string) $m['name'], 'watts' => (float) ($m['watts'] ?? 0),
-			'length' => $ok ? max($len, $wid) / 1000 : null, 'width' => $ok ? min($len, $wid) / 1000 : null, 'lines' => count($mods)];
+		return ['length' => $ok ? max($len, $wid) / 1000 : null, 'width' => $ok ? min($len, $wid) / 1000 : null];
+	}
+
+	/** The module an array is drawn with (older layouts have one for all). */
+	public static function moduleOf(array $layout, array $a): array
+	{
+		return $layout['modules'][$a['mod'] ?? ''] ?? $layout['module'];
+	}
+
+	/**
+	 * Panels drawn per module key. Arrays from before modules had keys count as the first module.
+	 *
+	 * @return array<string, int>
+	 */
+	public static function counts(?array $layout, string $firstKey = ''): array
+	{
+		$out = [];
+		foreach ($layout['arrays'] ?? [] as $a) {
+			$k = $a['mod'] ?? $firstKey;
+			$out[$k] = ($out[$k] ?? 0) + count($a['cells'] ?? []);
+		}
+		return $out;
+	}
+
+	/**
+	 * The layout is the master for module counts: once it has panels, each module line with a typed
+	 * quantity gets the number drawn with it (0 when none). Lines of the same module share it: the
+	 * first gets the count, the rest 0. Returns the lines.
+	 */
+	public static function applyCounts(?array $layout, array $lines): array
+	{
+		if (!self::panels($layout)) {
+			return $lines;
+		}
+		$first = self::module($lines)['key'] ?? '';
+		$counts = self::counts($layout, $first);
+		$done = [];
+		foreach ($lines as &$l) {
+			if (($l['category'] ?? '') !== 'modules' || ($l['qty_rule'] ?? 'manual') !== 'manual') {
+				continue;
+			}
+			$k = self::moduleKey($l);
+			$l['qty'] = isset($done[$k]) ? 0 : ($counts[$k] ?? 0);
+			$done[$k] = true;
+		}
+		unset($l);
+		return $lines;
 	}
 
 	/** A saved layout, or null. */
@@ -111,6 +183,17 @@ final class Layout
 		if ($out['module']['width'] > $out['module']['length']) {
 			[$out['module']['length'], $out['module']['width']] = [$out['module']['width'], $out['module']['length']];
 		}
+		$out['modules'] = [];
+		foreach (array_slice((array) ($in['modules'] ?? []), 0, 12, true) as $k => $m) {
+			if (!is_array($m) || !preg_match('/^(c\d{1,10}|n[0-9a-f]{10})$/', (string) $k)) {
+				continue;
+			}
+			$len = $num($m['length'] ?? null, 0.3, 4, 'module length');
+			$wid = $num($m['width'] ?? null, 0.3, 4, 'module width');
+			$out['modules'][(string) $k] = ['name' => mb_substr(trim((string) ($m['name'] ?? '')), 0, 200), 'watts' => $num($m['watts'] ?? 0, 0, 2000, 'module watts'),
+				'length' => max($len, $wid), 'width' => min($len, $wid)];
+		}
+		$firstMod = (string) (array_key_first($out['modules']) ?? '');
 		$keys = [];
 		$total = 0;
 		foreach ((array) ($in['arrays'] ?? []) as $a) {
@@ -145,6 +228,11 @@ final class Layout
 				'x' => round($num($a['x'] ?? 0, -5000, 5000, 'position'), 4),
 				'y' => round($num($a['y'] ?? 0, -5000, 5000, 'position'), 4),
 				'orient' => ($a['orient'] ?? '') === 'landscape' ? 'landscape' : 'portrait',
+				'mod' => isset($out['modules'][(string) ($a['mod'] ?? '')]) ? (string) $a['mod'] : $firstMod,
+				'face' => isset($a['face']) && $a['face'] !== null && $a['face'] !== '' ? (int) $num($a['face'], 0, 79, 'roof face') : null,
+				'material' => array_key_exists((string) ($a['material'] ?? ''), Projects::ROOF_MATERIALS) ? (string) $a['material'] : null,
+				'shade' => isset($a['shade']) && $a['shade'] !== null && $a['shade'] !== '' ? round($num($a['shade'], 0, 90, 'shading (0 to 90%)'), 1) : null,
+				'shade_note' => mb_substr(trim((string) ($a['shade_note'] ?? '')), 0, 200) ?: null,
 				'cells' => array_values($cells),
 			];
 		}
@@ -162,7 +250,7 @@ final class Layout
 				'x1' => round($num($m['x1'] ?? null, -5000, 5000, 'measurement'), 4), 'y1' => round($num($m['y1'] ?? null, -5000, 5000, 'measurement'), 4),
 				'x2' => round($num($m['x2'] ?? null, -5000, 5000, 'measurement'), 4), 'y2' => round($num($m['y2'] ?? null, -5000, 5000, 'measurement'), 4),
 				'pitch' => round($num($m['pitch'] ?? 0, 0, 75, 'measurement pitch'), 2), 'az' => round($num($m['az'] ?? 0, -720, 720, 'measurement azimuth'), 2),
-				'src' => preg_match('/^(flat|arr:[a-z0-9]{1,16}|face:\d{1,3})$/', (string) ($m['src'] ?? '')) ? (string) $m['src'] : 'flat',
+				'src' => preg_match('/^(flat|typed|arr:[a-z0-9]{1,16}|face:\d{1,3})$/', (string) ($m['src'] ?? '')) ? (string) $m['src'] : 'flat',
 			];
 		}
 		$roof = $in['roof'] ?? null;
@@ -192,7 +280,7 @@ final class Layout
 	 */
 	public static function grid(array $layout, array $a): array
 	{
-		$m = $layout['module'];
+		$m = self::moduleOf($layout, $a);
 		[$along, $slope] = $a['orient'] === 'landscape' ? [$m['length'], $m['width']] : [$m['width'], $m['length']];
 		$cos = cos(deg2rad((float) $a['pitch']));
 		$v = $slope * $cos;
@@ -247,10 +335,10 @@ final class Layout
 	}
 
 	/**
-	 * Bring the build sheet's drawn arrays in line with the layout: update, add and remove rows that
-	 * carry a layout key (typed rows stay). Material and shading on existing rows are kept. When the
-	 * build sheet has one module line with a typed quantity, it becomes the panel count. Returns what
-	 * changed, for the log.
+	 * Bring the build sheet in line with the layout, which is the master once it has panels: drawn
+	 * arrays (name, mount, direction, tilt, panels, roof material and shading) are updated, added and
+	 * removed, typed arrays are removed, and module lines with a typed quantity get the count drawn
+	 * with that module. Returns what changed, for the log.
 	 *
 	 * @return list<string>
 	 */
@@ -268,7 +356,8 @@ final class Layout
 			$seen[$a['key']] = true;
 			$fixed = $a['mount'] !== 'tracker';  // trackers have no fixed tilt or azimuth
 			$row = ['name' => $a['name'], 'mount' => $a['mount'], 'azimuth' => $fixed ? ((int) round($a['az'])) % 360 : null,
-				'tilt' => $fixed ? round((float) $a['pitch'], 1) : null, 'panels' => count($a['cells'])];
+				'tilt' => $fixed ? round((float) $a['pitch'], 1) : null, 'panels' => count($a['cells']),
+				'material' => $a['mount'] === 'roof' ? ($a['material'] ?? null) : null, 'shading_pct' => $a['shade'] ?? null, 'shading_note' => $a['shade_note'] ?? null];
 			$old = $have[$a['key']] ?? null;
 			if (!$old) {
 				Db::insert('presales_design_arrays', $row + ['design_id' => $id, 'layout_key' => $a['key'], 'sort_order' => ++$sort]);
@@ -287,8 +376,14 @@ final class Layout
 			if ($oldAz !== $row['azimuth'] || $tiltMoved || $old['mount'] !== $row['mount']) {
 				$diff[] = 'tilt or direction changed';
 			}
-			if ($diff) {
+			if ((string) $old['shading_pct'] !== (string) $row['shading_pct'] && !($old['shading_pct'] !== null && $row['shading_pct'] !== null && abs((float) $old['shading_pct'] - $row['shading_pct']) < 0.05)) {
+				$diff[] = 'shading ' . ($old['shading_pct'] === null ? 'none' : (float) $old['shading_pct'] . '%') . ' to ' . ($row['shading_pct'] === null ? 'none' : $row['shading_pct'] . '%');
+			}
+			$quiet = (string) $old['material'] !== (string) $row['material'] || (string) $old['shading_note'] !== (string) $row['shading_note'];
+			if ($diff || $quiet) {
 				Db::update('presales_design_arrays', (int) $old['id'], $row);
+			}
+			if ($diff) {
 				$changes[] = $a['name'] . ' ' . implode(', ', $diff);
 			}
 		}
@@ -298,12 +393,19 @@ final class Layout
 				$changes[] = 'removed ' . $old['name'];
 			}
 		}
-		// The module quantity follows the drawing when there is one module line with a typed quantity
-		$mods = Db::all("SELECT id, qty, qty_rule FROM presales_design_lines WHERE design_id = ? AND category = 'modules'", [$id]);
-		$total = self::panels($layout);
-		if (count($mods) === 1 && $mods[0]['qty_rule'] === 'manual' && $total > 0 && (int) round((float) $mods[0]['qty']) !== $total) {
-			Db::update('presales_design_lines', (int) $mods[0]['id'], ['qty' => $total]);
-			$changes[] = 'modules ' . (int) round((float) $mods[0]['qty']) . ' to ' . $total;
+		if (self::panels($layout)) {
+			// The drawing is the master: typed arrays go, and module quantities follow it
+			foreach (Db::all('SELECT id, name FROM presales_design_arrays WHERE design_id = ? AND layout_key IS NULL', [$id]) as $t) {
+				Db::run('DELETE FROM presales_design_arrays WHERE id = ?', [(int) $t['id']]);
+				$changes[] = 'removed typed array ' . ($t['name'] ?: '(no name)');
+			}
+			$lines = Db::all('SELECT * FROM presales_design_lines WHERE design_id = ? ORDER BY sort_order, id', [$id]);
+			foreach (self::applyCounts($layout, $lines) as $i => $l) {
+				if ($l['category'] === 'modules' && (float) $l['qty'] !== (float) $lines[$i]['qty']) {
+					Db::update('presales_design_lines', (int) $l['id'], ['qty' => $l['qty']]);
+					$changes[] = $l['name'] . ' ' . (int) round((float) $lines[$i]['qty']) . ' to ' . (int) $l['qty'];
+				}
+			}
 		}
 		return $changes;
 	}
@@ -423,11 +525,19 @@ final class Layout
 			}
 		}
 		$len = $ft * 0.3048;
-		$sx = $x0 + 3 * $u;
+		$sx = $x0 + $w - 3 * $u - $len;   // scale bar bottom right; Google's logo bottom left
 		$sy = $y0 + $h - 3 * $u;
 		$svg .= '<g><rect x="' . $f($sx - $u) . '" y="' . $f($sy - 3.2 * $u) . '" width="' . $f($len + 2 * $u) . '" height="' . $f(4.4 * $u) . '" rx="' . $f(0.6 * $u) . '" fill="#ffffff" fill-opacity="0.85"/>'
 			. '<rect x="' . $f($sx) . '" y="' . $f($sy) . '" width="' . $f($len) . '" height="' . $f(0.5 * $u) . '" fill="#1c2830"/>'
 			. '<text x="' . $f($sx + $len / 2) . '" y="' . $f($sy - 0.9 * $u) . '" font-size="' . $f(1.6 * $u) . '" font-family="Liberation Sans, Arial, sans-serif" text-anchor="middle" fill="#1c2830">' . $ft . ' ft</text></g>';
+		// Google Maps logo (required attribution): 18 px tall on the printed frame, 10 px clear of the edges
+		$logo = APP_ROOT . '/public/assets/img/google-maps-logo-4x.png';
+		if (is_file($logo)) {
+			$px = $w / (7.3 * 96);
+			$lh = 18 * $px;
+			$svg .= '<image x="' . $f($x0 + 10 * $px) . '" y="' . $f($y0 + $h - 6 * $px - $lh) . '" width="' . $f($lh * 105 / 22) . '" height="' . $f($lh)
+				. '" href="data:image/png;base64,' . base64_encode((string) file_get_contents($logo)) . '"><title>Google Maps</title></image>';
+		}
 		$svg .= '</svg>';
 		return ['svg' => $svg, 'zoom' => $z, 'box' => [$x0, $y0, $w, $h]];
 	}

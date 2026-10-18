@@ -91,11 +91,11 @@ $model = Savings::model($d);
 		<h2><?= $foldBtn('sec-proposal', 'Proposal', false) ?>Proposal</h2>
 		<span class="small band-head-fill"><?= $d['quote_number'] ? 'Quote ' . e($d['quote_number']) . ' &middot; ' : '' ?>valid until <?= e(date('m/d/Y', (int) strtotime($pUntil))) ?><?= $d['guarantee_on'] ? ' &middot; guarantee' : '' ?></span>
 		<div class="prop-actions">
-			<a href="<?= e($base) ?>/proposal" class="btn btn-secondary btn-small" title="The saved build sheet as the customer sees it">Open proposal</a>
+			<a href="<?= e($base) ?>/proposal" class="btn btn-secondary btn-small" data-save-then="proposal" title="The proposal as the customer gets it (saves the build sheet first)">Open proposal</a>
 			<a href="<?= e($base) ?>/proposal/pdf" class="btn btn-secondary btn-small">PDF</a>
 		</div>
 	</div>
-	<p class="hint">Save the build sheet before opening the proposal; it shows saved values.<?= $d['quote_number'] ? ' Quote ' . e($d['quote_number']) . '.' : ' The quote number is given the first time the proposal opens.' ?></p>
+	<p class="hint">Opening the proposal saves the build sheet first.<?= $d['quote_number'] ? ' Quote ' . e($d['quote_number']) . '.' : ' The quote number is given the first time the proposal opens.' ?></p>
 	<div class="grid-form">
 		<label>Proposal date <input type="text" name="proposal_date" value="<?= $d['proposal_date'] ? e(date('m/d/Y', (int) strtotime($d['proposal_date']))) : '' ?>" placeholder="<?= e(date('m/d/Y')) ?> (today)"></label>
 		<label>Valid until <input type="text" name="valid_until" value="<?= $d['valid_until'] ? e(date('m/d/Y', (int) strtotime($d['valid_until']))) : '' ?>" placeholder="<?= e(date('m/d/Y', (int) strtotime($pUntil))) ?>">

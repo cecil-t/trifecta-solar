@@ -78,8 +78,12 @@ final class DesignController
 	public function save(int $id, int $designId): void
 	{
 		$calc = $this->persist($id, $designId);
-		flash('success', 'Build sheet saved. Final price ' . Presales::money($calc['price']) . '.');
-		redirect('/presales/' . $id . '/designs/' . $designId);
+		// Site layout, Proposal and Summary save first, then go on (those pages show no messages, except the layout)
+		$then = ['layout' => '/layout', 'proposal' => '/proposal', 'summary' => '/summary'][(string) ($_POST['then'] ?? '')] ?? '';
+		if ($then === '' || $then === '/layout') {
+			flash('success', 'Build sheet saved. Final price ' . Presales::money($calc['price']) . '.');
+		}
+		redirect('/presales/' . $id . '/designs/' . $designId . $then);
 	}
 
 	/** Save the build sheet from the form; on a problem, keep what was typed and go back to it. */

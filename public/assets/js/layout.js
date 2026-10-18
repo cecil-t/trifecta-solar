@@ -31,7 +31,7 @@
 	const saved = cfg.layout;
 	const S = {
 		origin: saved ? saved.origin : cfg.origin,
-		module: { name: cfg.module.name, watts: cfg.module.watts, length: cfg.module.length, width: cfg.module.width },
+		modules: {},   // key => {name, watts, length, width}, from the build sheet's module lines
 		gap: saved ? saved.gap : cfg.gap,
 		arrays: saved ? saved.arrays : [],
 		measures: saved ? saved.measures : [],
@@ -42,17 +42,29 @@
 		sel: null,     // selected array key
 		selM: null,    // selected measurement index
 		face: null,    // highlighted Google roof face index
+		showRoof: true,
 		draft: null,
 	};
 	const notes = [];
-	if (saved && saved.module) {
-		if (!S.module.length && saved.module.length) {
-			S.module.length = saved.module.length;
-			S.module.width = saved.module.width;
+	const firstMod = cfg.modules[0].key;
+	for (const m of cfg.modules) {
+		const was = saved && saved.modules ? saved.modules[m.key] : null;
+		S.modules[m.key] = { name: m.name, watts: m.watts, length: m.length || (was ? was.length : null), width: m.width || (was ? was.width : null) };
+	}
+	if (saved && !saved.modules && saved.module && !S.modules[firstMod].length && saved.module.length) {
+		S.modules[firstMod].length = saved.module.length;   // a layout from before modules had keys
+		S.modules[firstMod].width = saved.module.width;
+	}
+	for (const a of S.arrays) {
+		if (!a.mod || !S.modules[a.mod]) {
+			if (a.mod && saved.modules && saved.modules[a.mod]) {
+				notes.push(saved.modules[a.mod].name + ' is no longer on the build sheet; ' + a.name + ' is drawn with ' + S.modules[firstMod].name + ' now.');
+			} else if (saved && !saved.modules && saved.module && saved.module.name && saved.module.name !== S.modules[firstMod].name) {
+				notes.push('The build sheet\'s module is now ' + S.modules[firstMod].name + ' (the layout was drawn with ' + saved.module.name + ').');
+			}
+			a.mod = firstMod;
 		}
-		if (saved.module.name && saved.module.name !== S.module.name) {
-			notes.push('The build sheet\'s module is now ' + S.module.name + ' (the layout was drawn with ' + saved.module.name + '). Panels are drawn at the new size.');
-		}
+		a.face = a.face ?? null;
 	}
 
 	// ---------- Small helpers ----------
@@ -180,9 +192,14 @@
 	};
 
 	// ---------- Array geometry ----------
-	const sizeOk = () => S.module.length >= 0.3 && S.module.width >= 0.3;
+	const modOf = (a) => S.modules[a.mod] || S.modules[firstMod];
+	const sizeOk = (key) => {
+		const m = S.modules[key || firstMod];
+		return m && m.length >= 0.3 && m.width >= 0.3;
+	};
+	const newMod = () => $('new-mod').value || firstMod;
 	const grid = (a) => {
-		const m = S.module;
+		const m = modOf(a);
 		const along = a.orient === 'landscape' ? m.length : m.width;
 		const slope = a.orient === 'landscape' ? m.width : m.length;
 		const c = Math.cos((a.mount === 'tracker' ? 0 : a.pitch) * RAD);
@@ -236,6 +253,7 @@
 	};
 	const hasCell = (a, r, c) => a.cells.some((x) => x[0] === r && x[1] === c);
 	const panelCount = () => S.arrays.reduce((n, a) => n + a.cells.length, 0);
+	const kwOf = (a) => a.cells.length * (modOf(a).watts || 0) / 1000;
 	const inArray = (a, x, y) => {
 		const b = localBox(a);
 		const [lx, ly] = toArr(a, x, y);
@@ -260,6 +278,7 @@
 
 	// ---------- Google roof faces ----------
 	const faces = () => (S.roof ? S.roof.segments : []);
+	const liveFaces = () => (S.showRoof ? faces() : []);   // hidden faces don't snap or set slopes
 	const faceShape = (s) => {
 		if (s.hull && s.hull.length >= 3) {
 			return s.hull.map((p) => toLocal(p[0], p[1]));
@@ -283,9 +302,9 @@
 		}
 		return inside;
 	};
-	const faceAt = (x, y) => {   // the smallest face holding the point, or null
+	const faceAt = (x, y) => {   // the smallest shown face holding the point, or null
 		let best = null;
-		faces().forEach((s, i) => {
+		liveFaces().forEach((s, i) => {
 			const pts = faceShape(s);
 			if (inPoly(x, y, pts)) {
 				const area = polyArea(pts);
@@ -315,6 +334,9 @@
 			if (s) {
 				return { pitch: s.pitch, az: s.azimuth, label: 'Google face #' + (parseInt(src.slice(5), 10) + 1) + ' (' + over12(s.pitch) + ')' };
 			}
+		} else if (src === 'typed') {
+			// The slope runs along the line: measuring straight up (or down) the roof
+			return { pitch: m.pitch || 0, az: norm(Math.atan2(-(m.x2 - m.x1), m.y2 - m.y1) / RAD), label: 'a typed ' + fmtPitch(m.pitch || 0, 'roof') + ' (up the line)' };
 		} else if (src === 'flat') {
 			return { pitch: 0, az: 0, label: 'flat' };
 		}
@@ -331,6 +353,9 @@
 		return f === null ? 'flat' : 'face:' + f;
 	};
 	const settle = (m) => {   // store the slope too, so the saved layout has it
+		if (m.src === 'typed') {
+			return m;
+		}
 		const s = slopeOf(m);
 		m.pitch = Math.round(s.pitch * 100) / 100;
 		m.az = Math.round(s.az * 100) / 100;
@@ -477,7 +502,7 @@
 				const r = await fetch(cfg.viewport + '?' + new URLSearchParams({ z, n, s, e, w }), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
 				const j = await r.json();
 				if (j.ok) {
-					$('layout-attrib').textContent = cfg.placeholder ? j.copyright : 'Google Maps' + (j.copyright ? ' · ' + j.copyright : '');
+					$('layout-attrib').textContent = j.copyright || '';   // the Google Maps logo sits bottom left
 					if (j.max_zoom && z >= 17) {
 						const mz = clamp(j.max_zoom, 15, 22);
 						if (mz !== S.maxz) {
@@ -542,7 +567,7 @@
 			}
 			const c = centerOf(a).map;
 			const t = el('text', { x: c[0], y: c[1] + fs * 0.35, 'font-size': fs, class: 'arr-label' }, labelLayer);
-			t.textContent = a.name + ' · ' + a.cells.length + (a.mount === 'tracker' ? '' : ' · ' + fmtPitch(a.pitch, a.mount));
+			t.textContent = a.name + ' (' + a.cells.length + ')' + (a.mount === 'tracker' ? '' : ' · ' + fmtPitch(a.pitch, a.mount));
 		}
 	};
 	const drawHandles = () => {
@@ -568,6 +593,11 @@
 	};
 	const drawRoof = () => {
 		clear(L.roof);
+		$('btn-roof-toggle').hidden = !S.roof;
+		$('btn-roof-toggle').textContent = S.showRoof ? 'Hide faces' : 'Show faces';
+		if (!S.showRoof) {
+			return;
+		}
 		const fs = 11 * S.view.mpp;
 		faces().forEach((s, i) => {
 			const pts = faceShape(s);
@@ -610,15 +640,15 @@
 		const f = mount === 'roof' ? faceAt(p.x, p.y) : null;
 		if (f !== null) {
 			const s = faces()[f];
-			return { az: norm(s.azimuth), pitch: Math.round(s.pitch * 100) / 100, src: 'on Google roof face #' + (f + 1) };
+			return { az: norm(s.azimuth), pitch: Math.round(s.pitch * 100) / 100, face: f, src: 'on Google roof face #' + (f + 1) };
 		}
 		const same = S.arrays.filter((x) => x.mount === mount);
 		const ref = same.find((x) => x.key === S.sel) || same[same.length - 1];
 		const pitch = mount === 'tracker' ? 0 : (typed === null ? 0 : typed);
 		if (ref) {
-			return { az: ref.az, pitch, src: 'lined up with ' + ref.name };
+			return { az: ref.az, pitch, face: null, src: 'lined up with ' + ref.name };
 		}
-		return { az: 180, pitch, src: 'facing south' };
+		return { az: 180, pitch, face: null, src: 'facing south' };
 	};
 	const draftBox = (d) => {
 		const t = d.frame.az * RAD;
@@ -628,7 +658,8 @@
 		const ly = -dx * Math.sin(t) + dy * Math.cos(t);
 		const mount = $('new-mount').value;
 		const a = { key: '', name: '', mount, orient: $('new-orient').value, pitch: mount === 'tracker' ? 0 : d.frame.pitch,
-			az: d.frame.az, x: d.start.x, y: d.start.y, cells: [] };
+			az: d.frame.az, x: d.start.x, y: d.start.y, mod: newMod(), face: mount === 'tracker' ? null : d.frame.face,
+			material: null, shade: null, shade_note: null, cells: [] };
 		const g = grid(a);
 		const cols = Math.floor((Math.abs(lx) + S.gap.panel + 1e-9) / g.su);
 		const rows = Math.floor((Math.abs(ly) + g.sv - g.v + 1e-9) / g.sv);
@@ -671,7 +702,7 @@
 	const toolHint = () => {
 		const h = {
 			select: 'Click an array or measurement to select it. Drag it to move; drag the round handle to turn. Drag empty map (or right-drag anywhere) to pan.',
-			draw: sizeOk() ? 'Click and drag a box; it fills with panels. Start on a Google roof face to line up with it and take its pitch.' : 'Type the module length and width (right) before drawing.',
+			draw: sizeOk(newMod()) ? 'Click and drag a box; it fills with panels. Start on a Google roof face to line up with it and take its pitch.' : 'Type the module length and width (right) before drawing.',
 			panels: 'Click or drag over panels to remove them, or over empty spots beside an array to add them.',
 			measure: 'Drag from one point to the other, or click both.',
 		};
@@ -704,13 +735,24 @@
 		}
 	};
 	const drawSide = () => {
+		// Totals: a number and its label never split across lines
 		const n = panelCount();
-		const kw = n * (S.module.watts || 0) / 1000;
-		$('layout-totals').textContent = n + ' panels' + (S.module.watts ? ' · ' + kw.toFixed(2) + ' kW DC' : '') + ' · ' + S.arrays.length + (S.arrays.length === 1 ? ' array' : ' arrays');
-		const note = [...notes];
-		if (!sizeOk()) {
-			note.push('This module has no size in the Sales catalog. Type its length and width below to draw.');
+		const kw = S.arrays.reduce((t, a) => t + kwOf(a), 0);
+		$('layout-totals').textContent = n + '\u00a0panels · ' + kw.toFixed(2) + '\u00a0kW\u00a0DC · ' + S.arrays.length + '\u00a0' + (S.arrays.length === 1 ? 'array' : 'arrays');
+		const mc = $('layout-modcounts');
+		mc.replaceChildren();
+		const keys = Object.keys(S.modules);
+		for (const m of cfg.modules) {
+			const drawn = S.arrays.filter((a) => a.mod === m.key).reduce((t, a) => t + a.cells.length, 0);
+			const off = n > 0 && m.manual && Math.round(m.qty) !== drawn;
+			if (keys.length > 1 || off) {
+				const li = html('li', off ? 'text-red' : '', m.name + ': ' + drawn + ' drawn'
+					+ (off ? '. The build sheet has ' + Math.round(m.qty) + '; saving sets it to ' + drawn + '.' : ''));
+				mc.append(li);
+			}
 		}
+		const note = [...notes];
+		keys.filter((k) => !sizeOk(k)).forEach((k) => note.push(S.modules[k].name + ' has no size in the Sales catalog. Type its length and width below to draw it.'));
 		$('layout-module-note').textContent = note.join(' ');
 		$('layout-module-note').hidden = !note.length;
 
@@ -739,12 +781,20 @@
 			set('sel-name', a.name);
 			set('sel-mount', a.mount);
 			set('sel-orient', a.orient);
+			$('sel-mod-wrap').hidden = Object.keys(S.modules).length < 2;
+			fillSelect($('sel-mod'), Object.entries(S.modules).map(([k, m]) => [k, m.name]), a.mod);
+			$('sel-face-wrap').hidden = !faces().length || a.mount === 'tracker';
+			fillSelect($('sel-face'), [['', 'None (typed pitch)'], ...faces().map((f, i) => [String(i), faceText(i)])], a.face === null || a.face === undefined ? '' : String(a.face));
+			$('sel-material-wrap').hidden = a.mount !== 'roof';
+			fillSelect($('sel-material'), [['', 'Not set'], ...Object.entries(cfg.materials)], a.material || '');
+			set('sel-shade', a.shade === null || a.shade === undefined ? '' : String(a.shade));
+			set('sel-shade-note', a.shade_note || '');
 			set('sel-pitch', a.mount === 'tracker' ? '' : fmtPitch(a.pitch, a.mount) === 'flat' ? '0' : fmtPitch(a.pitch, a.mount).replace('°', ''));
 			set('sel-az', a.mount === 'tracker' ? '' : String(Math.round(a.az * 10) / 10));
 			$('sel-pitch').disabled = $('sel-az').disabled = $('sel-flip').disabled = a.mount === 'tracker';
 			$('sel-pitch-label').textContent = a.mount === 'roof' ? 'Pitch' : 'Tilt';
 			$('sel-pitch-note').textContent = pitchNote(a.pitch, a.mount);
-			let stats = a.cells.length + ' panels' + (S.module.watts ? ', ' + (a.cells.length * S.module.watts / 1000).toFixed(2) + ' kW' : '');
+			let stats = a.cells.length + ' panels, ' + kwOf(a).toFixed(2) + ' kW';
 			stats += a.mount === 'tracker' ? '. Sweep: ' + ftIn(sweep(a).r * 2) + ' across.' : ', facing ' + compass(a.az) + '.';
 			$('sel-stats').textContent = stats;
 		}
@@ -774,9 +824,14 @@
 				sel.append(o);
 			};
 			opt('flat', 'Flat (no slope)');
-			S.arrays.filter((x) => x.mount !== 'tracker').forEach((x) => opt('arr:' + x.key, x.name + ' (' + fmtPitch(x.pitch, x.mount) + ', facing ' + short(x.az) + ')'));
+			opt('typed', 'A pitch I type (slope up the line)');
+			S.arrays.filter((x) => x.mount !== 'tracker').forEach((x) => opt('arr:' + x.key, 'Same as ' + x.name + ' (' + fmtPitch(x.pitch, x.mount) + ', facing ' + short(x.az) + ')'));
 			faces().forEach((s, i) => opt('face:' + i, 'Google face ' + faceText(i)));
 			sel.value = m.src && [...sel.options].some((o) => o.value === m.src) ? m.src : 'flat';
+			$('msel-pitch-wrap').hidden = sel.value !== 'typed';
+			if (document.activeElement !== $('msel-pitch')) {
+				$('msel-pitch').value = m.src === 'typed' && m.pitch ? fmtPitch(m.pitch, 'roof').replace('°', '') : '';
+			}
 		}
 
 		const rl = $('roof-list');
@@ -789,34 +844,66 @@
 				li.append(button('linklike', '#' + (i + 1), 'Highlight this face on the map', () => selectFace(i, true)),
 					html('span', 'small', ' ' + over12(s.pitch) + ' (' + deg1(s.pitch) + '), facing ' + short(s.azimuth) + ' ' + Math.round(s.azimuth) + '°, '
 						+ Math.round(s.area_m2 * 10.7639).toLocaleString() + ' sq ft '),
-					button('btn btn-ghost btn-small', 'Use pitch', 'Set the selected array to this pitch', () => usePitch(i)));
+					button('btn btn-ghost btn-small', 'Use for new arrays', 'Put this pitch in the toolbar for the next arrays you draw', () => usePitch(i)));
 				rl.append(li);
 			});
 		}
 	};
+	// A face's pitch into the toolbar, for arrays drawn next (an existing array picks its face in its own settings)
 	const usePitch = (i) => {
-		const a = S.arrays.find((x) => x.key === S.sel);
 		const s = faces()[i];
-		if (!a || a.mount === 'tracker') {
-			hint('Select a roof or ground array first, then click Use pitch.');
+		$('new-pitch').value = fmtPitch(s.pitch, 'roof').replace('°', '');
+		$('new-mount').value = 'roof';
+		$('new-pitch').closest('label').hidden = false;
+		hint('New arrays: ' + pitchNote(s.pitch, 'roof') + ' (Google face #' + (i + 1) + '). To set an existing array, select it and pick the face under "Pitch from Google roof face".');
+	};
+	function fillSelect(sel, opts, value) {
+		if (document.activeElement === sel && sel.options.length === opts.length) {
 			return;
 		}
-		keepCenter(a, () => { a.pitch = Math.round(s.pitch * 100) / 100; });
-		commit();
-		drawArrays();
-		hint(a.name + ' is now ' + deg1(a.pitch) + ' (' + over12(a.pitch) + '), the pitch Google measured for face #' + (i + 1) + '.');
+		sel.replaceChildren(...opts.map(([v, t]) => {
+			const o = html('option', '', t);
+			o.value = v;
+			return o;
+		}));
+		sel.value = value;
+	}
+	const drawModules = () => {
+		const box = $('module-list');
+		box.replaceChildren();
+		for (const [k, m] of Object.entries(S.modules)) {
+			const wrap = html('div', 'layout-fields layout-module');
+			const name = html('p', 'small span-2', m.name + (m.watts && !m.name.includes(String(Math.round(m.watts))) ? ', ' + Math.round(m.watts) + ' W' : ''));
+			const field = (label, prop) => {
+				const l = html('label', '', label + ' ');
+				const inp = html('input');
+				inp.type = 'text';
+				inp.inputMode = 'numeric';
+				inp.value = m[prop] ? Math.round(m[prop] * 1000) : '';
+				inp.dataset.mod = k;
+				inp.dataset.prop = prop;
+				inp.addEventListener('change', onModuleSize);
+				l.append(inp);
+				return l;
+			};
+			wrap.append(name, field('Length (mm)', 'length'), field('Width (mm)', 'width'));
+			box.append(wrap);
+		}
+		const multi = Object.keys(S.modules).length > 1;
+		$('new-mod-wrap').hidden = !multi;
+		fillSelect($('new-mod'), Object.entries(S.modules).map(([k, m]) => [k, m.name]), $('new-mod').value || firstMod);
 	};
 
 	// ---------- History and saving ----------
-	const snapshot = () => JSON.stringify({ arrays: S.arrays, measures: S.measures, module: { length: S.module.length, width: S.module.width }, gap: S.gap });
+	const snapshot = () => JSON.stringify({ arrays: S.arrays, measures: S.measures, modules: S.modules, gap: S.gap });
 	const past = [snapshot()];
 	const future = [];
 	function serialize() {
 		S.measures.forEach(settle);
-		return { origin: S.origin, module: S.module, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof };
+		return { origin: S.origin, module: S.modules[firstMod], modules: S.modules, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof };
 	}
 	// What needs saving: the drawing, not where the map was moved to
-	const drawingState = () => JSON.stringify({ module: S.module, gap: S.gap, arrays: S.arrays, measures: S.measures, roof: S.roof });
+	const drawingState = () => JSON.stringify({ modules: S.modules, gap: S.gap, arrays: S.arrays, measures: S.measures });
 	const savedState = drawingState();
 	let dirty = false;
 	function markDirty() {
@@ -839,8 +926,7 @@
 		const s = JSON.parse(snap);
 		S.arrays = s.arrays;
 		S.measures = s.measures;
-		S.module.length = s.module.length;
-		S.module.width = s.module.width;
+		S.modules = s.modules;
 		S.gap = s.gap;
 		if (!S.arrays.some((a) => a.key === S.sel)) {
 			S.sel = null;
@@ -849,6 +935,7 @@
 			S.selM = null;
 		}
 		syncModuleFields();
+		drawModules();
 		drawArrays();
 		updateUndo();
 		markDirty();
@@ -949,9 +1036,34 @@
 			hint('Type a pitch like 6/12, or a plain number of degrees from 0 to 75.');
 			return;
 		}
-		keepCenter(a, () => { a.pitch = p; });
+		keepCenter(a, () => {
+			a.pitch = p;
+			a.face = null;
+		});
 		hint(a.name + ': ' + pitchNote(p, a.mount));
 	});
+	onField('sel-mod', (a, v) => keepCenter(a, () => { a.mod = v; }));
+	onField('sel-face', (a, v) => {
+		const f = v === '' ? null : parseInt(v, 10);
+		a.face = f;
+		if (f !== null && faces()[f]) {
+			keepCenter(a, () => { a.pitch = Math.round(faces()[f].pitch * 100) / 100; });
+			hint(a.name + ': ' + pitchNote(a.pitch, a.mount) + ' from Google face #' + (f + 1) + '.');
+		}
+	});
+	onField('sel-material', (a, v) => { a.material = v || null; });
+	onField('sel-shade', (a, v) => {
+		const t = v.trim();
+		const n = parseFloat(t);
+		if (t === '') {
+			a.shade = null;
+		} else if (isFinite(n) && n >= 0 && n <= 90) {
+			a.shade = Math.round(n * 10) / 10;
+		} else {
+			hint('Shading is the percent of a year\'s production lost to shade, 0 to 90.');
+		}
+	});
+	onField('sel-shade-note', (a, v) => { a.shade_note = v.trim().slice(0, 200) || null; });
 	onField('sel-az', (a, v) => {
 		const az = parseFloat(v);
 		if (isFinite(az)) {
@@ -973,10 +1085,28 @@
 		const m = S.measures[S.selM];
 		if (m) {
 			m.src = $('msel-slope').value;
+			if (m.src === 'typed') {
+				m.pitch = parsePitch($('new-pitch').value) || 26.57;
+			}
 			settle(m);
 			commit();
 			drawArrays();
 		}
+	});
+	$('msel-pitch').addEventListener('change', () => {
+		const m = S.measures[S.selM];
+		const p = parsePitch($('msel-pitch').value);
+		if (!m) {
+			return;
+		}
+		if (p === null) {
+			hint('Type a pitch like 6/12, or a plain number of degrees.');
+			return;
+		}
+		m.src = 'typed';
+		m.pitch = p;
+		commit();
+		drawArrays();
 	});
 	$('msel-delete').addEventListener('click', () => {
 		if (S.selM !== null) {
@@ -989,30 +1119,17 @@
 	});
 
 	const syncModuleFields = () => {
-		$('mod-length').value = S.module.length ? Math.round(S.module.length * 1000) : '';
-		$('mod-width').value = S.module.width ? Math.round(S.module.width * 1000) : '';
 		$('gap-panel').value = Math.round(S.gap.panel / IN * 100) / 100;
 		$('gap-row').value = Math.round(S.gap.row / IN * 100) / 100;
 	};
-	const onSize = () => {
-		const l = parseFloat($('mod-length').value);
-		const w = parseFloat($('mod-width').value);
-		const gp = parseFloat($('gap-panel').value);
-		const gr = parseFloat($('gap-row').value);
-		if (!(l >= 300 && l <= 4000 && w >= 300 && w <= 4000)) {
-			hint('Module length and width are in millimeters, e.g. 1722 by 1134.');
-			return;
-		}
-		if (!(gp >= 0 && gp <= 12 && gr >= 0 && gr <= 120)) {
-			hint('Gaps are in inches: up to 12 between panels, 120 between rows.');
-			return;
-		}
-		// Each array keeps its center while the panels resize
-		const before = S.arrays.map((a) => centerOf(a).map);
-		S.module.length = Math.max(l, w) / 1000;
-		S.module.width = Math.min(l, w) / 1000;
-		S.gap = { panel: gp * IN, row: gr * IN };
+	// Each array keeps its center while the panels resize
+	const resize = (change) => {
+		const before = S.arrays.map((a) => (a.cells.length ? centerOf(a).map : null));
+		change();
 		S.arrays.forEach((a, i) => {
+			if (!before[i]) {
+				return;
+			}
 			const after = centerOf(a).map;
 			a.x += before[i][0] - after[0];
 			a.y += before[i][1] - after[1];
@@ -1021,11 +1138,35 @@
 		drawArrays();
 		toolHint();
 	};
-	['mod-length', 'mod-width', 'gap-panel', 'gap-row'].forEach((id) => $(id).addEventListener('change', onSize));
+	function onModuleSize(e) {
+		const k = e.target.dataset.mod;
+		const inputs = [...document.querySelectorAll('#module-list input')].filter((i) => i.dataset.mod === k);
+		const l = parseFloat(inputs[0].value);
+		const w = parseFloat(inputs[1].value);
+		if (!(l >= 300 && l <= 4000 && w >= 300 && w <= 4000)) {
+			hint('Module length and width are in millimeters, e.g. 1722 by 1134.');
+			return;
+		}
+		resize(() => {
+			S.modules[k] = { ...S.modules[k], length: Math.max(l, w) / 1000, width: Math.min(l, w) / 1000 };
+		});
+	}
+	const onGap = () => {
+		const gp = parseFloat($('gap-panel').value);
+		const gr = parseFloat($('gap-row').value);
+		if (!(gp >= 0 && gp <= 12 && gr >= 0 && gr <= 120)) {
+			hint('Gaps are in inches: up to 12 between panels, 120 between rows.');
+			return;
+		}
+		resize(() => {
+			S.gap = { panel: gp * IN, row: gr * IN };
+		});
+	};
+	['gap-panel', 'gap-row'].forEach((id) => $(id).addEventListener('change', onGap));
 
 	// ---------- Tools ----------
 	const setTool = (t) => {
-		if (t === 'draw' && !sizeOk()) {
+		if (t === 'draw' && !sizeOk(newMod())) {
 			hint('Type the module length and width (right) before drawing.');
 			return;
 		}
@@ -1087,6 +1228,10 @@
 		};
 		if (e.button === 1 || e.button === 2 || spaceDown) {
 			pan();
+		} else if (target.closest('[data-handle]') && selected()) {
+			// The turn handle works with any tool
+			const a = selected();
+			drag = { kind: 'rotate', a, center: centerOf(a).map };
 		} else if (S.tool === 'select') {
 			const handle = target.closest('[data-handle]');
 			const g = target.closest('.arr');
@@ -1115,7 +1260,7 @@
 				drag.face = face ? parseInt(face.dataset.face, 10) : null;
 			}
 		} else if (S.tool === 'draw') {
-			if (!sizeOk()) {
+			if (!sizeOk(newMod())) {
 				hint('Type the module length and width (right) before drawing.');
 				return;
 			}
@@ -1378,7 +1523,16 @@
 	$('new-mount').addEventListener('change', () => {
 		$('new-pitch').closest('label').hidden = $('new-mount').value === 'tracker';
 	});
-	$('btn-roof').addEventListener('click', async () => {
+	$('btn-roof-toggle').addEventListener('click', () => {
+		S.showRoof = !S.showRoof;
+		if (!S.showRoof) {
+			S.face = null;
+		}
+		drawRoof();
+		drawSide();
+		hint(S.showRoof ? 'Google roof faces shown. New boxes started on a face line up with it.' : 'Google roof faces hidden. New boxes don\'t line up with them while hidden.');
+	});
+	const fetchRoof = async () => {
 		const btn = $('btn-roof');
 		const [lat, lon] = toLatLon(S.view.cx, S.view.cy);
 		btn.disabled = true;
@@ -1395,6 +1549,7 @@
 						settle(m);
 					}
 				});
+				S.showRoof = true;
 				drawRoof();
 				drawArrays();
 				markDirty();
@@ -1408,7 +1563,8 @@
 			$('roof-info').textContent = 'Could not reach the server. Try again.';
 		}
 		btn.disabled = false;
-	});
+	};
+	$('btn-roof').addEventListener('click', fetchRoof);
 
 	// ---------- Start ----------
 	if (typeof ResizeObserver !== 'undefined') {
@@ -1416,6 +1572,7 @@
 	}
 	svg.dataset.tool = 'select';
 	syncModuleFields();
+	drawModules();
 	// Open where it was left, unless no array is in that view
 	const r0 = svg.getBoundingClientRect();
 	const inView = S.arrays.some((a) => {
@@ -1430,4 +1587,8 @@
 	drawArrays();
 	updateUndo();
 	toolHint();
+	// A new layout looks up Google's roof faces at the map point once (saved with the layout after that)
+	if (cfg.autoRoof) {
+		fetchRoof();
+	}
 })();

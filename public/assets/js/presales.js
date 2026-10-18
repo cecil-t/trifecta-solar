@@ -146,11 +146,21 @@
 		btn.lastElementChild.textContent = btn.title;
 		if (!folded && sec.id === 'trench-builder') trDraw();   // the drawing needs the section's width
 	}
+	// Folded sections are remembered per build sheet (in this browser)
+	const foldKey = 'trifecta.folds.' + location.pathname;
+	const saveFolds = () => {
+		try { localStorage.setItem(foldKey, JSON.stringify([...form.querySelectorAll('.band.is-folded')].map((b) => b.id))); } catch (e) { /* storage off */ }
+	};
+	try {
+		const ids = JSON.parse(localStorage.getItem(foldKey) || 'null');
+		if (Array.isArray(ids)) form.querySelectorAll('.band .fold-btn').forEach((b) => setFold(b, ids.includes(b.getAttribute('aria-controls'))));
+	} catch (e) { /* storage off */ }
 	document.addEventListener('click', (e) => {
 		const all = e.target.closest('[data-fold-all]');
 		if (!all) return;
 		const fold = all.dataset.foldAll === 'collapse';
 		form.querySelectorAll('.band .fold-btn').forEach((b) => setFold(b, fold));
+		saveFolds();
 	});
 	form.addEventListener('click', (e) => {
 		let btn = e.target.closest('.fold-btn');
@@ -161,12 +171,19 @@
 		if (!btn) return;
 		const sec = document.getElementById(btn.getAttribute('aria-controls'));
 		if (sec) setFold(btn, !sec.classList.contains('is-folded'));
+		saveFolds();
 	});
 
 	// ---- A line's controls follow the picked item: quantity box or automatic, custom fields, extended warranty, notes
 	function syncLine(row) {
 		const sel = row.querySelector('.pl-select');
 		if (!sel) return;
+		// With a site layout, module counts come from the drawing
+		const q = row.querySelector('.pl-qty-input');
+		if (form && form.dataset.layoutMaster && q && /^lines\[modules\]/.test(q.name)) {
+			q.readOnly = true;
+			q.title = 'Set by the site layout';
+		}
 		const opt = sel.options[sel.selectedIndex];
 		const rule = (opt && opt.dataset.rule) || 'manual';
 		const custom = sel.value === 'custom';
@@ -781,6 +798,21 @@
 	form.addEventListener('input', () => { dirty = true; });
 	form.addEventListener('change', () => { dirty = true; });
 	form.addEventListener('submit', () => { dirty = false; });
+	// Site layout, Proposal and Summary links save the build sheet first when it has changes
+	document.addEventListener('click', (e) => {
+		const link = e.target.closest('a[data-save-then]');
+		if (!link || !dirty || e.ctrlKey || e.metaKey || e.shiftKey) return;
+		e.preventDefault();
+		let then = form.querySelector('input[name="then"]');
+		if (!then) {
+			then = document.createElement('input');
+			then.type = 'hidden';
+			then.name = 'then';
+			form.append(then);
+		}
+		then.value = link.dataset.saveThen;
+		form.requestSubmit();
+	});
 
 	// "Save and run production" takes about 10 seconds: the button turns yellow with a spinner and
 	// a counter, and a second click does nothing until the page comes back

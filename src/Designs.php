@@ -337,8 +337,13 @@ final class Designs
 				'price_date' => null, 'note' => null, 'sort_order' => ++$sort];
 		}
 
+		// Once the site layout has panels it is the master: module counts and arrays come from it
+		$layout = Layout::decode($d['layout_json'] ?? null);
+		$lines = Layout::applyCounts($layout, $lines);
+		$master = Layout::panels($layout) > 0;
+
 		$arrays = [];
-		// Arrays drawn on the site layout keep what the drawing says; only material and shading come from the form
+		// Arrays drawn on the site layout keep what the drawing says
 		$drawn = [];
 		foreach (isset($d['id']) ? Db::all('SELECT * FROM presales_design_arrays WHERE design_id = ? AND layout_key IS NOT NULL ORDER BY sort_order, id', [(int) $d['id']]) : [] as $r) {
 			$drawn[$r['layout_key']] = $r;
@@ -358,7 +363,7 @@ final class Designs
 				'shading_pct' => $a ? $shade : $r['shading_pct'], 'shading_note' => $a ? ($note !== '' ? mb_substr($note, 0, 200) : null) : $r['shading_note'],
 				'layout_key' => $r['layout_key'], 'sort_order' => count($arrays) + 1];
 		};
-		foreach ((array) ($post['arrays'] ?? []) as $i => $a) {
+		foreach ($master ? [] : (array) ($post['arrays'] ?? []) as $i => $a) {
 			$lk = (string) ($a['layout_key'] ?? '');
 			if ($lk !== '' && isset($drawn[$lk])) {
 				$arrays[] = $drawnRow($drawn[$lk], $a);
