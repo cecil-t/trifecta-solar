@@ -755,5 +755,48 @@
 	form.addEventListener('input', () => { dirty = true; });
 	form.addEventListener('change', () => { dirty = true; });
 	form.addEventListener('submit', () => { dirty = false; });
+
+	// "Save and run production" takes about 10 seconds: the button turns yellow with a spinner and
+	// a counter, and a second click does nothing until the page comes back
+	const prodRun = document.getElementById('prod-run');
+	if (prodRun) {
+		const label = prodRun.textContent;
+		let timer = null;
+		form.addEventListener('submit', (e) => {
+			if (form.dataset.running) {
+				e.preventDefault();
+				return;
+			}
+			if (e.submitter !== prodRun) return;
+			form.dataset.running = '1';
+			prodRun.classList.add('is-running');
+			prodRun.setAttribute('aria-busy', 'true');
+			const spin = document.createElement('span');
+			spin.className = 'btn-spinner';
+			spin.setAttribute('aria-hidden', 'true');
+			const text = document.createElement('span');
+			text.textContent = 'Running production...';
+			prodRun.replaceChildren(spin, text);
+			const note = document.getElementById('prod-running');
+			const started = Date.now();
+			if (note) {
+				note.hidden = false;
+				timer = setInterval(() => {
+					note.textContent = 'Saving and running SAM and PVWatts: ' + Math.round((Date.now() - started) / 1000) + ' seconds so far (usually about 10; a site\'s first run also downloads its weather).';
+				}, 1000);
+			}
+		});
+		// Coming back to the page from the browser's history shows the button as it was
+		window.addEventListener('pageshow', (e) => {
+			if (!e.persisted) return;
+			delete form.dataset.running;
+			clearInterval(timer);
+			prodRun.classList.remove('is-running');
+			prodRun.removeAttribute('aria-busy');
+			prodRun.textContent = label;
+			const note = document.getElementById('prod-running');
+			if (note) note.hidden = true;
+		});
+	}
 	window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 })();

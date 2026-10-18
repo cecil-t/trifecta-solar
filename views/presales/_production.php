@@ -36,6 +36,7 @@ $usage = (int) ($o['annual_usage_kwh'] ?? 0);
 		<button type="submit" formaction="<?= e($base) ?>/production" class="btn btn-primary" id="prod-run" <?= $missing ? 'disabled' : '' ?>><?= $prod ? 'Save and run again' : 'Save and run production' ?></button>
 		<span class="muted small">Saves the build sheet, then runs SAM's detailed model and PVWatts v8 on its module, inverters and arrays at the site's map point (about 10 seconds; a site's first run also downloads its weather).</span>
 	</div>
+	<p class="prod-running small" id="prod-running" role="status" hidden>Saving and running SAM and PVWatts (usually about 10 seconds).</p>
 	<div class="flash flash-warn mt-sm" id="prod-stale" <?= $stale ? '' : 'hidden' ?>>The build sheet has changed since this estimate ran. Run it again before it goes on a proposal.</div>
 
 	<?php if ($prod): ?>
