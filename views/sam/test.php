@@ -2,6 +2,8 @@
 use App\Csrf;
 
 /**
+ * @var ?array  $coverage    Solar API coverage rows (SamController::coverage)
+ * @var ?string $coverageAt
  * @var bool    $installed     the venv's Python exists
  * @var string  $python        path to the venv's Python
  * @var string  $libFolder     folder with SAM's CEC libraries
@@ -132,6 +134,46 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 				<p class="muted small">Largest faces first. Sun hours are the median for the face, a year of full-sun-equivalent hours in Google's model.</p>
 			<?php endif; ?>
 		<?php endif; ?>
+	<?php endif; ?>
+</section>
+
+<section class="card mt" id="coverage">
+	<h2>Solar API coverage (past projects)</h2>
+	<p class="muted small">Runs the Solar API roof model for every rooftop project (and those without an install type) that has a map point, up to 60, to see how often Google has a roof model where Trifecta works. About one Building Insights call each, inside Google's free monthly allowance. Takes up to a minute. Nothing is saved.</p>
+	<form method="post" action="/admin/proposal-apis/coverage#coverage">
+		<?= Csrf::field() ?>
+		<button type="submit" class="btn btn-primary" <?= $googleConfigured ? '' : 'disabled' ?>>Check coverage</button>
+	</form>
+	<?php if ($coverage !== null): ?>
+		<?php
+		$found = array_filter($coverage, static fn ($c) => $c['ok']);
+		$byQ = [];
+		foreach ($found as $c) {
+			$byQ[$c['quality']] = ($byQ[$c['quality']] ?? 0) + 1;
+		}
+		$far = array_filter($found, static fn ($c) => $c['distance_ft'] > 150);
+		?>
+		<p class="mt"><strong><?= count($found) ?> of <?= count($coverage) ?></strong> have a roof model<?= $byQ ? ' (' . e(implode(', ', array_map(static fn ($q, $n) => $n . ' ' . strtolower($q), array_keys($byQ), $byQ))) . ' quality)' : '' ?>.<?= $far ? ' ' . count($far) . ' found a building more than 150 ft from the map point, which may be the wrong building (map points are from the Census geocoder).' : '' ?> <span class="muted small"><?= e((string) $coverageAt) ?></span></p>
+		<div class="table-wrap"><table class="table table-tight">
+			<thead><tr><th>Project</th><th>City</th><th>Roof model</th><th>Imagery</th><th class="num">Faces</th><th class="num">Roof</th><th class="num">From point</th></tr></thead>
+			<tbody>
+			<?php foreach ($coverage as $c): $p = $c['project']; ?>
+				<tr>
+					<td><a href="/projects/<?= (int) $p['id'] ?>"><?= e((string) $p['project_number']) ?></a> <?= e((string) $p['name']) ?></td>
+					<td><?= e((string) $p['site_city']) ?></td>
+					<?php if ($c['ok']): ?>
+						<td><?= e(ucfirst(strtolower($c['quality']))) ?></td>
+						<td><?= e($c['date']) ?></td>
+						<td class="num"><?= (int) $c['faces'] ?></td>
+						<td class="num"><?= $c['roof_sqft'] !== null ? e(number_format($c['roof_sqft'])) . ' sq ft' : '' ?></td>
+						<td class="num<?= $c['distance_ft'] > 150 ? ' text-red' : '' ?>"><?= e(number_format($c['distance_ft'])) ?> ft</td>
+					<?php else: ?>
+						<td colspan="5" class="muted small"><?= e((string) $c['error']) ?></td>
+					<?php endif; ?>
+				</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table></div>
 	<?php endif; ?>
 </section>
 

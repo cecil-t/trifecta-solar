@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Db;
 use App\GoogleMaps;
 use App\Pdf;
 use App\Sam;
@@ -228,6 +229,42 @@ final class SamController
 		]]);
 	}
 
+	/**
+	 * Solar API coverage: Building Insights for every rooftop project (and those without an install
+	 * type) that has a map point, to see how often Google has a roof model where Trifecta works.
+	 * About 50 calls, inside Google's free monthly allowance. Nothing is saved.
+	 */
+	public function coverage(): void
+	{
+		set_time_limit(300);
+		$rows = [];
+		$projects = Db::all("SELECT id, project_number, name, site_city, install_type, geo_lat, geo_lon FROM projects
+			WHERE geo_lat IS NOT NULL AND geo_lon IS NOT NULL AND (install_type = 'roof' OR install_type IS NULL OR install_type = '')
+			ORDER BY project_number DESC LIMIT 60");
+		foreach ($projects as $p) {
+			$bi = GoogleMaps::buildingInsights((float) $p['geo_lat'], (float) $p['geo_lon']);
+			$row = ['project' => $p, 'ok' => $bi['ok'], 'error' => $bi['error'] ?? null];
+			if ($bi['ok']) {
+				$b = $bi['building'];
+				$row += ['quality' => $b['quality'], 'date' => $b['imagery_date'], 'faces' => count($b['segments']),
+					'roof_sqft' => $b['roof_m2'] !== null ? $b['roof_m2'] * 10.7639 : null,
+					'distance_ft' => self::meters((float) $p['geo_lat'], (float) $p['geo_lon'], $b['center_lat'], $b['center_lon']) * 3.28084];
+			}
+			$rows[] = $row;
+		}
+		$this->render(['coverage' => $rows, 'coverageAt' => date('m/d/Y g:i A')]);
+	}
+
+	/** Distance between two points in meters (haversine). */
+	private static function meters(float $lat1, float $lon1, float $lat2, float $lon2): float
+	{
+		$r = 6371000.0;
+		$dl = deg2rad($lat2 - $lat1);
+		$dn = deg2rad($lon2 - $lon1);
+		$a = sin($dl / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dn / 2) ** 2;
+		return 2 * $r * asin(min(1.0, sqrt($a)));
+	}
+
 	/** The aerial image for the Google section, passed through from Maps Static (never stored). */
 	public function aerial(): void
 	{
@@ -296,6 +333,8 @@ final class SamController
 			'history' => null,
 			'historyError' => null,
 			'historyPlaces' => self::HISTORY_PLACES,
+			'coverage' => null,
+			'coverageAt' => null,
 		]);
 	}
 }

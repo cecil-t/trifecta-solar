@@ -228,6 +228,7 @@ $r->post('/admin/proposal-apis/rates', [SamController::class, 'rates'], 'admin')
 $r->post('/admin/proposal-apis/rate-history', [SamController::class, 'rateHistory'], 'admin');
 $r->post('/admin/proposal-apis/pdf', [SamController::class, 'pdf'], 'admin');
 $r->post('/admin/proposal-apis/google', [SamController::class, 'google'], 'admin');
+$r->post('/admin/proposal-apis/coverage', [SamController::class, 'coverage'], 'admin');
 $r->get('/admin/proposal-apis/aerial', [SamController::class, 'aerial'], 'admin');
 $r->get('/admin/reference-jobs', [ReferenceJobsController::class, 'index'], 'admin');
 $r->post('/admin/reference-jobs/run', [ReferenceJobsController::class, 'runAll'], 'admin');
