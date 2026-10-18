@@ -107,9 +107,9 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 <section class="page">
 	<h1><?= e($d['name']) ?></h1>
 	<div class="tiles">
-		<div class="tile"><span class="t-num"><?= $r && $r['offset_pct'] !== null ? e($p1($r['offset_pct'], 0)) : '-' ?></span><span class="t-label">Energy from solar</span><span class="t-sub">of your yearly use, year one</span></div>
+		<div class="tile tile-orange"><span class="t-num"><?= $r && $r['offset_pct'] !== null ? e($p1($r['offset_pct'], 0)) : '-' ?></span><span class="t-label">Energy from solar</span><span class="t-sub">of your yearly use, year one</span></div>
 		<div class="tile"><span class="t-num"><?= e($m0($price)) ?></span><span class="t-label">Total system price</span><span class="t-sub"><?= e(number_format($kwDc, 2)) ?> kW DC</span></div>
-		<div class="tile"><span class="t-num"><?= e($m0($netCost)) ?><?= $star ?></span><span class="t-label">Net cost</span><span class="t-sub"><?= $hasInc ? 'after incentives' : 'no incentives apply' ?></span></div>
+		<div class="tile tile-green"><span class="t-num"><?= e($m0($netCost)) ?><?= $star ?></span><span class="t-label">Net cost</span><span class="t-sub"><?= $hasInc ? 'after incentives' : 'no incentives apply' ?></span></div>
 		<div class="tile"><span class="t-num"><?= $r && $r['payback_years'] !== null ? e(number_format($r['payback_years'], 1)) . ' <small>years</small>' : '-' ?></span><span class="t-label">Payback</span><span class="t-sub">when savings repay the net cost</span></div>
 	</div>
 	<div class="aerial-placeholder"><span>Site layout drawing</span><small>The aerial view with the panel layout goes here.</small></div>
@@ -141,7 +141,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<h1>System Performance</h1>
 	<?php if ($prod): ?>
 		<div class="tiles tiles-3">
-			<div class="tile"><span class="t-num"><?= e($n0($annual)) ?> <small>kWh</small></span><span class="t-label">Year-one production</span><span class="t-sub"><?= e(Production::MODELS[$model]) ?></span></div>
+			<div class="tile tile-orange"><span class="t-num"><?= e($n0($annual)) ?> <small>kWh</small></span><span class="t-label">Year-one production</span><span class="t-sub"><?= e(Production::MODELS[$model]) ?></span></div>
 			<div class="tile tile-quiet"><span class="t-num"><?= e($n0($otherAnnual)) ?> <small>kWh</small></span><span class="t-label">For comparison</span><span class="t-sub"><?= e(Production::MODELS[$other]) ?></span></div>
 			<div class="tile tile-quiet"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'as given' ?></span></div>
 		</div>

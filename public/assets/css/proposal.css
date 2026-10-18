@@ -66,6 +66,8 @@ img { max-width: 100%; }
 .tiles { display: flex; gap: 8pt; margin: 4pt 0 12pt; }
 .tile { flex: 1; display: flex; flex-direction: column; padding: 8pt 10pt; border: 1px solid #dfe5e8; border-top: 3pt solid #025586; border-radius: 3pt; }
 .tile-quiet { border-top-color: #b9c3c9; }
+.tile-orange { border-top-color: #f9a11b; }
+.tile-green { border-top-color: #69b545; }
 .t-num { font-size: 16pt; font-weight: bold; color: #1c2830; line-height: 1.15; }
 .t-num small { font-size: 9pt; color: #5d6a72; }
 .t-num sup, .equation sup { font-size: 9pt; }
