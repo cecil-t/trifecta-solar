@@ -43,7 +43,52 @@ final class Savings
 		'srec_years'   => ['savings_srec_years', 'SRECs paid for', 'years', 0, 40],
 		'years'        => ['savings_years', 'Analysis period', 'years', 1, 40],
 		'discount'     => ['savings_discount', 'Discount rate', '% a year', 0, 25],
+		'dep_fed_rate'   => ['savings_dep_fed_rate', 'Depreciation: federal tax rate', '%', 0, 60],
+		'dep_state_rate' => ['savings_dep_state_rate', 'Depreciation: state tax rate', '%', 0, 20],
 	];
+
+	/** Depreciation for business customers: how the federal deduction is taken. */
+	public const DEP_METHODS = ['bonus' => 'Bonus: 100% in year one', 'macrs' => '5-year MACRS'];
+
+	/** 5-year MACRS, half-year convention: share of the basis deducted each year. */
+	public const MACRS5 = [0.20, 0.32, 0.192, 0.1152, 0.1152, 0.0576];
+
+	/**
+	 * Whether the build sheet counts depreciation: its own choice, else on for commercial and farm
+	 * customers (nonprofits, government and homes don't take it).
+	 */
+	public static function depreciationOn(array $o, array $d): bool
+	{
+		$own = json_decode((string) ($d['savings_inputs'] ?? ''), true) ?: [];
+		if (in_array($own['dep'] ?? '', ['on', 'off'], true)) {
+			return $own['dep'] === 'on';
+		}
+		return ($o['customer_type'] ?? '') === 'commercial' || !empty($o['is_agricultural']);
+	}
+
+	/** The federal method: the build sheet's choice, else the Rates page. */
+	public static function depreciationMethod(array $d): string
+	{
+		$own = json_decode((string) ($d['savings_inputs'] ?? ''), true) ?: [];
+		$m = (string) ($own['dep_method'] ?? '');
+		return isset(self::DEP_METHODS[$m]) ? $m : (isset(self::DEP_METHODS[Presales::setting('savings_dep_method')]) ? Presales::setting('savings_dep_method') : 'bonus');
+	}
+
+	/**
+	 * Depreciation tax savings by year (index 0 = year one). Federal: the price less half of the tax
+	 * credits (the basis reduction for the ITC), bonus or 5-year MACRS, at the federal rate. State
+	 * (Pennsylvania doesn't follow bonus depreciation): the full price over 5-year MACRS at the state
+	 * rate.
+	 *
+	 * @return array{fed: list<float>, state: list<float>, basis_fed: float, basis_state: float}
+	 */
+	public static function depreciation(float $price, float $credits, string $method, float $fedRate, float $stateRate): array
+	{
+		$basisFed = max(0.0, $price - $credits / 2);
+		$fed = array_map(static fn ($s) => $basisFed * $s * $fedRate / 100, $method === 'macrs' ? self::MACRS5 : [1.0]);
+		$state = array_map(static fn ($s) => $price * $s * $stateRate / 100, self::MACRS5);
+		return ['fed' => $fed, 'state' => $state, 'basis_fed' => $basisFed, 'basis_state' => $price];
+	}
 
 	/** Monthly shares of a profile as fractions that add up to 1. */
 	public static function profile(string $key): array
@@ -245,6 +290,7 @@ final class Savings
 			$x['timing'] === 'year1' ? $year1 += $amt : $upfront += $amt;
 		}
 		$price = (float) $in['price'];
+		$dep = $in['depreciation'] ?? null;
 
 		$rows = [];
 		$months = [];
@@ -291,7 +337,9 @@ final class Savings
 			$srec = $solarY / 1000 * $srecPrice;
 			$billSavings = $billWo - $billW + $payout;
 			$savings = $billSavings + $srec;
-			$flow = $savings + ($y === 1 ? $year1 : 0.0);
+			$depFed = (float) ($dep['fed'][$y - 1] ?? 0);
+			$depState = (float) ($dep['state'][$y - 1] ?? 0);
+			$flow = $savings + ($y === 1 ? $year1 : 0.0) + $depFed + $depState;
 			$before = $cum;
 			$cum += $flow;
 			$dflow = $flow / pow(1 + $disc, $y);
@@ -307,7 +355,7 @@ final class Savings
 			$flows[] = $flow;
 			$rows[] = ['year' => $y, 'usage' => array_sum($use), 'solar' => $solarY, 'bill_without' => $billWo, 'bill_with' => $billW,
 				'payout' => $payout, 'bill_savings' => $billSavings, 'srec' => $srec, 'srec_price' => $srecPrice, 'savings' => $savings,
-				'incentives' => $y === 1 ? $year1 : 0.0, 'cash_flow' => $flow, 'cumulative' => $cum, 'discounted_cumulative' => $dcum];
+				'incentives' => $y === 1 ? $year1 : 0.0, 'dep_fed' => $depFed, 'dep_state' => $depState, 'cash_flow' => $flow, 'cumulative' => $cum, 'discounted_cumulative' => $dcum];
 		}
 		if ($payback !== null && $payback < 0) {
 			$payback = 0.0;
@@ -318,6 +366,7 @@ final class Savings
 		$netCost = $price - $upfront - $year1;
 		$outlay = $price - $upfront;
 		$lifetime = array_sum(array_column($rows, 'savings'));
+		$depTotal = array_sum(array_column($rows, 'dep_fed')) + array_sum(array_column($rows, 'dep_state'));
 		$solarLife = array_sum(array_column($rows, 'solar'));
 		return [
 			'price' => $price,
@@ -332,7 +381,10 @@ final class Savings
 			'lifetime_savings' => $lifetime,
 			'lifetime_bill_savings' => array_sum(array_column($rows, 'bill_savings')),
 			'lifetime_srec' => array_sum(array_column($rows, 'srec')),
-			'net_savings' => $lifetime - $netCost,
+			'net_savings' => $lifetime + $depTotal - $netCost,
+			'lifetime_dep_fed' => array_sum(array_column($rows, 'dep_fed')),
+			'lifetime_dep_state' => array_sum(array_column($rows, 'dep_state')),
+			'depreciation' => $dep !== null,
 			'payback_years' => $payback,
 			'discounted_payback_years' => $dpayback,
 			'npv' => $npv,
@@ -479,7 +531,14 @@ final class Savings
 			$inc[] = ['label' => (string) ($x['label'] ?? 'Incentive'), 'amount' => ($x['kind'] ?? 'amount') === 'pct' ? $price * $v / 100 : $v,
 				'timing' => ($x['timing'] ?? 'upfront') === 'year1' ? 'year1' : 'upfront', 'pct' => ($x['kind'] ?? '') === 'pct' ? $v : null];
 		}
+		$depInfo = null;
+		if (self::depreciationOn($o, $d)) {
+			$credits = array_sum(array_map(static fn ($x) => $x['timing'] === 'year1' ? $x['amount'] : 0, $inc));
+			$depInfo = self::depreciation($price, $credits, self::depreciationMethod($d), $a['dep_fed_rate'], $a['dep_state_rate'])
+				+ ['method' => self::depreciationMethod($d)];
+		}
 		$r = self::calculate([
+			'depreciation' => $depInfo,
 			'production' => $prod[$model]['monthly_kwh'],
 			'usage' => $usage['kwh'],
 			'rate' => $facts,
@@ -491,6 +550,7 @@ final class Savings
 		$r['ptc'] = $ptc;
 		$r['degradation'] = $deg;
 		$r['incentive_rows'] = $inc;
+		$r['dep'] = $depInfo;
 		$r['production_annual'] = (float) $prod[$model]['annual_kwh'];
 		return ['missing' => [], 'notes' => $notes, 'result' => $r, 'assumptions' => $a, 'usage' => $usage, 'model' => $model];
 	}

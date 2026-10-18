@@ -144,7 +144,13 @@ $rules = $rules ?: [[]];
 			<?php foreach (App\Savings::ASSUMPTIONS as [$k, $label, $unit]): ?>
 				<label><?= e($label) ?> (<?= e($unit) ?>) <input type="text" name="settings[<?= e($k) ?>]" value="<?= e($n($s($k), 2)) ?>" inputmode="decimal" <?= $dis ?>></label>
 			<?php endforeach; ?>
+			<label>Depreciation: federal method
+				<select name="settings[savings_dep_method]" <?= $dis ?>>
+					<?php foreach (App\Savings::DEP_METHODS as $k => $label): ?><option value="<?= e($k) ?>" <?= $s('savings_dep_method') === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+				</select>
+			</label>
 		</div>
+		<p class="hint">Depreciation counts for commercial and farm customers unless a build sheet turns it off (or on for others). Federal: the price less half of the tax credits, as bonus or 5-year MACRS, at the federal rate. State: the full price over 5-year MACRS at the state rate (Pennsylvania doesn't allow bonus depreciation; 3.07% is the personal income tax rate, for owners of pass-through businesses).</p>
 	</section>
 
 	<section class="card band" id="proposal">

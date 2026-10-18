@@ -132,10 +132,10 @@ final class Designs
 		});
 	}
 
-	/** Quantities are whole numbers, except per-foot categories, equipment rental (half days) and Other. */
+	/** Quantities are whole numbers, except per-foot categories and Other. */
 	public static function fractionsOk(string $category): bool
 	{
-		return (Presales::CATEGORIES[$category][1] ?? 'ea') === 'ft' || in_array($category, ['equipment', 'misc'], true);
+		return (Presales::CATEGORIES[$category][1] ?? 'ea') === 'ft' || $category === 'misc';
 	}
 
 	/** A line's snapshot taken from a catalog item now. */
@@ -499,6 +499,14 @@ final class Designs
 				continue;
 			}
 			$own[$k] = $v;
+		}
+		$dep = (string) ($post['savings']['dep'] ?? '');
+		if (in_array($dep, ['on', 'off'], true)) {
+			$own['dep'] = $dep;
+		}
+		$method = (string) ($post['savings']['dep_method'] ?? '');
+		if (isset(Savings::DEP_METHODS[$method])) {
+			$own['dep_method'] = $method;
 		}
 		$f['savings_inputs'] = $own ? json_encode($own) : null;
 

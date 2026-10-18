@@ -169,6 +169,7 @@
 		}
 		return p + ' ' + (n + 1);
 	};
+	const nameTaken = (name, except) => S.arrays.some((x) => x !== except && x.name.trim().replace(/\s+/g, ' ').toLowerCase() === name.trim().replace(/\s+/g, ' ').toLowerCase());
 	const newKey = () => {
 		let k;
 		do {
@@ -844,7 +845,10 @@
 		const list = $('array-list');
 		list.replaceChildren();
 		for (const a of S.arrays) {
-			const li = html('li', a.key === S.sel ? 'is-sel' : '');
+			const li = html('li', (a.key === S.sel ? 'is-sel' : '') + (nameTaken(a.name, a) ? ' is-dup' : ''));
+			if (nameTaken(a.name, a)) {
+				li.title = 'Another array has this name';
+			}
 			li.append(button('linklike', a.name, '', () => selectArray(a.key, true)), html('span', 'small muted', ' ' + a.cells.length + ' panels, '
 				+ (a.mount === 'tracker' ? 'tracker' : fmtPitch(a.pitch, a.mount) + ', facing ' + short(a.az) + ' ' + Math.round(a.az) + '°')));
 			list.append(li);
@@ -864,6 +868,7 @@
 				}
 			};
 			set('sel-name', a.name);
+			$('sel-name').classList.toggle('is-dup', nameTaken(a.name, a));
 			set('sel-mount', a.mount);
 			set('sel-orient', a.orient);
 			$('sel-mod-wrap').hidden = Object.keys(S.modules).length < 2;
@@ -1114,7 +1119,6 @@
 			}
 		});
 	};
-	const nameTaken = (name, except) => S.arrays.some((x) => x !== except && x.name.toLowerCase() === name.toLowerCase());
 	const uniqueName = (base, except) => {
 		let name = base;
 		for (let i = 2; nameTaken(name, except); i++) {
@@ -1126,11 +1130,7 @@
 	$('sel-name').addEventListener('change', () => {
 		const a = selected();
 		if (a && nameTaken(a.name, a)) {
-			const want = a.name;
-			a.name = uniqueName(want, a);
-			$('sel-name').value = a.name;
-			drawArrays();
-			hint('Another array is already called ' + want + ', so this one is ' + a.name + '. Array names must be different.');
+			hint('Another array is already called ' + a.name + '. Array names must be different; the duplicates show in red.');
 		}
 		commit();
 	});

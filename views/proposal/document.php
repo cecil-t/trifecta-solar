@@ -258,6 +258,10 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<h1 id="p-roi">Return on Investment</h1>
 	<div class="equation">
 		<div><span class="t-num"><?= e($m0($r['lifetime_savings'])) ?></span><span class="t-label">Savings over <?= (int) $a['years'] ?> years</span></div>
+		<?php if ($r['depreciation']): ?>
+			<div class="op">+</div>
+			<div><span class="t-num"><?= e($m0($r['lifetime_dep_fed'] + $r['lifetime_dep_state'])) ?></span><span class="t-label">Depreciation tax savings</span></div>
+		<?php endif; ?>
 		<div class="op">&minus;</div>
 		<div><span class="t-num"><?= e($m0($r['net_cost'])) ?><?= $star ?></span><span class="t-label">Net cost</span></div>
 		<div class="op">=</div>
@@ -267,7 +271,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<?= Chart::cashflow($r['years'], $r['price'] - $r['incentives_upfront'], $r['payback_years']) ?>
 	<p class="legend"><span class="key key-blue"></span> Still paying for itself <span class="key key-green"></span> Paid for, savings ahead</p>
 	<table class="stats">
-		<tr><th>Payback</th><td class="num"><?= e(Savings::yearsText($r['payback_years'])) ?></td><td>When the savings (bills and SRECs) add up to the net cost.</td></tr>
+		<tr><th>Payback</th><td class="num"><?= e(Savings::yearsText($r['payback_years'])) ?></td><td>When the savings (bills and SRECs<?= $r['depreciation'] ? ', plus depreciation' : '' ?>) add up to the net cost.</td></tr>
 		<tr><th>Discounted payback</th><td class="num"><?= e(Savings::yearsText($r['discounted_payback_years'])) ?></td><td>The same, counting each future year's savings in today's dollars (a <?= e($p1($a['discount'], 2)) ?> yearly discount rate), so it comes later.</td></tr>
 		<tr><th>Net present value</th><td class="num"><?= e($m0($r['npv'])) ?></td><td>All <?= (int) $a['years'] ?> years of savings in today's dollars, minus the net cost.</td></tr>
 		<tr><th>Total return</th><td class="num"><?= e($p1($r['roi_pct'], 0)) ?></td><td>Net savings over <?= (int) $a['years'] ?> years as a share of the money put in.</td></tr>
@@ -280,17 +284,17 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 <!-- 6. Projection -->
 <section class="page">
 	<h1 id="p-projection"><?= (int) $a['years'] ?>-Year Projection</h1>
-	<table class="data data-tight">
-		<thead><tr><th>Year</th><th class="num">Solar (kWh)</th><th class="num">Bill without solar</th><th class="num">Bill with solar</th><th class="num">Bill savings</th><th class="num">SRECs</th><?= $r['incentives_year1'] > 0 ? '<th class="num">Incentives</th>' : '' ?><th class="num">Cash flow</th><th class="num">Cumulative</th></tr></thead>
+	<table class="data data-tight data-proj<?= $r['depreciation'] ? ' is-wide' : '' ?>">
+		<thead><tr><th>Year</th><th class="num">Solar (kWh)</th><th class="num">Bill without solar</th><th class="num">Bill with solar</th><th class="num">Bill savings</th><th class="num">SRECs</th><?= $r['incentives_year1'] > 0 ? '<th class="num">Incentives</th>' : '' ?><?= $r['depreciation'] ? '<th class="num">Federal depreciation</th><th class="num">State depreciation</th>' : '' ?><th class="num">Cash flow</th><th class="num">Cumulative</th></tr></thead>
 		<tbody>
-			<tr><td>Start</td><td></td><td></td><td></td><td></td><td></td><?= $r['incentives_year1'] > 0 ? '<td></td>' : '' ?><td class="num"><?= e($m0(-($r['price'] - $r['incentives_upfront']))) ?></td><td class="num"><?= e($m0(-($r['price'] - $r['incentives_upfront']))) ?></td></tr>
+			<tr><td>Start</td><td></td><td></td><td></td><td></td><td></td><?= $r['incentives_year1'] > 0 ? '<td></td>' : '' ?><?= $r['depreciation'] ? '<td></td><td></td>' : '' ?><td class="num"><?= e($m0(-($r['price'] - $r['incentives_upfront']))) ?></td><td class="num"><?= e($m0(-($r['price'] - $r['incentives_upfront']))) ?></td></tr>
 			<?php foreach ($r['years'] as $yr): ?>
-				<tr><td><?= (int) $yr['year'] ?></td><td class="num"><?= e($n0($yr['solar'])) ?></td><td class="num"><?= e($m0($yr['bill_without'])) ?></td><td class="num"><?= e($m0($yr['bill_with'] - $yr['payout'])) ?></td><td class="num"><?= e($m0($yr['bill_savings'])) ?></td><td class="num"><?= e($m0($yr['srec'])) ?></td><?= $r['incentives_year1'] > 0 ? '<td class="num">' . ($yr['incentives'] > 0 ? e($m0($yr['incentives'])) : '') . '</td>' : '' ?><td class="num"><?= e($m0($yr['cash_flow'])) ?></td><td class="num<?= $yr['cumulative'] < 0 ? ' neg' : '' ?>"><?= e($m0($yr['cumulative'])) ?></td></tr>
+				<tr><td><?= (int) $yr['year'] ?></td><td class="num"><?= e($n0($yr['solar'])) ?></td><td class="num"><?= e($m0($yr['bill_without'])) ?></td><td class="num"><?= e($m0($yr['bill_with'] - $yr['payout'])) ?></td><td class="num"><?= e($m0($yr['bill_savings'])) ?></td><td class="num"><?= e($m0($yr['srec'])) ?></td><?= $r['incentives_year1'] > 0 ? '<td class="num">' . ($yr['incentives'] > 0 ? e($m0($yr['incentives'])) : '') . '</td>' : '' ?><?= $r['depreciation'] ? '<td class="num">' . ($yr['dep_fed'] > 0 ? e($m0($yr['dep_fed'])) : '') . '</td><td class="num">' . ($yr['dep_state'] > 0 ? e($m0($yr['dep_state'])) : '') . '</td>' : '' ?><td class="num"><?= e($m0($yr['cash_flow'])) ?></td><td class="num<?= $yr['cumulative'] < 0 ? ' neg' : '' ?>"><?= e($m0($yr['cumulative'])) ?></td></tr>
 			<?php endforeach; ?>
 		</tbody>
-		<tfoot><tr><th>Total</th><th class="num"><?= e($n0($r['lifetime_solar_kwh'])) ?></th><th></th><th></th><th class="num"><?= e($m0($r['lifetime_bill_savings'])) ?></th><th class="num"><?= e($m0($r['lifetime_srec'])) ?></th><?= $r['incentives_year1'] > 0 ? '<th></th>' : '' ?><th></th><th class="num"><?= e($m0($r['net_savings'])) ?></th></tr></tfoot>
+		<tfoot><tr><th>Total</th><th class="num"><?= e($n0($r['lifetime_solar_kwh'])) ?></th><th></th><th></th><th class="num"><?= e($m0($r['lifetime_bill_savings'])) ?></th><th class="num"><?= e($m0($r['lifetime_srec'])) ?></th><?= $r['incentives_year1'] > 0 ? '<th></th>' : '' ?><?= $r['depreciation'] ? '<th class="num">' . e($m0($r['lifetime_dep_fed'])) . '</th><th class="num">' . e($m0($r['lifetime_dep_state'])) . '</th>' : '' ?><th></th><th class="num"><?= e($m0($r['net_savings'])) ?></th></tr></tfoot>
 	</table>
-	<p class="small">Bill with solar is net of the yearly true-up credit. Assumes rates rise <?= e($p1($a['escalation'], 2)) ?> a year, production falls <?= e($p1($r['degradation']['value'], 2)) ?> a year and your use stays the same. Estimates, not a guarantee of savings.</p>
+	<p class="small">Bill with solar is net of the yearly true-up credit. <?= $r['depreciation'] ? 'Depreciation is the tax saved by deducting the system: federal ' . e(strtolower(App\Savings::DEP_METHODS[$r['dep']['method']])) . ' at a ' . e($p1($a['dep_fed_rate'], 2)) . ' tax rate on the price less half the tax credits; state 5-year MACRS at ' . e($p1($a['dep_state_rate'], 2)) . '. Ask your tax advisor what applies to you. ' : '' ?>Assumes rates rise <?= e($p1($a['escalation'], 2)) ?> a year, production falls <?= e($p1($r['degradation']['value'], 2)) ?> a year and your use stays the same. Estimates, not a guarantee of savings.</p>
 </section>
 <?php endif; ?>
 

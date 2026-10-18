@@ -28,7 +28,12 @@ $m = static fn ($v) => Presales::money($v);
 $pf = static fn ($v, $dec = 4) => Presales::field($v === null ? null : (float) $v, $dec);
 $deg = static fn (float $v, int $dec = 1) => rtrim(rtrim(number_format($v, $dec), '0'), '.');
 $steep = (float) $d['steep_deg'];
-$layoutMaster = App\Layout::panels(App\Layout::decode($d['layout_json'])) > 0;   // the site layout sets arrays and module counts
+$layoutData = App\Layout::decode($d['layout_json']);
+$layoutMaster = App\Layout::panels($layoutData) > 0;   // the site layout sets arrays and module counts
+$perimeters = [];   // layout key => meters around the array (critter guard)
+foreach ($layoutData['arrays'] ?? [] as $la) {
+	$perimeters[$la['key']] = App\Layout::perimeter($layoutData, $la);
+}
 $classLabel = Presales::CLASS_LABELS[$depositClass];
 
 // Lines by category; the common categories always show a row, the rest open from a button
@@ -418,14 +423,15 @@ $folded = [];
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-arrays', 'Arrays', false) ?>Arrays</h2>
 				<span class="small" id="arrays-count"><?= $arrays ? (int) $calc['arrays_panels'] . ' panels on arrays, ' . (int) $calc['panels'] . ' modules' : '' ?></span>
+				<?php if ($layoutMaster): ?><span class="small">&middot; perimeter <strong><?= e(App\Layout::feetUp(array_sum($perimeters))) ?></strong></span><?php endif; ?>
 				<a href="<?= $base ?>/layout" class="btn btn-small btn-secondary band-head-btn" data-save-then="layout"><?= $d['layout_json'] ? 'Edit site layout' : 'Draw on the map' ?></a>
 			</div>
 			<?php $nDrawn = count(array_filter($arrays, static fn ($a) => !empty($a['layout_key']))); ?>
 			<?php if ($layoutMaster): ?>
-				<p class="hint mb-xs">These come from the <a href="<?= $base ?>/layout" data-save-then="layout">site layout</a>, which also sets the module counts. Change them there, including roof material and shading.</p>
+				<p class="hint mb-xs">These come from the <a href="<?= $base ?>/layout" data-save-then="layout">site layout</a>, which also sets the module counts. Change them there, including roof material and shading. Perimeter is a tape measure around each array, rounded up.</p>
 				<div class="table-wrap">
 					<table class="table table-tight arrays-ro">
-						<thead><tr><th>Array</th><th>Mount</th><th>Roof material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th><th class="num">Shade %</th><th>Orientation</th></tr></thead>
+						<thead><tr><th>Array</th><th>Mount</th><th>Roof material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th><th class="num">Shade %</th><th class="num">Perimeter</th><th>Orientation</th></tr></thead>
 						<tbody>
 							<?php foreach ($arrays as $a): $tilt = $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = $a['azimuth'] !== null ? (int) $a['azimuth'] : null; ?>
 								<tr<?= $tilt !== null && $tilt > $steep ? ' class="is-steep"' : '' ?>>
@@ -436,6 +442,7 @@ $folded = [];
 									<td class="num"><?= $tilt !== null ? e($deg($tilt)) . '°' : '' ?></td>
 									<td class="num"><?= (int) $a['panels'] ?></td>
 									<td class="num"><?= $a['shading_pct'] !== null ? e($deg((float) $a['shading_pct'])) : '' ?></td>
+									<td class="num"><?= isset($perimeters[$a['layout_key'] ?? '']) ? e(App\Layout::feetUp($perimeters[$a['layout_key']])) : '' ?></td>
 									<td><span class="array-pitch"><?= $orient($az, $tilt, (string) $a['mount']) ?></span></td>
 								</tr>
 							<?php endforeach; ?>
@@ -485,7 +492,6 @@ $folded = [];
 		</section>
 
 		<?= App\View::partial('presales/_production', ['o' => $o, 'd' => $d, 'prodIn' => $prodIn, 'prod' => $prod, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
-		<?= App\View::partial('presales/_savings', ['o' => $o, 'd' => $d, 'calc' => $calc, 'sav' => $sav, 'contacts' => $contacts, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
 
 		<?php
 		$trows = $calc['trench_rows'];
@@ -738,6 +744,8 @@ $folded = [];
 			<p class="hint">Plain text for the OpenSolar proposal. Manufacturer wording comes from each catalog item; the Trifecta and SolarInsure wording from the Rates page.</p>
 		</section>
 
+		<!-- Savings and the proposal come once the job is built: they use the price -->
+		<?= App\View::partial('presales/_savings', ['o' => $o, 'd' => $d, 'calc' => $calc, 'sav' => $sav, 'contacts' => $contacts, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
 		<section class="card band" id="sec-notes">
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-notes', 'Notes', false) ?>Notes</h2>

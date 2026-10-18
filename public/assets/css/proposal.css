@@ -125,6 +125,10 @@ img { max-width: 100%; }
 .data td .small { color: #3f7f22; }
 .data-tight { font-size: 8pt; }
 .data-tight td { padding: 1.6pt 5pt; }
+.data-proj th.num { white-space: normal; }
+.data-proj.is-wide { font-size: 7.5pt; }
+.data-proj.is-wide th, .data-proj.is-wide td { padding-left: 3pt; padding-right: 3pt; }
+.data-proj.is-wide th { font-size: 6.8pt; letter-spacing: 0; }
 .data .neg { color: #025586; }
 
 .equation { display: flex; align-items: center; justify-content: space-between; gap: 8pt; padding: 10pt 14pt; border: 1px solid #dfe5e8; border-radius: 4pt; margin-bottom: 8pt; }

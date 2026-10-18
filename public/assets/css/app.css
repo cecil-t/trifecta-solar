@@ -1886,3 +1886,5 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .sav-tiles .m-num { font-size: 1.2rem; }
 .band-head .band-pill { margin-left: .4rem; font-size: .7rem; font-weight: 700; }
 .pl-qty-input[readonly] { background: transparent; border-color: transparent; box-shadow: none; font-weight: 650; cursor: default; }
+.layout-fields input.is-dup { border-color: var(--red); background: var(--red-50); color: var(--red); }
+.layout-list li.is-dup > .linklike { color: var(--red); font-weight: 700; }

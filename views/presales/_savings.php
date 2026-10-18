@@ -39,11 +39,14 @@ $model = Savings::model($d);
 		<ul class="prod-missing"><?php foreach ($sav['missing'] as $msg): ?><li><?= e($msg) ?></li><?php endforeach; ?></ul>
 	<?php else: $y1 = $r['first_year']; ?>
 		<div class="prod-tiles sav-tiles">
-			<div class="prod-tile is-chosen"><span class="m-label">First-year savings</span><span class="m-num"><?= e($m0($y1['savings'])) ?></span><span class="muted small">bill <?= e($m0($y1['bill_savings'])) ?>, SRECs <?= e($m0($y1['srec'])) ?></span></div>
+			<div class="prod-tile is-chosen"><span class="m-label">First-year savings</span><span class="m-num"><?= e($m0($y1['savings'])) ?></span><span class="muted small">bill <?= e($m0($y1['bill_savings'])) ?>, SRECs <?= e($m0($y1['srec'])) ?><?= $r['depreciation'] ? ', plus depreciation ' . e($m0($y1['dep_fed'] + $y1['dep_state'])) : '' ?></span></div>
 			<div class="prod-tile"><span class="m-label">Payback</span><span class="m-num"><?= $r['payback_years'] !== null ? e(number_format($r['payback_years'], 1)) . ' <small>years</small>' : '-' ?></span><span class="muted small">discounted <?= $r['discounted_payback_years'] !== null ? e(number_format($r['discounted_payback_years'], 1)) . ' years' : '-' ?></span></div>
 			<div class="prod-tile"><span class="m-label"><?= (int) $a['years'] ?>-year net savings</span><span class="m-num"><?= e($m0($r['net_savings'])) ?></span><span class="muted small">NPV <?= e($m0($r['npv'])) ?>, IRR <?= $r['irr'] !== null ? e(number_format($r['irr'], 1)) . '%' : '-' ?></span></div>
 			<div class="prod-tile"><span class="m-label">Energy from solar</span><span class="m-num"><?= e(number_format((float) $r['offset_pct'])) ?>%</span><span class="muted small"><?= e(Production::MODELS[$sav['model']]) ?></span></div>
 		</div>
+		<?php if ($r['dep']): ?>
+			<p class="hint mt-sm">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(strtolower(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, the price less half the tax credits, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
+		<?php endif; ?>
 		<div class="table-wrap mt-sm"><table class="table table-tight sav-table">
 			<thead><tr><th>Year one</th><?php foreach ($r['months'] as $mo): ?><th class="num"><?= e($mo['label']) ?></th><?php endforeach; ?><th class="num">Year</th></tr></thead>
 			<tbody>
@@ -65,6 +68,19 @@ $model = Savings::model($d);
 				<input type="text" name="savings[<?= e($k) ?>]" value="<?= isset($own[$k]) ? e($f($own[$k], 2)) : '' ?>" placeholder="<?= e($f($a['default_' . $k], 2)) ?>" inputmode="decimal" class="<?= in_array($k, $a['changed'], true) ? 'is-changed' : '' ?>">
 			</label>
 		<?php endforeach; ?>
+		<label>Depreciation
+			<select name="savings[dep]">
+				<option value="" <?= !in_array($own['dep'] ?? '', ['on', 'off'], true) ? 'selected' : '' ?>>Automatic (<?= Savings::depreciationOn($o, ['savings_inputs' => null]) ? 'on: business customer' : 'off: not a business customer' ?>)</option>
+				<option value="on" <?= ($own['dep'] ?? '') === 'on' ? 'selected' : '' ?>>Count it</option>
+				<option value="off" <?= ($own['dep'] ?? '') === 'off' ? 'selected' : '' ?>>Don't count it</option>
+			</select>
+		</label>
+		<label>Federal depreciation
+			<select name="savings[dep_method]">
+				<option value="">Rates page (<?= e(strtolower(Savings::DEP_METHODS[Savings::depreciationMethod(['savings_inputs' => null])])) ?>)</option>
+				<?php foreach (Savings::DEP_METHODS as $k => $label): ?><option value="<?= e($k) ?>" <?= ($own['dep_method'] ?? '') === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+			</select>
+		</label>
 	</div>
 
 	<h3 class="mt-sm">Incentives</h3>

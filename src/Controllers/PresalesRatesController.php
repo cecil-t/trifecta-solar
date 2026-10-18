@@ -82,7 +82,7 @@ final class PresalesRatesController
 		$numeric = ['tax_rate', 'markup_default', 'markup_floor', 'labor_default', 'labor_rate', 'lodging_rate', 'per_diem_rate', 'site_visit', 'contingency_cap', 'contingency_floor', 'steep_deg', 'stale_days', 'round_to',
 			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts', 'referral_bonus', 'handoff_share',
 			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust', 'degradation_default',
-			'savings_escalation', 'savings_srec_price', 'savings_srec_decline', 'savings_srec_years', 'savings_years', 'savings_discount',
+			'savings_escalation', 'savings_srec_price', 'savings_srec_decline', 'savings_srec_years', 'savings_years', 'savings_discount', 'savings_dep_fed_rate', 'savings_dep_state_rate',
 			'proposal_valid_days', 'proposal_valid_max', 'guarantee_pct', 'guarantee_years', 'guarantee_rate', 'layout_gap_in', 'layout_row_gap_in'];
 		$skip = ['commission_tiers' => true, 'self_gen_tiers' => true, 'site_visit' => true];
 		// Trench builder choices come from fixed lists
@@ -114,6 +114,9 @@ final class PresalesRatesController
 			if ($v === '' || !is_numeric($v) || (float) $v < 0 || (float) $v > $max) {
 				throw new \InvalidArgumentException($label . ' must be a percent from 0 to ' . $max . '.');
 			}
+		}
+		if (!isset(\App\Savings::DEP_METHODS[(string) ($post['savings_dep_method'] ?? '')])) {
+			throw new \InvalidArgumentException('Pick how federal depreciation is taken.');
 		}
 		// Savings assumptions (App\Savings::ASSUMPTIONS) and the proposal's limits
 		foreach (\App\Savings::ASSUMPTIONS as [$k, $label, $unit, $low, $high]) {

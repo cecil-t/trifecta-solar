@@ -324,6 +324,100 @@ final class Layout
 	}
 
 	/**
+	 * An array's perimeter in meters, as a tape measure around its panels would read: the gaps
+	 * between neighboring panels count, up-slope lengths are true (not shortened), and holes left by
+	 * removed panels inside it don't add to it. (layout.js has the same.)
+	 */
+	public static function perimeter(array $layout, array $a): float
+	{
+		$m = self::moduleOf($layout, $a);
+		[$u, $v] = ($a['orient'] ?? '') === 'landscape' ? [$m['length'], $m['width']] : [$m['width'], $m['length']];
+		$su = $u + $layout['gap']['panel'];
+		$sv = $v + $layout['gap']['row'];
+		$has = [];
+		foreach ($a['cells'] as [$r, $c]) {
+			$has[$r . ',' . $c] = true;
+		}
+		$on = static fn (int $r, int $c): bool => isset($has[$r . ',' . $c]);
+		$rects = [];
+		foreach ($a['cells'] as [$r, $c]) {
+			$rects[] = [$c * $su, $c * $su + $u, $r * $sv, $r * $sv + $v];
+			if ($on($r, $c + 1)) {
+				$rects[] = [$c * $su + $u, ($c + 1) * $su, $r * $sv, $r * $sv + $v];
+			}
+			if ($on($r + 1, $c)) {
+				$rects[] = [$c * $su, $c * $su + $u, $r * $sv + $v, ($r + 1) * $sv];
+			}
+			if ($on($r, $c + 1) && $on($r + 1, $c) && $on($r + 1, $c + 1)) {
+				$rects[] = [$c * $su + $u, ($c + 1) * $su, $r * $sv + $v, ($r + 1) * $sv];
+			}
+		}
+		if (!$rects) {
+			return 0.0;
+		}
+		$key = static fn (float $x): string => sprintf('%.6F', $x);
+		$axis = static function (array $vals) use ($key): array {
+			$u = [];
+			foreach ($vals as $x) {
+				$u[$key($x)] = (float) $key($x);
+			}
+			sort($u);
+			return array_values($u);
+		};
+		$xs = $axis(array_merge(array_column($rects, 0), array_column($rects, 1)));
+		$ys = $axis(array_merge(array_column($rects, 2), array_column($rects, 3)));
+		$xi = array_flip(array_map($key, $xs));
+		$yi = array_flip(array_map($key, $ys));
+		$w = count($xs) + 1;
+		$h = count($ys) + 1;
+		$fill = array_fill(0, $w * $h, false);
+		foreach ($rects as [$x1, $x2, $y1, $y2]) {
+			for ($i = $xi[$key($x1)] + 1; $i < $xi[$key($x2)] + 1; $i++) {
+				for ($j = $yi[$key($y1)] + 1; $j < $yi[$key($y2)] + 1; $j++) {
+					$fill[$j * $w + $i] = true;
+				}
+			}
+		}
+		$out = array_fill(0, $w * $h, false);
+		$out[0] = true;
+		$stack = [0];
+		while ($stack) {
+			$k = array_pop($stack);
+			$i = $k % $w;
+			$j = intdiv($k, $w);
+			foreach ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [$di, $dj]) {
+				$ni = $i + $di;
+				$nj = $j + $dj;
+				$nk = $nj * $w + $ni;
+				if ($ni >= 0 && $nj >= 0 && $ni < $w && $nj < $h && !$out[$nk] && !$fill[$nk]) {
+					$out[$nk] = true;
+					$stack[] = $nk;
+				}
+			}
+		}
+		$cw = static fn (int $i): float => $i <= 0 || $i >= $w - 1 ? 0.0 : $xs[$i] - $xs[$i - 1];
+		$ch = static fn (int $j): float => $j <= 0 || $j >= $h - 1 ? 0.0 : $ys[$j] - $ys[$j - 1];
+		$len = 0.0;
+		for ($j = 0; $j < $h; $j++) {
+			for ($i = 0; $i < $w; $i++) {
+				if (!$fill[$j * $w + $i]) {
+					continue;
+				}
+				$len += ($i + 1 < $w && $out[$j * $w + $i + 1] ? $ch($j) : 0) + ($i > 0 && $out[$j * $w + $i - 1] ? $ch($j) : 0)
+					+ ($j + 1 < $h && $out[($j + 1) * $w + $i] ? $cw($i) : 0) + ($j > 0 && $out[($j - 1) * $w + $i] ? $cw($i) : 0);
+			}
+		}
+		return $len;
+	}
+
+	/** Feet and inches, rounded up to the inch (material lengths). */
+	public static function feetUp(float $m): string
+	{
+		$in = (int) ceil($m / 0.0254 - 1e-6);
+		return intdiv($in, 12) . "' " . ($in % 12) . '"';
+	}
+
+	/**
 	 * A tracker's sweep: the circle its panel table can reach as it turns, centered on the table
 	 * and out to its farthest panel corner. [x, y, radius] in map meters.
 	 *
