@@ -113,7 +113,7 @@ final class LayoutController
 		echo json_encode(['ok' => true, 'roof' => [
 			'quality' => $b['quality'], 'date' => $b['imagery_date'], 'lat' => $b['center_lat'], 'lon' => $b['center_lon'],
 			'segments' => array_values(array_filter(array_map(static fn ($s) => $s['box'] ? ['pitch' => round($s['pitch'], 2),
-				'azimuth' => round($s['azimuth'], 2), 'area_m2' => round($s['area_m2'], 1), 'box' => $s['box']] : null, $b['segments']))),
+				'azimuth' => round($s['azimuth'], 2), 'area_m2' => round($s['area_m2'], 1), 'box' => $s['box'], 'hull' => $s['hull']] : null, $b['segments']))),
 		]]);
 	}
 

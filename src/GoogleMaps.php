@@ -102,6 +102,11 @@ final class GoogleMaps
 					: null,
 			];
 		}
+		$hulls = self::faceOutlines($sp, $segments);
+		foreach ($segments as $i => &$seg) {
+			$seg['hull'] = $hulls[$i] ?? null;
+		}
+		unset($seg);
 		usort($segments, static fn ($a, $b) => $b['area_m2'] <=> $a['area_m2']);
 		$date = (array) ($j['imageryDate'] ?? []);
 		return ['ok' => true, 'building' => [
@@ -115,6 +120,75 @@ final class GoogleMaps
 			'max_sun_hours' => isset($sp['maxSunshineHoursPerYear']) ? (float) $sp['maxSunshineHoursPerYear'] : null,
 			'segments' => $segments,
 		], 'ms' => $r['ms']];
+	}
+
+	/**
+	 * An outline of each roof face: the convex hull of the panels Google fits on it (Building
+	 * Insights' solarPanels, by segment index), as [lat, lon] points. Faces with no panels get none.
+	 *
+	 * @return array<int, list<array{0:float, 1:float}>>
+	 */
+	private static function faceOutlines(array $sp, array $segments): array
+	{
+		$h = (float) ($sp['panelHeightMeters'] ?? 0);
+		$w = (float) ($sp['panelWidthMeters'] ?? 0);
+		$panels = (array) ($sp['solarPanels'] ?? []);
+		if ($h <= 0 || $w <= 0 || !$panels) {
+			return [];
+		}
+		$lat0 = (float) ($panels[0]['center']['latitude'] ?? 0);
+		$lon0 = (float) ($panels[0]['center']['longitude'] ?? 0);
+		$my = 111320.0;
+		$mx = 111320.0 * cos(deg2rad($lat0));
+		$pts = [];
+		foreach ($panels as $p) {
+			$i = (int) ($p['segmentIndex'] ?? -1);
+			if (!isset($segments[$i], $p['center']['latitude'])) {
+				continue;
+			}
+			$az = deg2rad($segments[$i]['azimuth']);
+			[$along, $slope] = ($p['orientation'] ?? '') === 'PORTRAIT' ? [$w, $h] : [$h, $w];
+			$slope *= cos(deg2rad($segments[$i]['pitch']));
+			// Meters east and north; e runs along the eave, d down the slope
+			$x = ((float) $p['center']['longitude'] - $lon0) * $mx;
+			$y = ((float) $p['center']['latitude'] - $lat0) * $my;
+			$e = [cos($az), -sin($az)];
+			$d = [sin($az), cos($az)];
+			foreach ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as [$a, $b]) {
+				$pts[$i][] = [$x + $e[0] * $along / 2 * $a + $d[0] * $slope / 2 * $b, $y + $e[1] * $along / 2 * $a + $d[1] * $slope / 2 * $b];
+			}
+		}
+		$out = [];
+		foreach ($pts as $i => $list) {
+			$out[$i] = array_map(static fn ($q) => [round($lat0 + $q[1] / $my, 7), round($lon0 + $q[0] / $mx, 7)], self::hull($list));
+		}
+		return $out;
+	}
+
+	/** Convex hull (monotone chain) of [x, y] points. */
+	private static function hull(array $p): array
+	{
+		usort($p, static fn ($a, $b) => $a[0] <=> $b[0] ?: $a[1] <=> $b[1]);
+		if (count($p) < 3) {
+			return $p;
+		}
+		$cross = static fn ($o, $a, $b) => ($a[0] - $o[0]) * ($b[1] - $o[1]) - ($a[1] - $o[1]) * ($b[0] - $o[0]);
+		$lower = $upper = [];
+		foreach ($p as $q) {
+			while (count($lower) >= 2 && $cross($lower[count($lower) - 2], $lower[count($lower) - 1], $q) <= 0) {
+				array_pop($lower);
+			}
+			$lower[] = $q;
+		}
+		foreach (array_reverse($p) as $q) {
+			while (count($upper) >= 2 && $cross($upper[count($upper) - 2], $upper[count($upper) - 1], $q) <= 0) {
+				array_pop($upper);
+			}
+			$upper[] = $q;
+		}
+		array_pop($lower);
+		array_pop($upper);
+		return array_merge($lower, $upper);
 	}
 
 	/**

@@ -1817,11 +1817,20 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .layout-svg .face-arrow { fill: #f9a11b; stroke: #5a3a00; stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .layout-svg .rot-line { stroke: #f9a11b; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .layout-svg .rot-handle { fill: #fff; stroke: #f9a11b; stroke-width: 3px; vector-effect: non-scaling-stroke; cursor: grab; }
-.layout-svg .roof-box { fill: rgba(105, 181, 69, .12); stroke: #69b545; stroke-width: 1.5px; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.layout-svg .roof-face { fill: rgba(105, 181, 69, .14); stroke: #69b545; stroke-width: 1.5px; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.layout-svg[data-tool="select"] .roof-face { cursor: pointer; }
+.layout-svg .roof-face.is-dim { fill: rgba(105, 181, 69, .05); stroke-opacity: .45; }
+.layout-svg .roof-face.is-sel { fill: rgba(249, 161, 27, .28); stroke: #f9a11b; stroke-width: 3px; stroke-dasharray: none; }
 .layout-svg .roof-label { fill: #fff; stroke: rgba(30, 70, 15, .9); }
+.layout-svg .roof-label.is-sel { stroke: rgba(90, 50, 0, .95); }
 .layout-svg .measure { stroke: #ffd400; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
-.layout-svg .measure.is-draft { stroke-dasharray: 6 4; }
+.layout-svg .measure-hit { stroke: transparent; stroke-width: 14px; vector-effect: non-scaling-stroke; pointer-events: stroke; }
+.layout-svg .m.is-draft .measure { stroke-dasharray: 6 4; }
+.layout-svg .m.is-sel .measure { stroke: #fff36b; stroke-width: 3px; }
 .layout-svg .measure-end { fill: #ffd400; stroke: #3d3000; stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.layout-svg[data-tool="select"] .measure-hit { cursor: move; }
+.layout-svg[data-tool="select"] .m.is-sel .measure-end { pointer-events: all; cursor: grab; }
+.layout-svg:not([data-tool="select"]) .measure-hit, .layout-svg:not([data-tool="select"]) .roof-face { pointer-events: none; }
 .layout-svg .measure-label { fill: #ffd400; stroke: rgba(20, 20, 0, .9); }
 .layout-svg .draft-line { stroke: #f9a11b; stroke-width: 2px; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 .layout-svg .draft-box { fill: rgba(249, 161, 27, .12); stroke: #f9a11b; stroke-width: 1.5px; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -1835,7 +1844,7 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .layout-box { padding: .7rem .85rem; border-bottom: 1px solid var(--border); }
 .layout-box h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .4rem; }
 .layout-box p { margin: 0 0 .35rem; }
-.layout-totals { font-weight: 700; color: var(--blue); }
+.layout-totals { font-weight: 750; font-size: 1.2rem; line-height: 1.3; color: var(--blue); }
 .layout-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .6rem; }
 .layout-fields label { font-size: .8rem; margin: 0; gap: .15rem; }
 .layout-fields input, .layout-fields select { padding: .3rem .4rem; font-size: .85rem; }

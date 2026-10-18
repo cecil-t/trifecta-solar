@@ -53,7 +53,7 @@ final class Proposal
 	}
 
 	/** Everything the proposal shows, plus warnings for the salesperson (not printed). */
-	public static function data(array $o, array $d): array
+	public static function data(array $o, array $d, bool $withDrawing = true): array
 	{
 		$lines = Designs::lines((int) $d['id']);
 		$arrays = Designs::arrays((int) $d['id']);
@@ -180,7 +180,7 @@ final class Proposal
 		$drawing = null;
 		if (!$layout || !Layout::panels($layout)) {
 			$warnings[] = 'No site layout drawn yet, so the System Summary page shows an empty box.';
-		} else {
+		} elseif ($withDrawing) {
 			$drawing = Layout::drawing($layout, 7.3 / 3.1, static function (int $z, int $x, int $y): ?array {
 				$t = GoogleMaps::tile($z, $x, $y);
 				return $t['ok'] ? [$t['bytes'], $t['type']] : null;
@@ -190,13 +190,12 @@ final class Proposal
 				[$n, $w] = Layout::latLon($layout['origin'], $bx, $by);
 				[$s, $e] = Layout::latLon($layout['origin'], $bx + $bw, $by + $bh);
 				$vp = GoogleMaps::tileViewport($drawing['zoom'], $n, $s, $e, $w);
-				$drawing['attribution'] = 'Imagery: Google' . (!empty($vp['copyright']) ? ' · ' . $vp['copyright'] : '');
+				$drawing['attribution'] = 'Google Maps' . (!empty($vp['copyright']) ? ' · ' . $vp['copyright'] : '');
 			}
 			$drawing['trackers'] = (bool) Layout::sweeps($layout);
-			$mods = (int) round((float) $calc['panels']);
-			if (Layout::panels($layout) !== $mods) {
-				$warnings[] = 'The site layout has ' . Layout::panels($layout) . ' panels but the build sheet has ' . $mods . ' modules.';
-			}
+		}
+		if ($layout && Layout::panels($layout) && Layout::panels($layout) !== (int) round((float) $calc['panels'])) {
+			$warnings[] = 'The site layout has ' . Layout::panels($layout) . ' panels but the build sheet has ' . (int) round((float) $calc['panels']) . ' modules.';
 		}
 
 		$loan = null;

@@ -4,13 +4,11 @@ use App\ProposalCharts as Chart;
 use App\Savings;
 
 /**
- * The customer proposal for one build sheet (App\Proposal::data). One HTML document: WeasyPrint
- * prints it to PDF (paged: running header and footer, page numbers), and the browser shows the same
- * pages as sheets with a toolbar for the salesperson.
+ * The customer proposal for one build sheet (App\Proposal::data), as HTML that WeasyPrint prints to
+ * PDF (paged: running header and footer, page numbers). The salesperson sees it through
+ * views/proposal/preview.php.
  *
- * @var string     $assets  '' for the PDF (relative to public/), '/' in the browser
- * @var bool       $screen  the browser preview (toolbar and warnings)
- * @var string     $base    the build sheet's address
+ * @var string     $assets  '' (paths relative to public/)
  * Plus everything from App\Proposal::data().
  */
 $m2 = static fn (?float $v): string => $v === null ? '' : ($v < 0 ? '-$' : '$') . number_format(abs($v), 2);
@@ -43,21 +41,9 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 <head>
 	<meta charset="utf-8">
 	<title>Proposal <?= e($quote) ?> - <?= e($customerName) ?></title>
-	<?php if ($screen): ?><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-	<link rel="stylesheet" href="<?= $screen ? asset('assets/css/proposal.css') : 'assets/css/proposal.css' ?>">
+	<link rel="stylesheet" href="assets/css/proposal.css">
 </head>
-<body class="proposal<?= $screen ? ' is-screen' : '' ?>">
-<?php if ($screen): ?>
-	<div class="toolbar">
-		<a href="<?= e($base) ?>" class="tb-back">&larr; Build sheet</a>
-		<span class="tb-title">Proposal <?= e($quote) ?></span>
-		<a href="<?= e($base) ?>/proposal?view=pdf" class="tb-link">PDF preview</a>
-		<a href="<?= e($base) ?>/proposal/pdf" class="tb-btn">Download PDF</a>
-	</div>
-	<?php if ($warnings): ?>
-		<div class="tb-warn" role="status"><strong>Before sending:</strong><ul><?php foreach ($warnings as $w): ?><li><?= e($w) ?></li><?php endforeach; ?></ul></div>
-	<?php endif; ?>
-<?php endif; ?>
+<body class="proposal">
 
 <div class="run-head"><img src="<?= e($assets) ?>assets/img/logo-horizontal.svg" alt="Trifecta Solar"><span>Quote for <?= e($customerName) ?> - <?= e($d['name']) ?></span></div>
 <div class="run-foot"><?= e($salesLine) ?><?= $salesLine ? ' &nbsp;|&nbsp; ' : '' ?>Quote <?= e($quote) ?><?= $termsVersion ? ' &nbsp;|&nbsp; Terms v' . (int) $termsVersion : '' ?></div>

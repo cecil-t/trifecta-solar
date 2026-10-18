@@ -15,21 +15,13 @@ use App\View;
 /** A build sheet's customer proposal (page and PDF), and the proposal terms page. */
 final class ProposalController
 {
-	/**
-	 * The proposal in the browser, with what to fix before sending, as web pages. ?view=pdf shows the
-	 * PDF itself instead (exactly what the customer gets, with the header, footer and page numbers).
-	 */
+	/** The proposal preview: what to fix before sending, then the PDF exactly as the customer gets it. */
 	public function show(int $id, int $designId): void
 	{
 		[$o, $d] = $this->find($id, $designId);
-		$data = Proposal::data($o, $d);
-		$base = '/presales/' . $id . '/designs/' . $designId;
+		$data = Proposal::data($o, $d, false);
 		header('X-Robots-Tag: noindex, nofollow');
-		if (($_GET['view'] ?? '') === 'pdf') {
-			echo View::partial('proposal/preview', $data + ['base' => $base]);
-			return;
-		}
-		echo View::partial('proposal/document', $data + ['assets' => '/', 'screen' => true, 'base' => $base]);
+		echo View::partial('proposal/preview', $data + ['base' => '/presales/' . $id . '/designs/' . $designId]);
 	}
 
 	/** The proposal as a PDF (WeasyPrint): a download, or ?inline=1 for the preview. */
@@ -39,7 +31,7 @@ final class ProposalController
 		$data = Proposal::data($o, $d);
 		$inline = ($_GET['inline'] ?? '') === '1';
 		set_time_limit(120);
-		$r = Pdf::fromHtml(View::partial('proposal/document', $data + ['assets' => '', 'screen' => false, 'base' => '']), 90);
+		$r = Pdf::fromHtml(View::partial('proposal/document', $data + ['assets' => '']), 90);
 		if (!$r['ok']) {
 			if ($inline) {
 				http_response_code(500);

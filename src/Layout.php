@@ -162,6 +162,7 @@ final class Layout
 				'x1' => round($num($m['x1'] ?? null, -5000, 5000, 'measurement'), 4), 'y1' => round($num($m['y1'] ?? null, -5000, 5000, 'measurement'), 4),
 				'x2' => round($num($m['x2'] ?? null, -5000, 5000, 'measurement'), 4), 'y2' => round($num($m['y2'] ?? null, -5000, 5000, 'measurement'), 4),
 				'pitch' => round($num($m['pitch'] ?? 0, 0, 75, 'measurement pitch'), 2), 'az' => round($num($m['az'] ?? 0, -720, 720, 'measurement azimuth'), 2),
+				'src' => preg_match('/^(flat|arr:[a-z0-9]{1,16}|face:\d{1,3})$/', (string) ($m['src'] ?? '')) ? (string) $m['src'] : 'flat',
 			];
 		}
 		$roof = $in['roof'] ?? null;
@@ -173,7 +174,9 @@ final class Layout
 				}
 				$segs[] = ['pitch' => round($num($s['pitch'] ?? 0, 0, 90, 'roof pitch'), 2), 'azimuth' => round($num($s['azimuth'] ?? 0, 0, 360, 'roof azimuth'), 2),
 					'area_m2' => round($num($s['area_m2'] ?? 0, 0, 1e6, 'roof area'), 1),
-					'box' => array_map(static fn ($v) => round($num($v, -180, 180, 'roof box'), 7), array_values($s['box']))];
+					'box' => array_map(static fn ($v) => round($num($v, -180, 180, 'roof box'), 7), array_values($s['box'])),
+					'hull' => is_array($s['hull'] ?? null) ? array_map(static fn ($pt) => !is_array($pt) ? throw new \InvalidArgumentException('The layout has a bad roof outline.') : [round($num($pt[0] ?? null, -85, 85, 'roof outline'), 7),
+						round($num($pt[1] ?? null, -180, 180, 'roof outline'), 7)], array_slice(array_values($s['hull']), 0, 80)) : null];
 			}
 			$out['roof'] = ['quality' => mb_substr((string) ($roof['quality'] ?? ''), 0, 20), 'date' => mb_substr((string) ($roof['date'] ?? ''), 0, 10),
 				'lat' => $num($roof['lat'] ?? 0, -85, 85, 'roof point'), 'lon' => $num($roof['lon'] ?? 0, -180, 180, 'roof point'), 'segments' => $segs];

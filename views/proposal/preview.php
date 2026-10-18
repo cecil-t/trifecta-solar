@@ -16,11 +16,10 @@
 	<title>Proposal <?= e($quote) ?> - <?= e($customerName) ?></title>
 	<link rel="stylesheet" href="<?= asset('assets/css/proposal.css') ?>">
 </head>
-<body class="proposal is-screen is-preview">
+<body class="proposal is-preview">
 	<div class="toolbar">
 		<a href="<?= e($base) ?>" class="tb-back">&larr; Build sheet</a>
 		<span class="tb-title">Proposal <?= e($quote) ?></span>
-		<a href="<?= e($base) ?>/proposal" class="tb-link">Web page view</a>
 		<a href="<?= e($base) ?>/proposal/pdf" class="tb-btn">Download PDF</a>
 	</div>
 	<?php if ($warnings): ?>

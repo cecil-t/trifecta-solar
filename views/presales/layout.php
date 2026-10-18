@@ -33,7 +33,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			<input type="hidden" name="layout" id="layout-json" value="">
 			<span class="small layout-dirty" id="layout-dirty" hidden>Unsaved changes</span>
 			<button class="btn btn-primary" name="then" value="">Save</button>
-			<button class="btn btn-secondary" name="then" value="sheet">Save and open build sheet</button>
+			<button class="btn btn-secondary" name="then" value="sheet">Save and return to build sheet</button>
 		</form>
 	<?php endif; ?>
 </div>
@@ -52,10 +52,10 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 	<div class="layout-app" id="layout-app" data-config="<?= e(json_encode($config)) ?>">
 		<div class="layout-toolbar" role="toolbar" aria-label="Layout tools">
 			<div class="tool-group">
-				<button type="button" class="tool is-active" data-tool="select" aria-pressed="true" title="Select an array to move, turn or edit it. Drag empty map to pan. (V)">Select</button>
-				<button type="button" class="tool" data-tool="draw" aria-pressed="false" title="Click two points along the eave, then one up the roof. The box fills with panels. (A)">Draw array</button>
+				<button type="button" class="tool is-active" data-tool="select" aria-pressed="true" title="Select an array or measurement to move, turn or edit it. Drag empty map to pan. (V)">Select</button>
+				<button type="button" class="tool" data-tool="draw" aria-pressed="false" title="Click and drag a box; it fills with panels as it grows. On a Google roof face it lines up with that face. (A)">Draw array</button>
 				<button type="button" class="tool" data-tool="panels" aria-pressed="false" title="Click or drag over panels to remove them, or over empty spots next to an array to add them. (P)">Add / remove panels</button>
-				<button type="button" class="tool" data-tool="measure" aria-pressed="false" title="Click two points. Measures along the roof's slope, rounded down to the inch. (M)">Measure</button>
+				<button type="button" class="tool" data-tool="measure" aria-pressed="false" title="Drag from one point to another (or click both). Measures along the roof's slope, rounded down to the inch. (M)">Measure</button>
 			</div>
 			<div class="tool-group tool-new">
 				<span class="small muted">New arrays</span>
@@ -72,7 +72,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 						<option value="tracker">Tracker</option>
 					</select>
 				</label>
-				<label class="tool-pitch">Pitch <input type="text" id="new-pitch" value="6/12" inputmode="decimal" title="A roof pitch like 6/12, or degrees"></label>
+				<label class="tool-pitch">Pitch <input type="text" id="new-pitch" value="6/12" inputmode="decimal" title="A roof pitch like 6/12, or a plain number for degrees. Arrays drawn on a Google roof face take its pitch instead."></label>
 			</div>
 			<div class="tool-group">
 				<button type="button" class="btn btn-small btn-secondary" id="btn-roof" title="Ask Google for the roof faces of the building in the middle of the map">Roof data</button>
@@ -121,11 +121,13 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 								<option value="landscape">Landscape</option>
 							</select>
 						</label>
-						<label><span id="sel-pitch-label">Pitch</span> <input type="text" id="sel-pitch" inputmode="decimal" title="A roof pitch like 6/12, or degrees"></label>
+						<label><span id="sel-pitch-label">Pitch</span> <input type="text" id="sel-pitch" inputmode="decimal" title="A roof pitch like 6/12, or a plain number for degrees"></label>
 						<label>Azimuth (&deg;) <input type="text" id="sel-az" inputmode="decimal" title="The way the panels face, degrees from true north (180 = south). Turning the array changes it."></label>
+						<p class="small muted span-2" id="sel-pitch-note"></p>
 						<p class="small span-2" id="sel-stats"></p>
 						<div class="span-2 layout-sel-actions">
 							<button type="button" class="btn btn-small btn-secondary" id="sel-copy" title="Copy this array beside it (Ctrl+D)">Duplicate</button>
+							<button type="button" class="btn btn-small btn-ghost" id="sel-flip" title="Turn it around so the panels face the other way, in the same spot">Flip facing</button>
 							<button type="button" class="btn btn-small btn-ghost" id="sel-delete">Delete array</button>
 						</div>
 					</div>
@@ -136,12 +138,20 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 				</section>
 				<section class="layout-box">
 					<h2>Measurements</h2>
-					<p class="small muted">Along the slope of the selected array (flat with none), rounded down to the inch.</p>
+					<p class="small muted">Rounded down to the inch, along the slope of the array or Google roof face under it (flat with neither). Click one to move its ends or change its slope.</p>
 					<ul class="layout-list" id="measure-list"></ul>
+					<div class="layout-fields mt-xs" id="msel" hidden>
+						<label class="span-2">Measured along
+							<select id="msel-slope"></select>
+						</label>
+						<div class="span-2 layout-sel-actions">
+							<button type="button" class="btn btn-small btn-ghost" id="msel-delete">Delete measurement</button>
+						</div>
+					</div>
 				</section>
 				<section class="layout-box">
 					<h2>Google roof data</h2>
-					<p class="small muted" id="roof-info">Center the map on the roof, then click Roof data.</p>
+					<p class="small muted" id="roof-info">Center the map on the roof, then click Roof data. Google's roof faces show as numbered outlines; click one (here or on the map) to highlight it.</p>
 					<ul class="layout-list" id="roof-list"></ul>
 				</section>
 				<section class="layout-box">
@@ -158,10 +168,10 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 				<details class="layout-box layout-help">
 					<summary>Tips and shortcuts</summary>
 					<ul class="small">
-						<li><strong>Draw:</strong> click the eave's two ends, then a point up the roof. The panels face down the slope, so the azimuth comes from how you draw.</li>
-						<li><strong>Pitch</strong> shortens panels as seen from above (a 6/12 roof shows a 66 in panel as 59 in), so set it before judging the fit.</li>
-						<li><strong>Pan:</strong> drag empty map with Select, or hold the space bar and drag. <strong>Zoom:</strong> mouse wheel.</li>
-						<li><strong>Keys:</strong> V select, A draw, P panels, M measure, Esc cancel, Delete removes the selected array, arrows nudge 1 in (Shift: 1 ft), [ and ] turn it 0.5&deg; (Shift: 5&deg;), Ctrl+D duplicates, Ctrl+Z undo.</li>
+						<li><strong>Draw:</strong> click and drag a box. Started on a Google roof face, it lines up with the face and takes its pitch and direction; otherwise it lines up with the last array (or faces south). Turn it with the round handle, or Flip facing.</li>
+						<li><strong>Pitch</strong> shortens panels as seen from above (a 6/12 roof shows a 66 in panel as 59 in), so set it before judging the fit. Type 6/12, or a plain number for degrees (no degree sign needed).</li>
+						<li><strong>Pan:</strong> right-click and drag with any tool (or drag empty map with Select, or hold the space bar). <strong>Zoom:</strong> mouse wheel.</li>
+						<li><strong>Keys:</strong> V select, A draw, P panels, M measure, Esc cancel, Delete removes the selected array or measurement, arrows nudge 1 in (Shift: 1 ft), [ and ] turn it 0.5&deg; (Shift: 5&deg;), Ctrl+D duplicates, Ctrl+Z undo.</li>
 						<li><strong>Trackers</strong> are drawn flat, with a dashed red circle for the space the table sweeps as it turns.</li>
 						<li>Satellite photos aren't perfect: tall roofs lean a little, and roof edges include the gutter and overhang.</li>
 					</ul>

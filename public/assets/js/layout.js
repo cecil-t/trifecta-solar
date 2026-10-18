@@ -39,7 +39,9 @@
 		view: saved && saved.view ? saved.view : { cx: 0, cy: 0, mpp: 0.06 },
 		maxz: saved ? (saved.maxz || 21) : 21,
 		tool: 'select',
-		sel: null,
+		sel: null,     // selected array key
+		selM: null,    // selected measurement index
+		face: null,    // highlighted Google roof face index
 		draft: null,
 	};
 	const notes = [];
@@ -55,6 +57,7 @@
 
 	// ---------- Small helpers ----------
 	const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+	const norm = (az) => ((az % 360) + 360) % 360;
 	const el = (name, attrs, parent) => {
 		const n = document.createElementNS(NS, name);
 		for (const k in attrs) {
@@ -80,11 +83,22 @@
 		}
 		return n;
 	};
+	const button = (cls, text, title, fn) => {
+		const b = html('button', cls, text);
+		b.type = 'button';
+		if (title) {
+			b.title = title;
+		}
+		b.addEventListener('click', fn);
+		return b;
+	};
 	const ftIn = (m) => {
 		const total = Math.floor(m / IN + 1e-6);   // round down: never more room than there is
 		const ft = Math.floor(total / 12);
 		return ft ? ft + '\' ' + (total % 12) + '"' : (total % 12) + '"';
 	};
+	const deg1 = (d) => (Math.round(d * 10) / 10) + '°';
+	const over12 = (deg) => (Math.round(12 * Math.tan(deg * RAD) * 10) / 10) + '/12';
 	const fmtPitch = (deg, mount) => {
 		if (mount === 'tracker') {
 			return 'tracker';
@@ -97,24 +111,48 @@
 		if (mount !== 'ground' && Math.abs(x - half) < 0.06 && half <= 24) {
 			return half + '/12';
 		}
-		return (Math.round(deg * 10) / 10) + '°';
+		return deg1(deg);
 	};
+	// "6/12" is a pitch; a plain number is degrees (no degree sign needed)
 	const parsePitch = (raw) => {
-		const t = String(raw).trim().toLowerCase().replace(/°|deg/g, '');
-		if (t === '' ) {
+		const t = String(raw).trim().toLowerCase().replace(/°|deg(rees)?/g, '').trim();
+		if (t === '') {
 			return null;
 		}
 		if (t === 'flat') {
 			return 0;
 		}
-		const m = t.match(/^(\d+(?:\.\d+)?)\s*[/:]\s*12$/);
+		const m = t.match(/^(\d+(?:\.\d+)?)\s*(?:\/|:|in)\s*12$/);
 		const deg = m ? Math.atan(parseFloat(m[1]) / 12) / RAD : (/^\d+(\.\d+)?$/.test(t) ? parseFloat(t) : NaN);
 		return isFinite(deg) && deg >= 0 && deg <= 75 ? Math.round(deg * 100) / 100 : null;
 	};
+	const pitchNote = (deg, mount) => {
+		if (mount === 'tracker' || deg === null) {
+			return '';
+		}
+		if (deg < 0.05) {
+			return 'Flat (0°).';
+		}
+		const base = deg1(deg) + ' = ' + over12(deg) + '.';
+		return mount === 'roof' && deg < 9.5 ? base + ' That is nearly flat. For a 6 in 12 roof, type 6/12.' : base;
+	};
 	const COMPASS = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
 	const SHORT = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-	const compass = (az) => COMPASS[Math.round((((az % 360) + 360) % 360) / 45) % 8];
-	const short = (az) => SHORT[Math.round((((az % 360) + 360) % 360) / 45) % 8];
+	const compass = (az) => COMPASS[Math.round(norm(az) / 45) % 8];
+	const short = (az) => SHORT[Math.round(norm(az) / 45) % 8];
+	const PREFIX = { roof: 'Roof array', ground: 'Ground array', tracker: 'Tracker' };
+	const isDefaultName = (name) => /^(Roof array|Ground array|Tracker) \d+$/.test(name);
+	const nextName = (mount) => {
+		const p = PREFIX[mount] || 'Array';
+		let n = 0;
+		for (const a of S.arrays) {
+			const m = a.name.match(/^(.*) (\d+)$/);
+			if (m && m[1] === p) {
+				n = Math.max(n, parseInt(m[2], 10));
+			}
+		}
+		return p + ' ' + (n + 1);
+	};
 	const newKey = () => {
 		let k;
 		do {
@@ -198,15 +236,20 @@
 	};
 	const hasCell = (a, r, c) => a.cells.some((x) => x[0] === r && x[1] === c);
 	const panelCount = () => S.arrays.reduce((n, a) => n + a.cells.length, 0);
+	const inArray = (a, x, y) => {
+		const b = localBox(a);
+		const [lx, ly] = toArr(a, x, y);
+		return lx >= b.x0 && lx <= b.x1 && ly >= b.y0 && ly <= b.y1;
+	};
 	// Keep the panels where they are on the map while the array turns about its center
 	const turnTo = (a, az) => {
 		const ctr = centerOf(a);
-		a.az = ((az % 360) + 360) % 360;
+		a.az = norm(az);
 		const t = a.az * RAD;
 		a.x = ctr.map[0] - (ctr.lx * Math.cos(t) - ctr.ly * Math.sin(t));
 		a.y = ctr.map[1] - (ctr.lx * Math.sin(t) + ctr.ly * Math.cos(t));
 	};
-	// The same with a change that resizes the grid (pitch, orientation, module, gaps)
+	// The same with a change that resizes the grid (pitch, orientation)
 	const keepCenter = (a, change) => {
 		const before = centerOf(a).map;
 		change();
@@ -215,23 +258,95 @@
 		a.y += before[1] - after[1];
 	};
 
-	// Google roof face under a point (smallest box that holds it)
-	const roofFaceAt = (x, y) => {
-		if (!S.roof) {
-			return null;
+	// ---------- Google roof faces ----------
+	const faces = () => (S.roof ? S.roof.segments : []);
+	const faceShape = (s) => {
+		if (s.hull && s.hull.length >= 3) {
+			return s.hull.map((p) => toLocal(p[0], p[1]));
 		}
-		let best = null;
-		for (const s of S.roof.segments) {
-			const [x1, y2] = toLocal(s.box[0], s.box[1]);
-			const [x2, y1] = toLocal(s.box[2], s.box[3]);
-			if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
-				const area = (x2 - x1) * (y2 - y1);
-				if (!best || area < best.area) {
-					best = { s, area };
-				}
+		const [x1, y2] = toLocal(s.box[0], s.box[1]);
+		const [x2, y1] = toLocal(s.box[2], s.box[3]);
+		return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+	};
+	const polyArea = (pts) => Math.abs(pts.reduce((sum, p, i) => {
+		const q = pts[(i + 1) % pts.length];
+		return sum + p[0] * q[1] - q[0] * p[1];
+	}, 0) / 2);
+	const inPoly = (x, y, pts) => {
+		let inside = false;
+		for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+			const [xi, yi] = pts[i];
+			const [xj, yj] = pts[j];
+			if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) {
+				inside = !inside;
 			}
 		}
-		return best ? best.s : null;
+		return inside;
+	};
+	const faceAt = (x, y) => {   // the smallest face holding the point, or null
+		let best = null;
+		faces().forEach((s, i) => {
+			const pts = faceShape(s);
+			if (inPoly(x, y, pts)) {
+				const area = polyArea(pts);
+				if (!best || area < best.area) {
+					best = { i, area };
+				}
+			}
+		});
+		return best ? best.i : null;
+	};
+	const faceText = (i) => {
+		const s = faces()[i];
+		return '#' + (i + 1) + ' ' + over12(s.pitch) + ' (' + deg1(s.pitch) + '), facing ' + short(s.azimuth) + ' ' + Math.round(s.azimuth) + '°';
+	};
+
+	// ---------- Measurements ----------
+	// A measurement keeps where its slope came from (an array, a Google face or flat) and follows it
+	const slopeOf = (m) => {
+		const src = m.src || '';
+		if (src.startsWith('arr:')) {
+			const a = S.arrays.find((x) => x.key === src.slice(4) && x.mount !== 'tracker');
+			if (a) {
+				return { pitch: a.pitch, az: a.az, label: a.name + ' (' + fmtPitch(a.pitch, a.mount) + ')' };
+			}
+		} else if (src.startsWith('face:')) {
+			const s = faces()[parseInt(src.slice(5), 10)];
+			if (s) {
+				return { pitch: s.pitch, az: s.azimuth, label: 'Google face #' + (parseInt(src.slice(5), 10) + 1) + ' (' + over12(s.pitch) + ')' };
+			}
+		} else if (src === 'flat') {
+			return { pitch: 0, az: 0, label: 'flat' };
+		}
+		return m.pitch ? { pitch: m.pitch, az: m.az, label: fmtPitch(m.pitch, 'roof') + ' slope' } : { pitch: 0, az: 0, label: 'flat' };
+	};
+	const slopeSourceFor = (x1, y1, x2, y2) => {
+		const order = S.arrays.slice().sort((a, b) => (b.key === S.sel) - (a.key === S.sel));
+		for (const a of order) {
+			if (a.mount !== 'tracker' && (inArray(a, x1, y1) || inArray(a, x2, y2))) {
+				return 'arr:' + a.key;
+			}
+		}
+		const f = faceAt((x1 + x2) / 2, (y1 + y2) / 2) ?? faceAt(x1, y1) ?? faceAt(x2, y2);
+		return f === null ? 'flat' : 'face:' + f;
+	};
+	const settle = (m) => {   // store the slope too, so the saved layout has it
+		const s = slopeOf(m);
+		m.pitch = Math.round(s.pitch * 100) / 100;
+		m.az = Math.round(s.az * 100) / 100;
+		return m;
+	};
+	const trueLength = (m) => {
+		const s = slopeOf(m);
+		const dx = m.x2 - m.x1;
+		const dy = m.y2 - m.y1;
+		if (!s.pitch) {
+			return Math.hypot(dx, dy);
+		}
+		const t = s.az * RAD;
+		const across = dx * Math.cos(t) + dy * Math.sin(t);
+		const up = -dx * Math.sin(t) + dy * Math.cos(t);
+		return Math.hypot(across, up / Math.cos(s.pitch * RAD));
 	};
 
 	// ---------- View ----------
@@ -262,7 +377,11 @@
 		S.view.cy = py - (py - S.view.cy) * f;
 		S.view.mpp = mpp;
 		updateView();
-		markDirty();
+	};
+	const centerOn = (x, y) => {
+		S.view.cx = x;
+		S.view.cy = y;
+		updateView();
 	};
 	const fit = () => {
 		const pts = S.arrays.flatMap(corners);
@@ -358,7 +477,7 @@
 				const r = await fetch(cfg.viewport + '?' + new URLSearchParams({ z, n, s, e, w }), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
 				const j = await r.json();
 				if (j.ok) {
-					$('layout-attrib').textContent = cfg.placeholder ? j.copyright : 'Imagery: Google' + (j.copyright ? ' · ' + j.copyright : '');
+					$('layout-attrib').textContent = cfg.placeholder ? j.copyright : 'Google Maps' + (j.copyright ? ' · ' + j.copyright : '');
 					if (j.max_zoom && z >= 17) {
 						const mz = clamp(j.max_zoom, 15, 22);
 						if (mz !== S.maxz) {
@@ -385,16 +504,19 @@
 	};
 
 	// ---------- Drawing ----------
+	const drawPanels = (a, g) => {
+		const gr = grid(a);
+		for (const [r, c] of a.cells) {
+			el('rect', { x: c * gr.su, y: r * gr.sv, width: gr.u, height: gr.v, class: 'panel' }, g);
+		}
+	};
 	const drawArrays = () => {
 		clear(L.arrays);
 		for (const a of S.arrays) {
 			const g = el('g', { class: 'arr' + (a.key === S.sel ? ' is-sel' : '') + (a.mount === 'tracker' ? ' is-tracker' : ''),
 				transform: 'translate(' + a.x + ' ' + a.y + ') rotate(' + a.az + ')' }, L.arrays);
 			g.dataset.key = a.key;
-			const gr = grid(a);
-			for (const [r, c] of a.cells) {
-				el('rect', { x: c * gr.su, y: r * gr.sv, width: gr.u, height: gr.v, class: 'panel' }, g);
-			}
+			drawPanels(a, g);
 		}
 		for (const a of S.arrays) {
 			if (a.mount === 'tracker' && a.cells.length) {
@@ -404,6 +526,7 @@
 		}
 		drawLabels();
 		drawHandles();
+		drawMeasures();
 		drawSide();
 	};
 	let labelLayer = null;
@@ -419,7 +542,7 @@
 			}
 			const c = centerOf(a).map;
 			const t = el('text', { x: c[0], y: c[1] + fs * 0.35, 'font-size': fs, class: 'arr-label' }, labelLayer);
-			t.textContent = a.name + ' · ' + a.cells.length;
+			t.textContent = a.name + ' · ' + a.cells.length + (a.mount === 'tracker' ? '' : ' · ' + fmtPitch(a.pitch, a.mount));
 		}
 	};
 	const drawHandles = () => {
@@ -445,98 +568,76 @@
 	};
 	const drawRoof = () => {
 		clear(L.roof);
-		if (!S.roof) {
-			return;
-		}
 		const fs = 11 * S.view.mpp;
-		for (const s of S.roof.segments) {
-			const [x1, y2] = toLocal(s.box[0], s.box[1]);
-			const [x2, y1] = toLocal(s.box[2], s.box[3]);
-			el('rect', { x: x1, y: y1, width: x2 - x1, height: y2 - y1, class: 'roof-box' }, L.roof);
-			const t = el('text', { x: (x1 + x2) / 2, y: (y1 + y2) / 2, 'font-size': fs, class: 'roof-label' }, L.roof);
-			t.textContent = fmtPitch(s.pitch, 'roof') + ' ' + short(s.azimuth);
-		}
+		faces().forEach((s, i) => {
+			const pts = faceShape(s);
+			const poly = el('polygon', { points: pts.map((p) => p[0] + ',' + p[1]).join(' '), class: 'roof-face' + (i === S.face ? ' is-sel' : '') + (S.face !== null && i !== S.face ? ' is-dim' : '') }, L.roof);
+			poly.dataset.face = String(i);
+			const cx = pts.reduce((t, p) => t + p[0], 0) / pts.length;
+			const cy = pts.reduce((t, p) => t + p[1], 0) / pts.length;
+			const t = el('text', { x: cx, y: cy, 'font-size': fs, class: 'roof-label' + (i === S.face ? ' is-sel' : '') }, L.roof);
+			t.textContent = '#' + (i + 1) + ' ' + over12(s.pitch) + ' ' + short(s.azimuth);
+		});
 	};
-	const measureSlope = (x1, y1, x2, y2) => {
-		// The array under either end (the selected one first), else the selected array, else flat
-		const order = S.arrays.slice().sort((a, b) => (b.key === S.sel) - (a.key === S.sel));
-		for (const a of order) {
-			if (a.mount === 'tracker') {
-				continue;
-			}
-			const b = localBox(a);
-			for (const [x, y] of [[x1, y1], [x2, y2]]) {
-				const [lx, ly] = toArr(a, x, y);
-				if (lx >= b.x0 && lx <= b.x1 && ly >= b.y0 && ly <= b.y1) {
-					return { pitch: a.pitch, az: a.az, name: a.name };
-				}
-			}
-		}
-		const sel = S.arrays.find((x) => x.key === S.sel && x.mount !== 'tracker');
-		return sel ? { pitch: sel.pitch, az: sel.az, name: sel.name } : { pitch: 0, az: 0, name: '' };
-	};
-	const trueLength = (m) => {
-		const dx = m.x2 - m.x1;
-		const dy = m.y2 - m.y1;
-		if (!m.pitch) {
-			return Math.hypot(dx, dy);
-		}
-		const t = m.az * RAD;
-		const across = dx * Math.cos(t) + dy * Math.sin(t);
-		const up = -dx * Math.sin(t) + dy * Math.cos(t);
-		return Math.hypot(across, up / Math.cos(m.pitch * RAD));
-	};
-	const drawMeasure = (m, g, cls) => {
+	const drawMeasure = (m, g, i) => {
 		const px = S.view.mpp;
-		el('line', { x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2, class: 'measure ' + (cls || '') }, g);
-		for (const [x, y] of [[m.x1, m.y1], [m.x2, m.y2]]) {
-			el('circle', { cx: x, cy: y, r: 3 * px, class: 'measure-end' }, g);
+		const grp = el('g', { class: 'm' + (i === S.selM ? ' is-sel' : '') + (i === undefined ? ' is-draft' : '') }, g);
+		if (i !== undefined) {
+			grp.dataset.m = String(i);
+			el('line', { x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2, class: 'measure-hit' }, grp);
 		}
-		const t = el('text', { x: (m.x1 + m.x2) / 2, y: (m.y1 + m.y2) / 2 - 6 * px, 'font-size': 13 * px, class: 'measure-label' }, g);
-		t.textContent = ftIn(trueLength(m));
+		el('line', { x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2, class: 'measure' }, grp);
+		[[m.x1, m.y1], [m.x2, m.y2]].forEach(([x, y], k) => {
+			const c = el('circle', { cx: x, cy: y, r: (i === S.selM ? 5 : 3) * px, class: 'measure-end' }, grp);
+			if (i !== undefined) {
+				c.dataset.end = String(k + 1);
+			}
+		});
+		const s = slopeOf(m);
+		const t = el('text', { x: (m.x1 + m.x2) / 2, y: (m.y1 + m.y2) / 2 - 6 * px, 'font-size': 13 * px, class: 'measure-label' }, grp);
+		t.textContent = ftIn(trueLength(m)) + (s.pitch ? '' : ' flat');
 	};
 	const drawMeasures = () => {
 		clear(L.measures);
-		for (const m of S.measures) {
-			drawMeasure(m, L.measures);
-		}
+		S.measures.forEach((m, i) => drawMeasure(m, L.measures, i));
 	};
-	const draftArray = (p1, p2, p3) => {
-		let ux = p2.x - p1.x;
-		let uy = p2.y - p1.y;
-		const len = Math.hypot(ux, uy);
-		if (len < 0.05) {
-			return null;
-		}
-		ux /= len;
-		uy /= len;
-		let vx = -uy;
-		let vy = ux;
-		let o = p1;
-		let depth = (p3.x - p1.x) * vx + (p3.y - p1.y) * vy;
-		if (depth < 0) {   // the third point sets which side is up the roof
-			o = p2;
-			ux = -ux; uy = -uy; vx = -vx; vy = -vy;
-			depth = -depth;
-		}
+
+	// The frame a new box is drawn in: a Google face under the start (its direction and pitch), else
+	// lined up with the selected or last array of the same mount, else facing south
+	const frameAt = (p) => {
 		const mount = $('new-mount').value;
-		const mid = { x: (p1.x + p2.x) / 2 + vx * depth / 2, y: (p1.y + p2.y) / 2 + vy * depth / 2 };
-		const face = mount === 'roof' ? roofFaceAt(mid.x, mid.y) : null;
 		const typed = parsePitch($('new-pitch').value);
-		const a = {
-			key: '', name: '', mount: mount, orient: $('new-orient').value,
-			pitch: mount === 'tracker' ? 0 : (face ? Math.round(face.pitch * 100) / 100 : (typed === null ? 0 : typed)),
-			az: ((Math.atan2(uy, ux) / RAD) % 360 + 360) % 360, x: o.x, y: o.y, cells: [],
-		};
+		const f = mount === 'roof' ? faceAt(p.x, p.y) : null;
+		if (f !== null) {
+			const s = faces()[f];
+			return { az: norm(s.azimuth), pitch: Math.round(s.pitch * 100) / 100, src: 'on Google roof face #' + (f + 1) };
+		}
+		const same = S.arrays.filter((x) => x.mount === mount);
+		const ref = same.find((x) => x.key === S.sel) || same[same.length - 1];
+		const pitch = mount === 'tracker' ? 0 : (typed === null ? 0 : typed);
+		if (ref) {
+			return { az: ref.az, pitch, src: 'lined up with ' + ref.name };
+		}
+		return { az: 180, pitch, src: 'facing south' };
+	};
+	const draftBox = (d) => {
+		const t = d.frame.az * RAD;
+		const dx = d.cursor.x - d.start.x;
+		const dy = d.cursor.y - d.start.y;
+		const lx = dx * Math.cos(t) + dy * Math.sin(t);
+		const ly = -dx * Math.sin(t) + dy * Math.cos(t);
+		const mount = $('new-mount').value;
+		const a = { key: '', name: '', mount, orient: $('new-orient').value, pitch: mount === 'tracker' ? 0 : d.frame.pitch,
+			az: d.frame.az, x: d.start.x, y: d.start.y, cells: [] };
 		const g = grid(a);
-		const cols = Math.max(1, Math.floor((len + S.gap.panel + 1e-9) / g.su));
-		const rows = Math.max(1, Math.floor((depth + g.sv - g.v + 1e-9) / g.sv));
-		for (let r = 0; r < rows && r < 200; r++) {
-			for (let c = 0; c < cols && c < 200; c++) {
-				a.cells.push([r, c]);
+		const cols = Math.floor((Math.abs(lx) + S.gap.panel + 1e-9) / g.su);
+		const rows = Math.floor((Math.abs(ly) + g.sv - g.v + 1e-9) / g.sv);
+		for (let r = 0; r < rows && r < 300; r++) {
+			for (let c = 0; c < cols && c < 300; c++) {
+				a.cells.push([ly < 0 ? -1 - r : r, lx < 0 ? -1 - c : c]);
 			}
 		}
-		return { a, len, depth, face };
+		return { a, lx, ly };
 	};
 	const drawDraft = () => {
 		clear(L.draft);
@@ -545,34 +646,22 @@
 			return;
 		}
 		if (d.tool === 'measure') {
-			const sl = measureSlope(d.p1.x, d.p1.y, d.cursor.x, d.cursor.y);
-			const m = { x1: d.p1.x, y1: d.p1.y, x2: d.cursor.x, y2: d.cursor.y, pitch: sl.pitch, az: sl.az };
-			drawMeasure(m, L.draft, 'is-draft');
-			hint('Click the end point. ' + ftIn(trueLength(m)) + (sl.pitch ? ' along ' + sl.name + ' (' + fmtPitch(sl.pitch, 'roof') + ')' : ' flat') + '.');
+			const m = settle({ x1: d.p1.x, y1: d.p1.y, x2: d.cursor.x, y2: d.cursor.y, src: slopeSourceFor(d.p1.x, d.p1.y, d.cursor.x, d.cursor.y) });
+			drawMeasure(m, L.draft);
+			const s = slopeOf(m);
+			hint((d.waiting ? 'Click the end point. ' : '') + ftIn(trueLength(m)) + (s.pitch ? ' along ' + s.label : ' flat (no array or Google face under it)') + '.');
 			return;
 		}
-		if (!d.p2) {
-			el('line', { x1: d.p1.x, y1: d.p1.y, x2: d.cursor.x, y2: d.cursor.y, class: 'draft-line' }, L.draft);
-			hint('Click the other end of the eave (low edge). ' + ftIn(Math.hypot(d.cursor.x - d.p1.x, d.cursor.y - d.p1.y)) + '.');
-			return;
-		}
-		const r = draftArray(d.p1, d.p2, d.cursor);
-		if (!r) {
-			return;
-		}
-		el('line', { x1: d.p1.x, y1: d.p1.y, x2: d.p2.x, y2: d.p2.y, class: 'draft-line' }, L.draft);
-		const g = el('g', { class: 'arr is-draft', transform: 'translate(' + r.a.x + ' ' + r.a.y + ') rotate(' + r.a.az + ')' }, L.draft);
-		const gr = grid(r.a);
-		for (const [row, c] of r.a.cells) {
-			el('rect', { x: c * gr.su, y: row * gr.sv, width: gr.u, height: gr.v, class: 'panel' }, g);
-		}
-		el('rect', { x: 0, y: 0, width: r.len, height: r.depth, class: 'draft-box' }, g);
+		const r = draftBox(d);
+		const g = el('g', { class: 'arr is-draft', transform: 'translate(' + d.start.x + ' ' + d.start.y + ') rotate(' + d.frame.az + ')' }, L.draft);
+		el('rect', { x: Math.min(0, r.lx), y: Math.min(0, r.ly), width: Math.abs(r.lx), height: Math.abs(r.ly), class: 'draft-box' }, g);
+		drawPanels(r.a, g);
 		if (r.a.mount === 'tracker') {
-			hint('Click to place a tracker of ' + r.a.cells.length + ' panels: ' + ftIn(r.len) + ' by ' + ftIn(r.depth) + ', sweeping ' + ftIn(sweep(r.a).r * 2) + ' across.');
+			hint('Tracker of ' + r.a.cells.length + ' panels: ' + ftIn(Math.abs(r.lx)) + ' by ' + ftIn(Math.abs(r.ly)) + '.');
 			return;
 		}
-		hint('Click to place ' + r.a.cells.length + ' panels: ' + ftIn(r.len) + ' along the eave, ' + ftIn(r.depth / Math.cos(r.a.pitch * RAD)) + ' up the slope at '
-			+ fmtPitch(r.a.pitch, r.a.mount) + (r.face ? ' (Google roof face)' : '') + ', facing ' + compass(r.a.az) + ' ' + Math.round(r.a.az) + '°.');
+		hint(r.a.cells.length + ' panels: ' + ftIn(Math.abs(r.lx)) + ' along the eave by ' + ftIn(Math.abs(r.ly) / Math.cos(r.a.pitch * RAD)) + ' up the slope, at '
+			+ fmtPitch(r.a.pitch, r.a.mount) + ', facing ' + compass(r.a.az) + ' ' + Math.round(r.a.az) + '° (' + d.frame.src + ').');
 	};
 
 	// ---------- Side panel ----------
@@ -581,12 +670,38 @@
 	};
 	const toolHint = () => {
 		const h = {
-			select: 'Click an array to select it. Drag it to move, drag the round handle to turn. Drag empty map to pan, wheel to zoom.',
-			draw: sizeOk() ? 'Click one end of the eave (the low edge of the roof).' : 'Type the module length and width (right) before drawing.',
+			select: 'Click an array or measurement to select it. Drag it to move; drag the round handle to turn. Drag empty map (or right-drag anywhere) to pan.',
+			draw: sizeOk() ? 'Click and drag a box; it fills with panels. Start on a Google roof face to line up with it and take its pitch.' : 'Type the module length and width (right) before drawing.',
 			panels: 'Click or drag over panels to remove them, or over empty spots beside an array to add them.',
-			measure: 'Click the start point.',
+			measure: 'Drag from one point to the other, or click both.',
 		};
 		hint(h[S.tool]);
+	};
+	const selectArray = (key, center) => {
+		S.sel = key;
+		S.selM = null;
+		drawArrays();
+		if (center && key) {
+			const c = centerOf(S.arrays.find((x) => x.key === key)).map;
+			centerOn(c[0], c[1]);
+		}
+	};
+	const selectMeasure = (i) => {
+		S.selM = i;
+		S.sel = null;
+		drawArrays();
+	};
+	const selectFace = (i, center) => {
+		S.face = S.face === i && !center ? null : i;
+		drawRoof();
+		drawSide();
+		if (center && i !== null) {
+			const pts = faceShape(faces()[i]);
+			centerOn(pts.reduce((t, p) => t + p[0], 0) / pts.length, pts.reduce((t, p) => t + p[1], 0) / pts.length);
+		}
+		if (S.face !== null) {
+			hint('Google roof face ' + faceText(S.face) + '. The outline is the area Google would put panels on.');
+		}
 	};
 	const drawSide = () => {
 		const n = panelCount();
@@ -603,10 +718,7 @@
 		list.replaceChildren();
 		for (const a of S.arrays) {
 			const li = html('li', a.key === S.sel ? 'is-sel' : '');
-			const b = html('button', 'linklike', a.name);
-			b.type = 'button';
-			b.addEventListener('click', () => select(a.key, true));
-			li.append(b, html('span', 'small muted', ' ' + a.cells.length + ' panels, '
+			li.append(button('linklike', a.name, '', () => selectArray(a.key, true)), html('span', 'small muted', ' ' + a.cells.length + ' panels, '
 				+ (a.mount === 'tracker' ? 'tracker' : fmtPitch(a.pitch, a.mount) + ', facing ' + short(a.az) + ' ' + Math.round(a.az) + '°')));
 			list.append(li);
 		}
@@ -627,65 +739,72 @@
 			set('sel-name', a.name);
 			set('sel-mount', a.mount);
 			set('sel-orient', a.orient);
-			set('sel-pitch', a.mount === 'tracker' ? '' : fmtPitch(a.pitch, a.mount) === 'flat' ? '0' : fmtPitch(a.pitch, a.mount));
+			set('sel-pitch', a.mount === 'tracker' ? '' : fmtPitch(a.pitch, a.mount) === 'flat' ? '0' : fmtPitch(a.pitch, a.mount).replace('°', ''));
 			set('sel-az', a.mount === 'tracker' ? '' : String(Math.round(a.az * 10) / 10));
-			$('sel-pitch').disabled = $('sel-az').disabled = a.mount === 'tracker';
+			$('sel-pitch').disabled = $('sel-az').disabled = $('sel-flip').disabled = a.mount === 'tracker';
 			$('sel-pitch-label').textContent = a.mount === 'roof' ? 'Pitch' : 'Tilt';
+			$('sel-pitch-note').textContent = pitchNote(a.pitch, a.mount);
 			let stats = a.cells.length + ' panels' + (S.module.watts ? ', ' + (a.cells.length * S.module.watts / 1000).toFixed(2) + ' kW' : '');
-			if (a.mount === 'tracker') {
-				stats += '. Sweep: ' + ftIn(sweep(a).r * 2) + ' across.';
-			} else {
-				stats += ', facing ' + compass(a.az) + '.';
-			}
+			stats += a.mount === 'tracker' ? '. Sweep: ' + ftIn(sweep(a).r * 2) + ' across.' : ', facing ' + compass(a.az) + '.';
 			$('sel-stats').textContent = stats;
 		}
 
 		const ml = $('measure-list');
 		ml.replaceChildren();
 		S.measures.forEach((m, i) => {
-			const li = html('li');
-			li.append(html('span', '', ftIn(trueLength(m))), html('span', 'small muted', m.pitch ? ' along a ' + fmtPitch(m.pitch, 'roof') + ' slope ' : ' flat '));
-			const x = html('button', 'btn btn-ghost btn-small', '×');
-			x.type = 'button';
-			x.title = 'Remove this measurement';
-			x.setAttribute('aria-label', 'Remove this measurement');
-			x.addEventListener('click', () => {
-				S.measures.splice(i, 1);
-				commit();
-				drawMeasures();
-			});
-			li.append(x);
+			const s = slopeOf(m);
+			const li = html('li', i === S.selM ? 'is-sel' : '');
+			li.append(button('linklike', ftIn(trueLength(m)), 'Select this measurement', () => selectMeasure(i)),
+				html('span', 'small muted', s.pitch ? ' along ' + s.label : ' flat'),
+				button('btn btn-ghost btn-small', '×', 'Remove this measurement', () => removeMeasure(i)));
+			li.lastChild.setAttribute('aria-label', 'Remove this measurement');
 			ml.append(li);
 		});
 		if (!S.measures.length) {
 			ml.append(html('li', 'small muted', 'None. Use Measure.'));
 		}
+		const m = S.measures[S.selM];
+		$('msel').hidden = !m;
+		if (m) {
+			const sel = $('msel-slope');
+			sel.replaceChildren();
+			const opt = (value, text) => {
+				const o = html('option', '', text);
+				o.value = value;
+				sel.append(o);
+			};
+			opt('flat', 'Flat (no slope)');
+			S.arrays.filter((x) => x.mount !== 'tracker').forEach((x) => opt('arr:' + x.key, x.name + ' (' + fmtPitch(x.pitch, x.mount) + ', facing ' + short(x.az) + ')'));
+			faces().forEach((s, i) => opt('face:' + i, 'Google face ' + faceText(i)));
+			sel.value = m.src && [...sel.options].some((o) => o.value === m.src) ? m.src : 'flat';
+		}
 
 		const rl = $('roof-list');
 		rl.replaceChildren();
 		if (S.roof) {
-			$('roof-info').textContent = 'Google: ' + S.roof.quality.toLowerCase() + ' quality, imagery from ' + S.roof.date + ', ' + S.roof.segments.length + ' roof faces (dashed boxes are their outer bounds).';
-			const sel = S.arrays.find((x) => x.key === S.sel && x.mount !== 'tracker');
-			S.roof.segments.forEach((s) => {
-				const li = html('li');
-				li.append(html('span', 'small', fmtPitch(s.pitch, 'roof') + ' (' + (Math.round(s.pitch * 10) / 10) + '°), facing ' + short(s.azimuth) + ' ' + Math.round(s.azimuth) + '°, '
-					+ Math.round(s.area_m2 * 10.7639).toLocaleString() + ' sq ft '));
-				const b = html('button', 'btn btn-ghost btn-small', 'Use pitch');
-				b.type = 'button';
-				b.disabled = !sel;
-				b.title = sel ? 'Set ' + sel.name + ' to this pitch' : 'Select an array first';
-				b.addEventListener('click', () => {
-					const a = S.arrays.find((x) => x.key === S.sel);
-					if (a) {
-						keepCenter(a, () => { a.pitch = Math.round(s.pitch * 100) / 100; });
-						commit();
-						drawArrays();
-					}
-				});
-				li.append(b);
+			$('roof-info').textContent = 'Google: ' + S.roof.quality.toLowerCase() + ' quality, imagery from ' + S.roof.date + ', ' + faces().length
+				+ ' roof faces. Click one to highlight it. Arrays drawn starting on a face line up with it and take its pitch.';
+			faces().forEach((s, i) => {
+				const li = html('li', i === S.face ? 'is-sel' : '');
+				li.append(button('linklike', '#' + (i + 1), 'Highlight this face on the map', () => selectFace(i, true)),
+					html('span', 'small', ' ' + over12(s.pitch) + ' (' + deg1(s.pitch) + '), facing ' + short(s.azimuth) + ' ' + Math.round(s.azimuth) + '°, '
+						+ Math.round(s.area_m2 * 10.7639).toLocaleString() + ' sq ft '),
+					button('btn btn-ghost btn-small', 'Use pitch', 'Set the selected array to this pitch', () => usePitch(i)));
 				rl.append(li);
 			});
 		}
+	};
+	const usePitch = (i) => {
+		const a = S.arrays.find((x) => x.key === S.sel);
+		const s = faces()[i];
+		if (!a || a.mount === 'tracker') {
+			hint('Select a roof or ground array first, then click Use pitch.');
+			return;
+		}
+		keepCenter(a, () => { a.pitch = Math.round(s.pitch * 100) / 100; });
+		commit();
+		drawArrays();
+		hint(a.name + ' is now ' + deg1(a.pitch) + ' (' + over12(a.pitch) + '), the pitch Google measured for face #' + (i + 1) + '.');
 	};
 
 	// ---------- History and saving ----------
@@ -693,6 +812,7 @@
 	const past = [snapshot()];
 	const future = [];
 	function serialize() {
+		S.measures.forEach(settle);
 		return { origin: S.origin, module: S.module, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof };
 	}
 	// What needs saving: the drawing, not where the map was moved to
@@ -725,9 +845,11 @@
 		if (!S.arrays.some((a) => a.key === S.sel)) {
 			S.sel = null;
 		}
+		if (S.selM !== null && !S.measures[S.selM]) {
+			S.selM = null;
+		}
 		syncModuleFields();
 		drawArrays();
-		drawMeasures();
 		updateUndo();
 		markDirty();
 	};
@@ -758,27 +880,8 @@
 		dirty = false;
 	});
 
-	// ---------- Selection and editing ----------
-	const select = (key, center) => {
-		S.sel = key;
-		drawArrays();
-		if (center && key) {
-			const a = S.arrays.find((x) => x.key === key);
-			const c = centerOf(a).map;
-			S.view.cx = c[0];
-			S.view.cy = c[1];
-			updateView();
-		}
-	};
+	// ---------- Editing ----------
 	const selected = () => S.arrays.find((x) => x.key === S.sel);
-	const uniqueName = (base) => {
-		let name = base;
-		let i = 2;
-		while (S.arrays.some((a) => a.name === name)) {
-			name = base + ' ' + i++;
-		}
-		return name;
-	};
 	const removeSelected = () => {
 		const a = selected();
 		if (a) {
@@ -788,6 +891,12 @@
 			drawArrays();
 		}
 	};
+	const removeMeasure = (i) => {
+		S.measures.splice(i, 1);
+		S.selM = null;
+		commit();
+		drawArrays();
+	};
 	const duplicate = () => {
 		const a = selected();
 		if (!a) {
@@ -795,7 +904,7 @@
 		}
 		const b = JSON.parse(JSON.stringify(a));
 		b.key = newKey();
-		b.name = uniqueName(a.name.replace(/ \d+$/, ''));
+		b.name = isDefaultName(a.name) ? nextName(a.mount) : a.name + ' copy';
 		// Beside it along the eave, a foot past its far edge (trackers: clear of its sweep)
 		const box = localBox(a);
 		const step = a.mount === 'tracker' ? 2 * sweep(a).r + 1 : (box.x1 - box.x0) + 0.3048;
@@ -804,6 +913,7 @@
 		b.y += step * Math.sin(t);
 		S.arrays.push(b);
 		S.sel = b.key;
+		S.selM = null;
 		commit();
 		drawArrays();
 	};
@@ -822,19 +932,25 @@
 	onField('sel-name', (a, v) => { a.name = v.trim().slice(0, 60) || a.name; }, true);
 	$('sel-name').addEventListener('change', commit);
 	onField('sel-mount', (a, v) => keepCenter(a, () => {
+		const rename = isDefaultName(a.name);
 		a.mount = v;
 		if (v === 'tracker') {
 			a.pitch = 0;
+		}
+		if (rename) {
+			a.name = '';
+			a.name = nextName(v);
 		}
 	}));
 	onField('sel-orient', (a, v) => keepCenter(a, () => { a.orient = v; }));
 	onField('sel-pitch', (a, v) => {
 		const p = parsePitch(v);
 		if (p === null) {
-			hint('Type a pitch like 6/12, or degrees from 0 to 75.');
+			hint('Type a pitch like 6/12, or a plain number of degrees from 0 to 75.');
 			return;
 		}
 		keepCenter(a, () => { a.pitch = p; });
+		hint(a.name + ': ' + pitchNote(p, a.mount));
 	});
 	onField('sel-az', (a, v) => {
 		const az = parseFloat(v);
@@ -844,6 +960,33 @@
 	});
 	$('sel-delete').addEventListener('click', removeSelected);
 	$('sel-copy').addEventListener('click', duplicate);
+	$('sel-flip').addEventListener('click', () => {
+		const a = selected();
+		if (a && a.mount !== 'tracker') {
+			turnTo(a, a.az + 180);
+			commit();
+			drawArrays();
+			hint(a.name + ' now faces ' + compass(a.az) + ' ' + Math.round(a.az) + '°.');
+		}
+	});
+	$('msel-slope').addEventListener('change', () => {
+		const m = S.measures[S.selM];
+		if (m) {
+			m.src = $('msel-slope').value;
+			settle(m);
+			commit();
+			drawArrays();
+		}
+	});
+	$('msel-delete').addEventListener('click', () => {
+		if (S.selM !== null) {
+			removeMeasure(S.selM);
+		}
+	});
+	$('new-pitch').addEventListener('change', () => {
+		const p = parsePitch($('new-pitch').value);
+		hint(p === null ? 'Type a pitch like 6/12, or a plain number of degrees.' : 'New arrays: ' + pitchNote(p, 'roof') + ' Arrays started on a Google roof face take its pitch instead.');
+	});
 
 	const syncModuleFields = () => {
 		$('mod-length').value = S.module.length ? Math.round(S.module.length * 1000) : '';
@@ -917,60 +1060,67 @@
 		}
 		return add;
 	};
+	const finishMeasure = (p) => {
+		const d = S.draft;
+		const m = settle({ x1: d.p1.x, y1: d.p1.y, x2: p.x, y2: p.y, src: slopeSourceFor(d.p1.x, d.p1.y, p.x, p.y) });
+		S.draft = null;
+		if (Math.hypot(m.x2 - m.x1, m.y2 - m.y1) > 0.02) {
+			S.measures.push(m);
+			S.selM = S.measures.length - 1;
+			S.sel = null;
+			commit();
+			drawArrays();
+			const s = slopeOf(m);
+			hint(ftIn(trueLength(m)) + (s.pitch ? ' along ' + s.label : ' flat') + '. Change its slope in the list on the right if needed.');
+		}
+		drawDraft();
+	};
 
 	let drag = null;
 	let spaceDown = false;
 	svg.addEventListener('pointerdown', (e) => {
-		if (e.button === 2) {
-			return;
-		}
 		svg.focus({ preventScroll: true });
 		const p = toPoint(e);
 		const target = e.target;
 		const pan = () => {
 			drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, cx: S.view.cx, cy: S.view.cy, moved: false };
 		};
-		if (e.button === 1 || spaceDown) {
+		if (e.button === 1 || e.button === 2 || spaceDown) {
 			pan();
 		} else if (S.tool === 'select') {
 			const handle = target.closest('[data-handle]');
 			const g = target.closest('.arr');
+			const mg = target.closest('[data-m]');
+			const face = target.closest('[data-face]');
 			if (handle && selected()) {
 				const a = selected();
 				drag = { kind: 'rotate', a, center: centerOf(a).map };
+			} else if (mg) {
+				const i = parseInt(mg.dataset.m, 10);
+				if (S.selM !== i) {
+					selectMeasure(i);
+				}
+				const m = S.measures[i];
+				const end = target.closest('[data-end]');
+				drag = { kind: end ? 'mend' : 'mmove', m, end: end ? end.dataset.end : null, sx: p.x, sy: p.y, o: { ...m }, moved: false };
 			} else if (g && g.dataset.key) {
 				const a = S.arrays.find((x) => x.key === g.dataset.key);
 				if (S.sel !== a.key) {
-					select(a.key);
+					selectArray(a.key);
 				}
 				drag = { kind: 'move', a, sx: p.x, sy: p.y, ax: a.x, ay: a.y, moved: false };
 			} else {
 				pan();
 				drag.deselect = true;
+				drag.face = face ? parseInt(face.dataset.face, 10) : null;
 			}
 		} else if (S.tool === 'draw') {
-			if (!S.draft) {
-				S.draft = { tool: 'draw', p1: p, cursor: p };
-			} else if (!S.draft.p2) {
-				if (Math.hypot(p.x - S.draft.p1.x, p.y - S.draft.p1.y) > 0.1) {
-					S.draft.p2 = p;
-				}
-			} else {
-				const r = draftArray(S.draft.p1, S.draft.p2, p);
-				if (r) {
-					r.a.key = newKey();
-					r.a.name = uniqueName(r.a.mount === 'tracker' ? 'Tracker' : compass(r.a.az) + ' ' + r.a.mount);
-					S.arrays.push(r.a);
-					S.sel = r.a.key;
-					if (r.a.mount !== 'tracker') {
-						$('new-pitch').value = fmtPitch(r.a.pitch, r.a.mount) === 'flat' ? '0' : fmtPitch(r.a.pitch, r.a.mount);
-					}
-					commit();
-					drawArrays();
-				}
-				S.draft = null;
-				toolHint();
+			if (!sizeOk()) {
+				hint('Type the module length and width (right) before drawing.');
+				return;
 			}
+			S.draft = { tool: 'draw', start: p, cursor: p, frame: frameAt(p) };
+			drag = { kind: 'draw' };
 			drawDraft();
 		} else if (S.tool === 'panels') {
 			const s = spotAt(p);
@@ -979,20 +1129,12 @@
 				paint(s);
 			}
 		} else if (S.tool === 'measure') {
-			if (!S.draft) {
-				S.draft = { tool: 'measure', p1: p, cursor: p };
-			} else {
-				const sl = measureSlope(S.draft.p1.x, S.draft.p1.y, p.x, p.y);
-				const m = { x1: S.draft.p1.x, y1: S.draft.p1.y, x2: p.x, y2: p.y, pitch: sl.pitch, az: sl.az };
-				if (Math.hypot(m.x2 - m.x1, m.y2 - m.y1) > 0.02) {
-					S.measures.push(m);
-					commit();
-					drawMeasures();
-					drawSide();
-					hint(ftIn(trueLength(m)) + (m.pitch ? ' along ' + sl.name + ' (' + fmtPitch(m.pitch, 'roof') + ').' : ' flat.') + ' Click to start another.');
-				}
-				S.draft = null;
+			if (S.draft && S.draft.waiting) {
+				finishMeasure(p);
+				return;
 			}
+			S.draft = { tool: 'measure', p1: p, cursor: p };
+			drag = { kind: 'measure', sx: e.clientX, sy: e.clientY };
 			drawDraft();
 		}
 		if (drag) {
@@ -1039,6 +1181,21 @@
 			drag.a.y = drag.ay + (p.y - drag.sy);
 			drag.moved = true;
 			drawArrays();
+		} else if (drag.kind === 'mmove' || drag.kind === 'mend') {
+			const dx = p.x - drag.sx;
+			const dy = p.y - drag.sy;
+			const m = drag.m;
+			if (drag.kind === 'mmove' || drag.end === '1') {
+				m.x1 = drag.o.x1 + dx;
+				m.y1 = drag.o.y1 + dy;
+			}
+			if (drag.kind === 'mmove' || drag.end === '2') {
+				m.x2 = drag.o.x2 + dx;
+				m.y2 = drag.o.y2 + dy;
+			}
+			drag.moved = true;
+			drawMeasures();
+			hint(ftIn(trueLength(m)) + (slopeOf(m).pitch ? ' along ' + slopeOf(m).label : ' flat') + '.');
 		} else if (drag.kind === 'rotate') {
 			// The handle sits up the slope, at azimuth + 90 degrees on screen
 			let az = Math.atan2(p.y - drag.center[1], p.x - drag.center[0]) / RAD - 90;
@@ -1054,26 +1211,67 @@
 			}
 		}
 	});
-	const endDrag = () => {
+	const endDrag = (e) => {
 		if (!drag) {
 			return;
 		}
-		if (drag.kind === 'pan') {
-			if (drag.deselect && !drag.moved && S.sel) {
-				S.sel = null;
+		const d = drag;
+		drag = null;
+		if (d.kind === 'pan') {
+			if (d.deselect && !d.moved) {
+				if (d.face !== null && d.face !== undefined) {
+					selectFace(d.face, false);
+				} else if (S.face !== null) {
+					S.face = null;
+					drawRoof();
+					drawSide();
+				}
+				if (S.sel || S.selM !== null) {
+					S.sel = null;
+					S.selM = null;
+					drawArrays();
+				}
+			}
+		} else if (d.kind === 'draw') {
+			const r = S.draft ? draftBox(S.draft) : null;
+			S.draft = null;
+			drawDraft();
+			if (r && r.a.cells.length) {
+				r.a.key = newKey();
+				r.a.name = nextName(r.a.mount);
+				S.arrays.push(r.a);
+				S.sel = r.a.key;
+				S.selM = null;
+				commit();
+				drawArrays();
+				hint(r.a.name + ': ' + r.a.cells.length + ' panels' + (r.a.mount === 'tracker' ? '.' : ' at ' + fmtPitch(r.a.pitch, r.a.mount)
+					+ ', facing ' + compass(r.a.az) + ' ' + Math.round(r.a.az) + '°. If it faces the wrong way, click Flip facing.'));
+			} else {
+				toolHint();
+			}
+		} else if (d.kind === 'measure') {
+			const moved = e && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 5;
+			if (moved && S.draft) {
+				finishMeasure(toPoint(e));
+			} else if (S.draft) {
+				S.draft.waiting = true;   // a click: the next click ends it
+				drawDraft();
+			}
+		} else if ((d.kind === 'move' && d.moved) || d.kind === 'rotate' || (d.kind === 'paint' && d.changed) || ((d.kind === 'mmove' || d.kind === 'mend') && d.moved)) {
+			if (d.kind === 'mmove' || d.kind === 'mend') {
+				settle(d.m);
 				drawArrays();
 			}
-			markDirty();
-		} else if ((drag.kind === 'move' && drag.moved) || drag.kind === 'rotate' || (drag.kind === 'paint' && drag.changed)) {
 			commit();
-			if (drag.kind === 'rotate') {
+			if (d.kind === 'rotate') {
 				toolHint();
 			}
 		}
-		drag = null;
 	};
 	svg.addEventListener('pointerup', endDrag);
-	svg.addEventListener('pointercancel', endDrag);
+	svg.addEventListener('pointercancel', () => {
+		drag = null;
+	});
 	svg.addEventListener('wheel', (e) => {
 		e.preventDefault();
 		const p = toPoint(e);
@@ -1127,10 +1325,16 @@
 				S.draft = null;
 				drawDraft();
 				toolHint();
-			} else if (S.sel) {
+			} else if (S.sel || S.selM !== null) {
 				S.sel = null;
+				S.selM = null;
 				drawArrays();
 			}
+			return;
+		}
+		if ((k === 'Delete' || k === 'Backspace') && S.selM !== null) {
+			e.preventDefault();
+			removeMeasure(S.selM);
 			return;
 		}
 		const a = selected();
@@ -1168,10 +1372,7 @@
 	// ---------- Toolbar buttons ----------
 	$('btn-undo').addEventListener('click', undo);
 	$('btn-redo').addEventListener('click', redo);
-	$('btn-fit').addEventListener('click', () => {
-		fit();
-		markDirty();
-	});
+	$('btn-fit').addEventListener('click', fit);
 	$('btn-zoom-in').addEventListener('click', () => zoomAt(1 / 1.6, S.view.cx, S.view.cy));
 	$('btn-zoom-out').addEventListener('click', () => zoomAt(1.6, S.view.cx, S.view.cy));
 	$('new-mount').addEventListener('change', () => {
@@ -1187,13 +1388,19 @@
 			const j = await r.json();
 			if (j.ok) {
 				S.roof = j.roof;
+				S.face = null;
+				S.measures.forEach((m) => {   // measurements that were flat may sit on a face now
+					if (m.src === 'flat' || !m.src) {
+						m.src = slopeSourceFor(m.x1, m.y1, m.x2, m.y2);
+						settle(m);
+					}
+				});
 				drawRoof();
-				drawSide();
+				drawArrays();
 				markDirty();
 				const [x, y] = toLocal(j.roof.lat, j.roof.lon);
-				if (Math.hypot(x - S.view.cx, y - S.view.cy) > 40) {
-					$('roof-info').textContent += ' Google picked a building ' + Math.round(Math.hypot(x - S.view.cx, y - S.view.cy) * 3.28084) + ' ft from the map center; check it is the right one.';
-				}
+				const off = Math.hypot(x - S.view.cx, y - S.view.cy);
+				hint('Google found ' + faces().length + ' roof faces' + (off > 40 ? ' on a building ' + Math.round(off * 3.28084) + ' ft from the map center; check it is the right one' : '') + '.');
 			} else {
 				$('roof-info').textContent = j.error || 'Google had no roof data here.';
 			}
@@ -1221,7 +1428,6 @@
 		updateView();
 	}
 	drawArrays();
-	drawMeasures();
 	updateUndo();
 	toolHint();
 })();
