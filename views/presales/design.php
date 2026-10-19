@@ -748,7 +748,7 @@ $folded = [];
 		<section class="card band" id="sec-notes">
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-notes', 'Internal notes', false) ?>Internal notes</h2>
-				<span class="small"><?= e($d['notes'] ? App\Designs::gist((string) $d['notes'], 70) : 'None') ?></span>
+				<span class="small">These are internal notes only for our reference.</span>
 			</div>
 			<p class="hint">For internal reference only. These carry over to the project and are not shown on the proposal.</p>
 			<textarea name="notes" rows="3" data-autogrow aria-label="Internal notes"><?= e((string) $d['notes']) ?></textarea>

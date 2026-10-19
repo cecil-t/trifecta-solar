@@ -714,23 +714,6 @@ final class Designs
 		return $out;
 	}
 
-	/** Text for a folded header: the whole sentences that fit in $max characters, else the start cut with "...". */
-	public static function gist(string $text, int $max): string
-	{
-		$text = trim((string) preg_replace('/\s+/', ' ', $text));
-		if (mb_strlen($text) <= $max) {
-			return $text;
-		}
-		$out = '';
-		foreach (preg_split('/(?<=[.!?])\s+/', $text) as $sentence) {
-			if (mb_strlen(trim($out . ' ' . $sentence)) > $max) {
-				break;
-			}
-			$out = trim($out . ' ' . $sentence);
-		}
-		return $out !== '' ? $out : mb_strimwidth($text, 0, $max, '...');
-	}
-
 	/** "a, b and c" */
 	private static function listing(array $items): string
 	{
