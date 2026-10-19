@@ -30,10 +30,7 @@ $deg = static fn (float $v, int $dec = 1) => rtrim(rtrim(number_format($v, $dec)
 $steep = (float) $d['steep_deg'];
 $layoutData = App\Layout::decode($d['layout_json']);
 $layoutMaster = App\Layout::panels($layoutData) > 0;   // the site layout sets arrays and module counts
-$perimeters = [];   // layout key => meters around the array (critter guard)
-foreach ($layoutData['arrays'] ?? [] as $la) {
-	$perimeters[$la['key']] = App\Layout::perimeter($layoutData, $la);
-}
+$arrayStats = App\Layout::arrayStats($layoutData, $arrays, $lines);   // panel area (permits) and perimeter (critter guard)
 $classLabel = Presales::CLASS_LABELS[$depositClass];
 
 // Lines by category; the common categories always show a row, the rest open from a button
@@ -423,17 +420,18 @@ $folded = [];
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-arrays', 'Arrays', false) ?>Arrays</h2>
 				<span class="small" id="arrays-count"><?= $arrays ? (int) $calc['arrays_panels'] . ' panels on arrays, ' . (int) $calc['panels'] . ' modules' : '' ?></span>
-				<?php if ($layoutMaster): ?><span class="small">&middot; perimeter <strong><?= e(App\Layout::feetUp(array_sum($perimeters))) ?></strong></span><?php endif; ?>
+				<?php if ($arrays && $arrayStats['area'] !== null): ?><span class="small">&middot; area <strong><?= e(App\Layout::sqft($arrayStats['area'])) ?></strong></span><?php endif; ?>
+				<?php if ($layoutMaster && $arrayStats['perimeter'] !== null): ?><span class="small">&middot; perimeter <strong><?= e(App\Layout::feetUp($arrayStats['perimeter'])) ?></strong></span><?php endif; ?>
 				<a href="<?= $base ?>/layout" class="btn btn-small btn-secondary band-head-btn" data-save-then="layout"><?= $d['layout_json'] ? 'Edit site layout' : 'Draw on the map' ?></a>
 			</div>
 			<?php $nDrawn = count(array_filter($arrays, static fn ($a) => !empty($a['layout_key']))); ?>
 			<?php if ($layoutMaster): ?>
-				<p class="hint mb-xs">These come from the <a href="<?= $base ?>/layout" data-save-then="layout">site layout</a>, which also sets the module counts. Change them there, including roof material and shading. Perimeter is a tape measure around each array, rounded up.</p>
+				<p class="hint mb-xs">These come from the <a href="<?= $base ?>/layout" data-save-then="layout">site layout</a>, which also sets the module counts. Change them there, including roof material and shading. Area is the panels' own surface (true size on a slope). Perimeter is a tape measure around each array, rounded up.</p>
 				<div class="table-wrap">
 					<table class="table table-tight arrays-ro">
-						<thead><tr><th>Array</th><th>Mount</th><th>Roof material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th><th class="num">Shade %</th><th class="num">Perimeter</th><th>Orientation</th></tr></thead>
+						<thead><tr><th>Array</th><th>Mount</th><th>Roof material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th><th class="num">Shade %</th><th class="num">Area</th><th class="num">Perimeter</th><th>Orientation</th></tr></thead>
 						<tbody>
-							<?php foreach ($arrays as $a): $tilt = $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = $a['azimuth'] !== null ? (int) $a['azimuth'] : null; ?>
+							<?php foreach (array_values($arrays) as $ai => $a): $tilt = $a['tilt'] !== null ? (float) $a['tilt'] : null; $az = $a['azimuth'] !== null ? (int) $a['azimuth'] : null; $st = $arrayStats['rows'][$ai]; ?>
 								<tr<?= $tilt !== null && $tilt > $steep ? ' class="is-steep"' : '' ?>>
 									<td><?= e($a['name']) ?><?= $a['shading_note'] ? '<div class="small muted">' . e($a['shading_note']) . '</div>' : '' ?><?= empty($a['layout_key']) ? ' <span class="chip">Typed</span>' : '' ?></td>
 									<td><?= e(Presales::MOUNTS[$a['mount']] ?? $a['mount']) ?></td>
@@ -442,7 +440,8 @@ $folded = [];
 									<td class="num"><?= $tilt !== null ? e($deg($tilt)) . '°' : '' ?></td>
 									<td class="num"><?= (int) $a['panels'] ?></td>
 									<td class="num"><?= $a['shading_pct'] !== null ? e($deg((float) $a['shading_pct'])) : '' ?></td>
-									<td class="num"><?= isset($perimeters[$a['layout_key'] ?? '']) ? e(App\Layout::feetUp($perimeters[$a['layout_key']])) : '' ?></td>
+									<td class="num"><?= $st['area'] !== null ? e(App\Layout::sqft($st['area'])) : '' ?></td>
+									<td class="num"><?= $st['perimeter'] !== null ? e(App\Layout::feetUp($st['perimeter'])) : '' ?></td>
 									<td><span class="array-pitch"><?= $orient($az, $tilt, (string) $a['mount']) ?></span></td>
 								</tr>
 							<?php endforeach; ?>

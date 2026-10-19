@@ -88,6 +88,12 @@ img { max-width: 100%; }
 .aerial-placeholder { height: 3.1in; border: 1.5pt dashed #b9c3c9; border-radius: 4pt; background: #f6f8f9; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #5d6a72; margin-bottom: 4pt; }
 .aerial-placeholder span { font-size: 12pt; font-weight: bold; }
 
+.specs { display: flex; border-top: 1px solid #dfe5e8; border-bottom: 1px solid #dfe5e8; margin: 6pt 0 2pt; padding: 4pt 0; }
+.specs > div { flex: 1 1 auto; padding: 0 8pt; border-left: 1px solid #eef0f2; }
+.specs > div:first-child { padding-left: 0; border-left: 0; }
+.specs span { display: block; font-size: 7pt; text-transform: uppercase; letter-spacing: .04em; color: #5d6a72; }
+.specs strong { font-size: 10pt; color: #1c2830; white-space: nowrap; }
+
 .two-col { display: flex; gap: 18pt; }
 .two-col > div { flex: 1; min-width: 0; }
 .two-col.compact { font-size: 8.5pt; }
@@ -113,7 +119,8 @@ img { max-width: 100%; }
 .arrays { width: 100%; border-collapse: collapse; }
 .arrays th { text-align: left; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .04em; color: #5d6a72; border-bottom: 1px solid #dfe5e8; padding: 3pt 6pt 3pt 0; }
 .arrays tr { break-inside: avoid; }
-.arrays td { border-bottom: 1px solid #eef0f2; padding: 4pt 6pt 4pt 0; vertical-align: middle; }
+.arrays td { border-bottom: 1px solid #eef0f2; padding: 2pt 6pt 2pt 0; vertical-align: middle; }
+.arrays th.num, .arrays td.num { text-align: right; padding-right: 0; }
 .orient-cell { display: flex; align-items: center; gap: 6pt; }
 .orient { flex: none; }
 

@@ -42,8 +42,9 @@ $model = Savings::model($d);
 			<div class="prod-tile"><span class="m-label"><?= (int) $a['years'] ?>-year net savings</span><span class="m-num"><?= e($m0($r['net_savings'])) ?></span><span class="muted small">NPV <?= e($m0($r['npv'])) ?>, IRR <?= $r['irr'] !== null ? e(number_format($r['irr'], 1)) . '%' : '-' ?></span></div>
 			<div class="prod-tile"><span class="m-label">Energy from solar</span><span class="m-num"><?= e(number_format((float) $r['offset_pct'])) ?>%</span><span class="muted small"><?= e(Production::MODELS[$sav['model']]) ?></span></div>
 		</div>
+		<p class="hint mt-sm">NPV and discounted payback show on the proposal only for business customers (commercial or agricultural)<?= Proposal::residential($o) ? '; this is a residential customer, so the proposal leaves them off' : '' ?>.</p>
 		<?php if ($r['dep']): ?>
-			<p class="hint mt-sm">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(lcfirst(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, the price less half the tax credits, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
+			<p class="hint">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(lcfirst(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, the price less half the tax credits, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
 		<?php endif; ?>
 		<div class="table-wrap mt-sm"><table class="table table-tight sav-table">
 			<thead><tr><th>Year one</th><?php foreach ($r['months'] as $mo): ?><th class="num"><?= e($mo['label']) ?></th><?php endforeach; ?><th class="num">Year</th></tr></thead>

@@ -191,12 +191,12 @@ final class ProposalCharts
 		$rad = $c - 3;
 		$svg = '<svg class="orient" width="' . $size . '" height="' . $size . '" viewBox="0 0 ' . $size . ' ' . $size . '" xmlns="http://www.w3.org/2000/svg">'
 			. '<circle cx="' . $c . '" cy="' . $c . '" r="' . $rad . '" fill="#fff" stroke="#9aa5ad" stroke-width="1.5"/>'
-			. '<text x="' . $c . '" y="' . round($c - $rad + 11, 1) . '" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="9" font-weight="bold" fill="#5d6a72">N</text>';
+			. '<text x="' . $c . '" y="' . round($c - $rad + ($size < 50 ? 8 : 11), 1) . '" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="' . ($size < 50 ? 7 : 9) . '" font-weight="bold" fill="#5d6a72">N</text>';
 		if ($tracker) {
 			$svg .= '<circle cx="' . $c . '" cy="' . $c . '" r="' . round($rad * 0.5, 1) . '" fill="none" stroke="' . self::GREEN . '" stroke-width="3"/>';
 		} elseif ($az !== null) {
-			$x2 = $c + ($rad - 5) * sin(deg2rad($az));
-			$y2 = $c - ($rad - 5) * cos(deg2rad($az));
+			$x2 = $c + ($rad - 4) * sin(deg2rad($az));
+			$y2 = $c - ($rad - 4) * cos(deg2rad($az));
 			$svg .= '<line x1="' . $c . '" y1="' . $c . '" x2="' . round($x2, 1) . '" y2="' . round($y2, 1) . '" stroke="' . self::GREEN . '" stroke-width="3" stroke-linecap="round"/>'
 				. '<circle cx="' . $c . '" cy="' . $c . '" r="2.5" fill="' . self::GREEN . '"/>';
 		}

@@ -52,6 +52,12 @@ final class Proposal
 		return [$date, $until];
 	}
 
+	/** A homeowner (not commercial or agricultural): no net present value or discounted payback on the proposal. */
+	public static function residential(array $o): bool
+	{
+		return ($o['customer_type'] ?? 'residential') === 'residential' && empty($o['is_agricultural']);
+	}
+
 	/** Everything the proposal shows, plus warnings for the salesperson (not printed). */
 	public static function data(array $o, array $d, bool $withDrawing = true): array
 	{
@@ -89,7 +95,7 @@ final class Proposal
 		if (!$sales) {
 			$warnings[] = 'The opportunity has no salesperson.';
 		}
-		$residential = ($o['customer_type'] ?? 'residential') === 'residential' && empty($o['is_agricultural']);
+		$residential = self::residential($o);
 		$customerName = (string) ($customer['name'] ?? $o['name']);
 		// A person: the customer is the person. A business: the business, to the attention of the contact.
 		$attn = $contact && strcasecmp(trim($contact['name']), trim($customerName)) !== 0 ? $contact['name'] : null;
@@ -227,6 +233,8 @@ final class Proposal
 		return [
 			'o' => $o, 'd' => $d, 'calc' => $calc, 'lines' => $lines, 'arrays' => $arrays,
 			'prod' => $prod, 'model' => $model, 'other' => $other, 'savings' => $savings,
+			'arrayStats' => Layout::arrayStats($layout, $arrays, $lines),
+			'arrayKwh' => $prod ? Production::arrayKwh($prod, $arrays, $model) : null,
 			'customer' => $customer, 'customerName' => $customerName, 'attn' => $attn, 'greeting' => $greeting, 'contact' => $contact,
 			'sales' => $sales, 'residential' => $residential,
 			'quote' => $quote, 'date' => $date, 'until' => $until,

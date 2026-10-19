@@ -410,6 +410,46 @@ final class Layout
 		return $len;
 	}
 
+	/**
+	 * Panel area and perimeter of each build sheet array (by index) and their totals, in square
+	 * meters and meters. Area is the panels' own surface (count x module length x width, true size
+	 * on a slope); drawn arrays use their module, typed ones the first module. Perimeter needs the
+	 * drawing, so typed arrays have none.
+	 *
+	 * @return array{rows: array<int, array{area: ?float, perimeter: ?float}>, area: ?float, perimeter: ?float}
+	 */
+	public static function arrayStats(?array $layout, array $arrays, array $lines): array
+	{
+		$drawn = [];
+		foreach ($layout['arrays'] ?? [] as $la) {
+			$drawn[$la['key']] = $la;
+		}
+		$first = self::module($lines);
+		$rows = [];
+		foreach (array_values($arrays) as $i => $a) {
+			$la = $drawn[$a['layout_key'] ?? ''] ?? null;
+			if ($la) {
+				$m = self::moduleOf($layout, $la);
+				$rows[$i] = ['area' => $m['length'] && $m['width'] ? count($la['cells']) * $m['length'] * $m['width'] : null,
+					'perimeter' => self::perimeter($layout, $la)];
+			} else {
+				$rows[$i] = ['area' => $first && $first['length'] && $first['width'] ? (int) ($a['panels'] ?? 0) * $first['length'] * $first['width'] : null,
+					'perimeter' => null];
+			}
+		}
+		$sum = static function (string $k) use ($rows): ?float {
+			$v = array_column($rows, $k);
+			return $v && !in_array(null, $v, true) ? (float) array_sum($v) : null;
+		};
+		return ['rows' => $rows, 'area' => $sum('area'), 'perimeter' => $sum('perimeter')];
+	}
+
+	/** Square feet, whole. */
+	public static function sqft(float $m2): string
+	{
+		return number_format($m2 * 10.7639104) . ' sq ft';
+	}
+
 	/** Feet and inches, rounded up to the inch (material lengths). */
 	public static function feetUp(float $m): string
 	{

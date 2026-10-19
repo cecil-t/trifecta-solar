@@ -14,7 +14,8 @@ use App\Savings;
 $m2 = static fn (?float $v): string => $v === null ? '' : ($v < 0 ? '-$' : '$') . number_format(abs($v), 2);
 $m0 = static fn (?float $v): string => $v === null ? '' : ($v < 0 ? '-$' : '$') . number_format(abs($v));
 $n0 = static fn (?float $v): string => $v === null ? '' : number_format($v);
-$p1 = static fn (?float $v, int $dec = 1): string => $v === null ? '' : rtrim(rtrim(number_format($v, $dec), '0'), '.') . '%';
+// Trailing zeros only after a decimal point (with no decimals, 110 must stay 110)
+$p1 = static fn (?float $v, int $dec = 1): string => $v === null ? '' : ($dec > 0 ? rtrim(rtrim(number_format($v, $dec), '0'), '.') : number_format($v)) . '%';
 $longDate = static fn (string $ymd): string => date('F j, Y', (int) strtotime($ymd));
 $r = $savings['result'];
 $a = $savings['assumptions'];
@@ -122,6 +123,26 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<?php else: ?>
 		<div class="aerial-placeholder"><span>Site layout drawing</span><small>The aerial view with the panel layout goes here.</small></div>
 	<?php endif; ?>
+	<?php
+	$specs = [['System size', number_format($kwDc, 2) . ' kW DC']];
+	if ((float) $calc['ac_kw'] > 0) {
+		$specs[] = ['Inverter capacity', number_format((float) $calc['ac_kw'], 2) . ' kW AC'];
+	}
+	if ($calc['ratio'] !== null) {
+		$specs[] = ['DC/AC ratio', number_format((float) $calc['ratio'], 2)];
+	}
+	$nArr = count(array_filter($arrays, static fn ($x) => (int) $x['panels'] > 0));
+	$specs[] = ['Panels', number_format((float) $calc['panels']) . ($nArr > 1 ? ' on ' . $nArr . ' arrays' : '')];
+	if ((float) ($calc['storage_kwh'] ?? 0) > 0) {
+		$specs[] = ['Battery storage', rtrim(rtrim(number_format((float) $calc['storage_kwh'], 1), '0'), '.') . ' kWh' . ((float) ($calc['storage_kw'] ?? 0) > 0 ? ', ' . rtrim(rtrim(number_format((float) $calc['storage_kw'], 1), '0'), '.') . ' kW' : '')];
+	}
+	if ($annual) {
+		$specs[] = ['Year-one production', $n0($annual) . ' kWh'];
+	}
+	?>
+	<div class="specs">
+		<?php foreach ($specs as [$label, $value]): ?><div><span><?= e($label) ?></span><strong><?= e($value) ?></strong></div><?php endforeach; ?>
+	</div>
 	<div class="two-col">
 		<div>
 			<h2>Equipment</h2>
@@ -152,7 +173,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<div class="tiles tiles-3">
 			<div class="tile tile-orange"><span class="t-num"><?= e($n0($annual)) ?> <small>kWh</small></span><span class="t-label">Year-one production</span><span class="t-sub"><?= e(Production::MODELS[$model]) ?></span></div>
 			<div class="tile tile-quiet"><span class="t-num"><?= e($n0($otherAnnual)) ?> <small>kWh</small></span><span class="t-label"><?= e(Production::MODEL_SHORT[$other]) ?> check</span><span class="t-sub"><?= $other === 'pvwatts' ? 'PVWatts v8, a simpler estimate' : 'SAM, a fuller estimate' ?></span></div>
-			<div class="tile tile-quiet"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'your yearly total; months estimated' ?></span></div>
+			<div class="tile tile-quiet"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'monthly amounts modeled' ?></span></div>
 		</div>
 		<h2>Production by month, year one</h2>
 		<?= Chart::production($prod[$model]['monthly_kwh'], $usage['kwh'] ?? null, ($usage['source'] ?? '') !== 'bill') ?>
@@ -164,19 +185,23 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 	<h2>Arrays</h2>
 	<table class="arrays">
-		<thead><tr><th>Array</th><th>Panels</th><th>Direction</th><th>Tilt</th><th>Shade</th></tr></thead>
+		<thead><tr><th>Array</th><th>Panels</th><th>Direction</th><th>Tilt</th><th>Shade</th><?php if ($arrayKwh): ?><th class="num">Share of production</th><?php endif; ?></tr></thead>
 		<tbody>
 		<?php foreach ($arrays as $i => $ar): $tracker = $ar['mount'] === 'tracker'; $az = $ar['azimuth'] !== null ? (int) $ar['azimuth'] : null; ?>
 			<tr>
 				<td><strong><?= e($ar['name'] ?: 'Array ' . ($i + 1)) ?></strong><div class="small muted"><?= e(App\Presales::MOUNTS[$ar['mount']] ?? '') ?> mount</div></td>
 				<td><?= (int) $ar['panels'] ?></td>
-				<td><div class="orient-cell"><?= Chart::compass($az, $tracker) ?><span><?= $tracker ? 'Follows the sun' : ($az !== null ? $az . '° ' . e(App\Projects::compass($az)) : '') ?></span></div></td>
-				<td><div class="orient-cell"><?= $tracker ? '' : Chart::pitch($ar['tilt'] !== null ? (float) $ar['tilt'] : null) ?><span><?= $tracker ? 'Tracks' : ($ar['tilt'] !== null ? e(rtrim(rtrim(number_format((float) $ar['tilt'], 1), '0'), '.')) . '°' : '') ?></span></div></td>
+				<td><div class="orient-cell"><?= Chart::compass($az, $tracker, 34) ?><span><?= $tracker ? 'Follows the sun' : ($az !== null ? $az . '° ' . e(App\Projects::compass($az)) : '') ?></span></div></td>
+				<td><div class="orient-cell"><?= $tracker ? '' : Chart::pitch($ar['tilt'] !== null ? (float) $ar['tilt'] : null, 46, 28) ?><span><?= $tracker ? 'Tracks' : ($ar['tilt'] !== null ? e(rtrim(rtrim(number_format((float) $ar['tilt'], 1), '0'), '.')) . '°' : '') ?></span></div></td>
 				<td><?= (float) ($ar['shading_pct'] ?? 0) > 0 ? e($p1((float) $ar['shading_pct'])) : 'None' ?></td>
+				<?php if ($arrayKwh): $kwh = $arrayKwh[$i] ?? 0.0; ?><td class="num"><?= e($p1(array_sum($arrayKwh) > 0 ? $kwh / array_sum($arrayKwh) * 100 : 0, 0)) ?><div class="small muted"><?= e($n0($kwh)) ?> kWh</div></td><?php endif; ?>
 			</tr>
 		<?php endforeach; ?>
 		</tbody>
 	</table>
+	<?php $tot = array_filter([$arrayStats['area'] !== null ? 'Total panel area ' . App\Layout::sqft($arrayStats['area']) : null,
+		$arrayStats['perimeter'] !== null ? 'total perimeter ' . App\Layout::feetUp($arrayStats['perimeter']) . ' (a tape measure around each array)' : null]); ?>
+	<?php if ($tot): ?><p class="small muted"><?= e(ucfirst(implode('; ', $tot))) ?>.</p><?php endif; ?>
 
 	<?php if ($prod): $set = $prod['settings'] ?? []; ?>
 		<h2>Assumptions</h2>
@@ -188,7 +213,6 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 			<tr><th>System losses</th><td><?= e($p1((float) ($prod['other_loss_percent'] ?? 0), 2)) ?> (wiring, soiling, mismatch, connections and availability)<?= ($prod['mlpe'] ?? '') === 'optimizers' ? '; optimizers ' . e($p1((float) ($set['optimizer_loss'] ?? 0), 2)) : '' ?>; inverter losses from its CEC data</td></tr>
 			<tr><th>Shading</th><td><?= (float) max(array_map(static fn ($x) => (float) ($x['shading_pct'] ?? 0), $arrays ?: [[]])) > 0 ? 'Per array, as listed above' : 'None expected' ?></td></tr>
 			<tr><th>Snow</th><td>Not modeled</td></tr>
-			<tr><th>Size</th><td><?= e(number_format((float) $prod['kw_dc'], 2)) ?> kW DC, <?= e(number_format((float) $prod['kw_ac'], 2)) ?> kW AC</td></tr>
 		</table>
 	<?php endif; ?>
 </section>

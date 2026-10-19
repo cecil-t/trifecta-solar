@@ -19,6 +19,38 @@ final class Production
 	/** Short names for the proposal's second production tile. */
 	public const MODEL_SHORT = ['detailed' => 'Detailed model', 'pvwatts' => 'Basic model'];
 
+	/**
+	 * Each array's share of year-one production (kWh), by build sheet array index, or null for a
+	 * run from before SAM reported its groups. Arrays in one SAM group split its output by panels,
+	 * less their shading.
+	 *
+	 * @return array<int, float>|null
+	 */
+	public static function arrayKwh(array $prod, array $arrays, string $model): ?array
+	{
+		$groups = $prod['groups'] ?? [];
+		if (!$groups || !array_key_exists('kwh_' . $model, $groups[0]) || !isset($groups[0]['members'])) {
+			return null;
+		}
+		$sent = [];   // index sent to SAM => build sheet index (inputs() skips arrays without panels)
+		foreach (array_values($arrays) as $i => $a) {
+			if ((int) ($a['panels'] ?? 0) > 0) {
+				$sent[] = $i;
+			}
+		}
+		$weight = static fn (array $a): float => (int) $a['panels'] * (1 - min(90.0, max(0.0, (float) ($a['shading_pct'] ?? 0))) / 100);
+		$out = [];
+		$arrays = array_values($arrays);
+		foreach ($groups as $g) {
+			$members = array_values(array_filter(array_map(static fn ($k) => $sent[(int) $k] ?? null, (array) $g['members']), static fn ($x) => $x !== null));
+			$total = array_sum(array_map(static fn ($i) => $weight($arrays[$i]), $members));
+			foreach ($members as $i) {
+				$out[$i] = $total > 0 ? (float) $g['kwh_' . $model] * $weight($arrays[$i]) / $total : 0.0;
+			}
+		}
+		return count($out) === count($sent) ? $out : null;
+	}
+
 	/** The SAM release behind a run ("2026.7.3.r0.ssc.308" gives "2026.7.3"), or null. */
 	public static function samVersion(array $prod): ?string
 	{

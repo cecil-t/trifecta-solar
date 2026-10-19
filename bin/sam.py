@@ -283,7 +283,7 @@ def group_arrays(arrays, default_shading=0.0):
 	all together), shading averaged by modules, then the smallest groups folded into their nearest
 	neighbor until at most 4 remain (SAM's subarray limit)."""
 	groups = []
-	for a in arrays:
+	for idx, a in enumerate(arrays):
 		n = int(a.get('modules') or 0)
 		if n <= 0:
 			continue
@@ -297,9 +297,10 @@ def group_arrays(arrays, default_shading=0.0):
 			if g['mount'] == mount and abs(g['tilt'] - tilt) <= 1 and d <= 3:
 				g['shading'] = (g['shading'] * g['modules'] + shade * n) / (g['modules'] + n)
 				g['modules'] += n
+				g['members'].append(idx)
 				break
 		else:
-			groups.append({'azimuth': az, 'tilt': tilt, 'modules': n, 'mount': mount, 'shading': shade})
+			groups.append({'azimuth': az, 'tilt': tilt, 'modules': n, 'mount': mount, 'shading': shade, 'members': [idx]})
 	merged = []
 	while len(groups) > 4:
 		groups.sort(key=lambda g: g['modules'])
@@ -310,6 +311,7 @@ def group_arrays(arrays, default_shading=0.0):
 		merged.append('%d modules at %d/%d folded into %d/%d' % (small['modules'], small['azimuth'], small['tilt'], target['azimuth'], target['tilt']))
 		target['shading'] = (target['shading'] * target['modules'] + small['shading'] * small['modules']) / (target['modules'] + small['modules'])
 		target['modules'] += small['modules']
+		target['members'] += small['members']
 	for g in groups:
 		g['shading'] = round(g['shading'], 2)
 	return groups, merged
@@ -501,6 +503,10 @@ def system(req):
 	m.Losses.use_snow_weather_file = 1 if snow else 0
 	m.AdjustmentFactors.adjust_constant = sam_adjust
 	m.execute()
+	# Each group's part of the year, by its subarray's DC output (the AC total split the same way)
+	dc = [sum(getattr(m.Outputs, 'subarray%d_dc_gross' % i)) for i in range(1, len(groups) + 1)]
+	for g, v in zip(groups, dc):
+		g['kwh_detailed'] = round(m.Outputs.annual_energy * v / sum(dc)) if sum(dc) > 0 else None
 	detailed = {
 		'model': 'Pvsamv1 (SAM detailed PV)',
 		'annual_kwh': round(m.Outputs.annual_energy),
@@ -529,6 +535,7 @@ def system(req):
 		s.module_type = 1
 		s.bifaciality = 0
 		w.execute()
+		g['kwh_pvwatts'] = round(w.Outputs.ac_annual)
 		pv_monthly = [a + b for a, b in zip(pv_monthly, w.Outputs.ac_monthly)]
 	pvw = {
 		'model': 'PVWatts v8',
