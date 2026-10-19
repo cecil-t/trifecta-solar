@@ -1784,6 +1784,8 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 /* Build sheet: "Save and run production" while it runs */
 .btn.is-running, .btn.is-running:hover { background: var(--orange); border-color: var(--orange); color: #1c2830; cursor: progress; animation: run-pulse 1.4s ease-in-out infinite; }
 .btn-spinner { width: .95em; height: .95em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+.btn.is-running { display: inline-flex; align-items: center; gap: .4rem; }
+.pdf-error { display: block; margin-top: .3rem; color: var(--red); font-size: .8rem; font-weight: 600; }
 .prod-running { margin: .4rem 0 0; color: #8a4f06; font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes run-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(249, 161, 27, .55); } 50% { box-shadow: 0 0 0 6px rgba(249, 161, 27, 0); } }

@@ -30,10 +30,11 @@ final class ProposalController
 		[$o, $d] = $this->find($id, $designId);
 		$data = Proposal::data($o, $d);
 		$inline = ($_GET['inline'] ?? '') === '1';
+		$fetched = isset($_SERVER['HTTP_X_PDF_FETCH']);   // pdf-download.js: a problem comes back as text
 		set_time_limit(120);
 		$r = Pdf::fromHtml(View::partial('proposal/document', $data + ['assets' => '']), 90);
 		if (!$r['ok']) {
-			if ($inline) {
+			if ($inline || $fetched) {
 				http_response_code(500);
 				header('Content-Type: text/plain; charset=utf-8');
 				echo 'The PDF could not be made: ' . $r['error'];

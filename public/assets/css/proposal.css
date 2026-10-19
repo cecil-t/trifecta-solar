@@ -183,6 +183,10 @@ img { max-width: 100%; }
 	.is-preview .tb-title { flex: 1; font-weight: 600; }
 	.is-preview .tb-btn { background: #69b545; color: #10240a; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; }
 	.is-preview .toolbar .tb-btn { color: #10240a; }
+	.is-preview .tb-btn.is-running { display: inline-flex; align-items: center; gap: 6px; background: #f9a11b; color: #1c2830; cursor: progress; }
+	.is-preview .btn-spinner { width: .95em; height: .95em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+	.is-preview .pdf-error { color: #ffd0c9; font-size: 12px; font-weight: 600; max-width: 40ch; }
+	@keyframes spin { to { transform: rotate(360deg); } }
 	.is-preview .tb-warn { display: block; max-width: 8.5in; margin: 14px auto 0; padding: 10px 14px; background: #fff7dd; border: 1px solid #e7b84a; border-radius: 6px; font: 13px/1.4 system-ui, sans-serif; }
 	.is-preview .tb-warn ul { margin: 4px 0 0; padding-left: 18px; }
 	/* PDF view: the real PDF under the toolbar */

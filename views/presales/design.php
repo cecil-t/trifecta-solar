@@ -766,3 +766,4 @@ $folded = [];
 	</div>
 </form>
 <script src="<?= asset('assets/js/presales.js') ?>"></script>
+<script src="<?= asset('assets/js/pdf-download.js') ?>"></script>

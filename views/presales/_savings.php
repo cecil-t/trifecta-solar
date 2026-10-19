@@ -112,7 +112,7 @@ $model = Savings::model($d);
 		<span class="small band-head-fill"><?= $d['quote_number'] ? 'Proposal ' . e($d['quote_number']) . ' &middot; ' : '' ?>valid until <?= e(date('m/d/Y', (int) strtotime($pUntil))) ?><?= $d['guarantee_on'] ? ' &middot; guarantee' : '' ?></span>
 		<div class="prop-actions">
 			<a href="<?= e($base) ?>/proposal" class="btn btn-secondary btn-small" data-save-then="proposal" title="The proposal as the customer gets it (saves the build sheet first)">Open proposal</a>
-			<a href="<?= e($base) ?>/proposal/pdf" class="btn btn-secondary btn-small">PDF</a>
+			<a href="<?= e($base) ?>/proposal/pdf" class="btn btn-secondary btn-small" data-pdf>PDF</a>
 		</div>
 	</div>
 	<p class="hint">Opening the proposal saves the build sheet first.<?= $d['quote_number'] ? ' Proposal ' . e($d['quote_number']) . '.' : ' The proposal number is given the first time the proposal opens.' ?></p>
