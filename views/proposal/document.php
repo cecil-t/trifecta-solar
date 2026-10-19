@@ -59,6 +59,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 			<div class="cover-name"><?= e($customerName) ?></div>
 			<?php if ($attn): ?><div>Attn: <?= e($attn) ?></div><?php endif; ?>
 			<?php if ($site !== ''): ?><div><?= e($site) ?></div><?php endif; ?>
+			<?php if (!empty($d['tax_exempt'])): ?><div class="pill">Tax exempt</div><?php endif; ?>
 		</div>
 		<div>
 			<table class="kv">
@@ -66,7 +67,6 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 				<tr><th>System</th><td><?= e($d['name']) ?></td></tr>
 				<tr><th>Date</th><td><?= e($longDate($date)) ?></td></tr>
 				<tr><th>Valid until</th><td><?= e($longDate($until)) ?></td></tr>
-				<?php if (!empty($d['tax_exempt'])): ?><tr><th>Sales tax</th><td>Tax exempt</td></tr><?php endif; ?>
 			</table>
 		</div>
 	</div>
@@ -100,7 +100,8 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<div class="company">
 			<strong><?= e($company['legal']) ?></strong>
 			<?php if ($company['address'] !== ''): ?><div><?= nl2br(e($company['address']), false) ?></div><?php endif; ?>
-			<div><?= e(implode(' · ', array_filter([$company['phone'], $company['email'], $company['website']]))) ?></div>
+			<?php $web = $company['website'] !== '' ? safe_url(preg_match('#^https?://#i', $company['website']) ? $company['website'] : 'https://' . $company['website']) : null; ?>
+			<div><?= e(implode(' · ', array_filter([$company['phone'], $company['email']]))) ?><?php if ($company['website'] !== ''): ?><?= $company['phone'] !== '' || $company['email'] !== '' ? ' · ' : '' ?><?= $web ? '<a href="' . e($web) . '">' . e($company['website']) . '</a>' : e($company['website']) ?><?php endif; ?></div>
 			<?php if ($company['hic'] !== ''): ?><div><?= e(preg_match('/^\d/', $company['hic']) ? 'PA HIC #' . $company['hic'] : 'HIC ' . $company['hic']) ?></div><?php endif; ?>
 		</div>
 	</div>
@@ -173,7 +174,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<div class="tiles tiles-3">
 			<div class="tile tile-orange"><span class="t-num"><?= e($n0($annual)) ?> <small>kWh</small></span><span class="t-label">Year-one production</span><span class="t-sub"><?= e(Production::MODELS[$model]) ?></span></div>
 			<div class="tile tile-quiet"><span class="t-num"><?= e($n0($otherAnnual)) ?> <small>kWh</small></span><span class="t-label"><?= e(Production::MODEL_SHORT[$other]) ?> check</span><span class="t-sub"><?= $other === 'pvwatts' ? 'PVWatts v8, a simpler estimate' : 'SAM, a fuller estimate' ?></span></div>
-			<div class="tile tile-quiet"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'monthly amounts modeled' ?></span></div>
+			<div class="tile"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'monthly amounts modeled' ?></span></div>
 		</div>
 		<h2>Production by month, year one</h2>
 		<?= Chart::production($prod[$model]['monthly_kwh'], $usage['kwh'] ?? null, ($usage['source'] ?? '') !== 'bill') ?>
@@ -185,9 +186,16 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 
 	<h2>Arrays</h2>
 	<table class="arrays">
-		<thead><tr><th>Array</th><th>Panels</th><th>Direction</th><th>Tilt</th><th>Shade</th><?php if ($arrayKwh): ?><th class="num">Share of production</th><?php endif; ?></tr></thead>
+		<thead><tr><th>Array</th><th>Panels</th><th>Direction</th><th>Tilt</th><th>Shade</th><?php if ($arrayKwh): ?><th class="num">Production</th><?php endif; ?></tr></thead>
 		<tbody>
-		<?php foreach ($arrays as $i => $ar): $tracker = $ar['mount'] === 'tracker'; $az = $ar['azimuth'] !== null ? (int) $ar['azimuth'] : null; ?>
+		<?php
+		// Roof arrays first, then ground and trackers; by name within each (Garage 1, Garage 2, Main 1...)
+		$rank = array_flip(array_keys(App\Presales::MOUNTS));
+		$shown = array_values($arrays);
+		uksort($shown, static fn ($x, $y) => (($rank[$shown[$x]['mount']] ?? 99) <=> ($rank[$shown[$y]['mount']] ?? 99))
+			?: strnatcasecmp((string) $shown[$x]['name'], (string) $shown[$y]['name']));
+		?>
+		<?php foreach ($shown as $i => $ar): $tracker = $ar['mount'] === 'tracker'; $az = $ar['azimuth'] !== null ? (int) $ar['azimuth'] : null; ?>
 			<tr>
 				<td><strong><?= e($ar['name'] ?: 'Array ' . ($i + 1)) ?></strong><div class="small muted"><?= e(App\Presales::MOUNTS[$ar['mount']] ?? '') ?> mount</div></td>
 				<td><?= (int) $ar['panels'] ?></td>
@@ -250,16 +258,17 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 					<?php if ($facts): ?><tr><th>Customer charge</th><td><?= e($m2($facts['fixed'][0])) ?> a month</td></tr><?php endif; ?>
 					<?php if ($rateSum && $rateSum['energy_min'] !== null): ?><tr><th>Energy price</th><td><?= e(number_format($rateSum['energy_min'] * 100, 2)) ?><?= $rateSum['energy_max'] !== $rateSum['energy_min'] ? ' to ' . e(number_format($rateSum['energy_max'] * 100, 2)) : '' ?> cents per kWh</td></tr><?php endif; ?>
 					<?php if ($r['ptc']['value'] !== null): ?><tr><th>Price to Compare</th><td><?= e(number_format($r['ptc']['value'] * 100, 2)) ?> cents per kWh (true-up credit)</td></tr><?php endif; ?>
-					<tr><th>Yearly increase</th><td><?= e($p1($a['escalation'], 2)) ?> assumed<?php
-						$hist = [];
-						foreach ([3, 5, 10] as $yy) {
-							// Only the periods that back the assumed rate
-							if (isset($trend['y' . $yy]['pct']) && $trend['y' . $yy]['pct'] !== null && (float) $trend['y' . $yy]['pct'] >= (float) $a['escalation'] - 0.05) {
-								$hist[] = $yy . ' yr ' . sprintf('%+.1f%%', (float) $trend['y' . $yy]['pct']);
-							}
+					<?php
+					$hist = [];
+					foreach ([3, 5, 10] as $yy) {
+						// Only the periods that back the assumed rate
+						if (isset($trend['y' . $yy]['pct']) && $trend['y' . $yy]['pct'] !== null && (float) $trend['y' . $yy]['pct'] >= (float) $a['escalation'] - 0.05) {
+							$hist[] = $yy . ' yr ' . sprintf('%+.1f%%', (float) $trend['y' . $yy]['pct']);
 						}
-						echo $hist ? '<div class="small">This rate\'s actual increase: ' . e(implode(', ', $hist)) . ' a year</div>' : '';
-					?></td></tr>
+					}
+					?>
+					<tr><th>Yearly increase</th><td><?= e($p1($a['escalation'], 2)) ?> assumed</td></tr>
+					<?php if ($hist): ?><tr><td colspan="2" class="small">This rate's actual increase: <?= e(implode(', ', $hist)) ?> a year</td></tr><?php endif; ?>
 				</table>
 			</div>
 			<div>
@@ -324,7 +333,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		</tbody>
 		<tfoot><tr><th>Total</th><th class="num"><?= e($n0($r['lifetime_solar_kwh'])) ?></th><th></th><th></th><th class="num"><?= e($m0($r['lifetime_bill_savings'])) ?></th><th class="num"><?= e($m0($r['lifetime_srec'])) ?></th><?= $r['incentives_year1'] > 0 ? '<th></th>' : '' ?><?= $r['depreciation'] ? '<th class="num">' . e($m0($r['lifetime_dep_fed'])) . '</th><th class="num">' . e($m0($r['lifetime_dep_state'])) . '</th>' : '' ?><th></th><th class="num"><?= e($m0($r['net_savings'])) ?></th></tr></tfoot>
 	</table>
-	<p class="small">Bill with solar is net of the yearly true-up credit. <?= $r['depreciation'] ? 'Depreciation is the tax saved by deducting the system: federal ' . e(lcfirst(App\Savings::DEP_METHODS[$r['dep']['method']])) . ' at a ' . e($p1($a['dep_fed_rate'], 2)) . ' tax rate on the price less half the tax credits; state 5-year MACRS at ' . e($p1($a['dep_state_rate'], 2)) . '. Ask your tax advisor what applies to you. ' : '' ?>Assumes rates rise <?= e($p1($a['escalation'], 2)) ?> a year, production falls <?= e($p1($r['degradation']['value'], 2)) ?> a year and your use stays the same. Estimates, not a guarantee of savings.</p>
+	<p class="small">Bill with solar is net of the yearly true-up credit. Bill savings plus SRECs make the <?= e($m0($r['lifetime_savings'])) ?> savings over <?= (int) $a['years'] ?> years on the earlier pages. <?= $r['depreciation'] ? 'Depreciation is the tax saved by deducting the system: federal ' . e(lcfirst(App\Savings::DEP_METHODS[$r['dep']['method']])) . ' at a ' . e($p1($a['dep_fed_rate'], 2)) . ' tax rate on the price less half the tax credits; state 5-year MACRS at ' . e($p1($a['dep_state_rate'], 2)) . '. Ask your tax advisor what applies to you. ' : '' ?>Assumes rates rise <?= e($p1($a['escalation'], 2)) ?> a year, production falls <?= e($p1($r['degradation']['value'], 2)) ?> a year and your use stays the same. Estimates, not a guarantee of savings.</p>
 </section>
 <?php endif; ?>
 
@@ -338,6 +347,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 			<table class="kv kv-money">
 				<tr><th>Total system price<?php if (!empty($d['tax_exempt'])): ?><div class="small">Priced as tax exempt (requires your exemption certificate)</div><?php endif; ?></th><td class="num"><strong><?= e($m2($price)) ?></strong></td></tr>
 				<tr><th>Price per watt</th><td class="num"><?= $kwDc > 0 ? e($m2($price / ($kwDc * 1000))) : '' ?></td></tr>
+				<?php if ($annual): ?><tr><th>Price per kWh of yearly production<div class="small">The price divided by year-one production (<?= e($n0($annual)) ?> kWh)</div></th><td class="num"><?= e($m2($price / $annual)) ?></td></tr><?php endif; ?>
 				<?php foreach ($r['incentives'] ?? [] as $x): ?>
 					<tr><th><?= e($x['label']) ?><div class="small"><?= $x['timing'] === 'year1' ? 'Tax credit, claimed for year one' : 'Reduces the cost up front' ?></div></th><td class="num">&minus;<?= e($m2($x['amount'])) ?></td></tr>
 				<?php endforeach; ?>

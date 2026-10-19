@@ -200,6 +200,7 @@ final class Savings
 		$weekday = (array) ($rate['energyweekdayschedule'] ?? []);
 		$weekend = (array) ($rate['energyweekendschedule'] ?? []);
 		$months = [];
+		$tou = false;
 		for ($m = 0; $m < 12; $m++) {
 			// Hours in each period over a typical month (2025's calendar)
 			$count = [];
@@ -213,13 +214,14 @@ final class Savings
 				}
 			}
 			$total = array_sum($count);
+			$tou = $tou || count($count) > 1;
 			$periods = [];
 			foreach ($count as $p => $hours) {
 				$periods[] = ['share' => $hours / $total, 'tiers' => $structure[$p]];
 			}
 			$months[$m] = $periods;
 		}
-		if (count($structure) > 1) {
+		if ($tou) {   // periods that change by the hour; a seasonal rate switches whole months
 			$notes['tou'] = 'Time-of-use rate: use and credits are spread evenly over the hours, so the bills are an approximation.';
 		}
 		if (!empty($rate['demandratestructure']) || !empty($rate['flatdemandstructure'])) {

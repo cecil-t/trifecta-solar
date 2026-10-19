@@ -52,7 +52,9 @@ img { max-width: 100%; }
 .card-person { border-left: 3pt solid #69b545; padding: 4pt 0 4pt 10pt; }
 .card-person strong { font-size: 11pt; }
 .card-wide { margin-top: 18pt; }
-.company { text-align: right; font-size: 8.5pt; color: #5d6a72; }
+.company { text-align: right; font-size: 8.5pt; color: #5d6a72; border-right: 3pt solid #f9a11b; padding: 4pt 10pt 4pt 0; }
+.company a { color: inherit; text-decoration: none; }
+.cover-grid .pill { display: inline-block; margin-top: 5pt; padding: 1pt 7pt; border: 1px solid #025586; border-radius: 8pt; color: #025586; font-size: 8pt; font-weight: bold; }
 .company strong { color: #1c2830; }
 
 /* Key-value tables */
@@ -88,7 +90,8 @@ img { max-width: 100%; }
 .aerial-placeholder { height: 3.1in; border: 1.5pt dashed #b9c3c9; border-radius: 4pt; background: #f6f8f9; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #5d6a72; margin-bottom: 4pt; }
 .aerial-placeholder span { font-size: 12pt; font-weight: bold; }
 
-.specs { display: flex; border-top: 1px solid #dfe5e8; border-bottom: 1px solid #dfe5e8; margin: 6pt 0 2pt; padding: 4pt 0; }
+.specs { display: flex; border-top: 1px solid #dfe5e8; border-bottom: 1px solid #dfe5e8; margin: 6pt 0 0; padding: 4pt 0; }
+.specs + .two-col h2 { margin-top: 9pt; }
 .specs > div { flex: 1 1 auto; padding: 0 8pt; border-left: 1px solid #eef0f2; }
 .specs > div:first-child { padding-left: 0; border-left: 0; }
 .specs span { display: block; font-size: 7pt; text-transform: uppercase; letter-spacing: .04em; color: #5d6a72; }
@@ -103,8 +106,9 @@ img { max-width: 100%; }
 .list { width: 100%; border-collapse: collapse; }
 .list td { padding: 3pt 4pt 3pt 0; border-bottom: 1px solid #eef0f2; vertical-align: top; }
 .list td.qty { width: 30pt; white-space: nowrap; font-weight: bold; }
-.notes { margin-top: 10pt; padding: 6pt 10pt; border: 1px solid #dfe5e8; border-left: 3pt solid #025586; border-radius: 3pt; break-inside: avoid; }
-.notes h2 { margin-top: 2pt; }
+.notes { margin-top: 8pt; padding: 2pt 10pt 4pt; border: 1px solid #dfe5e8; border-left: 3pt solid #025586; border-radius: 3pt; break-inside: avoid; }
+.notes h2 { margin-top: 2pt; margin-bottom: 2pt; }
+.notes p { margin: 0; }
 
 /* Charts */
 .chart { display: block; width: 100%; height: auto; }
