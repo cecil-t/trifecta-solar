@@ -22,7 +22,8 @@ final class Proposal
 		. "Deposit: we send an invoice for the deposit, which starts your project.\n"
 		. "Design and approvals: engineering plan sets, then the permit and the utility's interconnection approval.\n"
 		. "Installation: we schedule and install your system.\n"
-		. "Inspection and permission to operate: the inspection passes and the utility lets the system turn on.";
+		. "Inspection and permission to operate: the inspection passes and the utility lets the system turn on.\n"
+		. "Closeout: we set you up with an SREC broker so your system starts earning, and take care of the paperwork for any extended or third-party warranties, utility rebates and virtual net metering.";
 
 	/** The build sheet's proposal number (stored as quote_number), given (year and the next 4-digit number) the first time it is needed. */
 	public static function quoteNumber(array $d): string

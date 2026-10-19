@@ -172,7 +172,7 @@ $rules = $rules ?: [[]];
 			<label class="span-all">Cover letter <textarea name="settings[cover_letter]" rows="4" <?= $dis ?>><?= e($s('cover_letter')) ?></textarea>
 				<small class="hint">On the cover after "Dear (first name),". Blank lines start new paragraphs.</small>
 			</label>
-			<label class="span-all">Next steps <textarea name="settings[next_steps]" rows="7" <?= $dis ?>><?= e($s('next_steps')) ?></textarea>
+			<label class="span-all">Next steps <textarea name="settings[next_steps]" rows="8" <?= $dis ?>><?= e($s('next_steps')) ?></textarea>
 				<small class="hint">One step per line, as "Title: what happens". Blank uses the built-in steps.</small>
 			</label>
 			<label class="span-all">Insurance sentence <textarea name="settings[insurance_text]" rows="2" <?= $dis ?>><?= e($s('insurance_text')) ?></textarea>
