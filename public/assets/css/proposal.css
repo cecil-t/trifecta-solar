@@ -66,6 +66,10 @@ img { max-width: 100%; }
 .kv-money { width: 100%; }
 .kv-money th, .kv-money td { padding: 4pt 0; border-bottom: 1px solid #eef0f2; }
 .kv-money td.num { text-align: right; white-space: nowrap; }
+.kv-money tr.with-sub th, .kv-money tr.with-sub td, .kv-money tr.sub th, .kv-money tr.sub td { border-bottom: 0; }
+.kv-money tr.sub th, .kv-money tr.sub td { padding: 0 0 2pt; font-size: 8pt; color: #5d6a72; }
+.kv-money tr.sub-last th, .kv-money tr.sub-last td { padding-bottom: 4pt; border-bottom: 1px solid #eef0f2; }
+.kv-money tr.sub th { padding-left: 12pt; }
 .kv-money th .small { color: #5d6a72; }
 .kv-money .total th, .kv-money .total td { font-weight: bold; color: #1c2830; border-top: 1.5pt solid #1c2830; border-bottom: 0; font-size: 10.5pt; }
 

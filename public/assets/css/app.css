@@ -1754,16 +1754,31 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .guarantee-box { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 
 /* Proposal terms page */
-.terms-rows { display: flex; flex-direction: column; gap: .9rem; }
-.terms-row { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: .6rem 1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--border); }
-.terms-row.is-new { border-bottom-style: dashed; }
-.terms-meta { display: flex; flex-direction: column; gap: .4rem; }
-.terms-meta label:first-child input { max-width: 6rem; }
-.terms-text { display: flex; flex-direction: column; gap: .4rem; }
+.terms-tools { display: flex; gap: .5rem; justify-content: flex-end; margin: 0 0 .6rem; }
+.terms-list { display: flex; flex-direction: column; gap: .35rem; }
+.terms-block { border: 1px solid var(--border); border-left: 4px solid var(--blue); border-radius: var(--radius-sm); background: var(--surface); }
+.terms-block.terms-intro { border-left-color: var(--muted); }
+.terms-block.terms-clarification { border-left-color: var(--green); }
+.terms-block.terms-authorization { border-left-color: var(--orange); }
+.terms-block.terms-addendum { border-left-color: var(--red); }
+.terms-block.is-new { border-style: dashed; border-left-style: solid; background: transparent; }
+.terms-block > summary { display: flex; align-items: center; gap: .6rem; padding: .45rem .7rem; cursor: pointer; list-style: none; }
+.terms-block > summary::-webkit-details-marker { display: none; }
+.terms-block > summary::before { content: "\25B8"; color: var(--muted); font-size: .8rem; flex: none; }
+.terms-block[open] > summary::before { content: "\25BE"; }
+.terms-block[open] > summary { border-bottom: 1px solid var(--border); }
+.terms-block .tb-order { flex: none; min-width: 2rem; color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.terms-block .tb-title { flex: 1; min-width: 0; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.terms-block.is-new .tb-title { color: var(--blue); font-weight: 600; }
+.terms-block .chip { flex: none; font-size: .72rem; }
+.tb-fields { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: .6rem 1rem; padding: .6rem .7rem .7rem; }
+.tb-meta { display: flex; flex-direction: column; gap: .4rem; }
+.tb-meta label:first-child input { max-width: 6rem; }
+.tb-text { display: flex; flex-direction: column; gap: .4rem; }
 .terms-help summary { cursor: pointer; font-weight: 600; }
 .terms-help code { font-size: .78rem; }
 @media (max-width: 760px) {
-	.terms-row { grid-template-columns: 1fr; }
+	.tb-fields { grid-template-columns: 1fr; }
 }
 
 /* Build sheet: "Save and run production" while it runs */

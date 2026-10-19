@@ -345,9 +345,9 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<div>
 			<h2>Cash price</h2>
 			<table class="kv kv-money">
-				<tr><th>Total system price<?php if (!empty($d['tax_exempt'])): ?><div class="small">Priced as tax exempt (requires your exemption certificate)</div><?php endif; ?></th><td class="num"><strong><?= e($m2($price)) ?></strong></td></tr>
-				<tr><th>Price per watt</th><td class="num"><?= $kwDc > 0 ? e($m2($price / ($kwDc * 1000))) : '' ?></td></tr>
-				<?php if ($annual): ?><tr><th>Price per kWh of yearly production<div class="small">The price divided by year-one production (<?= e($n0($annual)) ?> kWh)</div></th><td class="num"><?= e($m2($price / $annual)) ?></td></tr><?php endif; ?>
+				<tr class="with-sub"><th>Total system price<?php if (!empty($d['tax_exempt'])): ?><div class="small">Priced as tax exempt (requires your exemption certificate)</div><?php endif; ?></th><td class="num"><strong><?= e($m2($price)) ?></strong></td></tr>
+				<?php if ($kwDc > 0): ?><tr class="sub<?= $annual ? '' : ' sub-last' ?>"><th>Price per watt</th><td class="num"><?= e($m2($price / ($kwDc * 1000))) ?></td></tr><?php endif; ?>
+				<?php if ($annual): ?><tr class="sub sub-last"><th>Price per kWh of yearly production (<?= e($n0($annual)) ?> kWh)</th><td class="num"><?= e($m2($price / $annual)) ?></td></tr><?php endif; ?>
 				<?php foreach ($r['incentives'] ?? [] as $x): ?>
 					<tr><th><?= e($x['label']) ?><div class="small"><?= $x['timing'] === 'year1' ? 'Tax credit, claimed for year one' : 'Reduces the cost up front' ?></div></th><td class="num">&minus;<?= e($m2($x['amount'])) ?></td></tr>
 				<?php endforeach; ?>
@@ -380,6 +380,21 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 		<tfoot><tr><th>Total</th><th class="num"><?= e($m2($price)) ?></th></tr></tfoot>
 	</table>
 	<p class="small">The deposit can be paid by credit card; later payments by check, wire transfer or ACH. This proposal is valid until <?= e($longDate($until)) ?>.</p>
+	<?php
+	// For the customer's accountant: shown only when the catalog has the data for every major equipment item
+	$dcKnown = $calc['domestic_content_pct'] !== null && !$calc['domestic_unknown'];
+	$feocKnown = !$calc['feoc_unknown'] && array_filter($calc['lines'], static fn ($l) => in_array($l['category'], App\Pricing::EQUIPMENT_CATS, true) && $l['subtotal'] > 0);
+	?>
+	<?php if ($dcKnown || $feocKnown): ?>
+		<h2>For your tax advisor</h2>
+		<table class="kv kv-wide">
+			<tr><th>System cost</th><td><?= e($m2($price)) ?><?= !empty($d['tax_exempt']) ? ', sales tax exempt' : '' ?></td></tr>
+			<tr><th>System size</th><td><?= e(number_format($kwDc, 2)) ?> kW DC<?= (float) $calc['ac_kw'] > 0 ? ', ' . e(number_format((float) $calc['ac_kw'], 2)) . ' kW AC' : '' ?><?= (float) ($calc['storage_kwh'] ?? 0) > 0 ? ', ' . e(rtrim(rtrim(number_format((float) $calc['storage_kwh'], 1), '0'), '.')) . ' kWh storage' : '' ?></td></tr>
+			<?php if ($dcKnown): ?><tr><th>Domestic content</th><td><?= e(App\Presales::pct($calc['domestic_content_pct'])) ?> of the major equipment cost is U.S. content</td></tr><?php endif; ?>
+			<?php if ($feocKnown): ?><tr><th>FEOC</th><td><?= $calc['feoc_no'] ? 'Not marked compliant with the foreign entity of concern rules: ' . e(implode(', ', $calc['feoc_no'])) : 'All major equipment is marked compliant with the foreign entity of concern (FEOC) rules' ?></td></tr><?php endif; ?>
+		</table>
+		<p class="small">From the equipment makers' information, not tax advice. Whether a credit or a bonus applies depends on the project and your situation.</p>
+	<?php endif; ?>
 </section>
 
 <!-- 8. Next steps -->
