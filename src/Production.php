@@ -14,7 +14,16 @@ namespace App;
  */
 final class Production
 {
-	public const MODELS = ['detailed' => 'SAM detailed model', 'pvwatts' => 'PVWatts v8'];
+	public const MODELS = ['detailed' => 'SAM detailed model', 'pvwatts' => 'PVWatts v8 basic model'];
+
+	/** Short names for the proposal's second production tile. */
+	public const MODEL_SHORT = ['detailed' => 'Detailed model', 'pvwatts' => 'Basic model'];
+
+	/** The SAM release behind a run ("2026.7.3.r0.ssc.308" gives "2026.7.3"), or null. */
+	public static function samVersion(array $prod): ?string
+	{
+		return preg_match('/^(\d{4}\.\d+\.\d+)/', (string) ($prod['library_release'] ?? ''), $m) ? $m[1] : null;
+	}
 
 	/**
 	 * What the estimate needs, from the build sheet as it stands.

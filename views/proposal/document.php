@@ -151,8 +151,8 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<?php if ($prod): ?>
 		<div class="tiles tiles-3">
 			<div class="tile tile-orange"><span class="t-num"><?= e($n0($annual)) ?> <small>kWh</small></span><span class="t-label">Year-one production</span><span class="t-sub"><?= e(Production::MODELS[$model]) ?></span></div>
-			<div class="tile tile-quiet"><span class="t-num"><?= e($n0($otherAnnual)) ?> <small>kWh</small></span><span class="t-label">For comparison</span><span class="t-sub"><?= e(Production::MODELS[$other]) ?></span></div>
-			<div class="tile tile-quiet"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'as given' ?></span></div>
+			<div class="tile tile-quiet"><span class="t-num"><?= e($n0($otherAnnual)) ?> <small>kWh</small></span><span class="t-label"><?= e(Production::MODEL_SHORT[$other]) ?> check</span><span class="t-sub"><?= $other === 'pvwatts' ? 'PVWatts v8, a simpler estimate' : 'SAM, a fuller estimate' ?></span></div>
+			<div class="tile tile-quiet"><span class="t-num"><?= $usage ? e($n0($usage['annual'])) . ' <small>kWh</small>' : '-' ?></span><span class="t-label">Your yearly use</span><span class="t-sub"><?= $usage && $usage['source'] === 'bill' ? 'from your bills' : 'your yearly total; months estimated' ?></span></div>
 		</div>
 		<h2>Production by month, year one</h2>
 		<?= Chart::production($prod[$model]['monthly_kwh'], $usage['kwh'] ?? null, ($usage['source'] ?? '') !== 'bill') ?>
@@ -181,8 +181,10 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<?php if ($prod): $set = $prod['settings'] ?? []; ?>
 		<h2>Assumptions</h2>
 		<table class="kv kv-wide">
-			<tr><th>Weather</th><td>NREL National Solar Radiation Database typical year (<?= e((string) ($prod['weather']['dataset'] ?? '')) ?>) for the site</td></tr>
-			<tr><th>Model</th><td><?= e(Production::MODELS[$model]) ?> (System Advisor Model, PySAM <?= e((string) $prod['pysam']) ?>), with the panel and inverter makers' certified (CEC) performance data</td></tr>
+			<?php $ds = (string) ($prod['weather']['dataset'] ?? ''); $sam = Production::samVersion($prod); ?>
+			<tr><th>Weather</th><td>A typical weather year for this site from the National Solar Radiation Database (NSRDB), built from many years of satellite measurements<?= $ds !== '' ? ' (' . e(strtoupper(str_replace('-', ' ', $ds))) . ($ds === App\SolarResource::DATASET ? ', the newest release' : '') . ')' : '' ?></td></tr>
+			<tr><th>Model</th><td><?= $model === 'detailed' ? 'The System Advisor Model (SAM' . ($sam ? ' ' . e($sam) : '') . ') detailed model' : 'PVWatts v8' ?>, with the panel and inverter makers' certified (CEC) performance data. <?= $model === 'detailed' ? 'PVWatts v8, a simpler model, is shown as a check.' : 'The SAM detailed model is shown as a check.' ?></td></tr>
+			<tr><th>Source</th><td>SAM, PVWatts and the NSRDB are from the U.S. Department of Energy's National Laboratory of the Rockies (formerly NREL)</td></tr>
 			<tr><th>System losses</th><td><?= e($p1((float) ($prod['other_loss_percent'] ?? 0), 2)) ?> (wiring, soiling, mismatch, connections and availability)<?= ($prod['mlpe'] ?? '') === 'optimizers' ? '; optimizers ' . e($p1((float) ($set['optimizer_loss'] ?? 0), 2)) : '' ?>; inverter losses from its CEC data</td></tr>
 			<tr><th>Shading</th><td><?= (float) max(array_map(static fn ($x) => (float) ($x['shading_pct'] ?? 0), $arrays ?: [[]])) > 0 ? 'Per array, as listed above' : 'None expected' ?></td></tr>
 			<tr><th>Snow</th><td>Not modeled</td></tr>
@@ -200,7 +202,8 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 			<div class="tile"><span class="t-num"><?= e($m0($r['lifetime_savings'])) ?></span><span class="t-label">Savings over <?= (int) $a['years'] ?> years</span><span class="t-sub">bills and SRECs, before the system's cost</span></div>
 			<div class="tile tile-quiet"><span class="t-num"><?= e($m0($y1['bill_without'])) ?> &rarr; <?= $y1['bill_with'] - $y1['payout'] < 0 ? e($m0($y1['payout'] - $y1['bill_with'])) . ' <small>credit</small>' : e($m0($y1['bill_with'] - $y1['payout'])) ?></span><span class="t-label">Yearly electric bill</span><span class="t-sub">without solar &rarr; with solar, year one</span></div>
 		</div>
-		<h2>A typical year with solar, June to May</h2>
+		<h2>Year one with solar, June to May</h2>
+		<p class="small">Pennsylvania's net metering year runs June 1 to May 31, following the PJM grid's planning year, so this year starts in June.</p>
 		<?= Chart::bills($r['months']) ?>
 		<p class="legend"><span class="key key-blue"></span> Bill without solar <span class="key key-green"></span> Bill with solar</p>
 		<table class="data data-tight">
@@ -222,15 +225,16 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 					<tr><th>Rate</th><td><?= e((string) ($o['utility_tariff'] ?: ($rateSum['name'] ?? ''))) ?></td></tr>
 					<?php if ($facts): ?><tr><th>Customer charge</th><td><?= e($m2($facts['fixed'][0])) ?> a month</td></tr><?php endif; ?>
 					<?php if ($rateSum && $rateSum['energy_min'] !== null): ?><tr><th>Energy price</th><td><?= e(number_format($rateSum['energy_min'] * 100, 2)) ?><?= $rateSum['energy_max'] !== $rateSum['energy_min'] ? ' to ' . e(number_format($rateSum['energy_max'] * 100, 2)) : '' ?> cents per kWh</td></tr><?php endif; ?>
-					<tr><th>Price to Compare</th><td><?= $r['ptc']['value'] !== null ? e(number_format($r['ptc']['value'] * 100, 2)) . ' cents per kWh (true-up credit)' : 'Not set' ?></td></tr>
+					<?php if ($r['ptc']['value'] !== null): ?><tr><th>Price to Compare</th><td><?= e(number_format($r['ptc']['value'] * 100, 2)) ?> cents per kWh (true-up credit)</td></tr><?php endif; ?>
 					<tr><th>Yearly increase</th><td><?= e($p1($a['escalation'], 2)) ?> assumed<?php
 						$hist = [];
 						foreach ([3, 5, 10] as $yy) {
-							if (isset($trend['y' . $yy]['pct']) && $trend['y' . $yy]['pct'] !== null) {
+							// Only the periods that back the assumed rate
+							if (isset($trend['y' . $yy]['pct']) && $trend['y' . $yy]['pct'] !== null && (float) $trend['y' . $yy]['pct'] >= (float) $a['escalation'] - 0.05) {
 								$hist[] = $yy . ' yr ' . sprintf('%+.1f%%', (float) $trend['y' . $yy]['pct']);
 							}
 						}
-						echo $hist ? '<div class="small">This rate\'s history: ' . e(implode(', ', $hist)) . ' a year</div>' : '';
+						echo $hist ? '<div class="small">This rate\'s actual increase: ' . e(implode(', ', $hist)) . ' a year</div>' : '';
 					?></td></tr>
 				</table>
 			</div>
@@ -272,8 +276,10 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 	<p class="legend"><span class="key key-blue"></span> Still paying for itself <span class="key key-green"></span> Paid for, savings ahead</p>
 	<table class="stats">
 		<tr><th>Payback</th><td class="num"><?= e(Savings::yearsText($r['payback_years'])) ?></td><td>When the savings (bills and SRECs<?= $r['depreciation'] ? ', plus depreciation' : '' ?>) add up to the net cost.</td></tr>
+		<?php if (!$residential): ?>
 		<tr><th>Discounted payback</th><td class="num"><?= e(Savings::yearsText($r['discounted_payback_years'])) ?></td><td>The same, counting each future year's savings in today's dollars (a <?= e($p1($a['discount'], 2)) ?> yearly discount rate), so it comes later.</td></tr>
 		<tr><th>Net present value</th><td class="num"><?= e($m0($r['npv'])) ?></td><td>All <?= (int) $a['years'] ?> years of savings in today's dollars, minus the net cost.</td></tr>
+		<?php endif; ?>
 		<tr><th>Total return</th><td class="num"><?= e($p1($r['roi_pct'], 0)) ?></td><td>Net savings over <?= (int) $a['years'] ?> years as a share of the money put in.</td></tr>
 		<tr><th>Annual rate of return</th><td class="num"><?= $r['irr'] !== null ? e($p1($r['irr'], 1)) : '-' ?></td><td>The yearly interest rate that would grow the money put in as much as the system does.</td></tr>
 		<tr><th>Cost of solar power</th><td class="num"><?= $r['cost_per_kwh'] !== null ? e(number_format($r['cost_per_kwh'] * 100, 1)) . ' cents/kWh' : '-' ?></td><td>The net cost divided by all the kWh it makes in <?= (int) $a['years'] ?> years.</td></tr>

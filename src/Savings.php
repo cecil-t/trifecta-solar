@@ -520,9 +520,6 @@ final class Savings
 		$facts = self::rateFacts($rate);
 		$notes = $facts['notes'];
 		$ptc = self::priceToCompare($o);
-		if ($ptc['value'] === null) {
-			$notes[] = 'No Price to Compare for this utility (Rates page), so credit left at the May 31 true-up counts as $0.';
-		}
 		$deg = self::degradation($lines);
 		$price = (float) $calc['price'];
 		$inc = [];

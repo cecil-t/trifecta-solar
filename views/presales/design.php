@@ -748,10 +748,11 @@ $folded = [];
 		<?= App\View::partial('presales/_savings', ['o' => $o, 'd' => $d, 'calc' => $calc, 'sav' => $sav, 'contacts' => $contacts, 'base' => $base, 'foldBtn' => $foldBtn]) ?>
 		<section class="card band" id="sec-notes">
 			<div class="card-head card-head-plain band-head">
-				<h2><?= $foldBtn('sec-notes', 'Notes', false) ?>Notes</h2>
+				<h2><?= $foldBtn('sec-notes', 'Internal notes', false) ?>Internal notes</h2>
 				<span class="small"><?= e($d['notes'] ? mb_strimwidth(preg_replace('/\s+/', ' ', (string) $d['notes']), 0, 70, '...') : 'None') ?></span>
 			</div>
-			<textarea name="notes" rows="3" data-autogrow aria-label="Build sheet notes"><?= e((string) $d['notes']) ?></textarea>
+			<p class="hint">For internal reference only. These carry over to the project and are not shown on the proposal.</p>
+			<textarea name="notes" rows="3" data-autogrow aria-label="Internal notes"><?= e((string) $d['notes']) ?></textarea>
 		</section>
 
 		<div class="form-actions">

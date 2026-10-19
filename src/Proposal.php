@@ -72,6 +72,9 @@ final class Proposal
 		foreach ($savings['missing'] as $m) {
 			$warnings[] = 'Savings need: ' . $m;
 		}
+		if ($savings['result'] && $savings['result']['ptc']['value'] === null) {
+			$warnings[] = 'No Price to Compare for this utility (Rates page), so credit left at the May 31 true-up counts as $0.';
+		}
 		foreach ($calc['checks'] ?? [] as $m) {
 			$warnings[] = 'Build sheet: ' . $m;
 		}

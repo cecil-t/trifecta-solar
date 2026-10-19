@@ -14,6 +14,7 @@ namespace App;
 final class SolarResource
 {
 	/** NSRDB GOES PSM v4 typical year. Pinned so estimates stay comparable; change on purpose. */
+	/** The newest NSRDB typical year (the proposal calls it the newest release; update both when NSRDB adds one). */
 	public const DATASET = 'tmy-2024';
 	private const ENDPOINT = 'https://developer.nlr.gov/api/nsrdb/v2/solar/nsrdb-GOES-tmy-v4-0-0-download.csv';
 	private const TIMEOUT = 90;
