@@ -1359,6 +1359,9 @@ a[href^="tel:"] { white-space: nowrap; }
 .table-rules td { white-space: normal; vertical-align: top; }
 .table-rules .rule-why { color: var(--blue); }
 .table-payments td { font-variant-numeric: tabular-nums; }
+.copy-box { position: relative; }
+.copy-box > .copy-btn { position: absolute; top: .4rem; right: .4rem; }
+.copy-box > textarea { padding-right: 2.6rem; }
 .warranty-summary { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; background: #fafbfa; }
 
 .table-catalog td { vertical-align: top; }

@@ -737,10 +737,12 @@ $folded = [];
 			<div class="card-head card-head-plain band-head">
 				<h2><?= $foldBtn('sec-warranty', 'Warranty summary', false) ?>Warranty summary</h2>
 				<span class="small band-head-fill"><?= e($d['warranty_is_solarinsure'] ? 'SolarInsure' : 'In-house warranty') ?></span>
-				<button type="button" class="btn btn-secondary btn-small" data-copy-from="warranty-summary">Copy</button>
 			</div>
-			<textarea id="warranty-summary" class="warranty-summary" rows="14" readonly aria-label="Warranty summary"><?= e($calc['warranty_summary']) ?></textarea>
-			<p class="hint">Plain text for the OpenSolar proposal. Manufacturer wording comes from each catalog item; the Trifecta and SolarInsure wording from the Rates page.</p>
+			<div class="copy-box">
+				<textarea id="warranty-summary" class="warranty-summary" rows="14" readonly aria-label="Warranty summary"><?= e($calc['warranty_summary']) ?></textarea>
+				<button type="button" class="copy-btn" data-copy-from="warranty-summary" title="Copy the warranty summary" aria-label="Copy the warranty summary"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M3 11V3.5A1.5 1.5 0 0 1 4.5 2H11"/></svg></button>
+			</div>
+			<p class="hint">Manufacturer wording comes from each catalog item; the Trifecta and SolarInsure wording from the Rates page.</p>
 		</section>
 
 		<!-- Savings and the proposal come once the job is built: they use the price -->
