@@ -11,7 +11,7 @@ use App\Presales;
  * @var array  $plan       Draws::trueUpPlan: apply, cash, rows (per job: c, draw, cash), left
  * @var array  $jobs       Draws::jobs: c, balance, due, state
  * @var array  $schedules
- * @var array  $lines      draws, newest first
+ * @var array  $lines      draws, newest first (the newest 6 shown, older folded by year)
  * @var float  $warnPct
  * @var string $dueLabel
  * @var array  $activity
@@ -23,6 +23,17 @@ $job = static fn (array $c) => $c['project_id'] ? trim($c['project_number'] . ' 
 $applyTotal = array_sum(array_column($plan['apply'], 'amount'));
 $cashTotal = array_sum(array_column($plan['cash'], 'amount'));
 $today = date('Y-m-d');
+// Draws paid: the newest few open; older ones folded by year, so the list stays short
+$lineGroups = $lines ? [['year' => null, 'lines' => array_slice($lines, 0, 6)]] : [];
+foreach (array_slice($lines, 6) as $l) {
+	$yr = substr($l['pay_date'], 0, 4);
+	$last = count($lineGroups) - 1;
+	if ($lineGroups[$last]['year'] !== $yr) {
+		$lineGroups[] = ['year' => $yr, 'lines' => []];
+		$last++;
+	}
+	$lineGroups[$last]['lines'][] = $l;
+}
 ?>
 <div class="page-head">
 	<div>
@@ -170,9 +181,13 @@ $today = date('Y-m-d');
 	<div class="table-wrap">
 		<table class="table table-tight table-draw-lines">
 			<thead><tr><th>Date</th><th>Kind</th><th class="num">Amount</th><th>Note</th><?= $admin ? '<th></th>' : '' ?></tr></thead>
-			<tbody>
-			<?php if (!$lines): ?><tr><td colspan="<?= $admin ? 5 : 4 ?>" class="empty">No draws yet.</td></tr><?php endif; ?>
-			<?php foreach ($lines as $l): $fid = 'draw-line-' . (int) $l['id']; ?>
+			<?php if (!$lines): ?><tbody><tr><td colspan="<?= $admin ? 5 : 4 ?>" class="empty">No draws yet.</td></tr></tbody><?php endif; ?>
+			<?php foreach ($lineGroups as $g): ?>
+				<?php if ($g['year'] !== null): ?>
+					<tbody class="year-head"><tr><td colspan="<?= $admin ? 5 : 4 ?>"><button type="button" class="year-toggle" aria-expanded="false"><span class="year-caret">&#9656;</span> <?= $g['year'] === substr($lines[0]['pay_date'], 0, 4) ? 'Earlier in ' : '' ?><?= e($g['year']) ?> <span class="tab-count"><?= count($g['lines']) ?></span> <span class="muted small"><?= e($m(array_sum(array_column($g['lines'], 'amount')))) ?></span></button></td></tr></tbody>
+				<?php endif; ?>
+			<tbody<?= $g['year'] !== null ? ' hidden' : '' ?>>
+			<?php foreach ($g['lines'] as $l): $fid = 'draw-line-' . (int) $l['id']; ?>
 				<tr>
 					<?php if ($admin): ?>
 						<td><input type="date" name="pay_date" value="<?= e($l['pay_date']) ?>" form="<?= e($fid) ?>" aria-label="Date"></td>
@@ -198,6 +213,7 @@ $today = date('Y-m-d');
 				</tr>
 			<?php endforeach; ?>
 			</tbody>
+			<?php endforeach; ?>
 			<?php if (count($lines) > 1): ?><tfoot><tr><td>Total</td><td></td><td class="num"><?= e($m($sum['drawn'])) ?></td><td></td><?= $admin ? '<td></td>' : '' ?></tr></tfoot><?php endif; ?>
 		</table>
 	</div>
