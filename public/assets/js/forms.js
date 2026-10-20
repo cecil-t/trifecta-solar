@@ -12,6 +12,35 @@
 	}
 	document.querySelectorAll('select[data-reveal], select[data-reveal-any]').forEach(wireReveal);
 
+	// Opportunity: retail rate from the bill, (total - customer charge x months) / kWh, as it is typed
+	document.querySelectorAll('[data-bill-rate]').forEach((box) => {
+		const num = (name) => {
+			const raw = (box.querySelector('[name=' + name + ']').value || '').replace(/[^0-9.\-]/g, '');
+			return raw === '' ? null : parseFloat(raw);
+		};
+		const out = box.querySelector('.bill-rate-out');
+		const update = () => {
+			const total = num('bill_total');
+			const kwh = num('bill_kwh');
+			const charge = num('bill_charge') || 0;
+			const months = parseInt(box.querySelector('[name=bill_months]').value, 10) || 1;
+			out.textContent = '';
+			out.classList.remove('bad');
+			if (total === null || kwh === null || !(kwh > 0)) return;
+			const cents = (total - charge * months) / kwh * 100;
+			out.append('Retail rate: ');
+			const b = document.createElement('strong');
+			b.textContent = cents.toFixed(2) + ' cents per kWh';
+			out.append(b);
+			if (cents < 1 || cents > 200) {
+				out.classList.add('bad');
+				out.append(' (check the numbers)');
+			}
+		};
+		box.addEventListener('input', update);
+		box.addEventListener('change', update);
+	});
+
 	// <input type=checkbox data-toggle="#el">: show #el while checked
 	document.querySelectorAll('input[type=checkbox][data-toggle]').forEach((cb) => {
 		const target = document.querySelector(cb.dataset.toggle);

@@ -458,9 +458,57 @@ final class Savings
 		return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
 	}
 
+	/**
+	 * The retail rate worked out from the customer's bill: (bill total - customer charge x months) / kWh,
+	 * in $ per kWh, or null when the bill total and kWh aren't both entered.
+	 *
+	 * @return array{rate: float, charge: float, total: float, kwh: float, months: int}|null
+	 */
+	public static function billRate(array $o): ?array
+	{
+		$total = $o['bill_total'] ?? null;
+		$kwh = $o['bill_kwh'] ?? null;
+		if (!is_numeric($total) || !is_numeric($kwh) || (float) $kwh <= 0) {
+			return null;
+		}
+		$charge = is_numeric($o['bill_charge'] ?? null) ? (float) $o['bill_charge'] : 0.0;
+		$months = max(1, min(12, (int) ($o['bill_months'] ?? 1) ?: 1));
+		$rate = ((float) $total - $charge * $months) / (float) $kwh;
+		return $rate > 0 ? ['rate' => $rate, 'charge' => $charge, 'total' => (float) $total, 'kwh' => (float) $kwh, 'months' => $months] : null;
+	}
+
+	/**
+	 * The rate the savings use: the one from the bill when entered, else the picked OpenEI rate.
+	 * facts as rateFacts() gives them; summary has utility, name, energy_min, energy_max ($ per kWh).
+	 *
+	 * @return array{source: string, facts: array, summary: array}|null
+	 */
+	public static function rateSource(array $o): ?array
+	{
+		if ($b = self::billRate($o)) {
+			$notes = [];
+			if (($o['customer_type'] ?? 'residential') !== 'residential' || !empty($o['is_agricultural'])) {
+				$notes[] = 'The rate from the bill includes any demand charges, which solar does not reliably lower, so savings may read high.';
+			}
+			return ['source' => 'bill', 'bill' => $b, 'facts' => [
+				'fixed' => array_fill(0, 12, $b['charge']),
+				'months' => array_fill(0, 12, [['share' => 1.0, 'tiers' => [[null, $b['rate']]]]]),
+				'notes' => $notes,
+			], 'summary' => ['utility' => null, 'name' => null, 'energy_min' => $b['rate'], 'energy_max' => $b['rate']]];
+		}
+		$rate = json_decode((string) ($o['rate_json'] ?? ''), true);
+		if (!is_array($rate) || !$rate) {
+			return null;
+		}
+		return ['source' => 'openei', 'facts' => self::rateFacts($rate), 'summary' => UtilityRates::summary($rate)];
+	}
+
 	/** The Price to Compare for the true-up, $ per kWh, and where it came from. */
 	public static function priceToCompare(array $o): array
 	{
+		if (is_numeric($o['ptc_cents'] ?? null) && (float) $o['ptc_cents'] > 0) {
+			return ['value' => (float) $o['ptc_cents'] / 100, 'source' => 'entered on the opportunity'];
+		}
 		$trend = json_decode((string) ($o['rate_trend'] ?? ''), true);
 		if (is_array($trend) && isset($trend['generation']) && is_numeric($trend['generation']) && $trend['generation'] > 0) {
 			return ['value' => (float) $trend['generation'] / 100, 'source' => 'the generation part of the picked rate'];
@@ -511,15 +559,15 @@ final class Savings
 		if (!$usage) {
 			$missing[] = 'The yearly use on the opportunity (or the 12 months from the bill).';
 		}
-		$rate = json_decode((string) ($o['rate_json'] ?? ''), true);
-		if (!is_array($rate) || !$rate) {
-			$missing[] = 'The utility rate (OpenEI) on the opportunity.';
+		$source = self::rateSource($o);
+		if (!$source) {
+			$missing[] = 'The utility rate on the opportunity: from the bill, or picked from OpenEI.';
 		}
 		$a = self::assumptions($d);
 		if ($missing) {
 			return ['missing' => $missing, 'notes' => $notes, 'result' => null, 'assumptions' => $a, 'usage' => $usage, 'model' => $model];
 		}
-		$facts = self::rateFacts($rate);
+		$facts = $source['facts'];
 		$notes = $facts['notes'];
 		$ptc = self::priceToCompare($o);
 		$deg = self::degradation($lines);
@@ -547,6 +595,7 @@ final class Savings
 			'incentives' => $inc,
 		] + $a);
 		$r['ptc'] = $ptc;
+		$r['rate_source'] = $source['source'];
 		$r['degradation'] = $deg;
 		$r['incentive_rows'] = $inc;
 		$r['dep'] = $depInfo;

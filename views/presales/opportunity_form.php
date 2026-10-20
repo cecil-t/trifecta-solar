@@ -12,6 +12,10 @@ use App\Projects;
  * @var array    $counties
  */
 $v = static fn (string $k, $d = '') => $o[$k] ?? $d;
+// A stored number as typed: no trailing zeros after the decimal point (13000 stays 13000)
+$dec = static fn (string $k, int $places): string => is_numeric($o[$k] ?? null)
+	? (str_contains($t = number_format((float) $o[$k], $places, '.', ''), '.') ? rtrim(rtrim($t, '0'), '.') : $t)
+	: (string) ($o[$k] ?? '');
 $sel = static fn ($a, $b) => (string) $a === (string) $b && (string) $a !== '' ? 'selected' : '';
 $isNew = $id === null;
 ?>
@@ -200,8 +204,30 @@ $isNew = $id === null;
 			</details>
 			<label>Account # <input type="text" name="utility_account" value="<?= e($v('utility_account')) ?>"></label>
 			<label>Meter # <input type="text" name="utility_meter" value="<?= e($v('utility_meter')) ?>"></label>
+			<?php
+			$billRate = App\Savings::billRate($o);
+			$ptcFallback = App\Savings::priceToCompare(['ptc_cents' => null] + $o);
+			?>
+			<fieldset class="span-all bill-rate" data-bill-rate>
+				<legend>Rate from the bill</legend>
+				<p class="hint">Bill total minus the customer charge, divided by the kWh. Use one month, or 12 months of bills for a better average. When entered, savings use this rate instead of the OpenEI rate.</p>
+				<div class="bill-rate-grid">
+					<label>Customer charge ($/mo) <input type="text" name="bill_charge" value="<?= e(is_numeric($o['bill_charge'] ?? null) ? number_format((float) $o['bill_charge'], 2, '.', '') : (string) ($o['bill_charge'] ?? '')) ?>" inputmode="decimal" placeholder="e.g. 11.30"></label>
+					<label>Bill total ($) <input type="text" name="bill_total" value="<?= e(is_numeric($o['bill_total'] ?? null) ? number_format((float) $o['bill_total'], 2, '.', '') : (string) ($o['bill_total'] ?? '')) ?>" inputmode="decimal"></label>
+					<label>kWh on the bill <input type="text" name="bill_kwh" value="<?= e($dec('bill_kwh', 0)) ?>" inputmode="decimal"></label>
+					<label>Months covered
+						<select name="bill_months">
+							<?php for ($mm = 1; $mm <= 12; $mm++): ?><option value="<?= $mm ?>" <?= (int) $v('bill_months', 1) === $mm ? 'selected' : '' ?>><?= $mm ?> month<?= $mm > 1 ? 's' : '' ?></option><?php endfor; ?>
+						</select>
+					</label>
+				</div>
+				<p class="bill-rate-out" aria-live="polite"><?= $billRate ? 'Retail rate: <strong>' . e(number_format($billRate['rate'] * 100, 2)) . ' cents per kWh</strong>' : '' ?></p>
+				<label class="ptc-field">Price to Compare (cents per kWh) <input type="text" name="ptc_cents" value="<?= e($dec('ptc_cents', 4)) ?>" inputmode="decimal" placeholder="<?= $ptcFallback['value'] !== null ? e(number_format($ptcFallback['value'] * 100, 2)) : 'Not set' ?>">
+					<small class="hint">Pays for credit left at the May 31 true-up. Blank uses <?= $ptcFallback['value'] !== null ? e(number_format($ptcFallback['value'] * 100, 2)) . ' cents (' . e((string) $ptcFallback['source']) . ')' : 'the picked OpenEI rate or the Rates page value, and neither is set' ?>.</small>
+				</label>
+			</fieldset>
 			<div class="checkfield span-all rate-picker" data-rate-picker="/presales/utility-rates">
-				<span class="field-label">Utility rate (OpenEI)</span>
+				<span class="field-label">Utility rate from OpenEI (optional)</span>
 				<input type="hidden" name="rate_label" value="<?= e((string) $v('rate_label')) ?>">
 				<div class="rate-row">
 					<span class="rate-chosen"><?= $v('rate_label') ? '<strong>' . e((string) $v('rate_name')) . '</strong>' . ($v('rate_utility') ? ' <span class="muted small">' . e((string) $v('rate_utility')) . '</span>' : '') : '<span class="muted">No rate picked.</span>' ?></span>

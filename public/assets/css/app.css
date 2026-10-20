@@ -1751,6 +1751,18 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 	.month-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Opportunity: rate worked out from the bill */
+.bill-rate { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .6rem .9rem .8rem; margin: 0; min-width: 0; }
+.bill-rate legend { font-weight: 600; font-size: .9rem; padding: 0 .3rem; }
+.bill-rate .hint { margin: 0 0 .5rem; }
+.bill-rate-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem .8rem; align-items: end; }
+.bill-rate-out { margin: .5rem 0; min-height: 1.2em; }
+.bill-rate-out.bad { color: var(--red); }
+.bill-rate .ptc-field { max-width: 22rem; }
+@media (max-width: 760px) {
+	.bill-rate-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* Build sheet: savings and proposal */
 .sav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: .6rem .9rem; }
 .sav-inc { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }

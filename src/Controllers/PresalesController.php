@@ -34,6 +34,8 @@ final class PresalesController
 		'referrer_name' => 'Referred by (name)', 'handoff_user_id' => 'Handed off by',
 		'municipality_id' => 'Municipality', 'site_lat' => 'Map point latitude', 'site_lon' => 'Map point longitude',
 		'rate_name' => 'Utility rate (OpenEI)',
+		'bill_charge' => 'Customer charge ($ a month)', 'bill_total' => 'Bill total ($)', 'bill_kwh' => 'kWh on the bill',
+		'bill_months' => 'Months on the bill', 'ptc_cents' => 'Price to Compare (cents per kWh)',
 	];
 
 	public function index(): void
@@ -324,7 +326,7 @@ final class PresalesController
 		$site = $this->sitePoint($street, $city, $state, $zip, $before);
 		$rate = $this->rateInput($before, $site, (string) ($_POST['customer_type'] ?? ''));
 
-		return $site + $rate + [
+		return $site + $rate + $this->billInput() + [
 			'municipality_id' => $muni,
 			'lead_source' => $lead,
 			'lead_detail' => $lead === 'trifecta' && array_key_exists($detail, Presales::LEAD_DETAILS) ? $detail : null,
@@ -353,6 +355,43 @@ final class PresalesController
 			'usage_profile' => $profile,
 			'new_service' => empty($_POST['new_service']) ? 0 : 1,
 		];
+	}
+
+	/**
+	 * The rate from the customer's bill and a typed Price to Compare. The customer charge saves on its
+	 * own; the bill total and kWh go together, and the rate they give must be believable.
+	 */
+	private function billInput(): array
+	{
+		$num = static function (string $k, string $label, float $min, float $max): ?float {
+			$raw = trim((string) ($_POST[$k] ?? ''));
+			if ($raw === '') {
+				return null;
+			}
+			$v = Projects::parseNumber($raw);
+			if ($v === null || !preg_match('/\d/', $raw) || $v < $min || $v > $max) {
+				throw new \InvalidArgumentException($label . ' must be a number from ' . $min . ' to ' . number_format($max) . '.');
+			}
+			return $v;
+		};
+		$charge = $num('bill_charge', 'Customer charge', 0, 10000);
+		$total = $num('bill_total', 'Bill total', 0.01, 10000000);
+		$kwh = $num('bill_kwh', 'kWh on the bill', 1, 100000000);
+		$months = (int) ($_POST['bill_months'] ?? 1);
+		$months = $months >= 1 && $months <= 12 ? $months : 1;
+		$ptc = $num('ptc_cents', 'Price to Compare', 0.01, 100);
+		if (($total === null) !== ($kwh === null)) {
+			throw new \InvalidArgumentException('Rate from the bill: enter both the bill total and the kWh on the bill, or neither.');
+		}
+		$out = ['bill_charge' => $charge, 'bill_total' => $total, 'bill_kwh' => $kwh, 'bill_months' => $total === null ? null : $months,
+			'ptc_cents' => $ptc === null ? null : round($ptc, 4)];
+		if ($total !== null) {
+			$rate = ($total - ($charge ?? 0) * $months) / $kwh;
+			if ($rate < 0.01 || $rate > 2) {
+				throw new \InvalidArgumentException('Rate from the bill works out to ' . number_format($rate * 100, 2) . ' cents per kWh, which can\'t be right. Check the customer charge, the bill total, the kWh and how many months they cover.');
+			}
+		}
+		return $out;
 	}
 
 	/** The site's map point: as posted, else the saved one while the address is unchanged, else looked up now. */

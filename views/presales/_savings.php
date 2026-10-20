@@ -56,7 +56,7 @@ $model = Savings::model($d);
 				<tr><td>Banked (kWh)</td><?php foreach ($r['months'] as $mo): ?><td class="num"><?= e(number_format($mo['banked'])) ?></td><?php endforeach; ?><td></td></tr>
 			</tbody>
 		</table></div>
-		<p class="hint">From the saved build sheet. True-up at <?= $r['ptc']['value'] !== null ? e(number_format($r['ptc']['value'] * 100, 2)) . ' cents per kWh (' . e($r['ptc']['source']) . ')' : '$0 (no Price to Compare set)' ?>; degradation <?= e($f($r['degradation']['value'], 2)) ?>% a year (<?= e($r['degradation']['source']) ?>).<?= $sav['notes'] ? ' ' . e(implode(' ', $sav['notes'])) : '' ?></p>
+		<p class="hint">From the saved build sheet. Utility rate <?= $r['rate_source'] === 'bill' ? 'from the bill' : 'from OpenEI' ?>. True-up at <?= $r['ptc']['value'] !== null ? e(number_format($r['ptc']['value'] * 100, 2)) . ' cents per kWh (' . e($r['ptc']['source']) . ')' : '$0 (no Price to Compare set)' ?>; degradation <?= e($f($r['degradation']['value'], 2)) ?>% a year (<?= e($r['degradation']['source']) ?>).<?= $sav['notes'] ? ' ' . e(implode(' ', $sav['notes'])) : '' ?></p>
 	<?php endif; ?>
 
 	<h3 class="mt-sm">Assumptions</h3>

@@ -29,9 +29,10 @@ $netCost = $r ? $r['net_cost'] : $price;
 $site = trim(implode(', ', array_filter([$o['site_street'], $o['site_city']])) . ' ' . trim(($o['site_state'] ?? '') . ' ' . ($o['site_zip'] ?? '')));
 $salesLine = $sales ? implode(' · ', array_filter([$sales['name'], $sales['phone'] ?? '', $sales['email'] ?? ''])) : '';
 $termsVersion = $terms['version']['id'] ?? null;
-$rate = json_decode((string) ($o['rate_json'] ?? ''), true);
-$facts = is_array($rate) && $rate ? Savings::rateFacts($rate) : null;
-$rateSum = is_array($rate) && $rate ? App\UtilityRates::summary($rate) : null;
+$rateSrc = Savings::rateSource($o);   // the rate from the bill when entered, else the OpenEI rate
+$facts = $rateSrc['facts'] ?? null;
+$rateSum = $rateSrc['summary'] ?? null;
+$fromBill = ($rateSrc['source'] ?? '') === 'bill';
 $trend = json_decode((string) ($o['rate_trend'] ?? ''), true);
 $utility = $o['utility_id'] ? App\Db::value('SELECT name FROM utilities WHERE id = ?', [(int) $o['utility_id']]) : null;
 $star = $hasInc ? '<sup>*</sup>' : '';
@@ -254,9 +255,10 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 				<h2>Your utility rate</h2>
 				<table class="kv">
 					<tr><th>Utility</th><td><?= e((string) ($utility ?: ($rateSum['utility'] ?? ''))) ?></td></tr>
-					<tr><th>Rate</th><td><?= e((string) ($o['utility_tariff'] ?: ($rateSum['name'] ?? ''))) ?></td></tr>
-					<?php if ($facts): ?><tr><th>Customer charge</th><td><?= e($m2($facts['fixed'][0])) ?> a month</td></tr><?php endif; ?>
-					<?php if ($rateSum && $rateSum['energy_min'] !== null): ?><tr><th>Energy price</th><td><?= e(number_format($rateSum['energy_min'] * 100, 2)) ?><?= $rateSum['energy_max'] !== $rateSum['energy_min'] ? ' to ' . e(number_format($rateSum['energy_max'] * 100, 2)) : '' ?> cents per kWh</td></tr><?php endif; ?>
+					<?php $rateName = (string) ($o['utility_tariff'] ?: ($rateSum['name'] ?? '')); ?>
+					<?php if ($rateName !== ''): ?><tr><th>Rate</th><td><?= e($rateName) ?></td></tr><?php endif; ?>
+					<?php if ($facts && (!$fromBill || $facts['fixed'][0] > 0)): ?><tr><th>Customer charge</th><td><?= e($m2($facts['fixed'][0])) ?> a month</td></tr><?php endif; ?>
+					<?php if ($rateSum && $rateSum['energy_min'] !== null): ?><tr><th>Energy price</th><td><?= e(number_format($rateSum['energy_min'] * 100, 2)) ?><?= $rateSum['energy_max'] !== $rateSum['energy_min'] ? ' to ' . e(number_format($rateSum['energy_max'] * 100, 2)) : '' ?> cents per kWh<?= $fromBill ? '<div class="small">From your electric bill, after the customer charge</div>' : '' ?></td></tr><?php endif; ?>
 					<?php if ($r['ptc']['value'] !== null): ?><tr><th>Price to Compare</th><td><?= e(number_format($r['ptc']['value'] * 100, 2)) ?> cents per kWh (true-up credit)</td></tr><?php endif; ?>
 					<?php
 					$hist = [];
