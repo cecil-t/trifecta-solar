@@ -272,6 +272,7 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 					<tr><th>Yearly increase</th><td><?= e($p1($a['escalation'], 2)) ?> assumed</td></tr>
 					<?php if ($hist): ?><tr><td colspan="2" class="small">This rate's actual increase: <?= e(implode(', ', $hist)) ?> a year</td></tr><?php endif; ?>
 				</table>
+				<?php if ($savings['notes']): ?><p class="small muted"><?= e(implode(' ', $savings['notes'])) ?></p><?php endif; ?>
 			</div>
 			<div>
 				<h2>SRECs</h2>
@@ -285,7 +286,6 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 				<p class="small">Pennsylvania solar renewable energy credits: every 1,000 kWh produced earns one, sold through an SREC broker at market prices.</p>
 			</div>
 		</div>
-		<?php if ($savings['notes']): ?><p class="small muted"><?= e(implode(' ', $savings['notes'])) ?></p><?php endif; ?>
 	<?php else: ?>
 		<p class="missing">Savings will show once the build sheet has: <?= e(implode(' ', $savings['missing'])) ?></p>
 	<?php endif; ?>

@@ -115,7 +115,7 @@ final class ProposalCharts
 	public static function bills(array $months): string
 	{
 		$w = 700;
-		$h = 150;
+		$h = 125;   // short enough that page 4 keeps the rate and SREC boxes with their notes
 		$l = 56;
 		$r = 10;
 		$t = 12;
