@@ -357,7 +357,7 @@ final class Savings
 			$flows[] = $flow;
 			$rows[] = ['year' => $y, 'usage' => array_sum($use), 'solar' => $solarY, 'bill_without' => $billWo, 'bill_with' => $billW,
 				'payout' => $payout, 'bill_savings' => $billSavings, 'srec' => $srec, 'srec_price' => $srecPrice, 'savings' => $savings,
-				'incentives' => $y === 1 ? $year1 : 0.0, 'dep_fed' => $depFed, 'dep_state' => $depState, 'cash_flow' => $flow, 'cumulative' => $cum, 'discounted_cumulative' => $dcum];
+				'incentives' => $y === 1 ? $year1 : 0.0, 'dep_fed' => $depFed, 'dep_state' => $depState, 'cash_flow' => $flow, 'cash_flow_pv' => $dflow, 'cumulative' => $cum, 'discounted_cumulative' => $dcum];
 		}
 		if ($payback !== null && $payback < 0) {
 			$payback = 0.0;
@@ -390,6 +390,9 @@ final class Savings
 			'payback_years' => $payback,
 			'discounted_payback_years' => $dpayback,
 			'npv' => $npv,
+			'outlay' => $outlay,                      // paid at the start (price less up-front incentives)
+			'lifetime_cash_flow' => array_sum(array_column($rows, 'cash_flow')),   // years 1 on, at face value
+			'pv_cash_flow' => $npv + $outlay,         // years 1 on, in today's dollars
 			'irr' => self::irr($flows),
 			// Total return: what the system leaves after paying for itself, as a share of the money put in
 			'roi_pct' => $outlay > 0 ? $cum / $outlay * 100 : null,
