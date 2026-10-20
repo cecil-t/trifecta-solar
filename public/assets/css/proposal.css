@@ -153,6 +153,9 @@ img { max-width: 100%; }
 .stats { width: 100%; border-collapse: collapse; margin-top: 6pt; }
 .stats th { text-align: left; padding: 5pt 8pt 5pt 0; border-bottom: 1px solid #eef0f2; white-space: nowrap; vertical-align: top; }
 .stats td { padding: 5pt 8pt 5pt 0; border-bottom: 1px solid #eef0f2; vertical-align: top; color: #5d6a72; font-size: 8.5pt; }
+.stats-list { margin: 3pt 0 0; padding-left: 11pt; }
+.stats-list li { margin-bottom: 2pt; }
+.stats-list strong { color: #1c2830; }
 .stats td.num { color: #1c2830; font-weight: bold; font-size: 10pt; white-space: nowrap; }
 .lead { font-size: 10.5pt; }
 
