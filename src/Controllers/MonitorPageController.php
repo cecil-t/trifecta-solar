@@ -245,7 +245,11 @@ final class MonitorPageController
 				$fleet['d30'] += $v['d30'];
 			}
 
-			if ($v['active'] > 0 && $v['active_with_yesterday'] * 2 < $v['active']) {
+			// Yesterday is partial for a brand until a pull has run since midnight (that pull stores the
+			// finished day), or while most of its producing sites still have no value for it. SolarEdge,
+			// pulled every few weekdays to fit its credits, is often the one still out.
+			$pulledToday = $v['run']['last_ok'] !== null && strtotime((string) $v['run']['last_ok']) >= strtotime('today');
+			if ($v['active'] > 0 && (!$pulledToday || $v['active_with_yesterday'] * 2 < $v['active'])) {
 				$fleet['yesterday_missing'][$v['label']] = true;
 			}
 		}

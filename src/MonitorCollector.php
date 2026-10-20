@@ -1091,9 +1091,15 @@ final class MonitorCollector
 			if ($from < $floor) {
 				$from = $floor; // DAY resolution covers at most one month per call
 			}
+			// Whole days only, through yesterday: a pull at 8 AM would otherwise store a few morning
+			// hours as today's total, and that stays until the next pull (days later at this cadence).
+			// energy_through is fetched again each time, so a day stored early is replaced.
+			if ($from > date('Y-m-d', strtotime('-1 day'))) {
+				continue;
+			}
 			$e = $this->seGet('/sites/' . $site['vendor_site_id'] . '/energy', [
 				'from' => date('Y-m-d\TH:i:sP', strtotime($from . ' 00:00:00')),
-				'to' => date('Y-m-d\TH:i:sP'),
+				'to' => date('Y-m-d\TH:i:sP', strtotime('today') - 1),
 				'resolution' => 'DAY',
 			]);
 			$latest = null;
