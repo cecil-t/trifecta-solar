@@ -1634,7 +1634,6 @@ a[href^="tel:"] { white-space: nowrap; }
 .table-amounts td:first-child { white-space: normal; }
 .table-amounts { width: 100%; }
 .commission-metrics { margin: .2rem 0 .9rem; }
-.draws-card { margin-bottom: 1rem; }
 .draws-pick { margin: .7rem 0 0; align-items: center; }
 .settings-fold > summary { cursor: pointer; }
 .draw-line-form { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }

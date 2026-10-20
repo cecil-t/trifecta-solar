@@ -29,46 +29,6 @@ $chip = App\Commissions::CHIPS;
 	</div>
 </div>
 
-<?php if ($draws || ($admin && !$person)): ?>
-	<section class="card band draws-card">
-		<h2>Draws against commission</h2>
-		<?php if ($draws): ?>
-			<div class="table-wrap">
-				<table class="table table-tight">
-					<thead><tr><th>Salesperson</th><th class="num">Draw</th><th class="num" title="Draws paid, including any opening balance">Draws paid</th><th class="num" title="Commission covered by draws">Covered</th><th class="num" title="Draws paid less commission covered">Advance</th><th class="num" title="Commission that is due and not yet paid">Due now</th><th class="num" title="Commission on sold jobs that are not due yet">Pipeline</th><th>Standing</th></tr></thead>
-					<tbody>
-					<?php foreach ($draws as $d): [$dc, $dt] = App\Draws::chip($d); ?>
-						<tr data-href="/commissions/draws/<?= (int) $d['id'] ?>">
-							<td><a href="/commissions/draws/<?= (int) $d['id'] ?>"><strong><?= e($d['name']) ?></strong></a></td>
-							<td class="num nowrap"><?= $d['schedule'] ? e($m($d['schedule']['amount'])) . '<div class="muted small">next ' . e(fmt_date($d['next'])) . '</div>' : '<span class="muted">Stopped</span>' ?></td>
-							<td class="num"><?= e($m($d['drawn'])) ?></td>
-							<td class="num"><?= e($m($d['covered'])) ?></td>
-							<td class="num"><?= e($m($d['advance'])) ?></td>
-							<td class="num"><?= e($m($d['owed'])) ?><?= $d['ready'] > 0.005 ? '<div class="small text-orange">' . e($m($d['ready'])) . ' to true up</div>' : '' ?></td>
-							<td class="num"><?= e($m($d['pipeline'])) ?></td>
-							<td class="nowrap"><span class="chip <?= e($dc) ?>"><?= e($dt) ?></span></td>
-						</tr>
-					<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-		<?php else: ?>
-			<p class="muted">No one is on a draw yet.</p>
-		<?php endif; ?>
-		<?php if ($admin && !$person): ?>
-			<form method="get" action="/commissions/draws" class="filters draws-pick">
-				<select name="user" aria-label="Salesperson">
-					<?php foreach ($people as $u): ?><option value="<?= (int) $u['id'] ?>"><?= e($u['name']) ?></option><?php endforeach; ?>
-				</select>
-				<button class="btn btn-secondary btn-small">Open draw</button>
-				<span class="muted small">Flagged when the advance passes <?= e(rtrim(rtrim(number_format($warnPct, 1), '0'), '.')) ?>% of the pipeline.</span>
-			</form>
-		<?php endif; ?>
-	</section>
-<?php elseif ($admin && $person): ?>
-	<p class="draws-card"><a href="/commissions/draws/<?= (int) $person ?>">Set up a draw for <?= e($personName) ?></a></p>
-<?php endif; ?>
-
 <div class="tabs">
 	<?php foreach ($tabs as $k => $label): ?>
 		<a href="<?= e($qs(['tab' => $k])) ?>" class="tab <?= $tab === $k ? 'active' : '' ?>"><?= e($label) ?> <span class="tab-count"><?= (int) $counts[$k] ?></span></a>
@@ -135,6 +95,46 @@ $chip = App\Commissions::CHIPS;
 	</table>
 </div>
 <?php if ($person): ?><p class="hint mt-xs">Commission, self-gen and other are the whole job's; due, paid and balance are <?= $admin ? e($personName) . '\'s' : 'yours' ?> after any in-house split.</p><?php endif; ?>
+
+<?php if ($draws || ($admin && !$person)): ?>
+	<section class="card band mt draws-card">
+		<h2>Draws against commission</h2>
+		<?php if ($draws): ?>
+			<div class="table-wrap">
+				<table class="table table-tight">
+					<thead><tr><th>Salesperson</th><th class="num">Draw</th><th class="num" title="Draws paid, including any opening balance">Draws paid</th><th class="num" title="Commission covered by draws">Covered</th><th class="num" title="Draws paid less commission covered">Advance</th><th class="num" title="Commission that is due and not yet paid">Due now</th><th class="num" title="Commission on sold jobs that are not due yet">Pipeline</th><th>Standing</th></tr></thead>
+					<tbody>
+					<?php foreach ($draws as $d): [$dc, $dt] = App\Draws::chip($d); ?>
+						<tr data-href="/commissions/draws/<?= (int) $d['id'] ?>">
+							<td><a href="/commissions/draws/<?= (int) $d['id'] ?>"><strong><?= e($d['name']) ?></strong></a></td>
+							<td class="num nowrap"><?= $d['schedule'] ? e($m($d['schedule']['amount'])) . '<div class="muted small">next ' . e(fmt_date($d['next'])) . '</div>' : '<span class="muted">Stopped</span>' ?></td>
+							<td class="num"><?= e($m($d['drawn'])) ?></td>
+							<td class="num"><?= e($m($d['covered'])) ?></td>
+							<td class="num"><?= e($m($d['advance'])) ?></td>
+							<td class="num"><?= e($m($d['owed'])) ?><?= $d['ready'] > 0.005 ? '<div class="small text-orange">' . e($m($d['ready'])) . ' to true up</div>' : '' ?></td>
+							<td class="num"><?= e($m($d['pipeline'])) ?></td>
+							<td class="nowrap"><span class="chip <?= e($dc) ?>"><?= e($dt) ?></span></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		<?php else: ?>
+			<p class="muted">No one is on a draw yet.</p>
+		<?php endif; ?>
+		<?php if ($admin && !$person): ?>
+			<form method="get" action="/commissions/draws" class="filters draws-pick">
+				<select name="user" aria-label="Salesperson">
+					<?php foreach ($people as $u): ?><option value="<?= (int) $u['id'] ?>"><?= e($u['name']) ?></option><?php endforeach; ?>
+				</select>
+				<button class="btn btn-secondary btn-small">Open draw</button>
+				<span class="muted small">Flagged when the advance passes <?= e(rtrim(rtrim(number_format($warnPct, 1), '0'), '.')) ?>% of the pipeline.</span>
+			</form>
+		<?php endif; ?>
+	</section>
+<?php elseif ($admin && $person): ?>
+	<p class="mt"><a href="/commissions/draws/<?= (int) $person ?>">Set up a draw for <?= e($personName) ?></a></p>
+<?php endif; ?>
 
 <?php if ($admin && $referrals): ?>
 	<h2 class="sub mt">Referral bonuses to pay</h2>
