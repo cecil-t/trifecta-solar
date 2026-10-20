@@ -38,11 +38,11 @@ $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 <div class="card card-flush card-sticky-head scroll-x-phone">
 	<table class="table table-presales table-tight">
 		<thead>
-		<tr><th>Opportunity</th><th>Sales</th><th>Type</th><th class="num">Build sheets</th><th class="num">kW DC</th><th class="num">Price</th><th>Status</th><th>Updated</th></tr>
+		<tr><th>Opportunity</th><th>Sales</th><th>Type</th><th class="num">Build sheets</th><th class="num">kW DC</th><th class="num">Price</th><th>Status</th><th>Created</th><th>Updated</th></tr>
 		</thead>
 		<tbody>
 		<?php if (!$rows): ?>
-			<tr><td colspan="8" class="empty"><?= $q !== '' ? 'Nothing matches that search.' : 'Nothing here yet.' ?></td></tr>
+			<tr><td colspan="9" class="empty"><?= $q !== '' ? 'Nothing matches that search.' : 'Nothing here yet.' ?></td></tr>
 		<?php endif; ?>
 		<?php foreach ($rows as $r): ?>
 			<tr data-href="/presales/<?= (int) $r['id'] ?>" id="opp-<?= (int) $r['id'] ?>">
@@ -65,6 +65,7 @@ $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 					<?php if ($r['status'] === 'sold' && $r['project_number']): ?><div class="muted small">Project <?= e($r['project_number']) ?></div><?php endif; ?>
 					<?php if ($r['status'] === 'lost' && $r['lost_reason']): ?><div class="muted small"><?= e($r['lost_reason']) ?></div><?php endif; ?>
 				</td>
+				<td class="nowrap"><?= e(fmt_dt($r['created_at'], 'm/d/Y')) ?></td>
 				<td class="nowrap"><?= e(fmt_dt($r['updated_at'], 'm/d/Y')) ?></td>
 			</tr>
 		<?php endforeach; ?>
