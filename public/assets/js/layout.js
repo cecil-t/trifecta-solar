@@ -38,6 +38,7 @@
 		roof: saved ? saved.roof : null,
 		view: saved && saved.view ? saved.view : { cx: 0, cy: 0, mpp: 0.06 },
 		maxz: saved ? (saved.maxz || 21) : 21,
+		pview: saved && saved.pview ? saved.pview : null,   // what the proposal's aerial shows: {cx, cy, w} in meters, or null for automatic
 		tool: 'select',
 		sel: null,     // selected array key
 		selM: null,    // selected measurement index
@@ -476,6 +477,7 @@
 		drawDraft();
 		drawScale();
 		attribution();
+		placeFrame();
 	};
 	const toPoint = (e) => {
 		const r = svg.getBoundingClientRect();
@@ -508,6 +510,164 @@
 				mpp: clamp(Math.max(w / r.width, h / r.height) * 1.4, 0.008, 4) };
 		}
 		updateView();
+	};
+
+	// ---------- Proposal view ----------
+	// A frame the shape of the proposal's aerial stays put over the map; the map moves and zooms under
+	// it. Saving stores the frame's center and width in meters (App\Layout::proposalBox reads them).
+	const ASPECT = cfg.aspect || 7.3 / 3.1;
+	let pmode = false;
+	let pBefore = null;
+	const frameEl = $('pview-frame');
+	// The frame on screen, in pixels from the map's top left
+	const frameBox = () => {
+		const r = mapEl.getBoundingClientRect();
+		const top = $('pview-bar').offsetHeight + 24;
+		const bottom = 40;   // clear of the scale bar and Google's logo
+		const side = 24;
+		const aw = Math.max(40, r.width - 2 * side);
+		const ah = Math.max(20, r.height - top - bottom);
+		const w = Math.min(aw, ah * ASPECT);
+		const h = w / ASPECT;
+		return { x: (r.width - w) / 2, y: top + (ah - h) / 2, w, h, mw: r.width, mh: r.height };
+	};
+	function placeFrame() {
+		if (!pmode) {
+			return;
+		}
+		const f = frameBox();
+		frameEl.style.left = f.x + 'px';
+		frameEl.style.top = f.y + 'px';
+		frameEl.style.width = f.w + 'px';
+		frameEl.style.height = f.h + 'px';
+	}
+	// The same automatic framing as the proposal: panels and tracker circles, a margin, then the aspect
+	const autoView = () => {
+		const pts = S.arrays.flatMap(corners);
+		if (!pts.length) {
+			return null;
+		}
+		const xs = pts.map((p) => p[0]);
+		const ys = pts.map((p) => p[1]);
+		for (const a of S.arrays) {
+			if (a.mount === 'tracker' && a.cells.length) {
+				const sw = sweep(a);
+				xs.push(sw.cx - sw.r, sw.cx + sw.r);
+				ys.push(sw.cy - sw.r, sw.cy + sw.r);
+			}
+		}
+		const pad = Math.max(4, 0.15 * Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)));
+		let x0 = Math.min(...xs) - pad;
+		let y0 = Math.min(...ys) - pad;
+		let w = Math.max(...xs) - Math.min(...xs) + 2 * pad;
+		let h = Math.max(...ys) - Math.min(...ys) + 2 * pad;
+		if (w / h < ASPECT) {
+			x0 -= (h * ASPECT - w) / 2;
+			w = h * ASPECT;
+		} else {
+			y0 -= (w / ASPECT - h) / 2;
+			h = w / ASPECT;
+		}
+		return { cx: x0 + w / 2, cy: y0 + h / 2, w };
+	};
+	// Move the map so the frame shows a proposal view
+	const showInFrame = (pv) => {
+		const f = frameBox();
+		S.view.mpp = clamp(pv.w / f.w, 0.004, 4);
+		S.view.cx = pv.cx - (f.x + f.w / 2 - f.mw / 2) * S.view.mpp;
+		S.view.cy = pv.cy - (f.y + f.h / 2 - f.mh / 2) * S.view.mpp;
+	};
+	// What the frame shows now
+	const frameView = () => {
+		const f = frameBox();
+		const r = (v) => Math.round(v * 1000) / 1000;
+		return { cx: r(vb.x + (f.x + f.w / 2) * S.view.mpp), cy: r(vb.y + (f.y + f.h / 2) * S.view.mpp), w: r(f.w * S.view.mpp) };
+	};
+	const toolbarCtl = () => Array.from(document.querySelectorAll('.layout-toolbar button, .layout-toolbar select, .layout-toolbar input'))
+		.filter((n) => !['btn-fit', 'btn-zoom-in', 'btn-zoom-out'].includes(n.id));
+	const pviewButton = () => {
+		const b = $('btn-pview');
+		b.classList.toggle('is-set', !!S.pview);
+		b.title = 'Choose what the proposal\'s aerial shows. ' + (S.pview ? 'A proposal view is saved.' : 'Now: automatic, framed on the arrays.');
+	};
+	const enterPview = () => {
+		if (!S.arrays.some((a) => a.cells.length)) {
+			hint('Draw the arrays first, then set the proposal view.');
+			return;
+		}
+		if (!cfg.layout) {
+			hint('Save the layout first, then set the proposal view.');
+			return;
+		}
+		pmode = true;
+		pBefore = { ...S.view };
+		S.draft = null;
+		drag = null;
+		app.classList.add('is-pview');
+		document.body.classList.add('layout-pview');
+		$('pview-bar').hidden = false;
+		frameEl.hidden = false;
+		for (const n of toolbarCtl()) {
+			n.disabled = true;
+		}
+		$('pview-note').textContent = (S.pview ? 'This is the saved proposal view. ' : 'This is the automatic view (framed on the arrays). ')
+			+ 'Drag and zoom the map so the dashed frame shows what the proposal should show.';
+		showInFrame(S.pview || autoView());
+		updateView();
+	};
+	const exitPview = (keepView) => {
+		pmode = false;
+		app.classList.remove('is-pview');
+		document.body.classList.remove('layout-pview');
+		$('pview-bar').hidden = true;
+		frameEl.hidden = true;
+		for (const n of toolbarCtl()) {
+			n.disabled = false;
+		}
+		updateUndo();
+		pviewButton();
+		if (!keepView && pBefore) {
+			S.view = pBefore;
+		}
+		updateView();
+	};
+	const sendPview = async (body) => {
+		const btns = ['pview-save', 'pview-auto', 'pview-cancel'].map($);
+		btns.forEach((b) => { b.disabled = true; });
+		try {
+			const r = await fetch(cfg.pviewUrl, {
+				method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },
+				body: new URLSearchParams({ _csrf: app.dataset.csrf, ...body }),
+			});
+			const j = await r.json();
+			if (!j.ok) {
+				$('pview-note').textContent = j.error || 'The proposal view was not saved.';
+				return null;
+			}
+			return j;
+		} catch (err) {
+			$('pview-note').textContent = 'The proposal view was not saved (no answer from the server). Try again.';
+			return null;
+		} finally {
+			btns.forEach((b) => { b.disabled = false; });
+		}
+	};
+	const savePview = async () => {
+		const pv = frameView();
+		const j = await sendPview({ pview: JSON.stringify(pv) });
+		if (j) {
+			S.pview = j.pview;
+			exitPview(true);
+			hint('Proposal view saved.' + (j.outside ? ' ' + j.outside + (j.outside === 1 ? ' panel is' : ' panels are') + ' outside it and will be cut off on the proposal.' : ''));
+		}
+	};
+	const autoPview = async () => {
+		const j = await sendPview({ clear: '1' });
+		if (j) {
+			S.pview = null;
+			exitPview(false);
+			hint('The proposal frames the arrays automatically again.');
+		}
 	};
 
 	// ---------- Tiles ----------
@@ -990,7 +1150,7 @@
 	const future = [];
 	function serialize() {
 		S.measures.forEach(settle);
-		return { origin: S.origin, module: S.modules[firstMod], modules: S.modules, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof, roof_shown: S.showRoof };
+		return { origin: S.origin, module: S.modules[firstMod], modules: S.modules, gap: S.gap, view: S.view, maxz: S.maxz, arrays: S.arrays, measures: S.measures, roof: S.roof, roof_shown: S.showRoof, pview: S.pview };
 	}
 	// What needs saving: the drawing, not where the map was moved to
 	const drawingState = () => JSON.stringify({ modules: S.modules, gap: S.gap, arrays: S.arrays, measures: S.measures, shown: S.showRoof });
@@ -1342,7 +1502,7 @@
 		const pan = () => {
 			drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, cx: S.view.cx, cy: S.view.cy, moved: false };
 		};
-		if (e.button === 1 || e.button === 2 || spaceDown) {
+		if (e.button === 1 || e.button === 2 || spaceDown || pmode) {
 			pan();
 		} else if (target.closest('[data-handle]') && selected()) {
 			// The turn handle works with any tool
@@ -1548,6 +1708,16 @@
 		}
 		const k = e.key;
 		const mod = e.ctrlKey || e.metaKey;
+		if (pmode) {
+			// Only the map moves in the proposal view; Esc cancels
+			if (k === 'Escape') {
+				e.preventDefault();
+				exitPview(false);
+			} else if (mod || k === 'Delete' || k === 'Backspace' || k.startsWith('Arrow') || k.length === 1) {
+				e.preventDefault();
+			}
+			return;
+		}
 		if (mod && (k === 'z' || k === 'Z')) {
 			e.preventDefault();
 			if (e.shiftKey) {
@@ -1634,8 +1804,21 @@
 	$('btn-undo').addEventListener('click', undo);
 	$('btn-redo').addEventListener('click', redo);
 	$('btn-fit').addEventListener('click', fit);
-	$('btn-zoom-in').addEventListener('click', () => zoomAt(1 / 1.6, S.view.cx, S.view.cy));
-	$('btn-zoom-out').addEventListener('click', () => zoomAt(1.6, S.view.cx, S.view.cy));
+	$('btn-pview').addEventListener('click', enterPview);
+	$('pview-save').addEventListener('click', savePview);
+	$('pview-auto').addEventListener('click', autoPview);
+	$('pview-cancel').addEventListener('click', () => exitPview(false));
+	pviewButton();
+	// In the proposal view the buttons zoom on the frame's center, so the framing stays put
+	const zoomCenter = () => {
+		if (!pmode) {
+			return [S.view.cx, S.view.cy];
+		}
+		const f = frameBox();
+		return [vb.x + (f.x + f.w / 2) * S.view.mpp, vb.y + (f.y + f.h / 2) * S.view.mpp];
+	};
+	$('btn-zoom-in').addEventListener('click', () => zoomAt(1 / 1.6, ...zoomCenter()));
+	$('btn-zoom-out').addEventListener('click', () => zoomAt(1.6, ...zoomCenter()));
 	$('new-mount').addEventListener('change', () => {
 		$('new-pitch').closest('label').hidden = $('new-mount').value === 'tracker';
 	});

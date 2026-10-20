@@ -137,6 +137,7 @@ $r->get('/presales/{id}/designs/{designId}/proposal/pdf', [ProposalController::c
 $r->get('/presales/{id}/designs/{designId}/layout', [LayoutController::class, 'show']);
 $r->post('/presales/{id}/designs/{designId}/layout', [LayoutController::class, 'save']);
 $r->get('/presales/{id}/designs/{designId}/layout/roof', [LayoutController::class, 'roof']);
+$r->post('/presales/{id}/designs/{designId}/layout/view', [LayoutController::class, 'saveView']);
 
 // Projects
 $r->get('/projects', [ProjectController::class, 'index']);

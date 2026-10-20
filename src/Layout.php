@@ -20,6 +20,8 @@ final class Layout
 	public const MAX_PANELS = 20000;
 	public const MAX_MEASURES = 100;
 	private const EARTH = 156543.03392804097;   // meters per pixel at zoom 0 on the equator (256 px tiles)
+	/** Width over height of the proposal's aerial box (7.3 by 3.1 in); the layout page's proposal view frame uses it too. */
+	public const PROPOSAL_ASPECT = 7.3 / 3.1;
 
 	/** Which module a line is: its catalog item, or (a custom line) its name. */
 	public static function moduleKey(array $line): string
@@ -180,6 +182,7 @@ final class Layout
 			'measures' => [],
 			'roof' => null,
 			'roof_shown' => !array_key_exists('roof_shown', $in) || !empty($in['roof_shown']),
+			'pview' => self::pviewFrom($in['pview'] ?? null),
 		];
 		if ($out['module']['width'] > $out['module']['length']) {
 			[$out['module']['length'], $out['module']['width']] = [$out['module']['width'], $out['module']['length']];
@@ -585,18 +588,39 @@ final class Layout
 	}
 
 	/**
-	 * The layout for the proposal: satellite tiles under the panels, framed on the arrays, as an SVG
-	 * (images inline, so the PDF needs nothing else). $tile fetches one tile's bytes and type, or
-	 * returns null (then the photo is left gray). Returns the SVG and the tile zoom it used.
+	 * The proposal view saved on the layout page: the center and width (map meters) of what the
+	 * proposal's aerial shows. Null means automatic framing on the arrays. Throws when it can't be read.
 	 *
-	 * @param callable(int,int,int):?array{0:string,1:string} $tile  bytes, content type
-	 * @return array{svg:string, zoom:int, box:array}|null  null when there are no panels; box is x, y, width, height in map meters
+	 * @return array{cx:float, cy:float, w:float}|null
 	 */
-	public static function drawing(array $layout, float $aspect, callable $tile, int $pixelsAcross = 1400): ?array
+	public static function pviewFrom(mixed $v): ?array
+	{
+		if ($v === null || $v === '' || $v === false) {
+			return null;
+		}
+		$ok = static fn (mixed $n, float $lo, float $hi): bool => (is_int($n) || is_float($n) || (is_string($n) && is_numeric($n))) && is_finite((float) $n) && (float) $n >= $lo && (float) $n <= $hi;
+		if (!is_array($v) || !$ok($v['cx'] ?? null, -5000, 5000) || !$ok($v['cy'] ?? null, -5000, 5000) || !$ok($v['w'] ?? null, 5, 2000)) {
+			throw new \InvalidArgumentException('The proposal view could not be read (it can show 5 m to 2 km across).');
+		}
+		return ['cx' => round((float) $v['cx'], 3), 'cy' => round((float) $v['cy'], 3), 'w' => round((float) $v['w'], 3)];
+	}
+
+	/**
+	 * The box the proposal's aerial shows, in map meters [x, y, width, height]: the saved proposal
+	 * view, else the arrays (and tracker sweep circles) with a margin, widened to the aspect.
+	 * Null when there are no panels. (layout.js has the same automatic framing.)
+	 */
+	public static function proposalBox(array $layout, float $aspect = self::PROPOSAL_ASPECT): ?array
 	{
 		$outlines = self::outlines($layout);
 		if (!$outlines) {
 			return null;
+		}
+		$pv = $layout['pview'] ?? null;
+		if (is_array($pv) && isset($pv['cx'], $pv['cy'], $pv['w'])) {
+			$w = (float) $pv['w'];
+			$h = $w / $aspect;
+			return [(float) $pv['cx'] - $w / 2, (float) $pv['cy'] - $h / 2, $w, $h];
 		}
 		$xs = $ys = [];
 		foreach ($outlines as $panels) {
@@ -607,8 +631,7 @@ final class Layout
 				}
 			}
 		}
-		$sweeps = self::sweeps($layout);
-		foreach ($sweeps as [$cx, $cy, $r]) {
+		foreach (self::sweeps($layout) as [$cx, $cy, $r]) {
 			array_push($xs, $cx - $r, $cx + $r);
 			array_push($ys, $cy - $r, $cy + $r);
 		}
@@ -624,6 +647,48 @@ final class Layout
 			$y0 -= ($w / $aspect - $h) / 2;
 			$h = $w / $aspect;
 		}
+		return [$x0, $y0, $w, $h];
+	}
+
+	/** Panels that fall outside the saved proposal view (0 with automatic framing). */
+	public static function panelsOutsideView(array $layout): int
+	{
+		$box = !empty($layout['pview']) ? self::proposalBox($layout) : null;
+		if (!$box) {
+			return 0;
+		}
+		[$x0, $y0, $w, $h] = $box;
+		$n = 0;
+		foreach (self::outlines($layout) as $panels) {
+			foreach ($panels as $p) {
+				foreach ($p as [$x, $y]) {
+					if ($x < $x0 || $x > $x0 + $w || $y < $y0 || $y > $y0 + $h) {
+						$n++;
+						break;
+					}
+				}
+			}
+		}
+		return $n;
+	}
+
+	/**
+	 * The layout for the proposal: satellite tiles under the panels, framed by proposalBox(), as an SVG
+	 * (images inline, so the PDF needs nothing else). $tile fetches one tile's bytes and type, or
+	 * returns null (then the photo is left gray). Returns the SVG and the tile zoom it used.
+	 *
+	 * @param callable(int,int,int):?array{0:string,1:string} $tile  bytes, content type
+	 * @return array{svg:string, zoom:int, box:array}|null  null when there are no panels; box is x, y, width, height in map meters
+	 */
+	public static function drawing(array $layout, float $aspect, callable $tile, int $pixelsAcross = 1400): ?array
+	{
+		$box = self::proposalBox($layout, $aspect);
+		if (!$box) {
+			return null;
+		}
+		[$x0, $y0, $w, $h] = $box;
+		$outlines = self::outlines($layout);
+		$sweeps = self::sweeps($layout);
 		$lat = $layout['origin']['lat'];
 		$z = (int) floor(log(self::EARTH * cos(deg2rad($lat)) / ($w / $pixelsAcross), 2));
 		$z = max(15, min((int) ($layout['maxz'] ?? 21), 21, $z));

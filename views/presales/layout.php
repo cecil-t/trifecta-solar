@@ -48,7 +48,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 		<p>The layout draws the build sheet's module. <a href="<?= e($base) ?>">Add a module line</a> first.</p>
 	</section>
 <?php else: ?>
-	<div class="layout-app" id="layout-app" data-config="<?= e(json_encode($config)) ?>">
+	<div class="layout-app" id="layout-app" data-config="<?= e(json_encode($config)) ?>" data-csrf="<?= e(Csrf::token()) ?>">
 		<div class="layout-toolbar" role="toolbar" aria-label="Layout tools">
 			<div class="tool-group">
 				<button type="button" class="tool is-active" data-tool="select" aria-pressed="true" title="Select an array or measurement to move, turn or edit it. Drag empty map to pan. (V)">Select</button>
@@ -79,6 +79,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			<div class="tool-group">
 				<button type="button" class="btn btn-small btn-secondary" id="btn-roof" title="Ask Google for the roof faces of the building in the middle of the map">Roof data</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-roof-toggle" title="Show or hide Google's roof faces on the map" hidden>Hide faces</button>
+				<button type="button" class="btn btn-small btn-secondary" id="btn-pview" title="Choose what the proposal's aerial shows: move and zoom the map under a frame the shape of the proposal's picture">Proposal view</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-fit" title="Zoom to the arrays">Fit</button>
@@ -98,6 +99,15 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 					<g id="layer-handles"></g>
 				</svg>
 				<div class="layout-hint" id="layout-hint" role="status"></div>
+				<div class="pview-frame" id="pview-frame" hidden></div>
+				<div class="pview-bar" id="pview-bar" hidden>
+					<span class="small" id="pview-note">Move and zoom the map so the dashed frame shows what the proposal should show.</span>
+					<span class="pview-actions">
+						<button type="button" class="btn btn-small btn-primary" id="pview-save">Save proposal view</button>
+						<button type="button" class="btn btn-small btn-ghost" id="pview-auto" title="Go back to framing the proposal's aerial on the arrays">Automatic view</button>
+						<button type="button" class="btn btn-small btn-ghost" id="pview-cancel">Cancel</button>
+					</span>
+				</div>
 				<img class="layout-glogo" src="<?= asset('assets/img/google-maps-logo.svg') ?>" alt="Google Maps" width="86" height="18">
 				<div class="layout-scale" id="layout-scale"><span id="layout-scale-bar"></span><span id="layout-scale-text"></span></div>
 				<div class="layout-attrib" id="layout-attrib"></div>
@@ -187,6 +197,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 						<li><strong>Pitch</strong> shortens panels as seen from above (a 6/12 roof shows a 66 in panel as 59 in), so set it before judging the fit. Type 6/12, or a plain number for degrees (no degree sign needed).</li>
 						<li><strong>Pan:</strong> right-click and drag with any tool (or drag empty map with Select, or hold the space bar). <strong>Zoom:</strong> mouse wheel.</li>
 						<li><strong>Keys:</strong> V select, A draw, P panels, M measure, Esc cancel, Delete removes the selected array or measurement, arrows nudge 1 in (Shift: 1 ft), [ and ] turn it 0.5&deg; (Shift: 5&deg;), Ctrl+D duplicates, Ctrl+Z undo.</li>
+						<li><strong>Proposal view</strong> sets what the proposal's aerial shows: drag and zoom the map under the dashed frame (to show the house, barn or tree line too), then Save proposal view. Automatic view goes back to framing the arrays.</li>
 						<li><strong>Trackers</strong> are drawn flat, with a dashed red circle for the space the table sweeps as it turns.</li>
 						<li>Satellite photos aren't perfect: tall roofs lean a little, and roof edges include the gutter and overhang.</li>
 					</ul>

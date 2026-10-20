@@ -58,6 +58,8 @@ final class LayoutController
 			'tiles' => '/presales/layout-tiles/',
 			'viewport' => '/presales/layout-viewport',
 			'roof' => $base . '/layout/roof',
+			'pviewUrl' => $base . '/layout/view',
+			'aspect' => Layout::PROPOSAL_ASPECT,
 			'placeholder' => !GoogleMaps::configured(),
 		];
 		View::render('presales/layout', [
@@ -100,6 +102,39 @@ final class LayoutController
 			. (count($layout['arrays']) === 1 ? 'array' : 'arrays') . ($changes ? '; ' . implode(', ', $changes) : ''));
 		flash('success', 'Layout saved: ' . $n . ' panels.' . ($changes ? ' Build sheet updated (' . implode(', ', $changes) . ').' : ''));
 		redirect(($_POST['then'] ?? '') === 'sheet' ? $base . '#sec-arrays' : $base . '/layout');
+	}
+
+	/**
+	 * Save or clear the proposal view (JSON for the layout page). Only the saved layout's proposal
+	 * view changes: the drawing, the build sheet and the layout's saved time stay as they are.
+	 */
+	public function saveView(int $id, int $designId): void
+	{
+		[, $d] = $this->find($id, $designId);
+		header('Content-Type: application/json');
+		$layout = Layout::decode($d['layout_json']);
+		if (!$layout || !Layout::panels($layout)) {
+			echo json_encode(['ok' => false, 'error' => 'Save the layout with its panels first, then set the proposal view.']);
+			return;
+		}
+		$clear = ($_POST['clear'] ?? '') === '1';
+		try {
+			$pview = $clear ? null : Layout::pviewFrom(json_decode((string) ($_POST['pview'] ?? ''), true));
+		} catch (\InvalidArgumentException $e) {
+			echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+			return;
+		}
+		if (!$clear && !$pview) {
+			echo json_encode(['ok' => false, 'error' => 'No proposal view was sent.']);
+			return;
+		}
+		if (($layout['pview'] ?? null) != $pview) {
+			$layout['pview'] = $pview;
+			Db::update('presales_designs', (int) $d['id'], ['layout_json' => json_encode($layout)]);
+			Activity::event('presales', $id, 'Proposal view for "' . $d['name'] . '" ' . ($pview ? 'saved' : 'set back to automatic (framed on the arrays)'));
+		}
+		$out = Layout::panelsOutsideView($layout);
+		echo json_encode(['ok' => true, 'pview' => $pview, 'outside' => $out]);
 	}
 
 	/** Google's roof faces for the building nearest a point (JSON for the layout page). */
