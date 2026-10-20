@@ -37,7 +37,7 @@ final class DrawController
 			'sum' => Draws::summary($uid), 'plan' => Draws::trueUpPlan($uid), 'jobs' => $jobs,
 			'schedules' => Db::all('SELECT * FROM commission_draw_schedules WHERE user_id = ? ORDER BY start_date DESC, id DESC', [$uid]),
 			'lines' => Db::all('SELECT * FROM commission_draws WHERE user_id = ? ORDER BY pay_date DESC, id DESC', [$uid]),
-			'warnPct' => Draws::warnPct(), 'dueLabel' => Commissions::dueLabel(),
+			'warnPct' => Draws::warnPct(), 'dueLabel' => Commissions::dueLabel(), 'frozen' => Draws::frozen($uid),
 			'activity' => Activity::feed('commission_draws', $uid),
 		]);
 	}
@@ -73,6 +73,7 @@ final class DrawController
 		$s = $this->schedule($uid, $sid);
 		$amount = $this->amount('amount', 'New draw amount');
 		$from = $this->date('from_date', 'Starting payroll date');
+		$this->afterFrozen($uid, $from);
 		if ($from <= $s['start_date']) {
 			// Change from the very start: the schedule itself takes the new amount
 			Db::transaction(static function () use ($s, $sid, $amount) {
@@ -107,6 +108,10 @@ final class DrawController
 		if ($last < $s['start_date']) {
 			$this->fail($uid, 'The last payroll can\'t be before the first one. To remove the schedule, delete it.');
 		}
+		$through = Draws::frozen($uid)['through'];
+		if ($through !== null && $last < $through) {
+			$this->fail($uid, 'Draws through ' . fmt_date($through) . ' are already covered by commission, so the draws can\'t stop before then.');
+		}
 		Db::transaction(static function () use ($sid, $last) {
 			Db::run('UPDATE commission_draw_schedules SET end_date = ?, updated_at = ? WHERE id = ?', [$last, now_utc(), $sid]);
 			Db::run('DELETE FROM commission_draws WHERE schedule_id = ? AND pay_date > ? AND edited = 0', [$sid, $last]);
@@ -121,6 +126,12 @@ final class DrawController
 	{
 		$this->requireManage();
 		$s = $this->schedule($uid, $sid);
+		$frozen = Draws::frozen($uid)['ids'];
+		foreach (Db::all('SELECT id FROM commission_draws WHERE schedule_id = ?', [$sid]) as $r) {
+			if (isset($frozen[(int) $r['id']])) {
+				$this->fail($uid, 'Some of this schedule\'s draws are already covered by commission. Stop the schedule instead.');
+			}
+		}
 		$n = 0;
 		Db::transaction(static function () use ($sid, &$n) {
 			$n = (int) Db::value('SELECT COUNT(*) FROM commission_draws WHERE schedule_id = ?', [$sid]);
@@ -141,6 +152,7 @@ final class DrawController
 		$amount = $this->amount('amount', $kind === 'opening' ? 'Opening balance' : 'Draw amount', $kind === 'opening');
 		$date = $this->date('pay_date', 'Date');
 		$note = trim((string) ($_POST['note'] ?? '')) ?: null;
+		$this->afterFrozen($uid, $date);
 		if ($kind === 'opening' && Db::value("SELECT 1 FROM commission_draws WHERE user_id = ? AND kind = 'opening'", [$uid])) {
 			$this->fail($uid, 'There is already an opening balance. Change that one instead.');
 		}
@@ -155,9 +167,11 @@ final class DrawController
 	{
 		$this->requireManage();
 		$l = $this->line($uid, $lid);
+		$this->notFrozen($uid, $l);
 		$amount = $this->amount('amount', 'Amount', $l['kind'] === 'opening');
 		$date = $this->date('pay_date', 'Date');
 		$note = trim((string) ($_POST['note'] ?? '')) ?: null;
+		$this->afterFrozen($uid, $date);
 		if ($l['schedule_id'] && $date !== $l['pay_date'] && Db::value('SELECT 1 FROM commission_draws WHERE schedule_id = ? AND pay_date = ? AND id <> ?', [(int) $l['schedule_id'], $date, $lid])) {
 			$this->fail($uid, 'That schedule already has a draw on ' . fmt_date($date) . '.');
 		}
@@ -184,6 +198,7 @@ final class DrawController
 	{
 		$this->requireManage();
 		$l = $this->line($uid, $lid);
+		$this->notFrozen($uid, $l);
 		Db::run('DELETE FROM commission_draws WHERE id = ?', [$lid]);
 		Activity::event('commission_draws', $uid, ($l['kind'] === 'opening' ? 'Opening balance ' : 'Draw ') . Presales::money((float) $l['amount']) . ' of ' . fmt_date($l['pay_date']) . ' removed');
 		flash('success', 'Removed.');
@@ -206,6 +221,23 @@ final class DrawController
 			flash('success', 'Trued up ' . $done['jobs'] . ' job' . ($done['jobs'] === 1 ? '' : 's') . ': ' . implode(', ', $parts) . '.');
 		}
 		redirect('/commissions/draws/' . $uid);
+	}
+
+	/** A draw already covered by commission is frozen: no edit, no removal. */
+	private function notFrozen(int $uid, array $l): void
+	{
+		if (isset(Draws::frozen($uid)['ids'][(int) $l['id']])) {
+			$this->fail($uid, 'The draw of ' . fmt_date($l['pay_date']) . ' is already covered by commission, so it can\'t be changed.');
+		}
+	}
+
+	/** New or changed draws must come after the last draw covered by commission (draws are used oldest first). */
+	private function afterFrozen(int $uid, string $date): void
+	{
+		$through = Draws::frozen($uid)['through'];
+		if ($through !== null && $date <= $through) {
+			$this->fail($uid, 'Draws through ' . fmt_date($through) . ' are already covered by commission. Use a date after that.');
+		}
 	}
 
 	private function amount(string $key, string $label, bool $allowZero = false): float

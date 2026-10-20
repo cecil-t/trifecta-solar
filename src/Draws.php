@@ -103,6 +103,28 @@ final class Draws
 		return round((float) Db::value("SELECT COALESCE(SUM(amount), 0) FROM commission_entries WHERE user_id = ? AND kind = 'payment' AND source = 'draw'", [$userId]), 2);
 	}
 
+	/**
+	 * Draw lines already used up by covered commission. Covered commission uses the draws oldest
+	 * first, so the oldest lines whose money has gone to jobs are frozen (a line only partly used
+	 * counts as frozen too). through: the date of the last frozen line; changes must come after it.
+	 * @return array{ids:array<int,bool>, through:?string}
+	 */
+	public static function frozen(int $userId): array
+	{
+		$left = self::covered($userId);
+		$ids = [];
+		$through = null;
+		foreach (Db::all("SELECT id, pay_date, amount FROM commission_draws WHERE user_id = ? ORDER BY pay_date, kind = 'opening' DESC, id", [$userId]) as $l) {
+			if ($left <= 0.005) {
+				break;
+			}
+			$ids[(int) $l['id']] = true;
+			$through = $l['pay_date'];
+			$left -= (float) $l['amount'];
+		}
+		return ['ids' => $ids, 'through' => $through];
+	}
+
 	public static function advance(int $userId): float
 	{
 		return round(self::drawn($userId) - self::covered($userId), 2);

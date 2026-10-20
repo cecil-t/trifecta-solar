@@ -14,6 +14,7 @@ use App\Presales;
  * @var array  $lines      draws, newest first (the newest 6 shown, older folded by year)
  * @var float  $warnPct
  * @var string $dueLabel
+ * @var array  $frozen     Draws::frozen: ids (lines covered by commission, read-only), through
  * @var array  $activity
  */
 $m = static fn ($v) => Presales::money((float) $v);
@@ -188,8 +189,8 @@ foreach (array_slice($lines, 6) as $l) {
 				<?php endif; ?>
 			<tbody<?= $g['year'] !== null ? ' hidden' : '' ?>>
 			<?php foreach ($g['lines'] as $l): $fid = 'draw-line-' . (int) $l['id']; ?>
-				<tr>
-					<?php if ($admin): ?>
+				<tr<?= isset($frozen['ids'][(int) $l['id']]) ? ' class="draw-frozen"' : '' ?>>
+					<?php if ($admin && !isset($frozen['ids'][(int) $l['id']])): ?>
 						<td><input type="date" name="pay_date" value="<?= e($l['pay_date']) ?>" form="<?= e($fid) ?>" aria-label="Date"></td>
 						<td class="nowrap"><?= $l['kind'] === 'opening' ? 'Opening balance' : ($l['schedule_id'] ? 'Scheduled' : 'Extra') ?><?= $l['schedule_id'] && $l['edited'] ? ' <span class="muted small">(edited)</span>' : '' ?></td>
 						<td class="num"><input type="text" name="amount" inputmode="decimal" value="<?= e(number_format((float) $l['amount'], 2, '.', '')) ?>" form="<?= e($fid) ?>" aria-label="Amount"></td>
@@ -206,9 +207,10 @@ foreach (array_slice($lines, 6) as $l) {
 						</td>
 					<?php else: ?>
 						<td class="nowrap"><?= e(fmt_date($l['pay_date'])) ?></td>
-						<td><?= $l['kind'] === 'opening' ? 'Opening balance' : 'Draw' ?></td>
+						<td><?= $l['kind'] === 'opening' ? 'Opening balance' : ($l['schedule_id'] ? 'Scheduled' : 'Extra') ?><?= isset($frozen['ids'][(int) $l['id']]) ? ' <span class="chip chip-green" title="Already covered by commission, so it can\'t be changed">Covered</span>' : '' ?></td>
 						<td class="num"><?= e($m($l['amount'])) ?></td>
 						<td class="cell-desc"><?= e((string) $l['note']) ?></td>
+						<?= $admin ? '<td></td>' : '' ?>
 					<?php endif; ?>
 				</tr>
 			<?php endforeach; ?>
@@ -237,7 +239,7 @@ foreach (array_slice($lines, 6) as $l) {
 			</label>
 			<div class="span-all"><button class="btn btn-secondary">Add</button></div>
 		</form>
-		<p class="hint mt-xs">Opening balance: draws already paid before the tracker that commission has not covered yet, as of a payroll date. Only one per person; jobs already marked paid stay as they are.</p>
+		<p class="hint mt-xs">Each payroll's draw is recorded automatically; Save is only for correcting one. Commission uses the draws oldest first, and a draw it has covered is frozen (Covered). Opening balance: draws already paid before the tracker that commission has not covered yet, as of a payroll date. Only one per person; jobs already marked paid stay as they are.</p>
 	<?php endif; ?>
 </section>
 
