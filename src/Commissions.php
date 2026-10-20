@@ -101,10 +101,11 @@ final class Commissions
 	}
 
 	/**
-	 * Owed | Part paid | Not due yet | Paid | Nothing owed | Cancelled, for a job or for one person on
-	 * it. A balance is not due until the job's project reaches Closeout (PTO received).
+	 * Owed | Part paid | Not due yet | Waiting on final payment | Paid | Paid in advance | Nothing owed |
+	 * Cancelled, for a job or for one person on it. When a balance comes due is set on the Draws page
+	 * (Closeout, or the customer's final payment); see dueStates().
 	 */
-	public static function status(array $c, float $due, float $paid, bool $isDue = true): string
+	public static function status(array $c, float $due, float $paid, bool $isDue = true, bool $waiting = false): string
 	{
 		if ($c['status'] === 'cancelled') {
 			return 'Cancelled';
@@ -113,12 +114,56 @@ final class Commissions
 			return 'Nothing owed';
 		}
 		if ($due - $paid <= 0.005) {
-			return 'Paid';
+			return $isDue ? 'Paid' : 'Paid in advance';
 		}
 		if (!$isDue) {
-			return 'Not due yet';
+			return $waiting ? 'Waiting on final payment' : 'Not due yet';
 		}
 		return $paid > 0.005 ? 'Part paid' : 'Owed';
+	}
+
+	/** Status chip classes. */
+	public const CHIPS = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' => 'chip-blue', 'Waiting on final payment' => 'chip-blue',
+		'Paid' => 'chip-green', 'Paid in advance' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
+
+	/** Where a job's commission comes due, for the "not due yet" hint. */
+	public static function dueLabel(): string
+	{
+		return Draws::dueAt() === 'final_payment' ? 'when the customer\'s final payment is received' : 'when the project reaches Closeout (PTO)';
+	}
+
+	/**
+	 * Per commission id: the project phase, whether the commission is due, and whether it is waiting
+	 * on the customer's final payment (in Closeout, with commission set to come due at final payment).
+	 * Final payment means every payment step under the project's Payments is done (or not needed);
+	 * a project with no payment steps falls back to Closeout. A job with no project in the tracker
+	 * is treated as due.
+	 * @return array<int, array{phase:?string, due:bool, waiting:bool}>
+	 */
+	public static function dueStates(array $records): array
+	{
+		$phases = self::phases($records);
+		$atFinal = Draws::dueAt() === 'final_payment';
+		$final = [];
+		$pids = array_values(array_unique(array_filter(array_map(static fn ($c) => (int) $c['project_id'], $records))));
+		if ($atFinal && $pids) {
+			// Final payment in: every payment step the project needs (its contract's schedule) is done
+			foreach (Db::all("SELECT project_id, SUM(done_date IS NULL) AS open FROM project_tasks
+				WHERE phase = 'payments' AND parent_id IS NULL AND COALESCE(needed, 1) <> 0 AND project_id IN (" . implode(',', $pids) . ')
+				GROUP BY project_id') as $r) {
+				$final[(int) $r['project_id']] = (int) $r['open'] === 0;
+			}
+		}
+		$out = [];
+		foreach ($records as $c) {
+			$phase = $phases[(int) $c['id']] ?? null;
+			$due = self::isDue($phase);
+			if ($atFinal && $phase !== null && $phase !== 'complete' && isset($final[(int) $c['project_id']])) {
+				$due = $final[(int) $c['project_id']];
+			}
+			$out[(int) $c['id']] = ['phase' => $phase, 'due' => $due, 'waiting' => !$due && $phase === 'closeout'];
+		}
+		return $out;
 	}
 
 	/**
@@ -151,7 +196,7 @@ final class Commissions
 		return $out;
 	}
 
-	/** Due from Closeout on; a job with no project in the tracker is treated as due. */
+	/** Due from Closeout on (Completed includes the final payment); a job with no project in the tracker is treated as due. */
 	public static function isDue(?string $phase): bool
 	{
 		return $phase === null || in_array($phase, ['closeout', 'complete'], true);
@@ -215,7 +260,8 @@ final class Commissions
 	}
 
 	/**
-	 * Closing the project's "pay commission" step pays every balance as of the step's date; opening
+	 * Closing the project's "pay commission" step pays every balance as of the step's date (from the
+	 * salesperson's draw advance first when they are on a draw); opening
 	 * it again takes those payments back; a new date moves them.
 	 */
 	public static function onPayStep(int $projectId, array $task, ?string $doneDate): void
@@ -244,15 +290,7 @@ final class Commissions
 		if ($c['status'] === 'cancelled') {
 			return;
 		}
-		$paid = [];
-		foreach (self::payees($c) as $p) {
-			if ($p['balance'] > 0.005) {
-				Db::insert('commission_entries', ['commission_id' => (int) $c['id'], 'kind' => 'payment', 'user_id' => $p['user_id'],
-					'amount' => $p['balance'], 'entry_date' => $doneDate, 'note' => 'Project step "' . $task['name'] . '" closed',
-					'task_id' => $taskId, 'created_by' => Auth::id()]);
-				$paid[] = $p['name'] . ' ' . Presales::money($p['balance']);
-			}
-		}
+		$paid = Draws::payBalances($c, $doneDate, 'Project step "' . $task['name'] . '" closed', $taskId);
 		if ($paid) {
 			Activity::event('commission', (int) $c['id'], 'Marked paid from the project step: ' . implode(', ', $paid));
 			Activity::event('project', $projectId, 'Sales commission marked paid: ' . implode(', ', $paid));

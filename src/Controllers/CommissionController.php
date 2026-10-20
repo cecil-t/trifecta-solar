@@ -8,6 +8,7 @@ use App\Auth;
 use App\Commission;
 use App\Commissions;
 use App\Db;
+use App\Draws;
 use App\Presales;
 use App\Projects;
 use App\View;
@@ -56,7 +57,7 @@ final class CommissionController
 			FROM commissions c LEFT JOIN users u ON u.id = c.salesperson_id LEFT JOIN users h ON h.id = c.handoff_user_id
 			LEFT JOIN projects p ON p.id = c.project_id WHERE ' . implode(' AND ', $where) . '
 			ORDER BY c.signed_on IS NULL, c.signed_on, c.id', $params);
-		$phases = Commissions::phases($records);
+		$states = Commissions::dueStates($records);
 		$entries = [];
 		if ($records) {
 			$ids = array_column($records, 'id');
@@ -80,12 +81,13 @@ final class CommissionController
 				$paid = array_sum(array_column($payees, 'paid'));
 				$adjust = array_sum(array_column($payees, 'adjust'));
 			}
-			$phase = $phases[(int) $c['id']] ?? null;
-			$status = Commissions::status($c, $due, $paid, Commissions::isDue($phase));
+			$st = $states[(int) $c['id']];
+			$phase = $st['phase'];
+			$status = Commissions::status($c, $due, $paid, $st['due'], $st['waiting']);
 			$bucket = match ($status) {
 				'Cancelled' => 'cancelled',
-				'Paid', 'Nothing owed' => 'paid',
-				'Not due yet' => 'notdue',
+				'Paid', 'Paid in advance', 'Nothing owed' => 'paid',
+				'Not due yet', 'Waiting on final payment' => 'notdue',
 				default => 'owed',
 			};
 			$counts[$bucket]++;
@@ -113,7 +115,16 @@ final class CommissionController
 		$referrals = $admin ? Db::all("SELECT c.id, c.job_name, c.referrer_name, c.referral_bonus, c.referral_w9, p.project_number, p.name AS project_name
 			FROM commissions c LEFT JOIN projects p ON p.id = c.project_id
 			WHERE c.referral_bonus > 0 AND c.referral_paid_on IS NULL AND c.status = 'active' ORDER BY c.signed_on") : [];
+		// Draws: everyone on one (admins), or the one person the list is for
+		Draws::catchUp();
+		$drawPeople = $person ? (Draws::onDraw($person) ? [['id' => $person, 'name' => (string) Db::value('SELECT name FROM users WHERE id = ?', [$person])]] : [])
+			: ($admin ? Draws::people() : []);
+		$draws = [];
+		foreach ($drawPeople as $u) {
+			$draws[] = $u + Draws::summary((int) $u['id']);
+		}
 		View::render('commissions/index', [
+			'draws' => $draws, 'dueAt' => Draws::dueAt(), 'warnPct' => Draws::warnPct(),
 			'title' => 'Sales commissions',
 			'rows' => $rows, 'total' => $total, 'counts' => $counts, 'tab' => $tab, 'year' => $year, 'person' => $person,
 			'admin' => $admin, 'referrals' => $referrals,
@@ -128,9 +139,9 @@ final class CommissionController
 		$c = $this->find($id);
 		$entries = Commissions::entries($id);
 		$o = $c['opportunity_id'] ? Db::one('SELECT id, name FROM presales_opportunities WHERE id = ?', [(int) $c['opportunity_id']]) : null;
-		$phase = Commissions::phases([$c])[$id] ?? null;
+		$st = Commissions::dueStates([$c])[$id];
 		View::render('commissions/show', [
-			'phase' => $phase,
+			'phase' => $st['phase'], 'isDue' => $st['due'], 'waiting' => $st['waiting'],
 			'listUrl' => local_path((string) ($_SESSION['commissions_list'] ?? '/commissions'), '/commissions') . '#c-' . $id,
 			'title' => 'Commission: ' . $c['job_name'], 'c' => $c, 'entries' => $entries,
 			'payees' => Commissions::payees($c, $entries), 'o' => $o, 'admin' => Commissions::canManage(),
@@ -258,7 +269,9 @@ final class CommissionController
 	{
 		$this->requireManage();
 		$c = $this->find($id);
-		$kind = ($_POST['kind'] ?? '') === 'adjustment' ? 'adjustment' : 'payment';
+		$kindIn = (string) ($_POST['kind'] ?? '');
+		$kind = $kindIn === 'adjustment' ? 'adjustment' : 'payment';
+		$source = $kindIn === 'draw' ? 'draw' : null;
 		$user = (int) ($_POST['user_id'] ?? 0);
 		$amount = Projects::parseNumber((string) ($_POST['amount'] ?? ''));
 		$date = Projects::parseDate((string) ($_POST['entry_date'] ?? '')) ?? date('Y-m-d');
@@ -275,11 +288,50 @@ final class CommissionController
 			redirect('/commissions/' . $id);
 		}
 		Db::insert('commission_entries', ['commission_id' => $id, 'kind' => $kind, 'user_id' => $user, 'amount' => round($amount, 2),
-			'entry_date' => $date, 'note' => $note, 'created_by' => Auth::id()]);
+			'entry_date' => $date, 'note' => $note, 'source' => $source, 'created_by' => Auth::id()]);
 		$name = (string) Db::value('SELECT name FROM users WHERE id = ?', [$user]);
-		Activity::event('commission', $id, ($kind === 'payment' ? 'Payment ' : 'Adjustment ') . Presales::money($amount) . ' for ' . $name . ' on ' . fmt_date($date) . ($note ? ': ' . $note : ''));
+		Activity::event('commission', $id, ($source ? 'Covered by draws ' : ($kind === 'payment' ? 'Payment ' : 'Adjustment ')) . Presales::money($amount) . ' for ' . $name . ' on ' . fmt_date($date) . ($note ? ': ' . $note : ''));
 		flash('success', $kind === 'payment' ? 'Payment recorded.' : 'Adjustment recorded.');
 		redirect('/commissions/' . $id);
+	}
+
+	/** Switch a payment between paid in cash and covered by draws (e.g. history from before the draw ledger). */
+	public function entrySource(int $id, int $entryId): void
+	{
+		$this->requireManage();
+		$this->find($id);
+		$e = Db::one("SELECT e.*, u.name AS user_name FROM commission_entries e LEFT JOIN users u ON u.id = e.user_id WHERE e.id = ? AND e.commission_id = ? AND e.kind = 'payment'", [$entryId, $id]);
+		if ($e) {
+			$to = $e['source'] === 'draw' ? null : 'draw';
+			Db::run('UPDATE commission_entries SET source = ? WHERE id = ?', [$to, $entryId]);
+			Activity::event('commission', $id, 'Payment ' . Presales::money((float) $e['amount']) . ' for ' . $e['user_name'] . ' (' . fmt_date($e['entry_date']) . ') now counts as '
+				. ($to ? 'covered by draws' : 'paid in cash'));
+			flash('success', $to ? 'Now counts as covered by draws.' : 'Now counts as paid in cash.');
+		}
+		redirect('/commissions/' . $id);
+	}
+
+	/** When commission comes due, and when a draw advance is flagged. */
+	public function settings(): void
+	{
+		$this->requireManage();
+		$due = (string) ($_POST['commission_due_at'] ?? '');
+		$pct = Projects::parseNumber((string) ($_POST['draw_warn_pct'] ?? ''));
+		if (!isset(Draws::DUE_AT[$due]) || $pct === null || $pct <= 0 || $pct > 100) {
+			flash('error', 'Pick when commission comes due, and a warning share from 1 to 100%.');
+			redirect('/commissions#settings');
+		}
+		$changes = [];
+		if ($due !== Draws::dueAt()) {
+			Draws::saveSetting('commission_due_at', $due);
+			$changes[] = 'commission comes due at ' . Draws::DUE_AT[$due];
+		}
+		if (abs($pct - Draws::warnPct()) > 0.0001) {
+			Draws::saveSetting('draw_warn_pct', (string) $pct);
+			$changes[] = 'draw advance flagged past ' . rtrim(rtrim(number_format($pct, 1), '0'), '.') . '% of pipeline';
+		}
+		flash('success', $changes ? 'Saved: ' . implode('; ', $changes) . '.' : 'Nothing changed.');
+		redirect('/commissions');
 	}
 
 	public function deleteEntry(int $id, int $entryId): void
@@ -295,7 +347,10 @@ final class CommissionController
 		redirect('/commissions/' . $id);
 	}
 
-	/** Pay every balance today, and close the project's pay-commission step if it is open. */
+	/**
+	 * Pay every balance today (from a salesperson's draw advance first when they are on a draw), and
+	 * close the project's pay-commission step if it is open.
+	 */
 	public function markPaid(int $id): void
 	{
 		$this->requireManage();
@@ -303,13 +358,7 @@ final class CommissionController
 		$date = Projects::parseDate((string) ($_POST['entry_date'] ?? '')) ?? date('Y-m-d');
 		$paid = [];
 		Db::transaction(static function () use ($c, $id, $date, &$paid) {
-			foreach (Commissions::payees($c) as $p) {
-				if ($p['balance'] > 0.005) {
-					Db::insert('commission_entries', ['commission_id' => $id, 'kind' => 'payment', 'user_id' => $p['user_id'],
-						'amount' => $p['balance'], 'entry_date' => $date, 'note' => 'Marked paid', 'created_by' => Auth::id()]);
-					$paid[] = $p['name'] . ' ' . Presales::money($p['balance']);
-				}
-			}
+			$paid = Draws::payBalances($c, $date, 'Marked paid');
 			if ($c['project_id']) {
 				$step = Db::one("SELECT * FROM project_tasks WHERE project_id = ? AND action = 'pay_commission' AND done_date IS NULL ORDER BY id LIMIT 1", [(int) $c['project_id']]);
 				if ($step) {

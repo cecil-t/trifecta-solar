@@ -11,7 +11,9 @@ use App\Presales;
  * @var array|null $o         the opportunity it came from (id, name)
  * @var array|null $payStep   the project's pay-commission step
  * @var string      $listUrl   the commissions list as it was filtered
- * @var string|null $phase    the project's phase (commission is due from Closeout on)
+ * @var string|null $phase    the project's phase
+ * @var bool       $isDue     the commission has come due (Closeout or final payment, per the setting)
+ * @var bool       $waiting   in Closeout, waiting on the customer's final payment
  * @var bool       $admin
  * @var array      $people    id, name
  * @var array      $activity
@@ -20,8 +22,14 @@ $m = static fn ($v) => Presales::money((float) $v);
 $plan = Commission::plan($c['plan']);
 $due = array_sum(array_column($payees, 'due'));
 $paid = array_sum(array_column($payees, 'paid'));
-$state = Commissions::status($c, $due, $paid, Commissions::isDue($phase));
-$chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' => 'chip-blue', 'Paid' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
+$state = Commissions::status($c, $due, $paid, $isDue, $waiting);
+$chip = Commissions::CHIPS;
+$onDraw = [];
+foreach ($payees as $p) {
+	if (App\Draws::onDraw((int) $p['user_id'])) {
+		$onDraw[(int) $p['user_id']] = $p['name'];
+	}
+}
 ?>
 <div class="page-head">
 	<div>
@@ -34,9 +42,9 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' =>
 		<div class="head-actions">
 			<a href="/commissions/<?= (int) $c['id'] ?>/edit" class="btn btn-secondary">Edit</a>
 			<?php if ($state !== 'Cancelled' && $due - $paid > 0.005): ?>
-				<?php if ($state === 'Not due yet'): ?><span class="muted small self-center">Due when the project reaches Closeout</span><?php endif; ?>
+				<?php if (!$isDue): ?><span class="muted small self-center">Due <?= e(Commissions::dueLabel()) ?></span><?php endif; ?>
 				<?php $owedList = implode(', ', array_map(static fn ($p) => Presales::money($p['balance']) . ' to ' . $p['name'], array_filter($payees, static fn ($p) => $p['balance'] > 0.005))); ?>
-				<form method="post" action="/commissions/<?= (int) $c['id'] ?>/paid" data-confirm="Mark this job paid? This records a payment dated today of what is still owed (<?= e($owedList) ?>)<?= $payStep && !$payStep['done_date'] ? ' and closes the project\'s Pay sales commission step' : '' ?>. To use another date, add the payment below instead.">
+				<form method="post" action="/commissions/<?= (int) $c['id'] ?>/paid" data-confirm="Mark this job paid? This records a payment dated today of what is still owed (<?= e($owedList) ?>)<?= $onDraw ? ', taken from ' . e(implode(' and ', $onDraw)) . '\'s draw advance first' : '' ?><?= $payStep && !$payStep['done_date'] ? ' and closes the project\'s Pay sales commission step' : '' ?>. To use another date, add the payment below instead.">
 					<?= Csrf::field() ?>
 					<button class="btn btn-primary">Mark paid</button>
 				</form>
@@ -52,7 +60,7 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' =>
 			<?php if ($c['project_id']): ?><dt>Project</dt><dd><a href="/projects/<?= (int) $c['project_id'] ?>"><?= e(trim($c['project_number'] . ' ' . $c['project_name'])) ?></a><?php if ($payStep): ?><div class="small muted">"<?= e($payStep['name']) ?>" <?= $payStep['done_date'] ? 'done ' . e(fmt_date($payStep['done_date'])) : 'open' ?></div><?php endif; ?></dd><?php endif; ?>
 			<?php if ($o): ?><dt>Opportunity</dt><dd><a href="/presales/<?= (int) $o['id'] ?>"><?= e($o['name']) ?></a><?= $c['design_id'] ? ' &middot; <a href="/presales/' . (int) $o['id'] . '/designs/' . (int) $c['design_id'] . '" class="small">sold build sheet</a>' : '' ?></dd><?php endif; ?>
 			<dt>Contract signed</dt><dd><?= $c['signed_on'] ? e(fmt_date($c['signed_on'])) : '<span class="muted">Not set</span>' ?></dd>
-			<dt>Salesperson</dt><dd><?= e((string) $c['salesperson_name']) ?><?= $c['handoff_name'] ? '<div class="small muted">Handed off by ' . e($c['handoff_name']) . ' (' . e(Presales::pct((float) $c['handoff_share'], 0)) . ' of the whole payout)</div>' : '' ?></dd>
+			<dt>Salesperson</dt><dd><?= e((string) $c['salesperson_name']) ?><?= $c['salesperson_id'] && isset($onDraw[(int) $c['salesperson_id']]) && ($admin || (int) $c['salesperson_id'] === (int) App\Auth::id()) ? ' <a href="/commissions/draws/' . (int) $c['salesperson_id'] . '" class="small">on a draw</a>' : '' ?><?= $c['handoff_name'] ? '<div class="small muted">Handed off by ' . e($c['handoff_name']) . ' (' . e(Presales::pct((float) $c['handoff_share'], 0)) . ' of the whole payout)</div>' : '' ?></dd>
 			<dt>Lead source</dt><dd><?= $c['lead_source'] ? e(Presales::LEAD_SOURCES[$c['lead_source']] ?? $c['lead_source']) : '<span class="muted">Not set</span>' ?><?= $c['referrer_name'] ? ': ' . e($c['referrer_name']) : '' ?></dd>
 			<dt>Plan</dt><dd><?= $plan ? e(Commission::describe($plan['commission'])) . ($c['lead_source'] === 'self_gen' ? '<div class="small muted">Self-generated: ' . e(Commission::describe($plan['self_gen'])) . '</div>' : '') : '<span class="muted">Amounts as recorded (before the tracker)</span>' ?></dd>
 			<?php if ($c['notes']): ?><dt>Notes</dt><dd class="desc-text"><?= nl2br(e($c['notes'])) ?></dd><?php endif; ?>
@@ -106,7 +114,14 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' =>
 			<?php foreach ($entries as $e): ?>
 				<tr>
 					<td class="nowrap"><?= e(fmt_date($e['entry_date'])) ?></td>
-					<td><?= $e['kind'] === 'payment' ? 'Payment' : 'Adjustment' ?></td>
+					<td class="nowrap"><?= $e['kind'] === 'adjustment' ? 'Adjustment' : ($e['source'] === 'draw' ? 'Covered by draws' : 'Payment') ?>
+						<?php if ($admin && $e['kind'] === 'payment'): ?>
+							<form method="post" action="/commissions/<?= (int) $c['id'] ?>/entries/<?= (int) $e['id'] ?>/source" class="inline-form">
+								<?= Csrf::field() ?>
+								<button class="btn btn-ghost btn-small" title="<?= $e['source'] === 'draw' ? 'Count this as paid in cash instead of covered by draws' : 'Count this as covered by draws instead of paid in cash' ?>"><?= $e['source'] === 'draw' ? 'Make cash' : 'Make draws' ?></button>
+							</form>
+						<?php endif; ?>
+					</td>
 					<td><?= e((string) $e['user_name']) ?></td>
 					<td class="num"><?= e($m($e['amount'])) ?></td>
 					<td class="cell-desc"><?= e((string) $e['note']) ?></td>
@@ -129,7 +144,8 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' =>
 			<?= Csrf::field() ?>
 			<label>Kind
 				<select name="kind">
-					<option value="payment">Payment</option>
+					<option value="payment">Payment (cash)</option>
+					<option value="draw" <?= $onDraw ? 'selected' : '' ?>>Covered by draws</option>
 					<option value="adjustment">Adjustment</option>
 				</select>
 			</label>

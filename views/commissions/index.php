@@ -13,18 +13,61 @@ use App\Presales;
  * @var array  $people     id, name
  * @var array  $years
  * @var array  $referrals  unpaid referral bonuses (admins)
+ * @var array  $draws      people on a draw (id, name + Draws::summary)
+ * @var string $dueAt      closeout | final_payment
+ * @var float  $warnPct
  */
 $m = static fn ($v) => Presales::money((float) $v);
 $qs = static fn (array $over) => '/commissions?' . http_build_query(array_filter(array_merge(['tab' => $tab, 'year' => $year, 'sales' => $admin && $person ? $person : null], $over), static fn ($v) => $v !== '' && $v !== null));
 $tabs = ['owed' => 'Owed now', 'notdue' => 'Not due yet', 'paid' => 'Paid', 'all' => 'All', 'cancelled' => 'Cancelled'];
-$chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' => 'chip-blue', 'Paid' => 'chip-green', 'Nothing owed' => 'chip-na', 'Cancelled' => 'chip-na'];
+$chip = App\Commissions::CHIPS;
 ?>
 <div class="page-head">
 	<div>
 		<h1>Sales commissions</h1>
-		<p class="muted"><?= $admin ? 'Every sold job, what each salesperson is owed and what has been paid, oldest first. Commission comes due when the project reaches Closeout (PTO); closing its "Pay sales commission" step marks it paid.' : 'Your sold jobs, what you are owed and what has been paid, oldest first. Commission comes due when the project reaches Closeout (PTO).' ?><?= $person && $admin ? ' Amounts are ' . e($personName) . '\'s share.' : '' ?></p>
+		<p class="muted"><?= $admin ? 'Every sold job, what each salesperson is owed and what has been paid, oldest first. Commission comes due ' . App\Commissions::dueLabel() . '; closing its "Pay sales commission" step marks it paid.' : 'Your sold jobs, what you are owed and what has been paid, oldest first. Commission comes due ' . App\Commissions::dueLabel() . '.' ?><?= $person && $admin ? ' Amounts are ' . e($personName) . '\'s share.' : '' ?></p>
 	</div>
 </div>
+
+<?php if ($draws || ($admin && !$person)): ?>
+	<section class="card band draws-card">
+		<h2>Draws against commission</h2>
+		<?php if ($draws): ?>
+			<div class="table-wrap">
+				<table class="table table-tight">
+					<thead><tr><th>Salesperson</th><th class="num">Draw</th><th class="num" title="Draws paid, including any opening balance">Draws paid</th><th class="num" title="Commission covered by draws">Covered</th><th class="num" title="Draws paid less commission covered">Advance</th><th class="num" title="Commission that is due and not yet paid">Due now</th><th class="num" title="Commission on sold jobs that are not due yet">Pipeline</th><th>Standing</th></tr></thead>
+					<tbody>
+					<?php foreach ($draws as $d): [$dc, $dt] = App\Draws::chip($d); ?>
+						<tr data-href="/commissions/draws/<?= (int) $d['id'] ?>">
+							<td><a href="/commissions/draws/<?= (int) $d['id'] ?>"><strong><?= e($d['name']) ?></strong></a></td>
+							<td class="num nowrap"><?= $d['schedule'] ? e($m($d['schedule']['amount'])) . '<div class="muted small">next ' . e(fmt_date($d['next'])) . '</div>' : '<span class="muted">Stopped</span>' ?></td>
+							<td class="num"><?= e($m($d['drawn'])) ?></td>
+							<td class="num"><?= e($m($d['covered'])) ?></td>
+							<td class="num"><?= e($m($d['advance'])) ?></td>
+							<td class="num"><?= e($m($d['owed'])) ?><?= $d['ready'] > 0.005 ? '<div class="small text-orange">' . e($m($d['ready'])) . ' to true up</div>' : '' ?></td>
+							<td class="num"><?= e($m($d['pipeline'])) ?></td>
+							<td class="nowrap"><span class="chip <?= e($dc) ?>"><?= e($dt) ?></span></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		<?php else: ?>
+			<p class="muted">No one is on a draw yet.</p>
+		<?php endif; ?>
+		<?php if ($admin && !$person): ?>
+			<form method="get" action="/commissions/draws" class="filters draws-pick">
+				<select name="user" aria-label="Salesperson">
+					<?php foreach ($people as $u): ?><option value="<?= (int) $u['id'] ?>"><?= e($u['name']) ?></option><?php endforeach; ?>
+				</select>
+				<button class="btn btn-secondary btn-small">Open draw</button>
+				<span class="muted small">Flagged when the advance passes <?= e(rtrim(rtrim(number_format($warnPct, 1), '0'), '.')) ?>% of the pipeline.</span>
+			</form>
+		<?php endif; ?>
+	</section>
+<?php elseif ($admin && $person): ?>
+	<p class="draws-card"><a href="/commissions/draws/<?= (int) $person ?>">Set up a draw for <?= e($personName) ?></a></p>
+<?php endif; ?>
 
 <div class="tabs">
 	<?php foreach ($tabs as $k => $label): ?>
@@ -110,4 +153,23 @@ $chip = ['Owed' => 'chip-orange', 'Part paid' => 'chip-orange', 'Not due yet' =>
 			</tbody>
 		</table>
 	</div>
+<?php endif; ?>
+
+<?php if ($admin): ?>
+	<details class="card band mt settings-fold" id="settings">
+		<summary><strong>Commission settings</strong> <span class="muted small">Due at <?= e(App\Draws::DUE_AT[$dueAt]) ?>; draw advance flagged past <?= e(rtrim(rtrim(number_format($warnPct, 1), '0'), '.')) ?>% of pipeline</span></summary>
+		<form method="post" action="/commissions/settings" class="grid-form mt-sm">
+			<?= App\Csrf::field() ?>
+			<label>Commission comes due at
+				<select name="commission_due_at">
+					<?php foreach (App\Draws::DUE_AT as $k => $label): ?><option value="<?= e($k) ?>" <?= $dueAt === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+				</select>
+			</label>
+			<label>Flag a draw advance past (% of pipeline)
+				<input type="text" name="draw_warn_pct" inputmode="decimal" value="<?= e(rtrim(rtrim(number_format($warnPct, 1, '.', ''), '0'), '.')) ?>">
+			</label>
+			<div class="self-end"><button class="btn btn-secondary">Save</button></div>
+		</form>
+		<p class="hint">Final payment received means every payment step under the project's Payments is checked off (or marked not needed), so those need to be kept up to date. A job in Closeout with a payment still open shows "Waiting on final payment". A project with no payment steps, or one marked Completed, counts as due at Closeout either way.</p>
+	</details>
 <?php endif; ?>

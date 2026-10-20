@@ -1634,6 +1634,16 @@ a[href^="tel:"] { white-space: nowrap; }
 .table-amounts td:first-child { white-space: normal; }
 .table-amounts { width: 100%; }
 .commission-metrics { margin: .2rem 0 .9rem; }
+.draws-card { margin-bottom: 1rem; }
+.draws-pick { margin: .7rem 0 0; align-items: center; }
+.settings-fold > summary { cursor: pointer; }
+.draw-line-form { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.draw-line-form input[name=amount] { width: 7.5rem; }
+.draw-line-form input[name=pay_date] { width: 9.5rem; }
+.draw-line-form input[name=note] { width: 14rem; }
+.table-draw-lines input[name=amount] { width: 7.5rem; text-align: right; }
+.table-draw-lines input[name=pay_date] { width: 9.5rem; }
+.table-draw-lines input[name=note] { width: 100%; min-width: 10rem; }
 .table-commissions th, .table-commissions td { padding-left: .5rem; padding-right: .5rem; }
 .table-commissions th, .card .table th { overflow-wrap: normal; word-break: keep-all; }
 .self-center { align-self: center; }
