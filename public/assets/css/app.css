@@ -1944,3 +1944,9 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .pl-qty-input[readonly] { background: transparent; border-color: transparent; box-shadow: none; font-weight: 650; cursor: default; }
 .layout-fields input.is-dup { border-color: var(--red); background: var(--red-50); color: var(--red); }
 .layout-list li.is-dup > .linklike { color: var(--red); font-weight: 700; }
+
+/* Draws paid: compact rows (the inputs set the row height); .band rules are more specific, so these repeat it */
+.band .table-draw-lines td { padding-top: .2rem; padding-bottom: .2rem; }
+.band .table-draw-lines tfoot td { padding-top: .4rem; padding-bottom: .4rem; }
+.band .table-draw-lines input[type=text], .band .table-draw-lines input[type=date] { padding: .22rem .45rem; font-size: .88rem; }
+.band .table-draw-lines .btn-small { padding: .18rem .6rem; }
