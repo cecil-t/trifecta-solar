@@ -48,6 +48,7 @@ final class ProposalTerms
 		'guarantee_estimate_kwh' => 'PVWatts estimate over the guarantee years',
 		'pvwatts_annual'        => 'PVWatts year-one kWh',
 		'degradation'           => 'Module degradation, % a year',
+		'internet'              => 'Internet for monitoring, like Customer provided Wi-Fi',
 	];
 
 	public static function current(): ?array

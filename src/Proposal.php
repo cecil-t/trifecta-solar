@@ -15,6 +15,18 @@ final class Proposal
 	public const EQUIPMENT = ['modules' => 'Solar panels', 'inverters' => 'Inverters', 'mlpe' => 'Optimizers and microinverters',
 		'batteries' => 'Batteries', 'monitoring' => 'Monitoring', 'racking' => 'Racking'];
 
+	/**
+	 * Monitoring internet as the customer reads it (keys of Projects::INVERTER_INTERNET):
+	 * [what it is, who provides it].
+	 */
+	public const INTERNET = [
+		'wifi'     => ['Customer provided Wi-Fi', 'Provided by the customer, reaching the inverter location'],
+		'ethernet' => ['Customer provided Ethernet', 'Provided by the customer, wired to the inverter location'],
+		'cell'     => ['Cellular connection', 'Included in this proposal'],
+		'hotspot'  => ['Mobile hotspot', 'At the inverter location'],
+		'none'     => ['No internet connection', 'The system will not report to online monitoring'],
+	];
+
 	/** Steps when the Rates page has none (one per line, "Title: what happens"). */
 	public const NEXT_STEPS = "Confirm your interest: let your sales representative know you'd like to move forward.\n"
 		. "Site visit: we visit to measure, take project photos and confirm the design.\n"
@@ -153,8 +165,14 @@ final class Proposal
 		foreach ($calc['payments'] as $p) {
 			$deposit ??= (float) $p['amount'];
 		}
+		$internet = self::INTERNET[(string) ($d['inverter_internet'] ?? '')] ?? null;
+		if (!$internet) {
+			$warnings[] = 'Internet for monitoring isn\'t chosen on the build sheet (Setup), so the proposal doesn\'t say who provides it.';
+		}
+
 		$fmt = static fn (float $v): string => number_format($v);
 		$vars = [
+			'internet' => $internet ? $internet[0] : '',
 			'company' => Presales::setting('company_legal_name') ?: 'Trifecta Solar LLC',
 			'hic' => Presales::setting('company_hic'),
 			'insurance' => Presales::setting('insurance_text'),
@@ -243,7 +261,7 @@ final class Proposal
 			'customer' => $customer, 'customerName' => $customerName, 'attn' => $attn, 'greeting' => $greeting, 'contact' => $contact,
 			'sales' => $sales, 'residential' => $residential,
 			'quote' => $quote, 'date' => $date, 'until' => $until,
-			'equipment' => $equipment, 'warranties' => $warranties, 'guarantee' => $guarantee,
+			'equipment' => $equipment, 'warranties' => $warranties, 'guarantee' => $guarantee, 'internet' => $internet,
 			'terms' => $terms, 'loan' => $loan, 'steps' => $steps, 'drawing' => $drawing,
 			'company' => [
 				'name' => 'Trifecta Solar',

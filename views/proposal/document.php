@@ -152,6 +152,9 @@ $incNote = $hasInc ? '<p class="footnote"><sup>*</sup> Includes the incentives l
 				<?php foreach ($equipment as $q): ?>
 					<tr><td class="qty"><?= $q['qty'] !== null ? (int) $q['qty'] . ' &times;' : '' ?></td><td><?= e($q['name']) ?><?= $q['watts'] ? ' <span class="muted">(' . e($n0($q['watts'])) . ' W)</span>' : '' ?><div class="muted small"><?= e($q['category']) ?></div></td></tr>
 				<?php endforeach; ?>
+				<?php if (!empty($internet)): ?>
+					<tr><td class="qty"></td><td>Internet for monitoring: <?= e($internet[0]) ?><div class="muted small"><?= e($internet[1]) ?></div></td></tr>
+				<?php endif; ?>
 				<tr><td></td><td class="muted small">Balance of system wiring and electrical, permits, engineering, interconnection and installation are included.</td></tr>
 			</table>
 		</div>
