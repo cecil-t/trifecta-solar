@@ -15,10 +15,11 @@ namespace App;
  *    energy for the month per system (each pull rewrites every day of the month, so Monday's first pull
  *    completes Friday evening and the weekend), plus the system list and a summary (year, lifetime)
  *    once a day. About 460 calls a month for 4 systems; stops at 950 in a calendar month.
- *  - Growatt (Shiner portal sign-in, App\Growatt): the site list (one call: today's kWh, alert count,
- *    inverters online of total, last update), every 30 minutes 6 AM to 9 PM, every day: free, it keeps the 30-day session
- *    sliding, and the day's last pull becomes that day's stored total. Needs a person to connect it
- *    (captcha) on the test page about once a month; until then it is skipped.
+ *  - Growatt (Shiner API with Basic sign-in, App\Growatt): the site list (one call: today's kWh, alert
+ *    count, inverters online of total, last update, address), every 30 minutes 6 AM to 9 PM, every day:
+ *    free, and the day's last pull is that day's running total. Once a day, the energy curve for the
+ *    last 35 days (one call per site) replaces the stored days with Growatt's final values, and each
+ *    site's inverter AC rating is read (one call per site).
  *  - SMA (Sunny Portal sign-in, App\Sma): the status list (one call: every plant's state and today's
  *    yield) and the year's monthly totals (one call for all plants), every 30 minutes 6 AM to 9 PM, every
  *    day: free, and the day's last pull becomes that day's stored total. Once a day, the last 35 days
@@ -43,7 +44,7 @@ final class MonitorCollector
 		'enphase' => ['Scrape', 'signin', 'Enlighten Manager, read as the installer user (not a published API)'],
 		'apsystems' => ['API', 'api', 'APsystems OpenAPI, free Lv0 plan (1,000 calls a month)'],
 		'solaredge' => ['API', 'api', 'SolarEdge Monitoring API V2, Free tier (2,000 credits a cycle)'],
-		'growatt' => ['Scrape', 'signin', 'Growatt Shiner portal, read as the installer account (captcha typed about once a month)'],
+		'growatt' => ['API', 'api', 'Growatt Shiner API, read as the installer account (Basic sign-in, free)'],
 		'sma' => ['Scrape', 'signin', 'Sunny Portal (ennexOS), read as the installer SMA ID (not a published API)'],
 	];
 
@@ -81,9 +82,6 @@ final class MonitorCollector
 	private function vendor(string $vendor, bool $force, bool $dryRun): array
 	{
 		$label = self::VENDORS[$vendor];
-		if ($vendor === 'growatt' && Growatt::configured() && Growatt::available() && Growatt::status() === null) {
-			return [self::stamp() . " $label: not connected; use Connect Growatt on Lists > Monitor APIs."];
-		}
 		$configured = match ($vendor) {
 			'growatt' => Growatt::configured() && Growatt::available(),
 			'sma' => Sma::configured() && Sma::available(),
@@ -286,8 +284,10 @@ final class MonitorCollector
 						$first = new \DateTimeImmutable($month . '-01', $tz);
 						$last = $first->modify('last day of this month');
 						if ($vendor === 'growatt') {
-							$p = Growatt::production($vid, $first, $last->setTime(23, 59, 59));
-							$wh = $p['kwh'] * 1000;
+							// The month's days come in the same call, so they are stored too.
+							$days = Growatt::daily($vid, $first, $last->setTime(23, 59, 59));
+							self::storeGrowattDays($id, $days);
+							$wh = array_sum($days) * 1000;
 							$got = true;
 						} else {
 							$p = Enlighten::energy($vid, $first->format('Y-m-d'), $last->format('Y-m-d'));
@@ -420,9 +420,11 @@ final class MonitorCollector
 	}
 
 	/**
-	 * Growatt: this year's months before this one as monthly totals per site, plus the days of last
-	 * month and this one before tracking began (so the rolling 30 days is whole); with $daily, every day
-	 * of the earlier months too. Growatt has no call limit, so there is no budget check; calls are spaced a second apart.
+	 * Growatt: every day this year from the energy curve, one call per site per month (a month's days come
+	 * in one reply), with completed months also stored as monthly totals. Months already complete (a month
+	 * total and every day but at most one stored above zero) are skipped. Growatt has no call limit, so
+	 * there is no budget check; calls are spaced a second apart. $daily changes nothing here: the days come
+	 * with every month anyway.
 	 *
 	 * @return array<int, string>
 	 */
@@ -436,75 +438,51 @@ final class MonitorCollector
 		$tz = new \DateTimeZone(date_default_timezone_get());
 		$jan = new \DateTimeImmutable(date('Y') . '-01-01', $tz);
 		$thisMonth = new \DateTimeImmutable(date('Y-m-01'), $tz);
-		$yesterday = date('Y-m-d', strtotime('-1 day'));
+		$yesterday = new \DateTimeImmutable('yesterday', $tz);
 		$plan = [];
 		foreach ($sites as $site) {
 			$months = [];
-			$days = [];
-			$haveMonths = array_flip(array_column(Db::all('SELECT month FROM monitor_monthly WHERE site_id = ? AND wh > 0', [$site['id']]), 'month'));
-			for ($m = $jan; $m < $thisMonth; $m = $m->modify('+1 month')) {
-				// Month totals already stored are not fetched again.
-				if (!isset($haveMonths[$m->format('Y-m')])) {
-					$months[] = $m;
+			for ($m = $jan; $m <= $thisMonth; $m = $m->modify('+1 month')) {
+				$current = $m == $thisMonth;
+				$end = $current ? $yesterday : $m->modify('last day of this month');
+				if ($end < $m) {
+					continue; // the 1st of the month: nothing complete yet
 				}
-				if ($daily) {
-					for ($d = $m; $d < $m->modify('+1 month'); $d = $d->modify('+1 day')) {
-						$days[] = $d;
-					}
+				$want = (int) $end->format('j');
+				$have = (int) Db::value('SELECT COUNT(*) FROM monitor_daily WHERE site_id = ? AND date BETWEEN ? AND ? AND wh > 0', [$site['id'], $m->format('Y-m-d'), $end->format('Y-m-d')]);
+				$total = $current || Db::value('SELECT 1 FROM monitor_monthly WHERE site_id = ? AND month = ? AND wh > 0', [$site['id'], $m->format('Y-m')]);
+				if ($total && $have >= $want - 1) {
+					continue;
 				}
+				$months[] = [$m, $end->setTime(23, 59, 59), $current];
 			}
-			// Last month's and this month's days always, so the rolling 30 days is whole.
-			for ($d = $daily ? $thisMonth : $thisMonth->modify('-1 month'); $d->format('Y-m-d') <= $yesterday; $d = $d->modify('+1 day')) {
-				if (!in_array($d, $days, false)) {
-					$days[] = $d;
-				}
-			}
-			// Days stored as zero are fetched again: when Growatt is busy it can answer a day with zeros.
-			$have = array_flip(array_column(Db::all('SELECT date FROM monitor_daily WHERE site_id = ? AND date >= ? AND wh > 0', [$site['id'], $jan->format('Y-m-d')]), 'date'));
-			$days = array_values(array_filter($days, static fn ($d) => !isset($have[$d->format('Y-m-d')])));
-			$plan[] = [$site, $months, $days];
+			$plan[] = [$site, $months];
 		}
-		$estimate = array_sum(array_map(static fn ($p) => count($p[1]) + count($p[2]), $plan));
-		$summary = count($sites) . ' sites, missing monthly totals and ' . ($daily ? 'every missing or zero day' : 'the missing or zero days of last month and this one') . ": about $estimate calls (no limit)";
+		$estimate = array_sum(array_map(static fn ($p) => count($p[1]), $plan));
+		$summary = count($sites) . " sites, every incomplete month this year: about $estimate calls (no limit)";
 		if ($dryRun) {
 			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
 		}
 		$runId = Db::insert('monitor_runs', ['vendor' => 'growatt', 'started_at' => now_utc()]);
 		$this->runId = $runId;
 		$ok = false;
+		$stored = 0;
 		try {
-			foreach ($plan as [$site, $months, $days]) {
-				$sid = (string) $site['vendor_site_id'];
-				foreach ($months as $m) {
-					$p = Growatt::production($sid, $m, $m->modify('+1 month')->modify('-1 second'));
+			foreach ($plan as [$site, $months]) {
+				foreach ($months as [$m, $end, $current]) {
+					$days = Growatt::daily((string) $site['vendor_site_id'], $m, $end);
 					$this->tick();
-					self::setMonthly((int) $site['id'], $m->format('Y-m'), $p['kwh'] * 1000);
+					$stored += self::storeGrowattDays((int) $site['id'], $days);
+					if (!$current) {
+						self::setMonthly((int) $site['id'], $m->format('Y-m'), array_sum($days) * 1000);
+					}
 					usleep(1_000_000);
-				}
-				foreach ($days as $d) {
-					$p = Growatt::production($sid, $d, $d->setTime(23, 59, 59));
-					$this->tick();
-					self::setDaily((int) $site['id'], $d->format('Y-m-d'), $p['kwh'] * 1000);
-					usleep(2_000_000);
 				}
 			}
 			$ok = true;
-			$message = 'Backfill done: ' . $summary;
-			// Check: last month's days against Growatt's own total for that month, per site.
-			$last = $thisMonth->modify('-1 month')->format('Y-m');
-			$short = [];
-			foreach ($plan as [$site]) {
-				$month = (float) Db::value('SELECT wh FROM monitor_monthly WHERE site_id = ? AND month = ?', [$site['id'], $last]);
-				$days = (float) Db::value('SELECT COALESCE(SUM(wh), 0) FROM monitor_daily WHERE site_id = ? AND date LIKE ?', [$site['id'], $last . '-%']);
-				if ($month > 0 && $days < $month * 0.9) {
-					$short[] = ($site['name'] ?: $site['vendor_site_id']) . ' ' . round($days / 1000) . ' of ' . round($month / 1000) . ' kWh';
-				}
-			}
-			if ($short) {
-				$message .= ". $last days short of the month total (run it again): " . implode(', ', $short);
-			}
+			$message = "Backfill done: $summary; $stored days stored";
 		} catch (\Throwable $e) {
-			$message = 'Backfill stopped: ' . $e->getMessage();
+			$message = 'Backfill stopped: ' . $e->getMessage() . " ($stored days stored)";
 		}
 		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
 		return [self::stamp() . " $label: $message ({$this->calls} calls)"];
@@ -930,8 +908,9 @@ final class MonitorCollector
 				$parts[] = $alerts . ' ' . ($alerts === 1 ? 'alert' : 'alerts');
 			}
 			$todayWh = isset($s['energy_today']) && is_numeric($s['energy_today']) ? (float) $s['energy_today'] * 1000 : null;
-			// "capacity" is whatever was typed into Shiner (often blank or 1), so it is not used.
-			$id = self::upsertSite('growatt', $sid, [
+			// "capacity" is 1 or missing on every site (Shiner has no field for it), so it is not used. The
+			// owner's username (an email) and user_id are never stored.
+			$fields = [
 				'name' => (string) (($s['alias'] ?? '') ?: ($s['name'] ?? '')),
 				'state' => $total > 0 && $online === 0 ? 'offline' : ($parts ? 'alert' : 'ok'),
 				'status_text' => $parts ? implode(', ', $parts) : "Online ($online of $total inverters)",
@@ -940,29 +919,81 @@ final class MonitorCollector
 				'last_report_at' => ($s['update_time'] ?? '') ?: null,
 				'today_date' => $today,
 				'today_wh' => $todayWh,
-			]);
+			];
+			$id = self::upsertSite('growatt', $sid, $fields + self::growattAddress($s));
 			if ($todayWh !== null) {
 				self::setDaily($id, $today, $todayWh);
 			}
 		}
-		// Once a day: yesterday's exact total per site (rather than the last evening reading) and each
-		// site's inverter AC rating, from the portal's production-by-window reply.
+		// Once a day: Growatt's final values for the last 35 days per site (replacing the evening readings
+		// and catching any day the pulls missed), and each site's inverter AC rating.
 		$finals = 0;
-		if (!self::lastOkOn('growatt', $today)) {
+		$noRating = 0;
+		if ($this->forced || !self::lastOkOn('growatt', $today)) {
 			$tz = new \DateTimeZone(date_default_timezone_get());
-			$y0 = new \DateTimeImmutable('yesterday', $tz);
-			$y1 = $y0->setTime(23, 59, 59);
+			$y1 = (new \DateTimeImmutable('yesterday', $tz))->setTime(23, 59, 59);
+			$from = (new \DateTimeImmutable('today', $tz))->modify('-35 days');
 			foreach (Db::all("SELECT id, vendor_site_id FROM monitor_sites WHERE vendor = 'growatt'") as $row) {
-				$p = Growatt::production((string) $row['vendor_site_id'], $y0, $y1);
+				$days = Growatt::daily((string) $row['vendor_site_id'], $from, $y1);
 				$this->tick();
-				self::setDaily((int) $row['id'], $y0->format('Y-m-d'), $p['kwh'] * 1000);
-				if ($p['pmax_w'] !== null) {
-					Db::run('UPDATE monitor_sites SET capacity_ac_kw = ? WHERE id = ?', [$p['pmax_w'] / 1000, $row['id']]);
+				self::storeGrowattDays((int) $row['id'], $days);
+				// The AC rating is a nice-to-have from an undocumented call: a failure here does not fail the pull.
+				try {
+					$p = Growatt::production((string) $row['vendor_site_id'], $y1->setTime(0, 0), $y1);
+					$this->tick();
+					if ($p['pmax_w'] !== null) {
+						Db::run('UPDATE monitor_sites SET capacity_ac_kw = ? WHERE id = ?', [$p['pmax_w'] / 1000, $row['id']]);
+					}
+				} catch (\Throwable) {
+					$noRating++;
 				}
 				$finals++;
 			}
 		}
-		return count($sites) . " sites, $alertTotal alerts" . ($finals ? ", yesterday's totals for $finals" : '');
+		return count($sites) . " sites, $alertTotal alerts" . ($finals ? ", last 35 days for $finals" : '') . ($noRating ? " (AC rating not read for $noRating)" : '');
+	}
+
+	/**
+	 * Store Growatt curve days (kWh). A zero never replaces a value above zero: Growatt can answer a day
+	 * with zeros when it is busy, and the running reading already showed that day produced.
+	 *
+	 * @param array<string, float> $days
+	 */
+	private static function storeGrowattDays(int $siteId, array $days): int
+	{
+		$n = 0;
+		foreach ($days as $date => $kwh) {
+			if ($kwh <= 0 && (float) Db::value('SELECT wh FROM monitor_daily WHERE site_id = ? AND date = ?', [$siteId, $date]) > 0) {
+				continue;
+			}
+			self::setDaily($siteId, (string) $date, $kwh * 1000);
+			$n++;
+		}
+		return $n;
+	}
+
+	/**
+	 * The site address from Growatt's site list: "address" is the street, and "city" holds the city and
+	 * state together ("Lancaster PA"). Only what is there is returned, so a blank never clears a stored value.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function growattAddress(array $s): array
+	{
+		$out = [];
+		if (is_string($s['address'] ?? null) && trim($s['address']) !== '') {
+			$out['site_street'] = trim($s['address']);
+		}
+		$city = is_string($s['city'] ?? null) ? trim($s['city']) : '';
+		if ($city !== '') {
+			if (preg_match('/^(.*?)[\s,]+([A-Za-z]{2})$/', $city, $m) && trim($m[1]) !== '') {
+				$out['site_city'] = trim($m[1]);
+				$out['site_state'] = strtoupper($m[2]);
+			} else {
+				$out['site_city'] = $city;
+			}
+		}
+		return $out;
 	}
 
 	// ---- APsystems ---------------------------------------------------------------------------

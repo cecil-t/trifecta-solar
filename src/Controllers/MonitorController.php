@@ -14,9 +14,9 @@ use App\View;
 
 /**
  * Lists > Monitor APIs (admin): the monitoring collector's connections. Per manufacturer: whether it is
- * set up, its last scheduled pull, the sign-in or session controls it needs (Growatt's captcha, forgetting
- * a saved session), and one check button that makes a single list call and shows what came back.
- * Responses are not stored.
+ * set up, its last scheduled pull, the session controls it needs (forgetting a saved session), and one
+ * check button that makes a single list call and shows what came back (Growatt also has a check of its
+ * daily energy curve). Responses are not stored.
  */
 final class MonitorController
 {
@@ -54,10 +54,6 @@ final class MonitorController
 			$this->render(null, 'Add ' . implode(' and ', self::ENV[$vendor]) . ' to the server .env file.');
 			return;
 		}
-		if ($vendor === 'growatt' && Growatt::status() === null) {
-			$this->render(null, 'Growatt is not connected yet. Click Connect Growatt first.');
-			return;
-		}
 		$result = match ($vendor) {
 			'enphase' => Enlighten::systems(),
 			'apsystems' => APsystems::request('POST', '/systems', [], ['page' => 1, 'size' => 50]),
@@ -70,47 +66,36 @@ final class MonitorController
 		$this->render($result, null);
 	}
 
-	/** Growatt connect, step 1: fetch a captcha for a person to read. */
-	public function growattCaptcha(): void
+	/**
+	 * Growatt's daily energy curve for one stored site, this month through today: shows the days as read
+	 * and the start of the raw reply, to confirm the reply's shape. Nothing is stored.
+	 */
+	public function growattCurve(): void
 	{
 		if (!self::configured('growatt')) {
-			$this->render(null, 'Add GROWATT_USERNAME and GROWATT_PASSWORD to the server .env file.');
+			$this->render(null, 'Add ' . implode(' and ', self::ENV['growatt']) . ' to the server .env file.');
 			return;
 		}
-		$c = Growatt::captcha();
-		if ($c['error'] !== null) {
-			$this->render(null, $c['error']);
+		$site = Db::one("SELECT vendor_site_id, name FROM monitor_sites WHERE vendor = 'growatt' ORDER BY id LIMIT 1");
+		if (!$site) {
+			$this->render(null, 'No Growatt site is stored yet. Wait for the next pull, or check the site list first.');
 			return;
 		}
-		$_SESSION['growatt_captcha_key'] = $c['key'];
-		$this->render(null, null, $c['image']);
-	}
-
-	/** Growatt connect, step 2: sign in with the code the person typed. */
-	public function growattLogin(): void
-	{
-		$key = (string) ($_SESSION['growatt_captcha_key'] ?? '');
-		unset($_SESSION['growatt_captcha_key']);
-		$code = trim((string) ($_POST['captcha'] ?? ''));
-		if ($key === '') {
-			$this->render(null, 'The captcha expired. Click Connect Growatt again.');
-			return;
+		$tz = new \DateTimeZone(date_default_timezone_get());
+		$result = Growatt::curve((string) $site['vendor_site_id'], new \DateTimeImmutable(date('Y-m-01'), $tz), (new \DateTimeImmutable('today', $tz))->setTime(23, 59, 59));
+		if ($result['days'] !== null) {
+			$parts = [];
+			foreach ($result['days'] as $date => $kwh) {
+				$parts[] = date('n/j', (int) strtotime($date)) . ' ' . number_format($kwh, 1);
+			}
+			$result['note'] = count($result['days']) . ' days read, ' . number_format(array_sum($result['days']), 1) . ' kWh in all' . ($parts ? ': ' . implode(', ', $parts) : '');
+		} else {
+			$result['note'] = 'Could not read the days: ' . $result['problem'];
 		}
-		if (!preg_match('/^[A-Za-z0-9]{3,8}$/', $code)) {
-			$this->render(null, 'Type the characters shown in the captcha.');
-			return;
-		}
-		$result = Growatt::login($code, $key);
-		$result['call'] = 'Growatt: connect (sign in)';
+		$result['raw'] = true;
+		$result['call'] = 'Growatt: daily energy for ' . ($site['name'] ?: $site['vendor_site_id']) . ', this month';
 		$result['at'] = date('m/d/Y g:i:s A');
-		$this->render($result, str_starts_with((string) $result['note'], 'Signed in') ? null : 'Growatt did not sign in. Click Connect Growatt for a new captcha and try again.');
-	}
-
-	public function growattForget(): void
-	{
-		Growatt::forget();
-		flash('success', 'Growatt session removed from this server.');
-		redirect('/admin/monitor-test');
+		$this->render($result, null);
 	}
 
 	public function enlightenForget(): void
@@ -139,11 +124,11 @@ final class MonitorController
 		};
 	}
 
-	private function render(?array $result, ?string $error, ?string $growattCaptcha = null): void
+	private function render(?array $result, ?string $error): void
 	{
 		// The list a check returned, as id / name / size / status rows.
 		$rows = [];
-		if ($result && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
+		if ($result && empty($result['raw']) && ($result['status'] ?? 0) === 200 && is_array($result['json'])) {
 			$j = $result['json'];
 			$list = $j['sites']['site'] ?? $j['data']['systems'] ?? $j['data']['list'] ?? $j['data'] ?? $j['items'] ?? null;
 			if (is_array($list) && array_is_list($list)) {
@@ -182,8 +167,6 @@ final class MonitorController
 			'title' => 'Monitor APIs',
 			'vendors' => $vendors,
 			'enlightenSession' => Enlighten::hasSession(),
-			'growattStatus' => Growatt::status(),
-			'growattCaptcha' => $growattCaptcha,
 			'smaStatus' => Sma::status(),
 			'seCreditsLeft' => $seLeft,
 			'result' => $result,

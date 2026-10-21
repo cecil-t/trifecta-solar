@@ -104,7 +104,6 @@ final class ThirdParty
 	{
 		$files = [
 			'enphase' => [['enlighten-session.txt', 'Saved sign-in (cookies)']],
-			'growatt' => [['growatt-session.txt', 'Saved sign-in (cookies)'], ['growatt-state.json', 'Session times']],
 			'sma' => [['sma-session.json', 'Saved sign-in (tokens)']],
 		];
 		$out = [];

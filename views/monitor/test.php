@@ -4,8 +4,6 @@ use App\Csrf;
 /**
  * @var array   $vendors          per manufacturer: label, source, configured, env, check [reads, cost], last (run row), last_ok
  * @var bool    $enlightenSession a saved Enlighten session exists
- * @var ?array  $growattStatus    connected_at, last_ok, session_until (no token)
- * @var ?string $growattCaptcha   captcha image (data URI) while connecting
  * @var ?array  $smaStatus        signed_in_at, refresh_until (no tokens)
  * @var int     $seCreditsLeft    SolarEdge credits left this cycle
  * @var ?array  $result           a check's reply plus url, call and at
@@ -81,63 +79,35 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 						<dt>Session</dt><dd><?= $enlightenSession ? 'Saved on this server' : 'None (the next pull signs in)' ?></dd>
 					<?php elseif ($key === 'sma'): ?>
 						<dt>Session</dt><dd><?= $smaStatus ? 'Signed in ' . e($when($smaStatus['signed_in_at'])) . '<div class="muted small">Renews on its own until ' . e($when($smaStatus['refresh_until'])) . ', then the next pull signs in again.</div>' : 'None (the next pull signs in)' ?></dd>
-					<?php elseif ($key === 'growatt'): ?>
-						<dt>Session</dt>
-						<dd>
-							<?php if ($growattStatus): ?>
-								Connected <?= e($when($growattStatus['connected_at'])) ?>
-								<?php if ($growattStatus['session_until']): ?><div class="muted small">Growatt's 30-day session runs until <?= e($when($growattStatus['session_until'])) ?>; connect again before then.</div><?php endif; ?>
-							<?php else: ?>
-								Not connected
-							<?php endif; ?>
-						</dd>
 					<?php elseif ($key === 'solaredge'): ?>
 						<dt>Credits</dt><dd><?= number_format($seCreditsLeft) ?> left this cycle</dd>
 					<?php endif; ?>
 				</dl>
 
-				<?php if ($key === 'growatt' && $growattCaptcha): ?>
-					<form method="post" action="/admin/monitor-test/growatt-login" class="monitor-test-form mt-sm">
+				<div class="monitor-test-buttons mt-sm">
+					<form method="post" action="/admin/monitor-test">
 						<?= Csrf::field() ?>
-						<img class="monitor-captcha" src="<?= e($growattCaptcha) ?>" alt="Growatt captcha">
-						<label>Type the characters in the picture
-							<input type="text" name="captcha" maxlength="8" autocomplete="off" required autofocus>
-						</label>
-						<div><button type="submit" class="btn btn-primary">Sign in to Growatt</button></div>
+						<button type="submit" name="check" value="<?= e($key) ?>" class="btn btn-secondary" title="<?= e(ucfirst($v['check'][1])) ?>">Check <?= e($v['check'][0]) ?></button>
 					</form>
-				<?php else: ?>
-					<div class="monitor-test-buttons mt-sm">
-						<?php if ($key === 'growatt'): ?>
-							<form method="post" action="/admin/monitor-test/growatt-captcha">
-								<?= Csrf::field() ?>
-								<button type="submit" class="btn btn-primary"><?= $growattStatus ? 'Reconnect' : 'Connect' ?> Growatt</button>
-							</form>
-						<?php endif; ?>
-						<?php if ($key !== 'growatt' || $growattStatus): ?>
-							<form method="post" action="/admin/monitor-test">
-								<?= Csrf::field() ?>
-								<button type="submit" name="check" value="<?= e($key) ?>" class="btn btn-secondary" title="<?= e(ucfirst($v['check'][1])) ?>">Check <?= e($v['check'][0]) ?></button>
-							</form>
-						<?php endif; ?>
-						<?php if ($key === 'enphase' && $enlightenSession): ?>
-							<form method="post" action="/admin/monitor-test/enlighten-forget">
-								<?= Csrf::field() ?>
-								<button type="submit" class="btn btn-ghost">Forget session</button>
-							</form>
-						<?php elseif ($key === 'sma' && $smaStatus): ?>
-							<form method="post" action="/admin/monitor-test/sma-forget">
-								<?= Csrf::field() ?>
-								<button type="submit" class="btn btn-ghost">Forget session</button>
-							</form>
-						<?php elseif ($key === 'growatt' && $growattStatus): ?>
-							<form method="post" action="/admin/monitor-test/growatt-forget" data-confirm="Remove the saved Growatt session from this server? Pulls stop until someone connects again.">
-								<?= Csrf::field() ?>
-								<button type="submit" class="btn btn-ghost">Disconnect</button>
-							</form>
-						<?php endif; ?>
-					</div>
-					<p class="muted small mt-sm">The check costs <?= e($v['check'][1]) ?>.<?= $key === 'growatt' ? ' Connect shows Growatt\'s captcha; type it once and the session lasts about 30 days.' : '' ?></p>
-				<?php endif; ?>
+					<?php if ($key === 'growatt'): ?>
+						<form method="post" action="/admin/monitor-test/growatt-curve">
+							<?= Csrf::field() ?>
+							<button type="submit" class="btn btn-secondary" title="One request, free">Check daily energy</button>
+						</form>
+					<?php endif; ?>
+					<?php if ($key === 'enphase' && $enlightenSession): ?>
+						<form method="post" action="/admin/monitor-test/enlighten-forget">
+							<?= Csrf::field() ?>
+							<button type="submit" class="btn btn-ghost">Forget session</button>
+						</form>
+					<?php elseif ($key === 'sma' && $smaStatus): ?>
+						<form method="post" action="/admin/monitor-test/sma-forget">
+							<?= Csrf::field() ?>
+							<button type="submit" class="btn btn-ghost">Forget session</button>
+						</form>
+					<?php endif; ?>
+				</div>
+				<p class="muted small mt-sm">The check costs <?= e($v['check'][1]) ?>.<?= $key === 'growatt' ? ' Daily energy reads this month for the first stored site and shows the days as read.' : '' ?></p>
 			<?php endif; ?>
 		</section>
 	<?php endforeach; ?>
