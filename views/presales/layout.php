@@ -115,6 +115,8 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			<aside class="layout-side">
 				<div class="layout-box">
 					<p class="layout-totals" id="layout-totals"></p>
+					<p class="layout-yield" id="layout-yield" role="status" hidden></p>
+					<p class="small muted" id="layout-yield-basis" hidden></p>
 					<ul class="layout-modcounts small" id="layout-modcounts"></ul>
 					<p class="small text-red" id="layout-module-note" hidden></p>
 				</div>

@@ -979,11 +979,81 @@
 			hint('Google roof face ' + faceText(S.face) + '. The outline is the area Google would put panels on.');
 		}
 	};
+	// Live rough production (App\YieldEstimate): the server sends kWh per kW DC on a grid of tilts and
+	// azimuths for each mount, and a scale to the build sheet's production model; the page does the
+	// rest as panels change. Mounts are fetched as arrays of them appear.
+	const Y = { grids: {}, ratio: 1, basis: '', usage: null, state: 'idle', error: '', asked: new Set() };
+	const perKw = (mount, tilt, az) => {
+		if (mount === 'tracker') return Y.grids.tracker ? Y.grids.tracker.value : null;
+		const g = Y.grids[mount];
+		if (!g) return null;
+		const ts = g.tilts, azs = g.azimuths, tStep = ts[1] - ts[0], aStep = azs[1] - azs[0];
+		const t = Math.max(ts[0], Math.min(ts[ts.length - 1], tilt));
+		const ti = Math.min(ts.length - 2, Math.floor((t - ts[0]) / tStep));
+		const tf = (t - ts[ti]) / tStep;
+		const a = ((az % 360) + 360) % 360;
+		const ai = Math.floor(a / aStep) % azs.length, aj = (ai + 1) % azs.length;
+		const af = (a - azs[ai]) / aStep;
+		const row = (r) => g.grid[r][ai] * (1 - af) + g.grid[r][aj] * af;
+		return row(ti) * (1 - tf) + row(ti + 1) * tf;
+	};
+	const arrayKwh = (a) => {
+		const y = perKw(a.mount, a.mount === 'tracker' ? 0 : a.pitch, a.az);
+		return y === null ? null : y * kwOf(a) * (1 - Math.min(90, Math.max(0, Number(a.shade) || 0)) / 100) * Y.ratio;
+	};
+	const kwhText = (v) => 'about ' + (Math.round(v / 100) * 100).toLocaleString('en-US') + ' kWh a year';
+	const drawYield = () => {
+		const main = $('layout-yield'), basis = $('layout-yield-basis');
+		const withPanels = S.arrays.filter((a) => a.cells.length);
+		const parts = withPanels.map(arrayKwh);
+		let text = '', note = '';
+		if (!withPanels.length) {
+			text = '';
+		} else if (Y.state === 'error') {
+			text = 'No production estimate: ' + Y.error;
+		} else if (Y.state !== 'ready' || parts.some((v) => v === null)) {
+			text = 'Estimating production…';
+			note = 'The first time at a site takes up to half a minute.';
+		} else {
+			const total = parts.reduce((t, v) => t + v, 0);
+			text = kwhText(total).replace(/^a/, 'A') + (Y.usage ? ' · ' + Math.round(total / Y.usage * 100) + '% of yearly use' : '');
+			note = 'Rough estimate. ' + Y.basis + (Y.usage ? '' : ' No yearly use on the opportunity, so no offset.');
+		}
+		main.textContent = text;
+		main.hidden = text === '';
+		basis.textContent = note;
+		basis.hidden = note === '';
+	};
+	const loadYield = async () => {
+		if (!cfg.yieldUrl || Y.state === 'loading') return;
+		const want = new Set(['roof', ...S.arrays.filter((a) => a.cells.length).map((a) => a.mount)]);
+		const missing = [...want].filter((m) => !Y.grids[m] && !Y.asked.has(m));
+		if (!missing.length) return;
+		missing.forEach((m) => Y.asked.add(m));
+		Y.state = 'loading';
+		drawYield();
+		try {
+			const r = await fetch(cfg.yieldUrl + '?' + new URLSearchParams({ mounts: missing.join(',') }), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+			if (!r.ok) throw new Error('the server didn\'t answer (HTTP ' + r.status + ').');
+			const j = await r.json();
+			if (!j.ok) throw new Error(j.error || 'no answer from the server.');
+			Object.assign(Y.grids, j.grids);
+			Object.assign(Y, { ratio: j.ratio, basis: j.basis, usage: j.usage, state: 'ready' });
+		} catch (e) {
+			Y.state = 'error';
+			Y.error = e.message && e.message !== 'Failed to fetch' ? e.message : 'the server didn\'t answer.';
+		}
+		drawSide();
+		loadYield();   // a mount that appeared while this one was loading
+	};
+
 	const drawSide = () => {
 		// Totals: a number and its label never split across lines
 		const n = panelCount();
 		const kw = S.arrays.reduce((t, a) => t + kwOf(a), 0);
 		$('layout-totals').textContent = n + '\u00a0panels · ' + kw.toFixed(2) + '\u00a0kW\u00a0DC · ' + S.arrays.length + '\u00a0' + (S.arrays.length === 1 ? 'array' : 'arrays');
+		drawYield();
+		loadYield();
 		const mc = $('layout-modcounts');
 		mc.replaceChildren();
 		const roofEdge = S.arrays.filter((a) => a.mount === 'roof').reduce((t, a) => t + perimeter(a), 0);
@@ -1047,6 +1117,8 @@
 			let stats = a.cells.length + ' panels, ' + kwOf(a).toFixed(2) + ' kW';
 			stats += a.mount === 'tracker' ? '. Sweep: ' + ftIn(sweep(a).r * 2) + ' across.' : ', facing ' + compass(a.az) + '.';
 			stats += ' Perimeter ' + ftInUp(perimeter(a)) + '.';
+			const ak = Y.state === 'ready' && a.cells.length ? arrayKwh(a) : null;
+			if (ak !== null) stats += ' Production ' + kwhText(ak) + ' (rough).';
 			$('sel-stats').textContent = stats;
 		}
 

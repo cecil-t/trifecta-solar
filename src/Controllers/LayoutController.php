@@ -59,6 +59,7 @@ final class LayoutController
 			'viewport' => '/presales/layout-viewport',
 			'roof' => $base . '/layout/roof',
 			'pviewUrl' => $base . '/layout/view',
+			'yieldUrl' => $base . '/layout/yield',
 			'aspect' => Layout::PROPOSAL_ASPECT,
 			'placeholder' => !GoogleMaps::configured(),
 		];
@@ -138,6 +139,17 @@ final class LayoutController
 	}
 
 	/** Google's roof faces for the building nearest a point (JSON for the layout page). */
+	/** The live rough production estimate's grids and scale (App\YieldEstimate). Can take 20 s the first time at a site. */
+	public function yield(int $id, int $designId): void
+	{
+		[$o, $d] = $this->find($id, $designId);
+		session_write_close();   // map tiles keep loading meanwhile
+		set_time_limit(300);
+		$mounts = array_filter(explode(',', (string) ($_GET['mounts'] ?? 'roof')));
+		header('Content-Type: application/json');
+		echo json_encode(\App\YieldEstimate::forLayout($o, $d, $mounts));
+	}
+
 	public function roof(int $id, int $designId): void
 	{
 		$this->find($id, $designId);

@@ -37,6 +37,9 @@ Actions:
 	              taken off the detailed model only}.
 	          Other losses go in as one DC loss and shading as a flat loss (soiling slot), so both
 	          models carry the same assumptions. Trackers are single-axis, north-south, backtracking.
+	yield_grid  {"weather_file", "mount", "losses", "inverter_eff"}: PVWatts v8 kWh per kW DC for a
+	          grid of tilts and azimuths (or a tracker's one value), for the site layout's live
+	          rough estimate.
 
 SAM_LIB (environment) is the folder holding cec_modules.csv, cec_inverters.csv and VERSION.
 """
@@ -558,6 +561,69 @@ def system(req):
 	}
 
 
+YIELD_TILTS = list(range(0, 70, 10))         # degrees, 0 to 60
+YIELD_AZIMUTHS = list(range(0, 360, 30))     # degrees from true north
+
+
+def yield_grid(req):
+	"""PVWatts v8 year-one kWh per kW DC at a site, for the site layout's live rough estimate: a grid
+	of tilts and azimuths for one mount ("roof" or "ground"), or the tracker's one value. One kW DC
+	at a 1.2 DC/AC ratio with the given losses; shading is left out (the layout applies each
+	array's own). About 0.08 s a run, so the grid is coarse and the layout interpolates.
+	Request: {"weather_file", "mount": roof | ground | tracker, "losses": {"other", "optimizer"}
+	percent, "inverter_eff": percent}."""
+	import PySAM.Pvwattsv8 as pvwatts
+
+	path = req.get('weather_file')
+	mount = req.get('mount') or 'roof'
+	if mount not in ('roof', 'ground', 'tracker'):
+		raise ValueError('Unknown mount.')
+	if path != 'made-up' and not (path and os.path.isfile(path)):
+		raise ValueError('Weather file not found.')
+	L = req.get('losses') or {}
+	keep = 1.0
+	for k in ('other', 'optimizer'):
+		keep *= 1 - max(0.0, min(99.0, float(L.get(k) or 0))) / 100
+	t0 = time.time()
+	w = pvwatts.default('PVWattsNone')
+	if path == 'made-up':
+		w.SolarResource.solar_resource_data = made_up_weather()
+	else:
+		try:
+			# Read once and keep in memory; reading the file on every run is slower
+			from PySAM.ResourceTools import SAM_CSV_to_solar_data
+			w.SolarResource.solar_resource_data = SAM_CSV_to_solar_data(path)
+		except Exception:
+			w.SolarResource.solar_resource_file = path
+	s = w.SystemDesign
+	s.system_capacity = 1.0
+	s.dc_ac_ratio = 1.2
+	s.inv_eff = min(99.5, max(90.0, float(req.get('inverter_eff') or 96)))
+	s.losses = (1 - keep) * 100
+	s.module_type = 1
+	s.bifaciality = 0
+
+	def run(array_type, tilt, azimuth, gcr=0.4):
+		s.array_type = array_type
+		s.tilt = tilt
+		s.azimuth = azimuth
+		s.gcr = gcr
+		w.execute()
+		return round(w.Outputs.ac_annual, 1)
+
+	# PVWatts array types as the "system" action uses them: 1 roof mount, 0 open rack, 3 tracker
+	if mount == 'tracker':
+		return {'mount': mount, 'value': run(3, 0, 180, 0.35), 'runs': 1, 'seconds': round(time.time() - t0, 2)}
+	array_type = 1 if mount == 'roof' else 0
+	flat = run(array_type, 0, 180)   # flat is the same in every direction
+	grid = [[flat] * len(YIELD_AZIMUTHS) if t == 0 else [run(array_type, t, a) for a in YIELD_AZIMUTHS] for t in YIELD_TILTS]
+	return {
+		'mount': mount, 'tilts': YIELD_TILTS, 'azimuths': YIELD_AZIMUTHS, 'grid': grid,
+		'runs': 1 + (len(YIELD_TILTS) - 1) * len(YIELD_AZIMUTHS),
+		'seconds': round(time.time() - t0, 2),
+	}
+
+
 def bills(req):
 	"""The no-solar annual bill for several rates at the same flat monthly use, for comparing a rate's
 	versions over time. Each rate's error is reported on its own row."""
@@ -584,7 +650,7 @@ def bills(req):
 	return {'monthly_kwh': monthly_kwh, 'bills': out}
 
 
-ACTIONS = {'check': check, 'weather': weather, 'bill': bill, 'bills': bills, 'system': system}
+ACTIONS = {'check': check, 'weather': weather, 'bill': bill, 'bills': bills, 'system': system, 'yield_grid': yield_grid}
 
 
 def main():

@@ -1908,6 +1908,8 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .layout-box h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .4rem; }
 .layout-box p { margin: 0 0 .35rem; }
 .layout-totals { font-weight: 750; font-size: 1.2rem; line-height: 1.3; color: var(--blue); }
+.layout-yield { font-weight: 650; line-height: 1.3; color: var(--text); }
+.layout-yield[hidden], #layout-yield-basis[hidden] { display: none; }
 .layout-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .6rem; }
 .layout-fields label { font-size: .8rem; margin: 0; gap: .15rem; }
 .layout-fields input, .layout-fields select { padding: .3rem .4rem; font-size: .85rem; }

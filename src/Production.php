@@ -230,20 +230,29 @@ final class Production
 	/** Run SAM for a ready build sheet and keep the result on it. Returns the reply (ok false with error on failure). */
 	public static function run(array $o, array $d, array $in): array
 	{
+		$reply = self::compute($o, $in);
+		if (!$reply['ok']) {
+			return $reply;
+		}
+		$reply['notes'] = $in['notes'];
+		$reply['settings'] = ['model' => Presales::setting('production_model'), 'other_loss' => Presales::num('production_other_loss'),
+			'optimizer_loss' => Presales::num('production_optimizer_loss'), 'sam_adjust' => Presales::num('production_sam_adjust')];
+		Db::update('presales_designs', (int) $d['id'], ['production_json' => json_encode($reply), 'production_at' => now_utc(), 'production_key' => $in['key']]);
+		return $reply;
+	}
+
+	/** Run SAM for a ready build sheet without keeping the result (weather file name added). */
+	public static function compute(array $o, array $in): array
+	{
 		$file = SolarResource::forPoint((float) $o['site_lat'], (float) $o['site_lon']);
 		if (!$file['ok']) {
 			return ['ok' => false, 'error' => 'Weather: ' . $file['error']];
 		}
 		$reply = Sam::call(['action' => 'system', 'weather_file' => $file['path']] + $in['request'], 120);
-		if (!$reply['ok']) {
-			return $reply;
+		if ($reply['ok']) {
+			unset($reply['weather_columns'], $reply['trace']);
+			$reply['weather'] = ['dataset' => SolarResource::DATASET, 'location_id' => $file['row']['location_id'] ?? null];
 		}
-		unset($reply['weather_columns'], $reply['trace']);
-		$reply['notes'] = $in['notes'];
-		$reply['weather'] = ['dataset' => SolarResource::DATASET, 'location_id' => $file['row']['location_id'] ?? null];
-		$reply['settings'] = ['model' => Presales::setting('production_model'), 'other_loss' => Presales::num('production_other_loss'),
-			'optimizer_loss' => Presales::num('production_optimizer_loss'), 'sam_adjust' => Presales::num('production_sam_adjust')];
-		Db::update('presales_designs', (int) $d['id'], ['production_json' => json_encode($reply), 'production_at' => now_utc(), 'production_key' => $in['key']]);
 		return $reply;
 	}
 
