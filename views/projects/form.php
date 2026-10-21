@@ -349,6 +349,18 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 		<a href="<?= $isNew ? '/projects' : '/projects/' . (int) $id ?>" class="btn btn-ghost">Cancel</a>
 	</div>
 </form>
+<?php if (!$isNew && \App\Auth::isAdmin()): ?>
+	<?php $blockers = \App\Controllers\ProjectController::deleteBlockers((int) $id); ?>
+	<?php if ($blockers): ?>
+		<p class="hint mt">Delete project is not available: it has <?= e(implode(', ', $blockers)) ?>.</p>
+	<?php else: ?>
+		<form method="post" action="/projects/<?= (int) $id ?>/delete" class="mt" data-confirm="Delete project <?= e($p['project_number'] . ' ' . $p['name']) ?> and its log? This can't be undone.">
+			<?= Csrf::field() ?>
+			<button class="btn btn-ghost btn-small">Delete project</button>
+			<span class="hint">For a project created by mistake. Admins only.</span>
+		</form>
+	<?php endif; ?>
+<?php endif; ?>
 
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
 <script src="<?= asset('assets/js/address.js') ?>"></script>

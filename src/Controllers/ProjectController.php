@@ -862,6 +862,56 @@ final class ProjectController
 		return $t['name'];
 	}
 
+	/**
+	 * Why a project can't be deleted: anything real recorded on it or linked to it.
+	 * Meant for a project created by mistake (e.g. a lead entered before it was sold).
+	 * @return string[]
+	 */
+	public static function deleteBlockers(int $id): array
+	{
+		$checks = [
+			'a completed step or payment' => 'SELECT 1 FROM project_tasks WHERE project_id = ? AND done_date IS NOT NULL',
+			'a comment' => "SELECT 1 FROM activity_log WHERE entity_type = 'project' AND entity_id = ? AND kind = 'comment' AND deleted_at IS NULL",
+			'a service ticket' => 'SELECT 1 FROM service_tickets WHERE project_id = ?',
+			'a commission record' => 'SELECT 1 FROM commissions WHERE project_id = ?',
+			'a monitoring system' => 'SELECT 1 FROM monitor_sites WHERE project_id = ?',
+			'a task' => 'SELECT 1 FROM todos WHERE project_id = ?',
+			'a Pre-Sales opportunity' => 'SELECT 1 FROM presales_opportunities WHERE project_id = ?',
+			'a production reference job' => 'SELECT 1 FROM production_refs WHERE project_id = ?',
+		];
+		$found = [];
+		foreach ($checks as $label => $sql) {
+			if (Db::value($sql, [$id])) {
+				$found[] = $label;
+			}
+		}
+		return $found;
+	}
+
+	public function delete(int $id): void
+	{
+		if (!Auth::isAdmin()) {
+			View::render('errors/403', ['title' => 'Not allowed'], 'layout', 403);
+			exit;
+		}
+		$p = $this->find($id);
+		if ($blockers = self::deleteBlockers($id)) {
+			flash('error', 'Project ' . $p['project_number'] . ' can\'t be deleted: it has ' . implode(', ', $blockers) . '.');
+			redirect('/projects/' . $id . '/edit');
+		}
+		$label = $p['project_number'] . ' ' . $p['name'];
+		Db::transaction(function () use ($id, $p, $label) {
+			// The log goes too: SQLite can hand this id to the next new project
+			Db::run("DELETE FROM activity_log WHERE entity_type = 'project' AND entity_id = ?", [$id]);
+			Db::run('DELETE FROM projects WHERE id = ?', [$id]);
+			if ($p['customer_id']) {
+				Activity::event('organization', (int) $p['customer_id'], 'Deleted project ' . $label . ' (created ' . fmt_date(substr((string) $p['created_at'], 0, 10)) . ')');
+			}
+		});
+		flash('success', 'Project ' . $label . ' deleted.');
+		redirect('/projects');
+	}
+
 	private function find(int $id): array
 	{
 		$p = Projects::find($id);
