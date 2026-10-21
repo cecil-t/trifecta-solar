@@ -55,6 +55,45 @@ final class Designs
 		return $name;
 	}
 
+	/**
+	 * Payment milestones from stored JSON: label, pct, and tpl_label (the schedule's own name for
+	 * the payment, so a name changed on the build sheet can be told apart from a Rates page change).
+	 * @return list<array{label:string,pct:float,tpl_label:string}>
+	 */
+	public static function milestones(mixed $json): array
+	{
+		$rows = is_array($json) ? $json : (json_decode((string) $json, true) ?: []);
+		$out = [];
+		foreach (array_values($rows) as $m) {
+			$label = (string) ($m['label'] ?? '');
+			$out[] = ['label' => $label, 'pct' => (float) ($m['pct'] ?? 0), 'tpl_label' => (string) ($m['tpl_label'] ?? $label)];
+		}
+		return $out;
+	}
+
+	/**
+	 * The Rates page schedule with the build sheet's schedule name, when it no longer matches the
+	 * copy on the build sheet (percentages or the schedule's payment names). Names changed on the
+	 * build sheet itself don't count.
+	 */
+	public static function scheduleChanged(array $d): ?array
+	{
+		if (empty($d['payment_template_name'])) {
+			return null;
+		}
+		$t = Db::one('SELECT * FROM presales_payment_templates WHERE name = ?', [$d['payment_template_name']]);
+		if (!$t) {
+			return null;
+		}
+		$mine = self::milestones($d['payment_milestones']);
+		$theirs = self::milestones($t['milestones']);
+		$same = count($mine) === count($theirs);
+		foreach ($same ? $theirs : [] as $k => $m) {
+			$same = $same && abs($m['pct'] - $mine[$k]['pct']) < 0.0001 && $m['label'] === $mine[$k]['tpl_label'];
+		}
+		return $same ? null : $t;
+	}
+
 	/** A new build sheet with today's rates copied in. */
 	public static function create(int $oppId, string $name): int
 	{
@@ -260,18 +299,37 @@ final class Designs
 
 		$deposit = $num($post['deposit'] ?? '', 'Deposit');
 		$f['deposit'] = $deposit;
+		// Schedule: a fresh pick copies the Rates page schedule; otherwise the build sheet keeps its
+		// own copy. Payment names can be changed per build sheet (milestone_labels). milestone_src
+		// names the schedule the shown names came from, so names typed after a pick are kept.
 		$tplId = (int) ($post['payment_template_id'] ?? 0);
+		$fresh = false;
 		if ($tplId) {
 			$t = Db::one('SELECT * FROM presales_payment_templates WHERE id = ?', [$tplId]);
 			if ($t) {
 				$f['payment_milestones'] = $t['milestones'];
 				$f['payment_template_name'] = $t['name'];
+				$fresh = (string) ($post['milestone_src'] ?? '') !== (string) $tplId;
 			}
 		}
 		if (!isset($f['payment_milestones'])) {
 			$f['payment_milestones'] = $d['payment_milestones'];
 			$f['payment_template_name'] = $d['payment_template_name'];
 		}
+		$ms = self::milestones($f['payment_milestones']);
+		$typed = $post['milestone_labels'] ?? null;
+		if (!$fresh && is_array($typed) && count($typed) === count($ms)) {
+			foreach (array_values($typed) as $k => $label) {
+				$label = trim(preg_replace('/\s+/', ' ', (string) $label));
+				if ($label === '' && $strict) {
+					throw new \InvalidArgumentException('Payment ' . ($k + 2) . ' needs a name.');
+				}
+				if ($label !== '') {
+					$ms[$k]['label'] = mb_substr($label, 0, 80);
+				}
+			}
+		}
+		$f['payment_milestones'] = $ms ? json_encode($ms) : $f['payment_milestones'];
 
 		// Lines, category by category, in the order shown
 		$lines = [];

@@ -720,17 +720,21 @@ $folded = [];
 						<?php endforeach; ?>
 					</select>
 					<small class="hint">Percentages are of the balance after the deposit. Dollar amounts are what go into OpenSolar.</small>
+					<?php if ($newSchedule = \App\Designs::scheduleChanged($d)): ?>
+						<small class="hint text-red">"<?= e($newSchedule['name']) ?>" changed on the Rates page since this build sheet copied it. Pick it again above to use the new version (names changed here are replaced).</small>
+					<?php endif; ?>
 				</label>
 			</div>
+			<input type="hidden" name="milestone_src" id="milestone-src" value="">
 			<div class="table-wrap mt-xs"><table class="table table-payments">
 				<thead><tr><th>Payment</th><th class="num">Amount</th><th class="num">% of balance</th><th class="num">% of total</th></tr></thead>
 				<tbody id="payments-body">
-				<?php foreach ($calc['payments'] as $p): ?>
-					<tr><td><?= e($p['label']) ?></td><td class="num"><?= e($m($p['amount'])) ?></td><td class="num"><?= $p['pct_balance'] === null ? '' : e(Presales::pct($p['pct_balance'], 0)) ?></td><td class="num"><?= $p['pct_total'] === null ? '' : e(Presales::pct($p['pct_total'])) ?></td></tr>
+				<?php foreach ($calc['payments'] as $k => $p): ?>
+					<tr><td><?php if ($k === 0): ?><?= e($p['label']) ?><?php else: ?><input type="text" name="milestone_labels[]" value="<?= e($p['label']) ?>" maxlength="80" aria-label="Payment <?= $k + 1 ?> name"><?php endif; ?></td><td class="num"><?= e($m($p['amount'])) ?></td><td class="num"><?= $p['pct_balance'] === null ? '' : e(Presales::pct($p['pct_balance'], 0)) ?></td><td class="num"><?= $p['pct_total'] === null ? '' : e(Presales::pct($p['pct_total'])) ?></td></tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table></div>
-			<p class="hint">Each payment rounds up to $100 except the last, which takes what is left, so they always add up to the price.</p>
+			<p class="hint">Each payment rounds up to $100 except the last, which takes what is left, so they always add up to the price. Payment names can be changed for this build sheet; they print on the proposal.</p>
 		</section>
 
 		<section class="card band" id="sec-warranty">

@@ -544,18 +544,46 @@
 		});
 
 		// Payments
+		// Payment names after the deposit are inputs: when the rows still match, only the numbers
+		// change (so typing a name isn't interrupted); a new schedule rebuilds the rows.
 		const body = document.getElementById('payments-body');
-		body.textContent = '';
-		res.payments.forEach((p) => {
-			const tr = document.createElement('tr');
-			[p.label, p.amount, p.pct_balance, p.pct_total].forEach((v, i) => {
-				const td = document.createElement('td');
-				if (i > 0) td.className = 'num';
-				td.textContent = v;
-				tr.appendChild(td);
-			});
-			body.appendChild(tr);
+		const rows = Array.from(body.rows);
+		const sameRows = rows.length === res.payments.length && res.payments.every((p, i) => {
+			const inp = rows[i].cells[0].querySelector('input');
+			if (!inp) return rows[i].cells[0].textContent === p.label;
+			const typed = inp.value.trim().replace(/\s+/g, ' ');
+			return typed === '' || typed === p.label;   // a name being retyped stays as typed
 		});
+		if (sameRows) {
+			res.payments.forEach((p, i) => {
+				[p.amount, p.pct_balance, p.pct_total].forEach((v, j) => setText(rows[i].cells[j + 1], v));
+			});
+		} else {
+			body.textContent = '';
+			res.payments.forEach((p, i) => {
+				const tr = document.createElement('tr');
+				[p.label, p.amount, p.pct_balance, p.pct_total].forEach((v, j) => {
+					const td = document.createElement('td');
+					if (j > 0) td.className = 'num';
+					if (j === 0 && i > 0) {
+						const inp = document.createElement('input');
+						inp.type = 'text';
+						inp.name = 'milestone_labels[]';
+						inp.maxLength = 80;
+						inp.value = v;
+						inp.setAttribute('aria-label', 'Payment ' + (i + 1) + ' name');
+						td.appendChild(inp);
+					} else {
+						td.textContent = v;
+					}
+					tr.appendChild(td);
+				});
+				body.appendChild(tr);
+			});
+		}
+		const src = document.getElementById('milestone-src');
+		const pick = document.querySelector('select[name="payment_template_id"]');
+		if (src && pick) src.value = pick.value;
 
 		// Deposit choices follow the system size
 		const dep = document.getElementById('deposit-select');

@@ -105,6 +105,11 @@ final class DesignController
 				$changes[] = 'price ' . Presales::money((float) $d['price_total']) . ' to ' . Presales::money($calc['price']);
 			}
 			$changes = [...$changes, ...self::overrideChanges($before, $lines, $calc)];
+			$oldPay = array_map(static fn ($m) => $m['label'] . ' ' . $m['pct'] . '%', Designs::milestones($d['payment_milestones']));
+			$newPay = array_map(static fn ($m) => $m['label'] . ' ' . $m['pct'] . '%', Designs::milestones($f['payment_milestones']));
+			if ($oldPay !== $newPay || (string) $d['payment_template_name'] !== (string) $f['payment_template_name']) {
+				$changes[] = 'payment schedule ' . ($f['payment_template_name'] ? '"' . $f['payment_template_name'] . '" ' : '') . '(' . implode(', ', $newPay) . ')';
+			}
 			if ((int) $d['guarantee_on'] !== (int) $f['guarantee_on']) {
 				$changes[] = 'production guarantee ' . ($f['guarantee_on'] ? 'turned on' : 'turned off');
 			}
