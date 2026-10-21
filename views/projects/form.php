@@ -25,7 +25,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 <form method="post" action="<?= $isNew ? '/projects' : '/projects/' . (int) $id ?>" class="project-form">
 	<?= Csrf::field() ?>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Status</h2>
 		<div class="grid-form">
 			<label class="span-2">Status note
@@ -50,7 +50,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Basics</h2>
 		<div class="grid-form">
 			<label>Project #
@@ -102,7 +102,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Customer</h2>
 		<div class="grid-form">
 			<label class="span-2">Customer
@@ -123,7 +123,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Site and jurisdiction</h2>
 		<div class="grid-form">
 			<?= App\View::partial('partials/address_full', ['value' => '']) ?>
@@ -190,7 +190,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 		<?php endif; ?>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>System</h2>
 		<div class="grid-form">
 			<div class="checkfield span-2">
@@ -314,7 +314,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 		</div>
 	</section>
 
-	<section class="card">
+	<section class="card band">
 		<h2>Contract and funding</h2>
 		<div class="grid-form">
 			<label>Contract price
