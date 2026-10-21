@@ -353,7 +353,7 @@ tr.clickable { cursor: pointer; }
 .tgrid { font-size: .88rem; }
 .trow {
 	display: grid; align-items: center; gap: .4rem;
-	grid-template-columns: minmax(200px, 2.2fr) 70px 150px 112px minmax(90px, .9fr) 70px minmax(140px, 2fr) 32px;
+	grid-template-columns: minmax(200px, 2.2fr) 70px 150px 112px minmax(90px, .9fr) 50px minmax(140px, 2.4fr) 32px;
 	padding: .3rem 1rem; border-top: 1px solid var(--border); position: relative;
 }
 .phase-block { overflow: visible; }
@@ -366,6 +366,9 @@ tr.clickable { cursor: pointer; }
 .trow input, .trow select { padding: .3rem .4rem; font-size: .85rem; border-color: #dde3df; border-radius: 6px; min-width: 0; }
 .trow select { padding-right: .2rem; }
 .trow input[type=date] { font-variant-numeric: tabular-nums; }
+/* Assigned holds initials only (3 letters at most): a narrow column with a small drawn arrow instead of the native one, so the room goes to Note */
+.trow select[data-field=owner_id] { appearance: none; font-size: .74rem; letter-spacing: -.02em; padding: .32rem 11px .32rem .25rem; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath d='M0 0h8L4 5z' fill='%235b6b73'/%3E%3C/svg%3E") no-repeat right 3px center / 7px 5px; }
+.trow input[data-field=note] { font-size: .8rem; }
 .trow input.is-overdue { background: #fff4d1; border-color: #e6c766; }
 .trow input.is-overdue-30 { background: #fbd3cd; border-color: #d9534f; color: #8c1d14; font-weight: 650; }
 .dwrap { display: block; margin: 0; min-width: 0; font-weight: 400; }
@@ -448,12 +451,14 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 
 @media (max-width: 1100px) {
 	.summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.trow { grid-template-columns: minmax(160px, 2fr) 64px 146px 110px minmax(80px, .8fr) 64px minmax(120px, 1.6fr) 32px; }
+	.trow { grid-template-columns: minmax(160px, 2fr) 64px 146px 110px minmax(80px, .8fr) 50px minmax(120px, 2fr) 32px; }
 }
 
 @media (min-width: 761px) and (max-width: 960px) {
-	.trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 142px 106px minmax(56px, .7fr) 56px minmax(80px, 1.3fr) 28px; }
+	.trow { gap: .3rem; padding: .3rem .6rem; grid-template-columns: minmax(120px, 2fr) 56px 142px 106px minmax(56px, .7fr) 48px minmax(80px, 1.6fr) 28px; }
 	.trow input, .trow select { font-size: .8rem; padding: .25rem .3rem; }
+	.trow input[data-field=note] { font-size: .76rem; }
+	.trow select[data-field=owner_id] { font-size: .72rem; padding: .27rem 10px .27rem .2rem; background-position: right 2px center; }
 }
 
 @media (max-width: 760px) {
@@ -499,7 +504,8 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.trow > .tmenu { grid-area: menu; }
 	.trow > span:empty { display: none; }
 	.trow input, .trow select { padding: .28rem .35rem; font-size: .84rem; }
-	.trow select[data-field=owner_id] { padding-right: .1rem; }
+	.trow select[data-field=owner_id] { font-size: .84rem; padding: .28rem 14px .28rem .35rem; }
+	.trow input[data-field=note] { font-size: .84rem; }
 	.trow-sub { margin-left: 1rem; border-left: 3px solid #b9cbd8; padding-left: .6rem; }
 	.trow-sub .tname { padding-left: 0; font-size: .88rem; }
 	.comment-form { flex-direction: column; align-items: stretch; }
