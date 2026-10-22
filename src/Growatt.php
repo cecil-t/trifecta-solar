@@ -64,8 +64,8 @@ final class Growatt
 			'endTime' => $end->format(DATE_RFC3339),
 			'type' => '1d',
 		]);
-		// A month of days for a large site can take Growatt a while to answer.
-		$r = self::get($path, 60);
+		// Growatt can take over a minute to answer a month of days (73 s seen for one site and one month).
+		$r = self::get($path, 120);
 		$r['days'] = null;
 		$r['problem'] = null;
 		if ($r['status'] !== 200 || $r['note'] !== null || !is_array($r['json'])) {
