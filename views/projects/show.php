@@ -79,6 +79,11 @@ $answer = static function (string $name) use ($tree): string {
 	}
 	return '<span class="muted">Not on this project</span>';
 };
+// Red dot after the name of items whose template raises a customer update (CustomerNotices)
+$notifyMark = static function (array $t) use ($noticeRules): string {
+	$rule = $t['template_id'] !== null ? ($noticeRules[(int) $t['template_id']] ?? null) : null;
+	return $rule ? '<span class="notify-mark" title="' . e(App\CustomerNotices::ruleTitle($rule)) . '"><span class="visually-hidden">Customer update</span></span>' : '';
+};
 $siteAddr = trim(implode(', ', array_filter([trim((string) $p['site_street']), trim((string) $p['site_city']), trim(($p['site_state'] ?? '') . ' ' . ($p['site_zip'] ?? ''))])));
 $fmtNum = static fn ($n, $d = 1) => rtrim(rtrim(number_format((float) $n, $d), '0'), '.');
 $roofPanels = array_sum(array_map(static fn ($r) => (int) $r['panels'], $roofs));
@@ -109,6 +114,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			<?php if ($p['hold_state'] === 'on_hold'): ?><span class="chip chip-orange">On hold<?= $p['hold_reason'] ? ': ' . e($p['hold_reason']) : '' ?></span><?php endif; ?>
 			<?php if ($p['hold_state'] === 'cancelled' && $p['hold_reason']): ?><span class="chip"><?= e($p['hold_reason']) ?></span><?php endif; ?>
 			<span id="clear-badge" class="chip chip-green" <?= $status['phase'] === 'pre_install' && $status['clear_to_install'] ? '' : 'hidden' ?>>Clear to install</span>
+			<a href="#customer-updates" id="notify-badge" class="chip chip-red" <?= $notices ? '' : 'hidden' ?>>Notify customer (<span id="notify-count"><?= count($notices) ?></span>)</a>
 			<span class="chip chip-blue" id="days-badge" <?= $status['days'] === null ? 'hidden' : '' ?>><span id="days-num"><?= (int) $status['days'] ?></span> days<?= $status['pto_date'] ? ' to PTO' : ' in progress' ?></span>
 		</div>
 		<?php if ($p['status_note']): ?><p class="status-note"><?= e($p['status_note']) ?></p><?php endif; ?>
@@ -123,6 +129,36 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 		<a href="/projects/<?= (int) $p['id'] ?>/edit" class="btn btn-primary">Edit</a>
 	</div>
 </div>
+
+<section class="card notify-card" id="customer-updates" <?= $notices ? '' : 'hidden' ?>>
+	<div class="task-strip-head">
+		<h2>Notify customer</h2>
+		<span class="muted small">Send the customer an update, then mark it here.</span>
+	</div>
+	<form method="post" action="/projects/<?= (int) $p['id'] ?>/customer-updates" class="notify-form">
+		<?= Csrf::field() ?>
+		<ul class="notify-list" data-notify-list>
+			<?php foreach (App\CustomerNotices::forClient($notices) as $n): ?>
+				<li class="<?= $n['mine'] ? 'is-mine' : '' ?>"><input type="hidden" name="ids[]" value="<?= (int) $n['id'] ?>"><span class="notify-text"><?= e($n['text']) ?></span><?php if ($n['owner'] !== ''): ?><span class="notify-owner" title="Assigned to"><?= e($n['owner']) ?></span><?php endif; ?></li>
+			<?php endforeach; ?>
+		</ul>
+		<div class="notify-actions">
+			<input type="text" name="note" maxlength="200" placeholder="How (optional): emailed, called" aria-label="How the customer was told">
+			<button class="btn btn-primary btn-small" name="outcome" value="notified">Customer notified</button>
+			<button class="btn btn-ghost btn-small" name="outcome" value="not_notified" title="Clear the list without telling the customer">Not notified</button>
+		</div>
+	</form>
+	<?php if ($noticeHistory): ?>
+		<details class="notify-history">
+			<summary class="small">Earlier updates (<?= count($noticeHistory) ?>)</summary>
+			<ul>
+				<?php foreach ($noticeHistory as $h): ?>
+					<li class="small"><?= e(App\CustomerNotices::line($h)) ?> <span class="muted">&middot; <?= e(App\CustomerNotices::OUTCOMES[$h['outcome']] ?? '') ?> <?= e(fmt_dt($h['cleared_at'], 'm/d/Y')) ?><?= $h['cleared_by_name'] ? ' by ' . e($h['cleared_by_name']) : '' ?><?= $h['clear_note'] ? ': ' . e($h['clear_note']) : '' ?></span></li>
+				<?php endforeach; ?>
+			</ul>
+		</details>
+	<?php endif; ?>
+</section>
 
 <div class="summary-grid">
 	<section class="card">
@@ -304,7 +340,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 				<?php foreach ($tasks as $t): $hasSubs = (bool) $t['subs']; ?>
 					<div class="task" id="task-<?= (int) $t['id'] ?>">
 						<div class="trow trow-task <?= $t['resolved'] ? 'is-resolved' : '' ?> <?= (string) $t['needed'] === '0' ? 'is-na' : '' ?>" data-id="<?= (int) $t['id'] ?>">
-							<span class="tname"><span class="dot"></span><?= e($t['name']) ?> <?= $gateBadge($t['gate']) ?></span>
+							<span class="tname"><span class="dot"></span><?= e($t['name']) ?><?= $notifyMark($t) ?> <?= $gateBadge($t['gate']) ?></span>
 							<?php if ($isQuestion($t)): ?>
 								<select data-field="needed" aria-label="Needed"><?= $neededSel($t['needed']) ?></select>
 							<?php else: ?>
@@ -344,7 +380,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 						</div>
 						<?php foreach ($t['subs'] as $s): ?>
 							<div class="trow trow-sub <?= $s['resolved'] ? 'is-resolved' : '' ?> <?= (string) $s['needed'] === '0' ? 'is-na' : '' ?>" data-id="<?= (int) $s['id'] ?>" id="task-<?= (int) $s['id'] ?>">
-								<span class="tname"><span class="dot"></span><?= e($s['name']) ?> <?= $gateBadge($s['gate']) ?></span>
+								<span class="tname"><span class="dot"></span><?= e($s['name']) ?><?= $notifyMark($s) ?> <?= $gateBadge($s['gate']) ?></span>
 								<span class="needed-cell" data-needed="<?= e((string) $s['needed']) ?>"><?= (string) $s['needed'] === '0' ? $naChip : '' ?></span>
 								<div class="dwrap dw-done"><span class="mlabel">Completed</span><span class="date-wrap"><input type="date" data-field="done_date" value="<?= e($s['done_date']) ?>" aria-label="Completed date"><button type="button" class="today-btn" data-set-today title="Completed today" aria-label="Mark completed today">&#10003;</button><button type="button" class="clear-date-btn" data-clear-date title="Clear this date" aria-label="Clear completed date">&times;</button></span></div>
 								<label class="dwrap dw-target"><span class="mlabel">Target</span><input type="date" data-field="target_date" value="<?= e($s['target_date']) ?>" aria-label="Target date" class="<?= (string) $t['needed'] === '0' ? ($s['target_date'] ? 'has-target' : '') : $overdue($s) ?>"></label>

@@ -7,6 +7,9 @@ $tabs = [
 	'installation' => 'Installation', 'closeout' => 'Closeout', 'on_hold' => 'On hold',
 	'complete' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All',
 ];
+if ($counts['notify'] || $filter['phase'] === 'notify') {
+	$tabs['notify'] = 'Notify customer';
+}
 // Completed and Cancelled fold earlier years under a click-to-open header: the project # year,
 // or the contract signed year for early jobs numbered without a year code (01, 02...)
 $foldYears = $filter['q'] === '' && in_array($filter['phase'], ['complete', 'cancelled'], true);
@@ -69,7 +72,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 			<tr id="project-<?= (int) $p['id'] ?>" data-href="/projects/<?= (int) $p['id'] ?>" class="clickable">
 				<td><strong><?= e($p['project_number']) ?></strong><?php if ($icons = App\Icons::scope($p)): ?><div class="scope-icons"><?= $icons ?></div><?php endif; ?></td>
 				<td>
-					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a>
+					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a><?php if ($p['notices']): ?><a href="/projects/<?= (int) $p['id'] ?>#customer-updates" class="chip chip-red notify-chip" title="Customer updates waiting">Notify (<?= (int) $p['notices'] ?>)</a><?php endif; ?>
 					<?php if ($drive = safe_url($p['drive_url'])): ?><a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="drive-link" title="Open Google Drive folder">Drive &#8599;</a><?php endif; ?>
 					<?php if ($p['status_note']): ?><div class="muted small cell-note"><?= e($p['status_note']) ?></div><?php endif; ?>
 				</td>

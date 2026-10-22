@@ -1949,3 +1949,26 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .band .table-draw-lines tfoot td { padding-top: .4rem; padding-bottom: .4rem; }
 .band .table-draw-lines input[type=text], .band .table-draw-lines input[type=date] { padding: .22rem .45rem; font-size: .88rem; }
 .band .table-draw-lines .btn-small { padding: .18rem .6rem; }
+
+/* Customer updates (CustomerNotices): red dot on items that raise one, and the Notify customer card on the project page */
+.notify-mark { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex: none; vertical-align: middle; margin-left: .3rem; }
+.tname .notify-mark { margin-left: -.1rem; }
+.notify-line { margin-top: .1rem; }
+.notify-card { padding: .8rem 1.1rem; margin-bottom: 1rem; border-left: 4px solid var(--red); }
+.notify-list { list-style: none; margin: .5rem 0 .7rem; padding: 0; }
+.notify-list li { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .4rem 0; border-bottom: 1px solid var(--border); }
+.notify-list li.is-mine .notify-text { font-weight: 650; }
+.notify-owner { flex: none; font-size: .74rem; color: var(--muted); background: var(--bg); border-radius: 999px; padding: .1rem .5rem; }
+.notify-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.notify-actions input { flex: 1 1 14rem; min-width: 0; }
+.notify-history { margin-top: .7rem; }
+.notify-history summary { cursor: pointer; color: var(--muted); }
+.notify-history ul { list-style: none; margin: .4rem 0 0; padding: 0; }
+.notify-history li { padding: .2rem 0; }
+.dash-notify .notify-list { margin: .3rem 0 0; }
+.dash-notify .notify-proj { padding: .5rem 0; border-bottom: 1px solid var(--border); }
+.dash-notify .notify-proj:last-child { border-bottom: 0; }
+.dash-notify .notify-list li { border-bottom: 0; padding: .15rem 0 .15rem .9rem; font-size: .9rem; }
+.notify-chip { margin-left: .35rem; }
+.notify-card .task-strip-head { flex-wrap: wrap; row-gap: .2rem; }
+.notify-card .task-strip-head h2 { white-space: nowrap; }

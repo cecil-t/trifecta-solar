@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Activity;
 use App\Auth;
+use App\CustomerNotices;
 use App\Db;
 use App\Municipalities;
 use App\Geo;
@@ -62,11 +63,13 @@ final class ProjectController
 		}
 		$sql .= ' ORDER BY p.project_number';
 		$projects = Db::all($sql, $params);
+		CustomerNotices::syncAll();
+		$noticeCounts = CustomerNotices::pendingCounts();
 
 		$tasks = Tasks::forProjects(array_column($projects, 'id'));
 		$kw = Projects::dcKwMap();
 		$battKwh = Projects::batteryKwhMap();
-		$counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'all' => 0];
+		$counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'all' => 0, 'notify' => 0];
 		$rows = [];
 		foreach ($projects as $p) {
 			$st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
@@ -74,6 +77,7 @@ final class ProjectController
 			$p['status'] = $st;
 			$p['dc_kw'] = $kw[(int) $p['id']] ?? null;
 			$p['batt_kwh'] = $battKwh[(int) $p['id']] ?? null;
+			$p['notices'] = $p['hold_state'] === 'cancelled' ? 0 : ($noticeCounts[(int) $p['id']] ?? 0);
 			$onHold = $p['hold_state'] === 'on_hold';
 			$isOpen = !in_array($st['phase'], ['complete', 'cancelled'], true);
 			$isActive = $isOpen && !$onHold; // on-hold jobs live on their own tab
@@ -82,11 +86,13 @@ final class ProjectController
 			if (!($onHold && $isOpen)) { $counts[$st['phase']]++; } // on-hold jobs only count on their own tab
 			if ($isActive) { $counts['active']++; }
 			if ($onHold && $isOpen) { $counts['on_hold']++; }
+			if ($p['notices']) { $counts['notify']++; }
 
 			$keep = match ($filter['phase']) {
 				'all'     => true,
 				'active'  => $isActive,
 				'on_hold' => $onHold && $isOpen,
+				'notify'  => $p['notices'] > 0,
 				default   => $st['phase'] === $filter['phase'] && !($onHold && $isOpen),
 			};
 			if ($keep) {
@@ -613,6 +619,7 @@ final class ProjectController
 	public function show(int $id): void
 	{
 		$p = $this->find($id);
+		$notices = CustomerNotices::sync($id);
 		$rows = Tasks::forProjects([$id])[$id] ?? [];
 		$status = Tasks::status($p, $rows);
 		$eq = Projects::equipment($id);
@@ -638,7 +645,25 @@ final class ProjectController
 			'lastComment' => Activity::latestComment('project', $id),
 			'commentsOnly' => $commentsOnly,
 			'commission' => \App\Commissions::forProject($id),
+			'notices' => $notices,
+			'noticeHistory' => CustomerNotices::history($id),
+			'noticeRules' => CustomerNotices::rules(),
 		]);
+	}
+
+	/** Mark the customer update lines shown on the project as notified or not notified. */
+	public function clearNotices(int $id): void
+	{
+		$this->find($id);
+		$outcome = (string) ($_POST['outcome'] ?? '');
+		$ids = array_map('intval', (array) ($_POST['ids'] ?? []));
+		$note = trim((string) ($_POST['note'] ?? ''));
+		$note = $note === '' ? null : mb_substr($note, 0, 200);
+		$n = CustomerNotices::clear($id, $ids, $outcome, $note);
+		if ($n) {
+			flash('success', ($outcome === 'notified' ? 'Marked notified' : 'Marked not notified') . ' (' . $n . ' ' . ($n === 1 ? 'update' : 'updates') . ').');
+		}
+		redirect('/projects/' . $id . '#customer-updates');
 	}
 
 	/**
@@ -757,8 +782,10 @@ final class ProjectController
 				}
 			}
 		}
+		$notices = CustomerNotices::sync($id);
 		echo json_encode([
 			'ok' => true,
+			'notices' => CustomerNotices::forClient($notices),
 			'value' => $value,
 			'display' => in_array($field, ['target_date', 'done_date'], true) ? fmt_date($value) : $value,
 			'note_meta' => $field === 'note' && $value !== null ? 'edited by ' . Auth::user()['name'] . ' just now' : null,
@@ -812,6 +839,7 @@ final class ProjectController
 		if ($tid) {
 			$name = Db::value('SELECT name FROM project_tasks WHERE id = ?', [$tid]);
 			Activity::event('project', $id, 'Added "' . $name . '" from the template');
+			CustomerNotices::sync($id);
 		}
 		redirect('/projects/' . $id . ($tid ? '#task-' . $tid : ''));
 	}
@@ -822,6 +850,7 @@ final class ProjectController
 		$new = $t ? Tasks::duplicate($taskId) : null;
 		if ($new) {
 			Activity::event('project', $id, 'Duplicated "' . $t['name'] . '" as "' . Db::value('SELECT name FROM project_tasks WHERE id = ?', [$new]) . '"');
+			CustomerNotices::sync($id);
 		}
 		redirect('/projects/' . $id . ($new ? '#task-' . $new : ''));
 	}
@@ -833,6 +862,7 @@ final class ProjectController
 			Db::run('DELETE FROM project_tasks WHERE id = ?', [$taskId]);
 			Activity::event('project', $id, 'Removed ' . ($t['parent_id'] ? 'sub-task' : 'task') . ' "' . $this->taskLabel($t) . '"'
 				. ($t['done_date'] ? ' (done ' . fmt_date($t['done_date']) . ')' : ''));
+			CustomerNotices::sync($id);
 			flash('success', 'Removed "' . $t['name'] . '".');
 		}
 		redirect('/projects/' . $id . '#tasks');

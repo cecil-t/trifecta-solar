@@ -53,10 +53,44 @@
 		}
 		const clear = document.getElementById('clear-badge');
 		if (clear) clear.hidden = !(d.phase === 'pre_install' && d.clear_to_install);
+		if (Array.isArray(d.notices)) renderNotices(d.notices);
 		const days = document.getElementById('days-badge');
 		if (days && d.days !== null && d.days !== undefined) {
 			days.hidden = false;
 			document.getElementById('days-num').textContent = d.days;
+		}
+	}
+
+	// Customer updates: the card, its hidden ids (what Customer notified clears) and the header chip.
+	function renderNotices(list) {
+		const card = document.getElementById('customer-updates');
+		const ul = card && card.querySelector('[data-notify-list]');
+		if (!ul) return;
+		ul.replaceChildren(...list.map((n) => {
+			const li = document.createElement('li');
+			if (n.mine) li.className = 'is-mine';
+			const id = document.createElement('input');
+			id.type = 'hidden';
+			id.name = 'ids[]';
+			id.value = n.id;
+			const text = document.createElement('span');
+			text.className = 'notify-text';
+			text.textContent = n.text;
+			li.append(id, text);
+			if (n.owner) {
+				const who = document.createElement('span');
+				who.className = 'notify-owner';
+				who.title = 'Assigned to';
+				who.textContent = n.owner;
+				li.append(who);
+			}
+			return li;
+		}));
+		card.hidden = list.length === 0;
+		const badge = document.getElementById('notify-badge');
+		if (badge) {
+			badge.hidden = list.length === 0;
+			document.getElementById('notify-count').textContent = list.length;
 		}
 	}
 

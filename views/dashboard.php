@@ -45,6 +45,32 @@
 </div>
 <?php endif; ?>
 
+<?php if ($notices):
+	$noticeGroups = [];
+	foreach ($notices as $n) {
+		$noticeGroups[(int) $n['project_id']] ??= ['number' => $n['project_number'], 'name' => $n['project_name'], 'items' => []];
+		$noticeGroups[(int) $n['project_id']]['items'][] = $n;
+	}
+	$me = (int) App\Auth::id();
+?>
+<section class="card mt dash-notify notify-card" id="customer-updates">
+	<div class="card-head card-head-plain">
+		<h2>Notify customer <span class="muted small">(<?= count($noticeGroups) ?> project<?= count($noticeGroups) === 1 ? '' : 's' ?>)</span></h2>
+		<a href="/projects?phase=notify" class="small">On the Projects list</a>
+	</div>
+	<?php foreach ($noticeGroups as $pid => $g): ?>
+		<div class="notify-proj">
+			<a href="/projects/<?= (int) $pid ?>#customer-updates"><strong><?= e($g['number']) ?></strong> <?= e($g['name']) ?></a>
+			<ul class="notify-list">
+				<?php foreach ($g['items'] as $n): $mine = $n['owner_id'] !== null && (int) $n['owner_id'] === $me; ?>
+					<li class="<?= $mine ? 'is-mine' : '' ?>"><span class="notify-text"><?= e(App\CustomerNotices::line($n)) ?></span><?php if ($n['owner_initials'] || $n['owner_name']): ?><span class="notify-owner" title="Assigned to"><?= e($n['owner_initials'] ?: $n['owner_name']) ?></span><?php endif; ?></li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+	<?php endforeach; ?>
+</section>
+<?php endif; ?>
+
 <section class="card mt" id="my-tasks">
 	<div class="card-head card-head-plain">
 		<h2>My tasks <span class="muted small">(<?= count($myTasks) ?>)</span></h2>

@@ -83,6 +83,7 @@ try {
 	switch ($command) {
 		case 'migrate':
 			$ran = Migrator::migrate();
+			App\CustomerNotices::baselinePending();
 			out($ran ? 'Applied: ' . implode(', ', $ran) : 'Database is up to date (' . count(Migrator::applied()) . ' migrations).');
 			break;
 

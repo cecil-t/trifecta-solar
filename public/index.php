@@ -64,6 +64,8 @@ session_start();
 
 if (Migrator::hasPending()) {
 	Migrator::migrate();
+	// New customer update rules start from what has already happened, before this request writes anything
+	App\CustomerNotices::baselinePending();
 }
 
 Auth::init();
@@ -154,6 +156,7 @@ $r->post('/projects/{id}/comments', [ProjectController::class, 'comment']);
 $r->post('/projects/{id}/notes', [ProjectController::class, 'saveNotes']);
 $r->post('/projects/{id}/geo-check', [ProjectController::class, 'geoCheck']);
 $r->post('/projects/{id}/delete', [ProjectController::class, 'delete']);
+$r->post('/projects/{id}/customer-updates', [ProjectController::class, 'clearNotices']);
 $r->post('/projects/{id}/tasks', [ProjectController::class, 'addTask']);
 $r->post('/projects/{id}/tasks/from-template', [ProjectController::class, 'addFromTemplate']);
 $r->post('/projects/{id}/tasks/{taskId}', [ProjectController::class, 'updateTask']);

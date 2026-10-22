@@ -55,8 +55,16 @@ $sel = static fn ($a, $b) => (string) $a === (string) $b ? 'selected' : '';
 				<?php foreach ($users as $u): ?><option value="<?= (int) $u['id'] ?>" <?= $sel($t['default_owner_id'], $u['id']) ?>><?= e($u['name']) ?></option><?php endforeach; ?>
 			</select>
 		</label>
+		<label>Customer update
+			<select name="notify_on">
+				<option value="">None</option>
+				<?php foreach (App\CustomerNotices::RULES as $k => $l): ?><?php if (in_array($k, $parent ? App\CustomerNotices::FOR_SUB : App\CustomerNotices::FOR_TASK, true)): ?><option value="<?= $k ?>" <?= $sel($t['notify_on'] ?? '', $k) ?>><?= e($l) ?></option><?php endif; ?><?php endforeach; ?>
+			</select>
+			<small class="hint">Adds a line to the project's customer updates when this happens.</small>
+		</label>
+		<label class="span-2">Customer update line <input type="text" name="notify_text" value="<?= e($t['notify_text'] ?? '') ?>" maxlength="200" placeholder="e.g. Building permit received"></label>
 		<label class="check self-end"><input type="checkbox" name="is_active" value="1" <?= $t['is_active'] ? 'checked' : '' ?>> Active (included in new projects)</label>
 		<div class="span-all"><button class="btn btn-primary"><?= $isNew ? 'Add' : 'Save' ?></button></div>
 	</form>
-	<p class="hint mt">Gates drive project status: <strong>Starts day counter</strong> (contract signed), <strong>Required for Clear to install</strong> (any one done within the same task counts), <strong>Moves to Installation</strong>, <strong>Moves to Closeout</strong> (PTO).</p>
+	<p class="hint mt">Gates drive project status: <strong>Starts day counter</strong> (contract signed), <strong>Required for Clear to install</strong> (any one done within the same task counts), <strong>Moves to Installation</strong>, <strong>Moves to Closeout</strong> (PTO).<br><br><strong>Customer update:</strong> <strong>When the task is complete</strong> means every sub-task is completed or not needed, with at least one completed. A target date rule is for upcoming events (install scheduled): a changed date updates the line. Adding or changing a rule never raises lines for what already happened on existing projects.</p>
 </div>
