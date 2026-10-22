@@ -22,7 +22,7 @@ $cols = 10;
 ?>
 <div class="page-head">
 	<div>
-		<h1>Service</h1>
+		<h1>Service<?= help_link('service') ?></h1>
 	</div>
 	<a href="/service/new" class="btn btn-primary">New service ticket</a>
 </div>

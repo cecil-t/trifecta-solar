@@ -4,7 +4,7 @@ use App\Controllers\TodoController;
 $qs = static fn (array $over) => '/tasks?' . http_build_query(array_filter(array_merge(['tab' => $tab, 'who' => $who ?: null, 'q' => $q], $over), static fn ($v) => $v !== '' && $v !== null));
 ?>
 <div class="page-head">
-	<div><h1>Tasks</h1></div>
+	<div><h1>Tasks<?= help_link('tasks') ?></h1></div>
 	<a href="/tasks/new" class="btn btn-primary">Assign a task</a>
 </div>
 

@@ -35,7 +35,7 @@ foreach ($payees as $p) {
 	<div>
 		<a href="<?= e($listUrl) ?>" class="back">&larr; Sales commissions</a>
 		<div class="page-kicker">Sales commission</div>
-		<h1><?= e($c['project_id'] ? trim($c['project_number'] . ' ' . $c['project_name']) : $c['job_name']) ?></h1>
+		<h1><?= e($c['project_id'] ? trim($c['project_number'] . ' ' . $c['project_name']) : $c['job_name']) ?><?= help_link('commissions') ?></h1>
 		<div class="badges"><span class="chip <?= $chip[$state] ?? '' ?>"><?= e($state) ?></span><?php if ($phase): ?> <span class="chip">Project: <?= e(App\Tasks::PHASE_LABELS[$phase] ?? $phase) ?></span><?php endif; ?></div>
 	</div>
 	<?php if ($admin): ?>

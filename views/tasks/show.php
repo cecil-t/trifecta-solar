@@ -11,7 +11,7 @@ $canDelete = Auth::isAdmin() || (int) $d['created_by'] === Auth::id() || (int) $
 <div class="project-head">
 	<div>
 		<a href="<?= e($listUrl) ?>" class="back">&larr; Tasks</a>
-		<h1 class="<?= $d['done_at'] ? 'is-done-title' : '' ?>"><?= e($d['title']) ?></h1>
+		<h1 class="<?= $d['done_at'] ? 'is-done-title' : '' ?>"><?= e($d['title']) ?><?= help_link('tasks') ?></h1>
 		<div class="badges">
 			<?= $d['done_at'] ? '<span class="chip chip-green">Done ' . e(fmt_dt($d['done_at'], 'm/d/Y')) . '</span>' : '<span class="chip chip-blue">Open</span>' ?>
 			<?php if ($d['due_on']): ?><span class="chip <?= $due === 'overdue' ? 'chip-red' : ($due === 'today' ? 'chip-orange' : '') ?>"><?= $due === 'overdue' ? 'Overdue: ' : 'Due ' ?><?= e(fmt_date($d['due_on'])) ?></span><?php endif; ?>

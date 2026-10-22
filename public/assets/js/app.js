@@ -181,6 +181,39 @@
 		if (e.target.matches('select[data-autosubmit]')) e.target.form.submit();
 	});
 
+	// Help: the "?" beside a page title slides the page's help in from the right instead of leaving
+	// the page (without script it simply opens /help/<topic>). Close with the X or Escape.
+	const help = document.getElementById('help-panel');
+	if (help) {
+		let opener = null;
+		const setHelp = (open) => {
+			help.classList.toggle('is-open', open);
+			document.querySelectorAll('[data-help-open]').forEach((a) => a.setAttribute('aria-expanded', String(open)));
+			if (open) {
+				help.querySelector('[data-help-close]').focus({ preventScroll: true });
+			} else if (opener) {
+				opener.focus({ preventScroll: true });
+			}
+		};
+		document.querySelectorAll('[data-help-open]').forEach((a) => {
+			a.setAttribute('aria-expanded', 'false');
+			a.addEventListener('click', (e) => {
+				if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return; // new tab still opens the page
+				e.preventDefault();
+				opener = a;
+				setHelp(!help.classList.contains('is-open'));
+			});
+		});
+		help.querySelector('[data-help-close]').addEventListener('click', () => setHelp(false));
+		// Capture, so Escape closes help before a page's own Escape (the site layout's Cancel) sees it.
+		window.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && help.classList.contains('is-open')) {
+				e.stopPropagation();
+				setHelp(false);
+			}
+		}, true);
+	}
+
 	// Service worker, so the app can be installed to a phone's home screen.
 	if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
 		navigator.serviceWorker.register('/sw.js');

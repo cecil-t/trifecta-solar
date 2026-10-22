@@ -1,6 +1,6 @@
 <?php use App\Controllers\OrganizationController; use App\Auth; ?>
 <div class="page-head">
-	<div><h1>Directory</h1><p class="muted">Third parties: code and inspection agencies, designers, contractors.<?= Auth::isAdmin() ? '' : ' Only admins can add or change these.' ?></p></div>
+	<div><h1>Directory<?= help_link('directory') ?></h1><p class="muted">Third parties: code and inspection agencies, designers, contractors.<?= Auth::isAdmin() ? '' : ' Only admins can add or change these.' ?></p></div>
 	<?php if (Auth::isAdmin()): ?>
 	<div class="row-gap">
 		<a href="/organizations/new?type=agency" class="btn btn-secondary">Add agency</a>

@@ -11,7 +11,7 @@ $disabled = $canManage ? '' : 'disabled';
 <div class="page-head">
 	<div>
 		<a href="<?= $isCustomer ? '/customers' : '/directory' ?>" class="back">&larr; <?= $isCustomer ? 'Customers' : 'Directory' ?></a>
-		<h1><?= $isNew ? 'Add ' . e(strtolower(OrganizationController::TYPES[$o['type']])) : e($o['name']) ?></h1>
+		<h1><?= $isNew ? 'Add ' . e(strtolower(OrganizationController::TYPES[$o['type']])) : e($o['name']) ?><?= help_link($isCustomer ? 'customers' : 'directory') ?></h1>
 		<?php if (!$isNew): ?><p class="muted"><?= e(OrganizationController::TYPES[$o['type']]) ?></p><?php endif; ?>
 	</div>
 </div>

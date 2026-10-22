@@ -80,7 +80,7 @@ $row = static function (int $i, array $b, string $kind, bool $new) use ($dis, $s
 <div class="page-head">
 	<div>
 		<a href="/presales/rates" class="back">&larr; Sales rates</a>
-		<h1>Proposal terms</h1>
+		<h1>Proposal terms<?= help_link('proposal-terms') ?></h1>
 		<p class="muted">The opening, Clarifications, Terms &amp; Conditions, Final Authorizations and any addendum that print on every proposal, as blocks. Each block prints only when its condition holds for the build sheet, so one set covers in-house and SolarInsure jobs, the production guarantee and the rest.<?= $canEdit ? '' : ' Only admins can change them.' ?></p>
 		<p class="muted small"><?= $version ? 'Current: version ' . (int) $version['id'] . ', saved ' . e(fmt_dt($version['created_at'])) . ($version['created_name'] ? ' by ' . e($version['created_name']) : '') . ($version['note'] ? ' (' . e($version['note']) . ')' : '') . '.' : 'No terms yet. Add them here or with bin/console import:terms.' ?></p>
 	</div>

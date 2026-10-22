@@ -20,7 +20,7 @@ $back = $isNew ? '/projects/' . (int) $p['id'] : '/commissions/' . (int) $c['id'
 <div class="page-head">
 	<div>
 		<a href="<?= e($back) ?>" class="back">&larr; <?= $isNew ? e($p['name']) : 'Commission' ?></a>
-		<h1><?= $isNew ? 'Set up sales commission' : 'Edit sales commission' ?></h1>
+		<h1><?= $isNew ? 'Set up sales commission' : 'Edit sales commission' ?><?= help_link('commissions') ?></h1>
 		<?php if ($p): ?><p class="muted"><?= e(trim($p['project_number'] . ' ' . $p['name'])) ?></p><?php endif; ?>
 	</div>
 </div>

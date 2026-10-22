@@ -7,7 +7,7 @@ $val = static fn (string $k, $default = '') => $isNew ? old($k, $default) : ($u[
 <div class="page-head">
 	<div>
 		<a href="/users" class="back">&larr; Users</a>
-		<h1><?= $isNew ? 'Add user' : e($u['name']) ?></h1>
+		<h1><?= $isNew ? 'Add user' : e($u['name']) ?><?= help_link('users') ?></h1>
 	</div>
 </div>
 

@@ -1,6 +1,6 @@
 <div class="page-head">
 	<div>
-		<h1>Users</h1>
+		<h1>Users<?= help_link('users') ?></h1>
 		<p class="muted">Staff logins. Admins can manage users and the shared directories.</p>
 	</div>
 	<a href="/users/new" class="btn btn-primary">Add user</a>

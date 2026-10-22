@@ -17,7 +17,7 @@ $share = static function (array $t, int $i): ?float {
 ?>
 <div class="page-head">
 	<div>
-		<h1>Reference jobs</h1>
+		<h1>Reference jobs<?= help_link('reference-jobs') ?></h1>
 		<p class="muted">Built, monitored systems with their signed proposal's estimate. Each run takes the site's NSRDB typical-year weather and runs SAM's detailed model and PVWatts v8 on the job's equipment and arrays with the losses the proposal states, then compares proposal, both models and monitored production month by month. Admins only. Jobs are added with <code>import:reference-jobs</code>.</p>
 		<p class="small"><a href="/admin/proposal-apis">Back to Proposal APIs</a></p>
 	</div>

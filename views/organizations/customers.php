@@ -1,5 +1,5 @@
 <div class="page-head">
-	<div><h1>Customers</h1><p class="muted">Anyone can add or edit customers and their contacts.</p></div>
+	<div><h1>Customers<?= help_link('customers') ?></h1><p class="muted">Anyone can add or edit customers and their contacts.</p></div>
 	<a href="/organizations/new?type=customer" class="btn btn-primary">Add customer</a>
 </div>
 <form class="filters" method="get" action="/customers">

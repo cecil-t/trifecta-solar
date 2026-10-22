@@ -24,7 +24,7 @@ $chip = App\Commissions::CHIPS;
 ?>
 <div class="page-head">
 	<div>
-		<h1>Sales commissions</h1>
+		<h1>Sales commissions<?= help_link('commissions') ?></h1>
 		<p class="muted"><?= $admin ? 'Every sold job, what each salesperson is owed and what has been paid, oldest first. Commission comes due ' . App\Commissions::dueLabel() . '; closing its "Pay sales commission" step marks it paid.' : 'Your sold jobs, what you are owed and what has been paid, oldest first. Commission comes due ' . App\Commissions::dueLabel() . '.' ?><?= $person && $admin ? ' Amounts are ' . e($personName) . '\'s share.' : '' ?></p>
 	</div>
 </div>

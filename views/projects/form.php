@@ -18,7 +18,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 <div class="page-head">
 	<div>
 		<a href="<?= $isNew ? '/projects' : '/projects/' . (int) $id ?>" class="back">&larr; <?= $isNew ? 'Projects' : e($p['project_number'] . ' ' . $p['name']) ?></a>
-		<h1><?= $isNew ? 'New project' : 'Edit project' ?></h1>
+		<h1><?= $isNew ? 'New project' : 'Edit project' ?><?= help_link('project') ?></h1>
 	</div>
 </div>
 

@@ -1,7 +1,7 @@
 <?php use App\Controllers\ReportController; ?>
 <div class="page-head">
 	<div>
-		<h1>Reports</h1>
+		<h1>Reports<?= help_link('reports') ?></h1>
 		<p class="muted small">Each report has its own date range and prints on its own.</p>
 	</div>
 </div>

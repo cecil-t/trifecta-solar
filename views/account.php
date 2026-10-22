@@ -1,7 +1,7 @@
 <?php use App\Auth; use App\Csrf; ?>
 <div class="page-head">
 	<div>
-		<h1>My account</h1>
+		<h1>My account<?= help_link('account') ?></h1>
 		<p class="muted"><?= e($user['name']) ?> &middot; <?= e($user['email']) ?><?= $user['is_admin'] ? ' &middot; Admin' : '' ?></p>
 	</div>
 </div>

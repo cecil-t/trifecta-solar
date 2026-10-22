@@ -40,7 +40,7 @@ foreach (array_slice($lines, 6) as $l) {
 	<div>
 		<a href="/commissions<?= $admin ? '?sales=' . (int) $u['id'] : '' ?>" class="back">&larr; Sales commissions</a>
 		<div class="page-kicker">Draw against commission</div>
-		<h1><?= e($u['name']) ?></h1>
+		<h1><?= e($u['name']) ?><?= help_link('draws') ?></h1>
 		<div class="badges"><span class="chip <?= e($standClass) ?>"><?= e($standText) ?></span><?php if ($sum['schedule']): ?> <span class="chip"><?= e($m($sum['schedule']['amount'])) ?> every <?= (int) $sum['schedule']['every_days'] ?> days<?= $sum['next'] ? ', next ' . e(fmt_date($sum['next'])) : '' ?></span><?php endif; ?></div>
 	</div>
 </div>

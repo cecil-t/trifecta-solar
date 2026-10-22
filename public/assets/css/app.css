@@ -1972,3 +1972,47 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .notify-chip { margin-left: .35rem; }
 .notify-card .task-strip-head { flex-wrap: wrap; row-gap: .2rem; }
 .notify-card .task-strip-head h2 { white-space: nowrap; }
+
+/* Help: the "?" beside a page title, the panel it slides in, and the help pages */
+.help-btn {
+	display: inline-flex; align-items: center; justify-content: center; vertical-align: .2em;
+	width: 1.35rem; height: 1.35rem; margin-left: .45rem; border-radius: 50%;
+	border: 1.5px solid currentColor; color: var(--muted); background: var(--surface);
+	font-size: .82rem; font-weight: 700; line-height: 1; letter-spacing: 0; text-decoration: none;
+}
+.help-btn:hover, .help-btn[aria-expanded="true"] { color: var(--surface); background: var(--blue); border-color: var(--blue); text-decoration: none; }
+.help-btn-static { margin: 0 .1rem; vertical-align: .05em; width: 1.15rem; height: 1.15rem; font-size: .72rem; }
+/* pages with a hidden heading: the "?" sits in the page's top padding, so nothing below moves */
+.help-corner { display: flex; justify-content: flex-end; height: 0; }
+.help-corner .help-btn { margin-left: 0; transform: translateY(calc(-100% - .1rem)); }
+.help-panel {
+	position: fixed; top: var(--topbar-h, 64px); right: 0; bottom: 0; z-index: 18;
+	width: min(420px, 100vw); display: flex; flex-direction: column;
+	background: var(--surface); border-left: 1px solid var(--border); box-shadow: -6px 0 24px rgba(16, 32, 40, .12);
+	transform: translateX(100%); visibility: hidden; transition: transform .2s ease, visibility 0s linear .2s;
+}
+.help-panel.is-open { transform: none; visibility: visible; transition: transform .2s ease; }
+.help-panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; padding: .9rem 1rem .6rem 1.25rem; border-bottom: 1px solid var(--border); }
+.help-panel-head h2 { margin: 0; font-size: 1.2rem; }
+.help-close { border: 0; background: none; font-size: 1.6rem; line-height: 1; color: var(--muted); cursor: pointer; padding: .1rem .4rem; border-radius: var(--radius-sm); }
+.help-close:hover { color: var(--text); background: var(--bg); }
+.help-panel-body { flex: 1; overflow-y: auto; padding: .9rem 1.25rem 1rem; overscroll-behavior: contain; }
+.help-panel-foot { margin: 0; padding: .6rem 1.25rem; border-top: 1px solid var(--border); font-size: .88rem; }
+.help-text { font-size: .93rem; }
+.help-text h2, .help-text h3 { font-size: .98rem; margin: 1rem 0 .3rem; color: var(--blue); }
+.help-text h2:first-child, .help-text h3:first-child { margin-top: 0; }
+.help-text p, .help-text ul { margin: 0 0 .6rem; }
+.help-text ul { padding-left: 1.15rem; }
+.help-text li { margin-bottom: .25rem; }
+.help-page { max-width: 46rem; }
+.help-index { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; align-items: start; }
+.help-topics { list-style: none; margin: 0; padding: 0; }
+.help-topics li { padding: .2rem 0; }
+@media (max-width: 760px) {
+	.help-panel { width: 100vw; border-left: 0; }
+	.help-corner { height: auto; margin: 0 0 .4rem; }
+	.help-corner .help-btn { transform: none; }
+}
+@media print {
+	.help-btn, .help-corner, .help-panel { display: none !important; }
+}

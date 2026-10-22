@@ -8,7 +8,7 @@ $sel = static fn ($a, $b) => (string) $a === (string) $b ? 'selected' : '';
 <div class="page-head">
 	<div>
 		<a href="/admin/template" class="back">&larr; Task template</a>
-		<h1><?= $isNew ? ($parent ? 'Add sub-task to ' . e($parent['name']) : 'Add task') : 'Edit "' . e($t['name']) . '"' ?></h1>
+		<h1><?= $isNew ? ($parent ? 'Add sub-task to ' . e($parent['name']) : 'Add task') : 'Edit "' . e($t['name']) . '"' ?><?= help_link('task-template') ?></h1>
 		<?php if ($parent && !$isNew): ?><p class="muted">Sub-task of <?= e($parent['name']) ?></p><?php endif; ?>
 	</div>
 </div>

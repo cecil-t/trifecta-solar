@@ -11,7 +11,7 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 <div class="page-head">
 	<div>
 		<a href="<?= $back ?>" class="back">&larr; <?= $isNew ? 'Service' : e($t['ticket_number']) ?></a>
-		<h1><?= $isNew ? 'New service ticket' : 'Edit service ticket' ?></h1>
+		<h1><?= $isNew ? 'New service ticket' : 'Edit service ticket' ?><?= help_link('service') ?></h1>
 	</div>
 </div>
 

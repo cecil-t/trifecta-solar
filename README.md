@@ -11,6 +11,7 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 
 - **Sign-in:** email and password (Argon2id, 8+ characters with upper, lower, number and symbol). Logins are per device and never expire; users sign out their own devices, admins can sign out anyone. First-run setup page, admin user management, and My account (initials, password, devices).
 - **Dashboard:** phase counts, my Tasks, "My open items" (project steps you own that are actionable now, grouped by project) and a 5-day forecast (Open-Meteo) for the location set in `.env`.
+- **Help:** a "?" beside each page's title slides that page's help in from the right (one short page per section and list, plain Markdown in `help/`, listed in `App\Help::TOPICS`); all topics are under the user menu > Help (`/help`).
 - **Search:** a box in the top bar finds projects and service tickets together (names, customer, numbers, municipality, ticket problem and address). One match opens it directly; back links return to the results.
 - **Sales** (draft, replacing the Master Buildsheet spreadsheet; code and URLs say presales):
   - Opportunities (a customer and a site being quoted): Open, Sold (names the build sheet that sold) or Lost (with an optional reason), with a log. Each has a lead source (self-generated, referral with the referrer searched from the directory or typed, Trifecta lead with how it came in, repeat customer) and an optional in-house handoff from another salesperson.
@@ -50,6 +51,7 @@ Internal project, service and task tracker for Trifecta Solar. It replaces the P
 ```
 bin/console          CLI (see Console commands below)
 docker/              Apache vhost, php.ini, entrypoint
+help/                in-app help pages, one Markdown file per topic
 migrations/          NNN_name.sql, applied in order, once each
 public/              web root (index.php front controller, assets, sw.js; the manifest is served by ManifestController)
 src/                 App classes (Auth, Db, Activity, Tasks, Projects, ...) and Controllers/

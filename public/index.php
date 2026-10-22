@@ -25,6 +25,7 @@ use App\Controllers\DesignController;
 use App\Controllers\DisplayKeyController;
 use App\Controllers\DrawController;
 use App\Controllers\HealthController;
+use App\Controllers\HelpController;
 use App\Controllers\LayoutController;
 use App\Controllers\MonitorController;
 use App\Controllers\MonitorPageController;
@@ -86,6 +87,10 @@ $r->get('/', [DashboardController::class, 'index']);
 
 $r->get('/account', [AccountController::class, 'show']);
 $r->get('/about', [AboutController::class, 'show']);
+$r->get('/help', [HelpController::class, 'index']);
+foreach (array_keys(App\Help::TOPICS) as $slug) { // the router's {placeholders} take digits only
+	$r->get('/help/' . $slug, [HelpController::class, 'show']);
+}
 $r->post('/account/profile', [AccountController::class, 'profile']);
 $r->post('/account/password', [AccountController::class, 'password']);
 $r->post('/account/devices/{id}/revoke', [AccountController::class, 'revokeDevice']);

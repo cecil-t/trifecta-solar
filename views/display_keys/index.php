@@ -8,7 +8,7 @@ use App\Csrf;
 ?>
 <div class="page-head">
 	<div>
-		<h1>Display links</h1>
+		<h1>Display links<?= help_link('display-links') ?></h1>
 		<p class="muted">Links for office screens. Each one opens the Monitor page without the menus and without signing in, and nothing else in the tracker. Anyone with a link can see that page, so revoke a link when its screen is retired or the link gets out.</p>
 	</div>
 </div>

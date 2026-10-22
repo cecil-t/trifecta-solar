@@ -15,7 +15,7 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 ?>
 <div class="page-head">
 	<div>
-		<h1>Monitor APIs</h1>
+		<h1>Monitor APIs<?= help_link('monitor-apis') ?></h1>
 		<p class="muted">Connections the monitoring collector uses. Each check makes one call from the server and lists what came back; nothing is saved.</p>
 	</div>
 </div>

@@ -123,7 +123,7 @@ $folded = [];
 	<div>
 		<a href="/presales/<?= (int) $o['id'] ?>" class="back">&larr; <?= e($o['name']) ?></a>
 		<div class="page-kicker">Build sheet</div>
-		<h1><?= e($d['name']) ?></h1>
+		<h1><?= e($d['name']) ?><?= help_link('build-sheet') ?></h1>
 		<div class="badges">
 			<span class="chip chip-blue"><?= e($classLabel) ?></span>
 			<?php if ($o['customer_type'] && $o['customer_type'] !== 'residential' && $o['customer_type'] !== 'commercial'): ?><span class="chip"><?= e(Projects::CUSTOMER_TYPES[$o['customer_type']] ?? '') ?></span><?php endif; ?>

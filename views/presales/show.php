@@ -18,7 +18,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 	<div>
 		<a href="/presales?status=<?= e($o['status']) ?>#opp-<?= (int) $o['id'] ?>" class="back">&larr; Sales</a>
 		<div class="page-kicker">Opportunity</div>
-		<h1><?= e($o['name']) ?></h1>
+		<h1><?= e($o['name']) ?><?= help_link('sales') ?></h1>
 		<div class="badges">
 			<span class="chip <?= $statusChip ?>"><?= e(Presales::STATUSES[$o['status']]) ?></span>
 			<?php if ($o['status'] === 'lost' && $o['lost_reason']): ?><span class="chip"><?= e($o['lost_reason']) ?></span><?php endif; ?>

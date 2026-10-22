@@ -17,7 +17,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 <div class="project-head">
 	<div>
 		<a href="<?= e($listUrl) ?>" class="back">&larr; <?= str_starts_with($listUrl, '/search') ? 'Search results' : 'Service' ?></a>
-		<h1><span class="pnum"><?= e($t['ticket_number']) ?></span> <?= e($t['customer_name'] ?? '') ?></h1>
+		<h1><span class="pnum"><?= e($t['ticket_number']) ?></span> <?= e($t['customer_name'] ?? '') ?><?= help_link('service') ?></h1>
 		<div class="badges">
 			<?= $statusChip ?>
 			<?php if ($t['coverage']): ?><span class="chip"><?= e(Service::COVERAGE[$t['coverage']]) ?></span><?php endif; ?>

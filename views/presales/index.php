@@ -12,7 +12,7 @@ $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 ?>
 <div class="page-head">
 	<div>
-		<h1>Sales</h1>
+		<h1>Sales<?= help_link('sales') ?></h1>
 		<p class="muted">Build sheets for jobs being quoted. A sold build sheet carries into its project.</p>
 	</div>
 	<div class="head-actions">

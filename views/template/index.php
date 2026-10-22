@@ -1,7 +1,7 @@
 <?php use App\Tasks; ?>
 <div class="page-head">
 	<div>
-		<h1>Task template</h1>
+		<h1>Task template<?= help_link('task-template') ?></h1>
 		<p class="muted">The default task list copied into each <strong>new</strong> project. Existing projects are not changed; add items to them from the project page. Customer update rules (<span class="notify-mark"><span class="visually-hidden">red dot</span></span>) are the exception: they apply to existing projects, from the time they are set.</p>
 	</div>
 </div>

@@ -49,6 +49,7 @@ foreach (['solaredge', 'growatt'] as $k) {
 }
 ?>
 <h1 class="visually-hidden">Monitoring</h1>
+<?= empty($kiosk) ? help_link('monitor', true) : '' ?>
 
 <?php if (!$vendors): ?>
 	<section class="card empty-state">

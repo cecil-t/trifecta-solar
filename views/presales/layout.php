@@ -20,7 +20,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 	<div>
 		<a href="<?= e($base) ?>" class="back">&larr; <?= e($d['name']) ?></a>
 		<div class="page-kicker">Site layout</div>
-		<h1><?= e($o['name']) ?></h1>
+		<h1><?= e($o['name']) ?><?= help_link('site-layout') ?></h1>
 		<p class="muted small">
 			<?= $d['layout_at'] ? 'Saved ' . e(fmt_dt($d['layout_at'], 'm/d/Y g:i A')) . ($who ? ' by ' . e($who) : '') : 'Not drawn yet' ?>
 			<?= $originNote !== '' ? ' &middot; ' . e($originNote) : '' ?>

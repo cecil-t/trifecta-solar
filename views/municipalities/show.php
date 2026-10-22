@@ -9,7 +9,7 @@ $dis = $admin ? '' : 'disabled';
 <div class="page-head">
 	<div>
 		<a href="/municipalities" class="back">&larr; Municipalities</a>
-		<h1><?= e($m['name']) ?></h1>
+		<h1><?= e($m['name']) ?><?= help_link('municipalities') ?></h1>
 		<p class="muted"><?= e($m['county'] . ' County, ' . $m['state_code']) ?></p>
 	</div>
 </div>

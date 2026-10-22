@@ -69,6 +69,7 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : (str_sta
 			</summary>
 			<div class="usermenu-panel">
 				<a href="/account">My account</a>
+				<a href="/help">Help</a>
 				<a href="/about">About</a>
 				<form method="post" action="/logout">
 					<?= Csrf::field() ?>
@@ -83,6 +84,20 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : (str_sta
 	<?= App\View::partial('partials/flashes') ?>
 	<?= $content ?>
 </main>
+
+<?php if (($helpTopic = App\Help::$current) !== null): ?>
+<aside class="help-panel" id="help-panel" aria-labelledby="help-panel-title">
+	<div class="help-panel-head">
+		<div>
+			<div class="page-kicker">Help</div>
+			<h2 id="help-panel-title"><?= e(App\Help::title($helpTopic)) ?></h2>
+		</div>
+		<button type="button" class="help-close" data-help-close title="Close help (Esc)"><span aria-hidden="true">&times;</span><span class="visually-hidden">Close help</span></button>
+	</div>
+	<div class="help-text help-panel-body"><?= App\Help::html($helpTopic) ?></div>
+	<p class="help-panel-foot"><a href="/help">All help topics</a></p>
+</aside>
+<?php endif; ?>
 
 <footer class="footer">
 	<a href="/about">Trifecta Solar Ops Tracker</a>

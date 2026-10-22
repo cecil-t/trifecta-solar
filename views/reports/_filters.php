@@ -23,7 +23,7 @@ if (!empty($f['class'])) {
 <div class="page-head report-head">
 	<div>
 		<a href="/reports" class="back no-print">&larr; Reports</a>
-		<h1><?= e(ReportController::REPORTS[$report][0]) ?></h1>
+		<h1><?= e(ReportController::REPORTS[$report][0]) ?><?= help_link('reports') ?></h1>
 		<p class="report-summary"><?= e($summary) ?></p>
 	</div>
 	<button type="button" class="btn btn-secondary no-print" data-print>Print</button>

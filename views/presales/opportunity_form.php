@@ -22,7 +22,7 @@ $isNew = $id === null;
 <div class="page-head">
 	<div>
 		<a href="<?= $isNew ? '/presales' : '/presales/' . (int) $id ?>" class="back">&larr; <?= $isNew ? 'Sales' : e($v('name')) ?></a>
-		<h1><?= $isNew ? 'New opportunity' : 'Edit opportunity' ?></h1>
+		<h1><?= $isNew ? 'New opportunity' : 'Edit opportunity' ?><?= help_link('sales') ?></h1>
 		<?php if ($isNew): ?><p class="muted">A customer and a site being quoted. Saving opens its first build sheet.</p><?php endif; ?>
 	</div>
 </div>

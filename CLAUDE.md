@@ -32,6 +32,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
   - Return paths from `back` parameters go through `local_path()`.
 - UI wording: "Completed" (never "Done" or "Archived"), "Tasks" for to-dos, and "Open items" for project steps on the dashboard.
 - Search on Projects, Service and Tasks always switches to the All tab.
+- In-app help: `help/<slug>.md` (short, one screen or a little more; `## ` headings, `- ` bullets, `**bold**`, links to app paths only), registered in `App\Help::TOPICS`, shown by `help_link('<slug>')` inside a page's `<h1>`. Greg asks when he wants the help updated; when a change makes a help page wrong, say so in the reply.
 - Open items rules live in `Tasks::openItemsFor`: phase reached, target date within 30 days, or next payment. Then:
   - R1 hides earlier-phase leftovers.
   - R2 treats a step as done when a later step of its task is done (`Tasks::IMPLIED_BY`).

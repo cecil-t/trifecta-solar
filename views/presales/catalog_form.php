@@ -23,7 +23,7 @@ $dis = $canEdit ? '' : 'disabled';
 <div class="page-head">
 	<div>
 		<a href="<?= e($listUrl) ?>" class="back">&larr; Catalog</a>
-		<h1><?= $isNew ? 'New catalog item' : e($v('name')) ?></h1>
+		<h1><?= $isNew ? 'New catalog item' : e($v('name')) ?><?= help_link('catalog') ?></h1>
 		<?php if (!$isNew): ?>
 			<p class="muted">Used on <?= (int) $used ?> build sheet<?= $used === 1 ? '' : 's' ?>. Saved build sheets keep the price they were built with and show a flag when it changes here.</p>
 		<?php endif; ?>

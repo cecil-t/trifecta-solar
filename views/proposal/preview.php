@@ -20,6 +20,7 @@
 	<div class="toolbar">
 		<a href="<?= e($base) ?>" class="tb-back">&larr; Build sheet</a>
 		<span class="tb-title">Proposal <?= e($quote) ?></span>
+		<a href="/help/proposal" class="tb-help" target="_blank" rel="noopener" title="Help for this page (opens in a new tab)">Help</a>
 		<a href="<?= e($base) ?>/proposal/pdf" class="tb-btn" data-pdf>Download PDF</a>
 	</div>
 	<?php if ($warnings): ?>

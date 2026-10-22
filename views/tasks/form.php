@@ -9,7 +9,7 @@ $back = $v('back', $isNew ? '/tasks' : '/tasks/' . (int) $id);
 <div class="page-head">
 	<div>
 		<a href="<?= e($back) ?>" class="back">&larr; Back</a>
-		<h1><?= $isNew ? 'Assign a task' : 'Edit task' ?></h1>
+		<h1><?= $isNew ? 'Assign a task' : 'Edit task' ?><?= help_link('tasks') ?></h1>
 	</div>
 </div>
 

@@ -11,7 +11,7 @@ $qp = rawurlencode($q);
 ?>
 <div class="page-head">
 	<div>
-		<h1>Search</h1>
+		<h1>Search<?= help_link('getting-around') ?></h1>
 		<?php if ($q !== ''): ?><p class="muted">Projects and service tickets matching &ldquo;<?= e($q) ?>&rdquo;</p><?php endif; ?>
 	</div>
 </div>

@@ -39,7 +39,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 ?>
 <div class="page-head">
 	<div>
-		<h1>Proposal APIs</h1>
+		<h1>Proposal APIs<?= help_link('proposal-apis') ?></h1>
 		<p class="muted">The services the proposal system will use, each with a test: Google (address, roof and aerial), NSRDB weather, OpenEI utility rates, SAM (System Advisor Model) for production and bills, and PDF output. Admins only; nothing here is shown to anyone else.</p>
 		<p class="small"><a href="/admin/reference-jobs">Reference jobs</a>: SAM and PVWatts on real, monitored systems, compared with their proposals and actual production.</p>
 	</div>

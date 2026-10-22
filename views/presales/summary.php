@@ -36,7 +36,7 @@ foreach ($lines as $i => $l) {
 	<img src="<?= asset('assets/img/logo-horizontal.png') ?>" alt="Trifecta Solar" width="143" height="42">
 	<div class="sheet-title">
 		<div class="sheet-kicker">Build sheet &middot; internal</div>
-		<h1><?= e($d['name']) ?></h1>
+		<h1><?= e($d['name']) ?><?= help_link('build-sheet') ?></h1>
 		<div class="muted small"><?= e($o['name']) ?> &middot; created <?= e(fmt_dt($d['created_at'], 'm/d/Y g:i A')) ?><?= !empty($who['created_name']) ? ' by ' . e($who['created_name']) : '' ?> &middot; updated <?= e(fmt_dt($d['updated_at'], 'm/d/Y g:i A')) ?><?= !empty($who['updated_name']) ? ' by ' . e($who['updated_name']) : '' ?></div>
 	</div>
 </header>

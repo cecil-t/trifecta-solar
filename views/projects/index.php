@@ -28,7 +28,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 ?>
 <div class="page-head">
 	<div>
-		<h1>Projects</h1>
+		<h1>Projects<?= help_link('projects') ?></h1>
 	</div>
 	<a href="/projects/new" class="btn btn-primary">New project</a>
 </div>

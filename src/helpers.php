@@ -200,3 +200,19 @@ function device_label(string $ua): string
 	};
 	return "$browser on $os";
 }
+
+/**
+ * The "?" beside a page heading. It opens the page's help in a panel (app.js), or the help page
+ * itself without script. The layout carries the panel for the last topic named this way.
+ * $corner: for pages whose heading is hidden (Dashboard, Monitor), a button at the top right instead.
+ */
+function help_link(string $topic, bool $corner = false): string
+{
+	if (!App\Help::exists($topic)) {
+		return '';
+	}
+	App\Help::$current = $topic;
+	$link = '<a href="/help/' . e($topic) . '" class="help-btn" data-help-open aria-controls="help-panel" title="Help for this page">'
+		. '<span aria-hidden="true">?</span><span class="visually-hidden">Help for this page</span></a>';
+	return $corner ? '<div class="help-corner">' . $link . '</div>' : $link;
+}

@@ -1,6 +1,6 @@
 <?php use App\Csrf; ?>
 <div class="page-head">
-	<div><h1>Municipalities</h1><p class="muted">Townships, boroughs and cities. Anyone can add one; each name is unique within its county.</p></div>
+	<div><h1>Municipalities<?= help_link('municipalities') ?></h1><p class="muted">Townships, boroughs and cities. Anyone can add one; each name is unique within its county.</p></div>
 </div>
 
 <section class="card">

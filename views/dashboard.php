@@ -1,5 +1,6 @@
 <?php use App\Weather; $weatherAt = Weather::location(); ?>
 <h1 class="visually-hidden">Dashboard</h1>
+<?= help_link('dashboard', true) ?>
 <?php if ($weatherAt): ?>
 <div class="stat-group dash-weather"><span class="stat-group-label"><?= e($weatherAt['place']) ?></span>
 	<?php if ($weather): ?>
