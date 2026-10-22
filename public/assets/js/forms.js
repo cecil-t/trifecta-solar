@@ -12,6 +12,20 @@
 	}
 	document.querySelectorAll('select[data-reveal], select[data-reveal-any]').forEach(wireReveal);
 
+	// <select data-sets-customer="customer_id">: picking an option with data-customer selects that
+	// customer in the named select (service ticket: Original project sets Customer)
+	document.querySelectorAll('select[data-sets-customer]').forEach((sel) => {
+		const target = sel.form && sel.form.elements[sel.dataset.setsCustomer];
+		if (!target) return;
+		sel.addEventListener('change', () => {
+			const id = sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.customer : '';
+			if (!id || id === '0' || !target.querySelector('option[value="' + CSS.escape(id) + '"]')) return;
+			if (target.value === id) return;
+			target.value = id;
+			target.dispatchEvent(new Event('change'));
+		});
+	});
+
 	// Opportunity: retail rate from the bill, (total - customer charge x months) / kWh, as it is typed
 	document.querySelectorAll('[data-bill-rate]').forEach((box) => {
 		const num = (name) => {

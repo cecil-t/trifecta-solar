@@ -39,7 +39,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 </div>
 
 <div class="summary-grid summary-3">
-	<section class="card">
+	<section class="card card-request">
 		<h2>Request</h2>
 		<p class="desc-text"><?= nl2br(e($t['description']), false) ?></p>
 		<dl class="kv">

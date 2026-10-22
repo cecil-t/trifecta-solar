@@ -92,11 +92,11 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 				</select>
 			</label>
 			<label class="span-2">Original project (if we installed it)
-				<select name="project_id">
+				<select name="project_id" data-sets-customer="customer_id">
 					<option value="">None / not in the tracker</option>
-					<?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>" <?= $sel($v('project_id'), $p['id']) ?>><?= e($p['project_number'] . ' ' . $p['name']) ?></option><?php endforeach; ?>
+					<?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>" data-customer="<?= (int) $p['customer_id'] ?>" <?= $sel($v('project_id'), $p['id']) ?>><?= e($p['project_number'] . ' ' . $p['name']) ?></option><?php endforeach; ?>
 				</select>
-				<small class="hint">Picking a project marks it as our install and fills a blank site address.</small>
+				<small class="hint">Picking a project sets the customer, marks it as our install and fills a blank site address.</small>
 			</label>
 		</div>
 		<div id="new-customer" class="grid-form reveal" hidden>

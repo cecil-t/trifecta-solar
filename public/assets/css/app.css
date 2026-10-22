@@ -548,7 +548,6 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .link-arrow:hover { text-decoration: none; }
 
 /* ---------- service ---------- */
-.summary-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .desc-text { margin: 0 0 .75rem; white-space: normal; }
 .nowrap { white-space: nowrap; }
 .table td.cell-desc { max-width: 380px; white-space: normal; }
@@ -579,9 +578,14 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .visit-add label.grow { flex: 1 1 160px; }
 .visit-add label.grow-2 { flex: 2 1 240px; }
 .visit-add input { padding: .4rem .5rem; font-size: .88rem; }
-@media (max-width: 1100px) { .summary-3 { grid-template-columns: 1fr 1fr; } }
+/* Ticket page: Request takes two of four columns on desktop, the full row on tablets.
+   .summary-grid.summary-3 outranks the Reports page's general .summary-grid rule further down. */
+.summary-grid.summary-3 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.summary-3 .card-request { grid-column: span 2; }
+@media (max-width: 1100px) { .summary-grid.summary-3 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 760px) {
-	.summary-3 { grid-template-columns: 1fr; }
+	.summary-grid.summary-3 { grid-template-columns: 1fr; }
+	.summary-3 .card-request { grid-column: auto; }
 	.visit-add label, .visit-add label.short { flex: 1 1 40%; }
 }
 .stat-service { border-left-color: var(--green); }

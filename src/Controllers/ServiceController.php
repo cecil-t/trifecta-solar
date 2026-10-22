@@ -255,6 +255,10 @@ final class ServiceController
 			$data['invoiced'] = 1;
 		}
 
+		// No customer chosen but a project is: the project's customer
+		if (!$data['customer_id'] && ($_POST['customer_id'] ?? '') !== 'new' && $data['project_id']) {
+			$data['customer_id'] = (int) Db::value('SELECT customer_id FROM projects WHERE id = ?', [$data['project_id']]) ?: null;
+		}
 		// New customer typed inline
 		if (($_POST['customer_id'] ?? '') === 'new') {
 			$name = trim((string) ($_POST['new_customer_name'] ?? ''));
