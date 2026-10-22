@@ -420,8 +420,9 @@ final class MonitorCollector
 	}
 
 	/**
-	 * Growatt: every day this year from the energy curve, one call per site per month (a month's days come
-	 * in one reply), with completed months also stored as monthly totals. Months already complete (a month
+	 * Growatt: every day from the first month of the 13-month chart (monthsStart) through yesterday, from
+	 * the energy curve, one call per site per month (a month's days come in one reply), with completed
+	 * months also stored as monthly totals. Months already complete (a month
 	 * total and every day but at most one stored above zero) are skipped. Growatt has no call limit, so
 	 * there is no budget check; calls are spaced a second apart. $daily changes nothing here: the days come
 	 * with every month anyway.
@@ -436,13 +437,13 @@ final class MonitorCollector
 			return [self::stamp() . " $label: no sites stored yet; run monitor:poll --vendor=growatt --force first."];
 		}
 		$tz = new \DateTimeZone(date_default_timezone_get());
-		$jan = new \DateTimeImmutable(date('Y') . '-01-01', $tz);
+		$first = new \DateTimeImmutable(self::monthsStart() . '-01', $tz);
 		$thisMonth = new \DateTimeImmutable(date('Y-m-01'), $tz);
 		$yesterday = new \DateTimeImmutable('yesterday', $tz);
 		$plan = [];
 		foreach ($sites as $site) {
 			$months = [];
-			for ($m = $jan; $m <= $thisMonth; $m = $m->modify('+1 month')) {
+			for ($m = $first; $m <= $thisMonth; $m = $m->modify('+1 month')) {
 				$current = $m == $thisMonth;
 				$end = $current ? $yesterday : $m->modify('last day of this month');
 				if ($end < $m) {
@@ -459,7 +460,7 @@ final class MonitorCollector
 			$plan[] = [$site, $months];
 		}
 		$estimate = array_sum(array_map(static fn ($p) => count($p[1]), $plan));
-		$summary = count($sites) . " sites, every incomplete month this year: about $estimate calls (no limit)";
+		$summary = count($sites) . " sites, every incomplete month from {$first->format('Y-m')}: about $estimate calls (no limit)";
 		if ($dryRun) {
 			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
 		}

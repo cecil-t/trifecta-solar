@@ -36,7 +36,7 @@ declare(strict_types=1);
  *                                             totals (SolarEdge 1 credit per site), --daily adds day-by-day values
  *                                             (1 call per site per month). Enphase fetches each day per system: last
  *                                             month and this month, or all year with --daily. Growatt always fills every
- *                                             day of the year (1 call per site per month). Refuses when over the
+ *                                             day from the chart's first month (1 call per site per month). Refuses when over the
  *                                             vendor's allowance unless --force. --months instead fills whole-month
  *                                             totals for the 12 months before this one (the Monitor page's chart): SolarEdge 1
  *                                             credit per site. Run --dry-run first to see the cost
