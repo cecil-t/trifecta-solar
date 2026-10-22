@@ -33,13 +33,13 @@ final class Growatt
 	// ---- data -----------------------------------------------------------------------------------
 
 	/** Any Shiner GET (e.g. /web/v1/sites/1/50?name=&filter=). A request with no reply at all is tried once more. */
-	public static function get(string $path): array
+	public static function get(string $path, int $timeout = 30): array
 	{
 		self::dropOldSession();
-		$r = self::request($path);
+		$r = self::request($path, $timeout);
 		if ($r['status'] === 0) {
 			sleep(5);
-			$r = self::request($path);
+			$r = self::request($path, $timeout);
 		}
 		$note = match (true) {
 			$r['status'] === 401, $r['status'] === 403 => 'Growatt refused the sign-in (HTTP ' . $r['status'] . '). Check GROWATT_USERNAME and GROWATT_PASSWORD in .env.',
@@ -64,7 +64,8 @@ final class Growatt
 			'endTime' => $end->format(DATE_RFC3339),
 			'type' => '1d',
 		]);
-		$r = self::get($path);
+		// A month of days for a large site can take Growatt a while to answer.
+		$r = self::get($path, 60);
 		$r['days'] = null;
 		$r['problem'] = null;
 		if ($r['status'] !== 200 || $r['note'] !== null || !is_array($r['json'])) {
@@ -91,6 +92,46 @@ final class Growatt
 		ksort($days);
 		$r['days'] = $days;
 		return $r;
+	}
+
+	/**
+	 * Every site on the account, from the site list (one request per 100 sites).
+	 *
+	 * @return array<int, array>
+	 */
+	public static function sites(): array
+	{
+		$sites = [];
+		for ($page = 1; $page <= 10; $page++) {
+			$r = self::get('/web/v1/sites/' . $page . '/100?name=&filter=');
+			$list = $r['json']['data']['list'] ?? null;
+			if ($r['status'] !== 200 || $r['note'] !== null || !is_array($list)) {
+				throw new \RuntimeException(trim(($r['note'] ?? '') . ' Site list: HTTP ' . $r['status'] . ($r['error'] ? ' ' . $r['error'] : '')));
+			}
+			$sites = array_merge($sites, $list);
+			if (empty($r['json']['data']['page']['nextPage'])) {
+				break;
+			}
+		}
+		return $sites;
+	}
+
+	/**
+	 * The local day a site's data can start: the earlier of its install date and the day it was created in
+	 * Shiner, or null when neither is given.
+	 */
+	public static function startDay(array $site, \DateTimeZone $tz): ?\DateTimeImmutable
+	{
+		$days = [];
+		foreach (['install_date', 'create_time'] as $key) {
+			if (is_string($site[$key] ?? null) && $site[$key] !== '') {
+				try {
+					$days[] = (new \DateTimeImmutable($site[$key]))->setTimezone($tz)->setTime(0, 0);
+				} catch (\Exception) {
+				}
+			}
+		}
+		return $days ? min($days) : null;
 	}
 
 	/**
@@ -163,14 +204,14 @@ final class Growatt
 
 	// ---- transport ------------------------------------------------------------------------------
 
-	private static function request(string $path): array
+	private static function request(string $path, int $timeout = 30): array
 	{
 		$ch = curl_init(self::BASE . $path);
 		$respHeaders = [];
 		curl_setopt_array($ch, [
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_FOLLOWLOCATION => false,
-			CURLOPT_TIMEOUT => 30,
+			CURLOPT_TIMEOUT => $timeout,
 			CURLOPT_ENCODING => '',
 			CURLOPT_USERAGENT => 'TrifectaTracker/1.0',
 			CURLOPT_HTTPAUTH => CURLAUTH_BASIC,

@@ -422,10 +422,12 @@ final class MonitorCollector
 	/**
 	 * Growatt: every day from the first month of the 13-month chart (monthsStart) through yesterday, from
 	 * the energy curve, one call per site per month (a month's days come in one reply), with completed
-	 * months also stored as monthly totals. Months already complete (a month
-	 * total and every day but at most one stored above zero) are skipped. Growatt has no call limit, so
-	 * there is no budget check; calls are spaced a second apart. $daily changes nothing here: the days come
-	 * with every month anyway.
+	 * months also stored as monthly totals. The site list (one call) gives each site's install date, and
+	 * months before it are not asked for. Months already complete (a month total, and every day since the
+	 * month or the install began but at most one stored above zero) are skipped. A month that fails is
+	 * listed and the backfill moves on, so running it again retries only what is missing; three failures
+	 * in a row stop it (Growatt is likely down). Growatt has no call limit, so there is no budget check;
+	 * calls are spaced a second apart. $daily changes nothing here: the days come with every month anyway.
 	 *
 	 * @return array<int, string>
 	 */
@@ -440,17 +442,32 @@ final class MonitorCollector
 		$first = new \DateTimeImmutable(self::monthsStart() . '-01', $tz);
 		$thisMonth = new \DateTimeImmutable(date('Y-m-01'), $tz);
 		$yesterday = new \DateTimeImmutable('yesterday', $tz);
+
+		// Install dates from the site list (a read, also in a dry run). Without it every month is asked for.
+		$starts = [];
+		$listNote = '';
+		try {
+			foreach (Growatt::sites() as $s) {
+				$starts[(string) ($s['id'] ?? '')] = Growatt::startDay($s, $tz);
+			}
+			$this->tick();
+		} catch (\Throwable $e) {
+			$listNote = ' (install dates not read: ' . $e->getMessage() . ')';
+		}
+
 		$plan = [];
 		foreach ($sites as $site) {
+			$start = $starts[(string) $site['vendor_site_id']] ?? null;
 			$months = [];
 			for ($m = $first; $m <= $thisMonth; $m = $m->modify('+1 month')) {
 				$current = $m == $thisMonth;
 				$end = $current ? $yesterday : $m->modify('last day of this month');
-				if ($end < $m) {
-					continue; // the 1st of the month: nothing complete yet
+				$from = $start !== null && $start > $m ? $start : $m;
+				if ($end < $from) {
+					continue; // before the install, or the 1st of this month
 				}
-				$want = (int) $end->format('j');
-				$have = (int) Db::value('SELECT COUNT(*) FROM monitor_daily WHERE site_id = ? AND date BETWEEN ? AND ? AND wh > 0', [$site['id'], $m->format('Y-m-d'), $end->format('Y-m-d')]);
+				$want = (int) $from->diff($end)->days + 1;
+				$have = (int) Db::value('SELECT COUNT(*) FROM monitor_daily WHERE site_id = ? AND date BETWEEN ? AND ? AND wh > 0', [$site['id'], $from->format('Y-m-d'), $end->format('Y-m-d')]);
 				$total = $current || Db::value('SELECT 1 FROM monitor_monthly WHERE site_id = ? AND month = ? AND wh > 0', [$site['id'], $m->format('Y-m')]);
 				if ($total && $have >= $want - 1) {
 					continue;
@@ -460,30 +477,45 @@ final class MonitorCollector
 			$plan[] = [$site, $months];
 		}
 		$estimate = array_sum(array_map(static fn ($p) => count($p[1]), $plan));
-		$summary = count($sites) . " sites, every incomplete month from {$first->format('Y-m')}: about $estimate calls (no limit)";
+		$summary = count($sites) . " sites, every incomplete month from {$first->format('Y-m')}: about $estimate calls (no limit)$listNote";
 		if ($dryRun) {
-			return [self::stamp() . " $label: would backfill $summary. Dry run: no calls made."];
+			return [self::stamp() . " $label: would backfill $summary. Dry run: only the site list was read."];
 		}
 		$runId = Db::insert('monitor_runs', ['vendor' => 'growatt', 'started_at' => now_utc()]);
 		$this->runId = $runId;
-		$ok = false;
 		$stored = 0;
-		try {
-			foreach ($plan as [$site, $months]) {
-				foreach ($months as [$m, $end, $current]) {
+		$failed = [];
+		$inARow = 0;
+		$stopped = null;
+		foreach ($plan as [$site, $months]) {
+			foreach ($months as [$m, $end, $current]) {
+				$this->tick();
+				try {
 					$days = Growatt::daily((string) $site['vendor_site_id'], $m, $end);
-					$this->tick();
-					$stored += self::storeGrowattDays((int) $site['id'], $days);
-					if (!$current) {
-						self::setMonthly((int) $site['id'], $m->format('Y-m'), array_sum($days) * 1000);
+				} catch (\Throwable $e) {
+					$failed[] = ($site['name'] ?: $site['vendor_site_id']) . ' ' . $m->format('Y-m');
+					if (++$inARow >= 3) {
+						$stopped = $e->getMessage();
+						break 2;
 					}
-					usleep(1_000_000);
+					continue;
 				}
+				$inARow = 0;
+				$stored += self::storeGrowattDays((int) $site['id'], $days);
+				if (!$current) {
+					self::setMonthly((int) $site['id'], $m->format('Y-m'), array_sum($days) * 1000);
+				}
+				usleep(1_000_000);
 			}
-			$ok = true;
+		}
+		$ok = !$failed;
+		if ($stopped !== null) {
+			$message = "Backfill stopped after 3 failures in a row: $stopped ($stored days stored)";
+		} else {
 			$message = "Backfill done: $summary; $stored days stored";
-		} catch (\Throwable $e) {
-			$message = 'Backfill stopped: ' . $e->getMessage() . " ($stored days stored)";
+		}
+		if ($failed) {
+			$message .= '. Failed (run it again to retry): ' . implode(', ', $failed);
 		}
 		Db::update('monitor_runs', $runId, ['finished_at' => now_utc(), 'calls' => $this->calls, 'ok' => $ok ? 1 : 0, 'message' => substr($message, 0, 500)]);
 		return [self::stamp() . " $label: $message ({$this->calls} calls)"];
