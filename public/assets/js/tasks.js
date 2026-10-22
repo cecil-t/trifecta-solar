@@ -173,19 +173,28 @@
 	document.querySelectorAll('.trow[data-id]').forEach(markOverdue);
 
 	// Collapsible phases. Phones start with only the current phase open; desktop starts with
-	// every phase open. Click a phase bar to open or close it; choices are remembered for this
-	// project during the browser session (separately for phone and desktop widths), and a
-	// #task-123 link always opens its phase.
+	// every phase open. Either way a phase whose steps were all resolved when the page loaded
+	// starts closed. Click a phase bar to open or close it; choices are remembered for this
+	// project during the browser session (separately for phone and desktop widths) and win over
+	// those defaults, and a #task-123 link always opens its phase.
 	const phone = window.matchMedia('(max-width: 760px)');
 	const current = 'phase-' + (document.getElementById('tasks')?.dataset.currentPhase || '');
-	const allPhases = [...document.querySelectorAll('.phase-block')].map((b) => b.id);
+	const complete = [...document.querySelectorAll('.phase-block')]
+		.filter((b) => { const c = b.querySelector('.phase-check'); return c && !c.hidden; })
+		.map((b) => b.id);
+	const desktopOpen = [...document.querySelectorAll('.phase-block')].map((b) => b.id)
+		.filter((id) => !complete.includes(id));
+	// On phones, the current phase, or the next unfinished one when it is already complete
+	// (e.g. Pre-Install fully resolved while waiting for the install to start).
+	const order = [...document.querySelectorAll('.phase-block')].map((b) => b.id);
+	const phoneFirst = order.slice(Math.max(0, order.indexOf(current))).find((id) => !complete.includes(id)) || current;
 	const key = () => 'open-phases-' + projectId + (phone.matches ? '-m' : '-d');
 	const readOpen = () => {
 		try {
 			const saved = sessionStorage.getItem(key());
 			if (saved !== null) return JSON.parse(saved);
 		} catch (e) { /* storage blocked */ }
-		return phone.matches ? [current] : allPhases;
+		return phone.matches ? [phoneFirst] : desktopOpen;
 	};
 	const writeOpen = (ids) => { try { sessionStorage.setItem(key(), JSON.stringify(ids)); } catch (e) { /* private mode */ } };
 	function applyPhases() {
