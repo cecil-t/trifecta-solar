@@ -117,12 +117,29 @@
 		target.title = cls && cls !== 'has-target' ? 'Past target date' + (cls === 'is-overdue-30' ? ' by 30+ days' : '') : '';
 	}
 
+	// Typing a year into a date field fires change at every digit (0002, 0020, 0202, 2026), so a
+	// year before 1900 means the person is still typing: wait, and put the saved date back if they
+	// leave the field like that.
+	const partialYear = (el) => el.type === 'date' && el.value !== '' && Number(el.value.slice(0, 4)) < 1900;
+
 	document.querySelectorAll('.trow[data-id]').forEach((row) => {
 		row.querySelectorAll('[data-field]').forEach((el) => {
+			el.dataset.saved = el.value;
+			if (el.type === 'date') {
+				el.addEventListener('blur', () => {
+					if (!partialYear(el)) return;
+					el.value = el.dataset.saved;
+					el.closest('.date-wrap')?.classList.toggle('has-date', !!el.value);
+					flashRow(row, 'error');
+					alert('Not saved: the year needs four digits, like 2026.');
+				});
+			}
 			el.addEventListener('change', async () => {
 				const field = el.dataset.field;
+				if (partialYear(el) || (el.type === 'date' && el.value === el.dataset.saved)) return;
 				try {
 					await save(row, field, el.value);
+					el.dataset.saved = el.value;
 					if (field === 'needed') {
 						row.classList.toggle('is-na', el.value === '0');
 						if (row.classList.contains('trow-task')) {

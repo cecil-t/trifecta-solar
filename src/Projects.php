@@ -198,7 +198,9 @@ final class Projects
 		foreach (['!Y-m-d', '!n/j/Y', '!m/d/Y'] as $fmt) {
 			$d = \DateTimeImmutable::createFromFormat($fmt, $s);
 			if ($d && $d->format(ltrim($fmt, '!')) === $s) {
-				return $d->format('Y-m-d');
+				// A year like 0002 or 0202 is a date field caught mid-typing, never a real date
+				$y = (int) $d->format('Y');
+				return $y >= 1900 && $y <= 2099 ? $d->format('Y-m-d') : null;
 			}
 		}
 		return null;

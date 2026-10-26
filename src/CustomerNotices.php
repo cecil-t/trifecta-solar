@@ -14,7 +14,8 @@ namespace App;
  *    completed; a task without sub-tasks has a completed date)
  *  - done:     this item has a completed date
  *  - target:   this item has a target date and no completed date (an upcoming event); a changed
- *              target date updates an uncleared line, or adds a new one once the old was cleared
+ *              target date adds a new line once the old one was cleared
+ * Under any rule, a changed date updates the uncleared line.
  *  - needed:   a question item is answered Yes
  */
 final class CustomerNotices
@@ -200,8 +201,9 @@ final class CustomerNotices
 		}
 		foreach ($due as $key => $d) {
 			if (isset($open[$key])) {
-				// A rescheduled event updates the line nobody has acted on yet
-				if ($d['notify_on'] === 'target' && (string) $open[$key]['event_date'] !== (string) $d['event_date']) {
+				// A changed date (rescheduled event, corrected completed date) updates the line nobody
+				// has acted on yet
+				if ((string) $open[$key]['event_date'] !== (string) $d['event_date']) {
 					Db::update('customer_notices', (int) $open[$key]['id'], ['event_date' => $d['event_date']]);
 					Activity::event('project', $projectId, 'Customer update changed: ' . $d['body'] . ', now ' . fmt_date($d['event_date']));
 				}
