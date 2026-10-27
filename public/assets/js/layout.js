@@ -44,6 +44,7 @@
 		selM: null,    // selected measurement index
 		face: null,    // highlighted Google roof face index
 		showRoof: !(saved && saved.roof_shown === false),
+		showLabels: (() => { try { return localStorage.getItem('layout.labels') !== 'off'; } catch (e) { return true; } })(),   // a viewing choice per browser, not part of the drawing
 		draft: null,
 	};
 	const notes = [];
@@ -806,6 +807,11 @@
 			labelLayer.remove();
 		}
 		labelLayer = el('g', { class: 'labels' }, L.arrays);
+		$('btn-labels').textContent = S.showLabels ? 'Hide labels' : 'Show labels';
+		$('btn-labels').setAttribute('aria-pressed', S.showLabels ? 'false' : 'true');
+		if (!S.showLabels) {
+			return;
+		}
 		const fs = 12 * S.view.mpp;
 		for (const a of S.arrays) {
 			if (!a.cells.length) {
@@ -1818,6 +1824,10 @@
 			svg.classList.add('is-panning');
 			return;
 		}
+		if (k === 'l' || k === 'L') {
+			toggleLabels();
+			return;
+		}
 		const tools = { v: 'select', a: 'draw', p: 'panels', m: 'measure' };
 		if (tools[k.toLowerCase()]) {
 			setTool(tools[k.toLowerCase()]);
@@ -1894,6 +1904,13 @@
 	$('new-mount').addEventListener('change', () => {
 		$('new-pitch').closest('label').hidden = $('new-mount').value === 'tracker';
 	});
+	const toggleLabels = () => {
+		S.showLabels = !S.showLabels;
+		try { localStorage.setItem('layout.labels', S.showLabels ? 'on' : 'off'); } catch (e) { /* storage off */ }
+		drawLabels();
+		hint(S.showLabels ? 'Array labels shown.' : 'Array labels hidden. The selected array\'s name is in the side panel. L shows them again.');
+	};
+	$('btn-labels').addEventListener('click', toggleLabels);
 	$('btn-roof-toggle').addEventListener('click', () => {
 		S.showRoof = !S.showRoof;
 		if (!S.showRoof) {

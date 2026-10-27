@@ -7,7 +7,7 @@ Draw the panels on the satellite view. Made for a computer screen, not a phone.
 - Set the **pitch** before judging the fit: on a steep roof the panels look shorter from above.
 - **Select (V):** move, turn, flip, duplicate or delete an array, and set its name, mount (roof, ground, tracker), module and shading. Names must be unique.
 - **Add / remove panels (P)** and **Measure (M).** Measurements read along the slope, rounded down to the inch: yellow ones are stretched by the slope, blue ones are flat.
-- Ctrl+Z and Ctrl+Y undo and redo. Right-drag pans with any tool. **Fit** zooms to the arrays.
+- Ctrl+Z and Ctrl+Y undo and redo. Right-drag pans with any tool. **Fit** zooms to the arrays. **Hide labels (L)** clears the array names off a busy roof; this browser remembers the choice.
 - More under **Tips and shortcuts** in the side panel.
 
 ## Proposal view

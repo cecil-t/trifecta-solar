@@ -79,6 +79,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			<div class="tool-group">
 				<button type="button" class="btn btn-small btn-secondary" id="btn-roof" title="Ask Google for the roof faces of the building in the middle of the map">Roof data</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-roof-toggle" title="Show or hide Google's roof faces on the map" hidden>Hide faces</button>
+				<button type="button" class="btn btn-small btn-ghost" id="btn-labels" aria-pressed="false" title="Show or hide the array names on the map (L). Only changes what you see here.">Hide labels</button>
 				<button type="button" class="btn btn-small btn-secondary" id="btn-pview" title="Choose what the proposal's aerial shows: move and zoom the map under a frame the shape of the proposal's picture">Proposal view</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
 				<button type="button" class="btn btn-small btn-ghost" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
@@ -198,7 +199,7 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 						<li><strong>Draw:</strong> click and drag a box. Started on a Google roof face, it lines up with the face and takes its pitch and direction; otherwise it lines up with the last array (or faces south). Turn it with the round handle, or Flip facing.</li>
 						<li><strong>Pitch</strong> shortens panels as seen from above (a 6/12 roof shows a 66 in panel as 59 in), so set it before judging the fit. Type 6/12, or a plain number for degrees (no degree sign needed).</li>
 						<li><strong>Pan:</strong> right-click and drag with any tool (or drag empty map with Select, or hold the space bar). <strong>Zoom:</strong> mouse wheel.</li>
-						<li><strong>Keys:</strong> V select, A draw, P panels, M measure, Esc cancel, Delete removes the selected array or measurement, arrows nudge 1 in (Shift: 1 ft), [ and ] turn it 0.5&deg; (Shift: 5&deg;), Ctrl+D duplicates, Ctrl+Z undo.</li>
+						<li><strong>Keys:</strong> V select, A draw, P panels, M measure, L hide or show labels, Esc cancel, Delete removes the selected array or measurement, arrows nudge 1 in (Shift: 1 ft), [ and ] turn it 0.5&deg; (Shift: 5&deg;), Ctrl+D duplicates, Ctrl+Z undo.</li>
 						<li><strong>Proposal view</strong> sets what the proposal's aerial shows: drag and zoom the map under the dashed frame (to show the house, barn or tree line too), then Save proposal view. Automatic view goes back to framing the arrays.</li>
 						<li><strong>Trackers</strong> are drawn flat, with a dashed red circle for the space the table sweeps as it turns.</li>
 						<li>Satellite photos aren't perfect: tall roofs lean a little, and roof edges include the gutter and overhang.</li>
