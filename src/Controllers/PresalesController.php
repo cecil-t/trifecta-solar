@@ -50,7 +50,14 @@ final class PresalesController
 			$status = 'all';
 		}
 		[$vis, $params] = Presales::visibleWhere();
+		// Admins can narrow the list to one salesperson (salespeople only see their own anyway)
+		$person = Auth::isAdmin() ? max(0, (int) ($_GET['sales'] ?? 0)) : 0;
+		if ($person) {
+			$vis .= ' AND o.salesperson_id = ?';
+			$params[] = $person;
+		}
 		$where = [$vis];
+		$visParams = $params;
 		if ($status !== 'all') {
 			$where[] = 'o.status = ?';
 			$params[] = $status;
@@ -74,11 +81,16 @@ final class PresalesController
 			$params
 		);
 		$counts = ['all' => 0];
-		foreach (Db::all('SELECT status, COUNT(*) AS n FROM presales_opportunities o WHERE ' . $vis . ' GROUP BY status', Presales::visibleWhere()[1]) as $r) {
+		foreach (Db::all('SELECT status, COUNT(*) AS n FROM presales_opportunities o WHERE ' . $vis . ' GROUP BY status', $visParams) as $r) {
 			$counts[$r['status']] = (int) $r['n'];
 			$counts['all'] += (int) $r['n'];
 		}
-		View::render('presales/index', ['title' => 'Sales', 'rows' => $rows, 'status' => $status, 'q' => $q, 'counts' => $counts]);
+		$people = Auth::isAdmin()
+			? Db::all('SELECT id, name FROM users WHERE is_active = 1 AND (is_sales = 1 OR is_admin = 1)
+				OR id IN (SELECT salesperson_id FROM presales_opportunities WHERE salesperson_id IS NOT NULL) ORDER BY name')
+			: [];
+		View::render('presales/index', ['title' => 'Sales', 'rows' => $rows, 'status' => $status, 'q' => $q, 'counts' => $counts,
+			'person' => $person, 'people' => $people]);
 	}
 
 	public function create(): void

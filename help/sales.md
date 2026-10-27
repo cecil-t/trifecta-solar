@@ -5,6 +5,7 @@ Jobs being quoted, before they become projects. A salesperson sees the opportuni
 - An opportunity is one customer and one site being quoted. A repeat customer gets a new opportunity for each new site or expansion.
 - **New opportunity:** the customer (pick one or add one), salesperson, lead source, site address and the utility bill. Saving opens its first build sheet.
 - **Tabs:** Open, Sold and Lost. **Prospect** marks a customer with no projects yet.
+- **Salesperson** (admins): narrow the list and its tab counts to one salesperson's opportunities.
 
 ## The opportunity page
 

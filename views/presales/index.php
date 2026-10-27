@@ -7,8 +7,11 @@ use App\Projects;
  * @var string $status  open | sold | lost | all
  * @var string $q       search text
  * @var array  $counts  per status
+ * @var int    $person  salesperson filter (admins only; 0 = everyone)
+ * @var array  $people  salesperson choices (empty for non-admins)
  */
 $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
+$tabUrl = static fn (string $key) => '/presales?' . http_build_query(array_filter(['status' => $key, 'sales' => $person ?: null], static fn ($v) => $v !== null));
 ?>
 <div class="page-head">
 	<div>
@@ -26,11 +29,20 @@ $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 
 <div class="tabs">
 	<?php foreach ($tabs as $key => $label): ?>
-		<a href="/presales?status=<?= $key ?>" class="tab <?= $status === $key ? 'active' : '' ?>"><?= e($label) ?> <span class="tab-count"><?= (int) ($counts[$key] ?? 0) ?></span></a>
+		<a href="<?= e($tabUrl($key)) ?>" class="tab <?= $status === $key ? 'active' : '' ?>"><?= e($label) ?> <span class="tab-count"><?= (int) ($counts[$key] ?? 0) ?></span></a>
 	<?php endforeach; ?>
 </div>
 
 <form class="filters" method="get" action="/presales">
+	<?php if ($people): ?>
+		<input type="hidden" name="status" value="<?= e($status) ?>">
+		<select name="sales" data-autosubmit aria-label="Salesperson">
+			<option value="">Everyone</option>
+			<?php foreach ($people as $u): ?>
+				<option value="<?= (int) $u['id'] ?>" <?= $person === (int) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option>
+			<?php endforeach; ?>
+		</select>
+	<?php endif; ?>
 	<input type="search" name="q" value="<?= e($q) ?>" placeholder="Search name, customer, address">
 	<button class="btn btn-secondary btn-small">Search</button>
 </form>
