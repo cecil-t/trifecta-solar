@@ -1883,6 +1883,8 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .layout-list .m-key { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; background: #ffd400; border: 1px solid #6b5800; align-self: center; }
 .layout-list .m-flat .m-key { background: #5fd3ff; border-color: #005a73; }
 .layout-svg .measure-end { fill: #ffd400; stroke: #3d3000; stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.layout-list .m-show { flex-basis: 100%; gap: .35rem; padding-left: 1rem; font-weight: 400; cursor: pointer; }
+.layout-list .m-show input { width: 15px; height: 15px; margin: 0; }
 .layout-svg[data-tool="select"] .measure-hit { cursor: move; }
 .layout-svg[data-tool="select"] .m.is-sel .measure-end { pointer-events: all; cursor: grab; }
 .layout-svg:not([data-tool="select"]) .measure-hit, .layout-svg:not([data-tool="select"]) .roof-face { pointer-events: none; }

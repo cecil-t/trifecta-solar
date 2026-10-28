@@ -542,7 +542,8 @@
 		frameEl.style.width = f.w + 'px';
 		frameEl.style.height = f.h + 'px';
 	}
-	// The same automatic framing as the proposal: panels and tracker circles, a margin, then the aspect
+	// The same automatic framing as the proposal: panels, tracker circles and measurements shown on the
+	// proposal, a margin, then the aspect
 	const autoView = () => {
 		const pts = S.arrays.flatMap(corners);
 		if (!pts.length) {
@@ -557,6 +558,10 @@
 				ys.push(sw.cy - sw.r, sw.cy + sw.r);
 			}
 		}
+		S.measures.filter((m) => m.show).forEach((m) => {
+			xs.push(m.x1, m.x2);
+			ys.push(m.y1, m.y2);
+		});
 		const pad = Math.max(4, 0.15 * Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)));
 		let x0 = Math.min(...xs) - pad;
 		let y0 = Math.min(...ys) - pad;
@@ -1128,6 +1133,23 @@
 			$('sel-stats').textContent = stats;
 		}
 
+		// "Show on proposal": drawn with its length on the proposal's aerial (off unless ticked)
+		const showBox = (m) => {
+			const lab = html('label', 'check m-show small');
+			const cb = html('input');
+			cb.type = 'checkbox';
+			cb.checked = !!m.show;
+			cb.addEventListener('change', () => {
+				if (cb.checked) {
+					m.show = true;
+				} else {
+					delete m.show;
+				}
+				commit();
+			});
+			lab.append(cb, ' Show on proposal');
+			return lab;
+		};
 		const ml = $('measure-list');
 		ml.replaceChildren();
 		S.measures.forEach((m, i) => {
@@ -1136,6 +1158,7 @@
 				html('span', 'small muted', ' ' + slopeText(m)),
 				button('btn btn-ghost btn-small', '×', 'Remove this measurement', () => removeMeasure(i)));
 			li.lastChild.setAttribute('aria-label', 'Remove this measurement');
+			li.append(showBox(m));
 			ml.append(li);
 		});
 		if (!S.measures.length) {

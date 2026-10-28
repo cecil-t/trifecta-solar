@@ -261,6 +261,9 @@ final class Layout
 				'pitch' => round($num($m['pitch'] ?? 0, 0, 75, 'measurement pitch'), 2), 'az' => round($num($m['az'] ?? 0, -720, 720, 'measurement azimuth'), 2),
 				'src' => preg_match('/^(flat|typed|arr:[a-z0-9]{1,16}|face:\d{1,3})$/', (string) ($m['src'] ?? '')) ? (string) $m['src'] : 'flat',
 			];
+			if (($m['show'] ?? false) === true) {   // drawn on the proposal's aerial
+				$out['measures'][array_key_last($out['measures'])]['show'] = true;
+			}
 		}
 		$roof = $in['roof'] ?? null;
 		if (is_array($roof) && is_array($roof['segments'] ?? null)) {
@@ -453,6 +456,49 @@ final class Layout
 		return number_format($m2 * 10.7639104) . ' sq ft';
 	}
 
+	/** Feet and inches, rounded down to the inch, like the layout page's measurements ("0' 7"" reads 7"). */
+	public static function feetDown(float $m): string
+	{
+		$in = (int) floor($m / 0.0254 + 1e-6);
+		return $in >= 12 ? intdiv($in, 12) . "' " . ($in % 12) . '"' : $in . '"';
+	}
+
+	/**
+	 * A measurement's length in meters along the roof, as layout.js trueLength() reads it: the
+	 * saved slope (pitch and the direction it faces) stretches the part of the line running up it.
+	 * A typed pitch slopes up the line itself.
+	 */
+	public static function measureLength(array $m): float
+	{
+		$dx = (float) $m['x2'] - (float) $m['x1'];
+		$dy = (float) $m['y2'] - (float) $m['y1'];
+		$src = (string) ($m['src'] ?? 'flat');
+		$pitch = $src === 'flat' ? 0.0 : (float) ($m['pitch'] ?? 0);
+		if ($pitch <= 0) {
+			return hypot($dx, $dy);
+		}
+		$t = $src === 'typed' ? atan2(-$dx, $dy) : deg2rad((float) ($m['az'] ?? 0));
+		$across = $dx * cos($t) + $dy * sin($t);
+		$up = -$dx * sin($t) + $dy * cos($t);
+		return hypot($across, $up / cos(deg2rad($pitch)));
+	}
+
+	/**
+	 * Measurements ticked "Show on proposal".
+	 *
+	 * @return list<array{0:float, 1:float, 2:float, 3:float, 4:string}>  x1, y1, x2, y2 in map meters, label
+	 */
+	public static function shownMeasures(array $layout): array
+	{
+		$out = [];
+		foreach ((array) ($layout['measures'] ?? []) as $m) {
+			if (is_array($m) && !empty($m['show']) && isset($m['x1'], $m['y1'], $m['x2'], $m['y2'])) {
+				$out[] = [(float) $m['x1'], (float) $m['y1'], (float) $m['x2'], (float) $m['y2'], self::feetDown(self::measureLength($m))];
+			}
+		}
+		return $out;
+	}
+
 	/** Feet and inches, rounded up to the inch (material lengths). */
 	public static function feetUp(float $m): string
 	{
@@ -607,7 +653,8 @@ final class Layout
 
 	/**
 	 * The box the proposal's aerial shows, in map meters [x, y, width, height]: the saved proposal
-	 * view, else the arrays (and tracker sweep circles) with a margin, widened to the aspect.
+	 * view, else the arrays (tracker sweep circles and measurements shown on the proposal too) with
+	 * a margin, widened to the aspect.
 	 * Null when there are no panels. (layout.js has the same automatic framing.)
 	 */
 	public static function proposalBox(array $layout, float $aspect = self::PROPOSAL_ASPECT): ?array
@@ -634,6 +681,10 @@ final class Layout
 		foreach (self::sweeps($layout) as [$cx, $cy, $r]) {
 			array_push($xs, $cx - $r, $cx + $r);
 			array_push($ys, $cy - $r, $cy + $r);
+		}
+		foreach (self::shownMeasures($layout) as [$x1, $y1, $x2, $y2]) {
+			array_push($xs, $x1, $x2);
+			array_push($ys, $y1, $y2);
 		}
 		$pad = max(4.0, 0.15 * max(max($xs) - min($xs), max($ys) - min($ys)));
 		$x0 = min($xs) - $pad;
@@ -670,6 +721,18 @@ final class Layout
 			}
 		}
 		return $n;
+	}
+
+	/** Measurements shown on the proposal with an end outside the saved proposal view (0 with automatic framing). */
+	public static function measuresOutsideView(array $layout): int
+	{
+		$box = !empty($layout['pview']) ? self::proposalBox($layout) : null;
+		if (!$box) {
+			return 0;
+		}
+		[$x0, $y0, $w, $h] = $box;
+		$out = static fn (float $x, float $y): bool => $x < $x0 || $x > $x0 + $w || $y < $y0 || $y > $y0 + $h;
+		return count(array_filter(self::shownMeasures($layout), static fn ($m) => $out($m[0], $m[1]) || $out($m[2], $m[3])));
 	}
 
 	/**
@@ -723,8 +786,29 @@ final class Layout
 		foreach ($sweeps as [$cx, $cy, $r]) {
 			$svg .= '<circle cx="' . $f($cx) . '" cy="' . $f($cy) . '" r="' . $f($r) . '" fill="none" stroke="#d62d20" stroke-width="' . $f(max(0.06, $w / 500)) . '" stroke-dasharray="' . $f(max(0.3, $w / 120)) . ' ' . $f(max(0.2, $w / 200)) . '"/>';
 		}
-		// North arrow and a scale bar, sized to the frame
 		$u = $w / 100;
+		// Measurements ticked "Show on proposal": a yellow line with a dark edge, end ticks, and the
+		// length in a white box at the middle (rounded down to the inch, as on the layout page)
+		$fs = 1.6 * $u;
+		foreach (self::shownMeasures($layout) as [$x1, $y1, $x2, $y2, $label]) {
+			$len = hypot($x2 - $x1, $y2 - $y1);
+			if ($len < 0.01) {
+				continue;
+			}
+			[$nx, $ny] = [-($y2 - $y1) / $len * 0.9 * $u, ($x2 - $x1) / $len * 0.9 * $u];   // tick half-length, across the line
+			$path = 'M' . $f($x1) . ' ' . $f($y1) . ' L' . $f($x2) . ' ' . $f($y2)
+				. ' M' . $f($x1 + $nx) . ' ' . $f($y1 + $ny) . ' L' . $f($x1 - $nx) . ' ' . $f($y1 - $ny)
+				. ' M' . $f($x2 + $nx) . ' ' . $f($y2 + $ny) . ' L' . $f($x2 - $nx) . ' ' . $f($y2 - $ny);
+			$svg .= '<g><path d="' . $path . '" fill="none" stroke="#1c2830" stroke-width="' . $f(0.5 * $u) . '" stroke-linecap="round"/>'
+				. '<path d="' . $path . '" fill="none" stroke="#ffd400" stroke-width="' . $f(0.22 * $u) . '" stroke-linecap="round"/>';
+			$mx = ($x1 + $x2) / 2;
+			$my = ($y1 + $y2) / 2;
+			$bw = mb_strlen($label) * 0.56 * $fs + 1.2 * $u;
+			$svg .= '<rect x="' . $f($mx - $bw / 2) . '" y="' . $f($my - 1.4 * $u) . '" width="' . $f($bw) . '" height="' . $f(2.6 * $u) . '" rx="' . $f(0.5 * $u)
+				. '" fill="#ffffff" fill-opacity="0.9" stroke="#1c2830" stroke-width="' . $f(0.08 * $u) . '"/>'
+				. '<text x="' . $f($mx) . '" y="' . $f($my + 0.55 * $u) . '" font-size="' . $f($fs) . '" font-family="Liberation Sans, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#1c2830">' . e($label) . '</text></g>';
+		}
+		// North arrow and a scale bar, sized to the frame
 		$nx = $x0 + $w - 4 * $u;
 		$ny = $y0 + 3 * $u;
 		$svg .= '<g><circle cx="' . $f($nx) . '" cy="' . $f($ny + 2.2 * $u) . '" r="' . $f(2.6 * $u) . '" fill="#ffffff" fill-opacity="0.85"/>'
