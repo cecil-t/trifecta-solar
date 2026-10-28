@@ -789,7 +789,7 @@ final class Layout
 		$u = $w / 100;
 		// Measurements ticked "Show on proposal": a yellow line with a dark edge, end ticks, and the
 		// length in a white box at the middle (rounded down to the inch, as on the layout page)
-		$fs = 1.6 * $u;
+		$fs = 1.2 * $u;   // about 6 pt on the printed frame, smaller than the scale bar's text
 		foreach (self::shownMeasures($layout) as [$x1, $y1, $x2, $y2, $label]) {
 			$len = hypot($x2 - $x1, $y2 - $y1);
 			if ($len < 0.01) {
@@ -803,10 +803,10 @@ final class Layout
 				. '<path d="' . $path . '" fill="none" stroke="#ffd400" stroke-width="' . $f(0.22 * $u) . '" stroke-linecap="round"/>';
 			$mx = ($x1 + $x2) / 2;
 			$my = ($y1 + $y2) / 2;
-			$bw = mb_strlen($label) * 0.56 * $fs + 1.2 * $u;
-			$svg .= '<rect x="' . $f($mx - $bw / 2) . '" y="' . $f($my - 1.4 * $u) . '" width="' . $f($bw) . '" height="' . $f(2.6 * $u) . '" rx="' . $f(0.5 * $u)
+			$bw = mb_strlen($label) * 0.56 * $fs + 0.8 * $u;
+			$svg .= '<rect x="' . $f($mx - $bw / 2) . '" y="' . $f($my - 1.0 * $u) . '" width="' . $f($bw) . '" height="' . $f(1.9 * $u) . '" rx="' . $f(0.4 * $u)
 				. '" fill="#ffffff" fill-opacity="0.9" stroke="#1c2830" stroke-width="' . $f(0.08 * $u) . '"/>'
-				. '<text x="' . $f($mx) . '" y="' . $f($my + 0.55 * $u) . '" font-size="' . $f($fs) . '" font-family="Liberation Sans, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#1c2830">' . e($label) . '</text></g>';
+				. '<text x="' . $f($mx) . '" y="' . $f($my + 0.42 * $u) . '" font-size="' . $f($fs) . '" font-family="Liberation Sans, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#1c2830">' . e($label) . '</text></g>';
 		}
 		// North arrow and a scale bar, sized to the frame
 		$nx = $x0 + $w - 4 * $u;
