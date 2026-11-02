@@ -392,6 +392,10 @@ final class PresalesController
 		$months = (int) ($_POST['bill_months'] ?? 1);
 		$months = $months >= 1 && $months <= 12 ? $months : 1;
 		$ptc = $num('ptc_cents', 'Price to Compare', 0.01, 100);
+		if ($ptc !== null && $ptc < 1) {
+			// A dollar figure typed into the cents field (0.1308 for 13.08 cents) pays the true-up at 1/100th
+			throw new \InvalidArgumentException('Price to Compare is in cents per kWh, e.g. 13.08 (not 0.1308).');
+		}
 		if (($total === null) !== ($kwh === null)) {
 			throw new \InvalidArgumentException('Rate from the bill: enter both the bill total and the kWh on the bill, or neither.');
 		}
