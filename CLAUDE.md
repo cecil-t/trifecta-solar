@@ -30,6 +30,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
   - A Content Security Policy (sent from `public/index.php`) allows scripts and styles only from this site, with no inline script. So no `<script>` blocks, no `onclick=`/`onsubmit=`/`onchange=` attributes and no `style=` attributes in views. Use the data attributes `app.js` handles (`data-href` rows, `data-confirm` forms and buttons, `data-autosubmit` selects, `data-print`, `data-toggle-next-row`, `.year-toggle`) or a script file in `public/assets/js/`.
   - Validate input on the server in each controller's `input()`; SQL uses `?` placeholders only; every POST carries `Csrf::field()`.
   - Return paths from `back` parameters go through `local_path()`.
+- Inputs whose unit invites a decimal slip (percent typed as a fraction, dollars in a cents field, cents in a $/W field) get an entry in `App\UnitGuard::FIELDS` with the believable range, checked on save. New fields like that get one too.
 - UI wording: "Completed" (never "Done" or "Archived"), "Tasks" for to-dos, and "Open items" for project steps on the dashboard.
 - Search on Projects, Service and Tasks always switches to the All tab.
 - In-app help: `help/<slug>.md` (short, one screen or a little more; `## ` headings, `- ` bullets, `**bold**`, links to app paths only), registered in `App\Help::TOPICS`, shown by `help_link('<slug>')` inside a page's `<h1>`. Greg asks when he wants the help updated; when a change makes a help page wrong, say so in the reply.
