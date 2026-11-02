@@ -224,9 +224,19 @@ final class Designs
 		$f['install_type'] = array_key_exists((string) ($post['install_type'] ?? ''), Projects::INSTALL_TYPES) ? $post['install_type'] : null;
 		$f['inverter_internet'] = array_key_exists((string) ($post['inverter_internet'] ?? ''), Projects::INVERTER_INTERNET) ? $post['inverter_internet'] : null;
 		$f['tax_exempt'] = empty($post['tax_exempt']) ? 0 : 1;
-		$f['tax_rate'] = ($num($post['tax_rate'] ?? '', 'Tax rate') ?? 0) / 100;
+		// Unit slips (a percent typed as a fraction, cents in a dollars field) stop a full save only
+		$slip = static function (string $key, ?float $v, string $label) use ($strict): void {
+			if ($strict) {
+				UnitGuard::check($key, $v, $label);
+			}
+		};
+		$tax = $num($post['tax_rate'] ?? '', 'Tax rate');
+		$slip('tax_rate', $tax, 'Sales tax');
+		$f['tax_rate'] = ($tax ?? 0) / 100;
 		$f['tax_note'] = trim((string) ($post['tax_note'] ?? '')) ?: null;
-		$f['markup'] = ($num($post['markup'] ?? '', 'Markup') ?? 0) / 100;
+		$markup = $num($post['markup'] ?? '', 'Markup');
+		$slip('markup', $markup, 'Markup');
+		$f['markup'] = ($markup ?? 0) / 100;
 		$floor = Presales::num('markup_floor');
 		if ($strict && $f['markup'] < $floor - 0.0000001) {
 			throw new \InvalidArgumentException('Markup can\'t go below ' . Presales::pct($floor) . ', the floor on the Rates page.');
@@ -272,6 +282,9 @@ final class Designs
 		$f['labor_value'] = $num($post['labor_value'] ?? '', 'Labor price') ?? 0;
 		if ($strict && $f['labor_value'] <= 0) {
 			throw new \InvalidArgumentException('Labor price can\'t be zero. The default per watt is on the Rates page.');
+		}
+		if ($f['labor_mode'] === 'per_watt') {
+			$slip('labor_per_watt', $f['labor_value'], 'Labor price');
 		}
 		$f['labor_rate'] = $num($post['labor_rate'] ?? '', 'Labor rate') ?? 0;
 		// Site visit is a catalog line now; only build sheets from before commission plans keep the field
@@ -556,6 +569,10 @@ final class Designs
 				$fail($label . ' must be ' . $low . ' to ' . $high . ' (' . $unit . ').');
 				continue;
 			}
+			if (($msg = UnitGuard::problem($k, $v, $label)) !== null) {
+				$fail($msg);
+				continue;
+			}
 			$own[$k] = $v;
 		}
 		$dep = (string) ($post['savings']['dep'] ?? '');
@@ -581,6 +598,10 @@ final class Designs
 				$fail('Each incentive needs an amount (dollars, or a percent of the price up to 100).');
 				continue;
 			}
+			if (($msg = UnitGuard::problem($kind === 'pct' ? 'incentive_pct' : 'incentive_amt', $v, $label ?: 'Incentive')) !== null) {
+				$fail($msg);
+				continue;
+			}
 			$inc[] = ['label' => mb_substr($label ?: 'Incentive', 0, 80), 'kind' => $kind, 'value' => $v,
 				'timing' => ($r['timing'] ?? '') === 'year1' ? 'year1' : 'upfront'];
 		}
@@ -592,6 +613,8 @@ final class Designs
 		$f['finance_years'] = $years === null ? null : (int) round($years);
 		if ($f['finance_rate'] !== null && ($f['finance_rate'] < 0 || $f['finance_rate'] > 40)) {
 			$fail('The loan rate is a yearly percent, 0 to 40.');
+		} elseif (($msg = UnitGuard::problem('finance_rate', $f['finance_rate'], 'The loan rate')) !== null) {
+			$fail($msg);
 		}
 		if ($f['finance_years'] !== null && ($f['finance_years'] < 1 || $f['finance_years'] > 30)) {
 			$fail('The loan term is 1 to 30 years.');

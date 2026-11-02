@@ -125,6 +125,18 @@ final class PresalesRatesController
 				throw new \InvalidArgumentException($label . ' must be ' . $low . ' to ' . $high . ' (' . $unit . ').');
 			}
 		}
+		// Unit slips: a percent typed as a fraction, cents typed into a dollars field (App\UnitGuard)
+		$guard = ['tax_rate' => ['tax_rate', 'Sales tax'], 'markup_default' => ['markup', 'Default markup'], 'markup_floor' => ['markup', 'Markup floor'],
+			'handoff_share' => ['handoff_share', 'In-house handoff share'], 'contingency_cap' => ['contingency', 'Contingency cap'],
+			'labor_default' => ['labor_per_watt', 'Default labor price'], 'trench_vd_ac' => ['voltage_drop', 'AC voltage drop target'],
+			'trench_vd_dc' => ['voltage_drop', 'DC voltage drop target'], 'production_other_loss' => ['other_loss', 'Other system losses'],
+			'production_optimizer_loss' => ['optimizer_loss', 'Optimizer loss'], 'degradation_default' => ['degradation', 'Module degradation']];
+		foreach (\App\Savings::ASSUMPTIONS as $k => [$setting, $label]) {
+			$guard[$setting] = [$k, $label];
+		}
+		foreach ($guard as $setting => [$key, $label]) {
+			\App\UnitGuard::check($key, $num((string) ($post[$setting] ?? ''), $label, true), $label);
+		}
 		$days = (int) ($post['proposal_valid_days'] ?? 0);
 		$max = (int) ($post['proposal_valid_max'] ?? 0);
 		if ($days < 1 || $max < $days || $max > 365) {
@@ -175,10 +187,11 @@ final class PresalesRatesController
 		// Each utility's Price to Compare, for the true-up when OpenEI gives no generation part
 		foreach (Db::all('SELECT id, name, price_to_compare FROM utilities WHERE is_active = 1') as $u) {
 			$raw = trim((string) ($_POST['ptc'][$u['id']] ?? ''));
-			$v = $num($raw, $u['name'] . ' Price to Compare');
+			$v = $num($raw, $u['name'] . ' Price to Compare', true);
 			if ($v !== null && $v > 60) {
 				throw new \InvalidArgumentException($u['name'] . ' Price to Compare is in cents per kWh, e.g. 10.5.');
 			}
+			\App\UnitGuard::check('ptc_cents', $v, $u['name'] . ' Price to Compare');
 			$have = $u['price_to_compare'] === null ? null : (float) $u['price_to_compare'];
 			if (($v === null) !== ($have === null) || ($v !== null && abs($v - $have) > 0.00001)) {
 				Db::update('utilities', (int) $u['id'], ['price_to_compare' => $v, 'price_to_compare_at' => $v === null ? null : date('Y-m-d')]);
@@ -325,6 +338,7 @@ final class PresalesRatesController
 			if ($rate > 100) {
 				throw new \InvalidArgumentException($label . ': a rate can\'t be over 100%.');
 			}
+			\App\UnitGuard::check('tier_rate', $rate, $label . ' rate');
 			$upto = $num($r['upto'] ?? '', $label . ' limit', true);
 			if ($upto === null) {
 				$open++;

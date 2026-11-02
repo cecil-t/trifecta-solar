@@ -284,6 +284,7 @@ final class CatalogController
 			if ($data[$k] !== null && $data[$k] > 10) {
 				throw new \InvalidArgumentException('Degradation is a percent a year, e.g. 2 for the first year and 0.4 after.');
 			}
+			\App\UnitGuard::check('degradation', $data[$k], $k === 'degradation_first_pct' ? 'First-year degradation' : 'Annual degradation');
 		}
 		$years = static function (string $k, string $label) use ($num): ?int {
 			$y = $num($k, $label);
@@ -298,6 +299,7 @@ final class CatalogController
 		if ($data['domestic_content_pct'] !== null && $data['domestic_content_pct'] > 100) {
 			throw new \InvalidArgumentException('Domestic content is a percent, 0 to 100.');
 		}
+		\App\UnitGuard::check('domestic', $data['domestic_content_pct'], 'Domestic content');
 		// Module size for the site layout; a spec-sheet item has it in its spec values already
 		$spec = json_decode((string) $data['spec'], true) ?: [];
 		foreach (['length_mm' => 'Length', 'width_mm' => 'Width'] as $k => $label) {

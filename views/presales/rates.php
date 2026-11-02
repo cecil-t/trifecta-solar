@@ -130,7 +130,7 @@ $rules = $rules ?: [[]];
 		<div class="grid-form">
 			<?php foreach ($utilities as $u): ?>
 				<label><?= e($u['name']) ?> (cents per kWh)
-					<input type="text" name="ptc[<?= (int) $u['id'] ?>]" value="<?= e((string) ($ptcOld[$u['id']] ?? ($u['price_to_compare'] !== null ? $n($u['price_to_compare'], 4) : ''))) ?>" inputmode="decimal" placeholder="Not set" <?= $dis ?>>
+					<input type="text" name="ptc[<?= (int) $u['id'] ?>]" value="<?= e((string) ($ptcOld[$u['id']] ?? ((float) $u['price_to_compare'] > 0 ? $n($u['price_to_compare'], 4) : ''))) ?>" inputmode="decimal" placeholder="Not set" <?= $dis ?>>
 					<?php if ($u['price_to_compare_at']): ?><small class="hint">Set <?= e(fmt_date((string) $u['price_to_compare_at'])) ?></small><?php endif; ?>
 				</label>
 			<?php endforeach; ?>

@@ -518,7 +518,8 @@ final class Savings
 		}
 		if (!empty($o['utility_id'])) {
 			$u = Db::one('SELECT name, price_to_compare FROM utilities WHERE id = ?', [(int) $o['utility_id']]);
-			if ($u && $u['price_to_compare'] !== null) {
+			// 0 was saved for a blank field before 2026-11; it means not set, as on the opportunity
+			if ($u && (float) $u['price_to_compare'] > 0) {
 				return ['value' => (float) $u['price_to_compare'] / 100, 'source' => $u['name'] . '\'s Price to Compare (Rates page)'];
 			}
 		}
