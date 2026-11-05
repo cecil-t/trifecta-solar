@@ -85,14 +85,14 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 		<h2>Customer and site</h2>
 		<div class="grid-form">
 			<label class="span-2">Customer
-				<select name="customer_id" data-reveal="new" data-target="#new-customer">
+				<select name="customer_id" data-reveal="new" data-target="#new-customer" data-searchable="Type a customer name">
 					<option value="">Choose</option>
-					<option value="new" <?= $sel($v('customer_id'), 'new') ?>>+ New customer</option>
+					<option value="new" data-always <?= $sel($v('customer_id'), 'new') ?>>+ New customer</option>
 					<?php foreach ($customers as $c): ?><option value="<?= (int) $c['id'] ?>" <?= $sel($v('customer_id'), $c['id']) ?>><?= e($c['name']) ?></option><?php endforeach; ?>
 				</select>
 			</label>
 			<label class="span-2">Original project (if we installed it)
-				<select name="project_id" data-sets-customer="customer_id">
+				<select name="project_id" data-sets-customer="customer_id" data-searchable="Type a project number or name">
 					<option value="">None / not in the tracker</option>
 					<?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>" data-customer="<?= (int) $p['customer_id'] ?>" <?= $sel($v('project_id'), $p['id']) ?>><?= e($p['project_number'] . ' ' . $p['name']) ?></option><?php endforeach; ?>
 				</select>
@@ -166,5 +166,6 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 	</div>
 </form>
 
+<script src="<?= asset('assets/js/combobox.js') ?>"></script>
 <script src="<?= asset('assets/js/forms.js') ?>"></script>
 <script src="<?= asset('assets/js/address.js') ?>"></script>

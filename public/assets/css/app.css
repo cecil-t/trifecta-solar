@@ -2056,3 +2056,15 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .prod-months > summary { list-style: none; display: inline-block; }
 .prod-months > summary::-webkit-details-marker { display: none; }
 .prod-months[open] .table { margin-top: .5rem; }
+
+/* ---------- type-to-search dropdowns (select[data-searchable], combobox.js) ---------- */
+.combo { position: relative; }
+.combo-list { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: .25rem 0; list-style: none;
+	max-height: 18rem; overflow-y: auto; background: #fff; border: 1px solid #cdd5d0; border-radius: var(--radius-sm); box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
+	font-weight: 400; font-size: .92rem; }
+.combo-list li { padding: .45rem .7rem; cursor: pointer; }
+.combo-list li.is-active { background: var(--blue-50); color: var(--blue); }
+.combo-list li.combo-none { color: var(--muted); }
+.combo-list li.combo-empty { color: var(--muted); cursor: default; }
+.combo-group { color: var(--muted); font-size: .8rem; }
+.combo-list[hidden] { display: none; }
