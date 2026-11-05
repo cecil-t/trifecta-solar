@@ -315,6 +315,20 @@ final class Designs
 
 		$deposit = $num($post['deposit'] ?? '', 'Deposit');
 		$f['deposit'] = $deposit;
+		// Deposit override: a different amount than the tier, with a reason (Pricing uses it only then)
+		$depOverride = $num($post['deposit_override'] ?? '', 'Deposit override');
+		$depReason = trim((string) ($post['deposit_reason'] ?? ''));
+		$slip('deposit_amount', $depOverride, 'The deposit override');
+		if ($depOverride !== null && $strict) {
+			if ($depOverride <= 0) {
+				throw new \InvalidArgumentException('The deposit override must be more than $0. Leave it blank to use the tier.');
+			}
+			if ($depReason === '') {
+				throw new \InvalidArgumentException('Type a reason before overriding the deposit.');
+			}
+		}
+		$f['deposit_override'] = $depOverride;
+		$f['deposit_reason'] = $depOverride !== null ? (mb_substr($depReason, 0, 200) ?: null) : null;
 		// Schedule: a fresh pick copies the Rates page schedule; otherwise the build sheet keeps its
 		// own copy. Payment names can be changed per build sheet (milestone_labels). milestone_src
 		// names the schedule the shown names came from, so names typed after a pick are kept.
@@ -730,12 +744,13 @@ final class Designs
 	 */
 	public static function leadFacts(int $oppId): array
 	{
-		$o = $oppId ? Db::one('SELECT id, customer_id, lead_source, handoff_user_id, project_id FROM presales_opportunities WHERE id = ?', [$oppId]) : null;
+		$o = $oppId ? Db::one('SELECT id, customer_id, lead_source, handoff_user_id, project_id, customer_type, is_agricultural FROM presales_opportunities WHERE id = ?', [$oppId]) : null;
 		if (!$o) {
-			return ['lead_source' => null, 'handoff_user_id' => null, 'self_gen_allowed' => true];
+			return ['lead_source' => null, 'handoff_user_id' => null, 'self_gen_allowed' => true, 'deposit_class' => 'residential'];
 		}
 		return ['lead_source' => $o['lead_source'], 'handoff_user_id' => $o['handoff_user_id'],
-			'self_gen_allowed' => !Presales::isRepeatCustomer($o)];
+			'self_gen_allowed' => !Presales::isRepeatCustomer($o),
+			'deposit_class' => Presales::depositClass($o['customer_type'], (bool) $o['is_agricultural'])];
 	}
 
 	/**
@@ -791,6 +806,16 @@ final class Designs
 		}
 		if ($missing) {
 			$out[] = 'Nothing for ' . self::listing($missing) . ' yet. Add ' . (count($missing) === 1 ? 'it' : 'them') . ' unless this job really has none.';
+		}
+		// An overridden deposit: never the whole price, and on a home job PA's Home Improvement
+		// Consumer Protection Act limits the down payment to one third of the price
+		if ($calc['deposit_overridden'] && $calc['price'] > 0) {
+			$dep = (float) $d['deposit_override'];
+			if ($dep >= $calc['price']) {
+				$out[] = 'The deposit override is the whole price or more. Check the amount.';
+			} elseif (($d['deposit_class'] ?? 'residential') === 'residential' && $dep > $calc['price'] / 3) {
+				$out[] = 'The deposit is more than a third of the price. PA\'s Home Improvement Consumer Protection Act limits a home job\'s down payment to one third.';
+			}
 		}
 		if (!empty($has['modules']) && !empty($has['inverters']) && $calc['ratio'] !== null && ($calc['ratio'] > 2 || $calc['ratio'] < 0.95)) {
 			$out[] = 'The DC/AC ratio is ' . number_format($calc['ratio'], 2) . ', outside 0.95 to 2. Check the inverter size.';

@@ -265,7 +265,8 @@ final class Pricing
 
 		// Payments: fixed deposit, then milestones as % of the balance; each rounds up to $100
 		// except the last, which takes what is left so the total is exact.
-		$deposit = (float) ($d['deposit'] ?? 0);
+		$depOverridden = ($d['deposit_override'] ?? null) !== null && $d['deposit_override'] !== '' && trim((string) ($d['deposit_reason'] ?? '')) !== '';
+		$deposit = $depOverridden ? (float) $d['deposit_override'] : (float) ($d['deposit'] ?? 0);
 		$milestones = is_array($d['payment_milestones'] ?? null) ? $d['payment_milestones'] : (json_decode((string) ($d['payment_milestones'] ?? ''), true) ?: []);
 		$payments = [];
 		if ($price > 0) {
@@ -381,6 +382,7 @@ final class Pricing
 			'price_per_watt' => $dcWatts > 0 ? $price / $dcWatts : null,
 			'cost_per_watt' => $dcWatts > 0 ? $costTotal / $dcWatts : null,
 			'payments' => $payments,
+			'deposit_overridden' => $depOverridden,
 			'milestone_pct' => $milestonePct,
 			'steep_arrays' => $steepArrays,
 			'arrays_panels' => $arraysPanels,

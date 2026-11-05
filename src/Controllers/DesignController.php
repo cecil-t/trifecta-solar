@@ -312,6 +312,7 @@ final class DesignController
 				'capped' => $c['contingency_capped'],
 				'floor' => $c['contingency_floor_applied'],
 				'overridden' => $c['contingency_overridden'],
+				'deposit_overridden' => $c['deposit_overridden'],
 				'mismatch' => $c['panels_mismatch'],
 				'arrays_panels' => $c['arrays_panels'],
 				'milestones_bad' => abs($c['milestone_pct'] - 100) > 0.001,

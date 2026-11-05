@@ -40,6 +40,7 @@ final class UnitGuard
 		'incentive_pct'  => [1, null, 'is a percent of the price, e.g. 30 for 30% (not 0.3)', true],
 		'incentive_amt'  => [1, null, 'is in dollars. For a percent of the price, pick % and type 30 for 30%', true],
 		'annual_kwh'     => [100, null, 'is in kWh a year, e.g. 14,200 (not 14.2 MWh)', true],
+		'deposit_amount' => [100, null, 'is in dollars, e.g. 5000 for $5,000 (not 5)', true],
 	];
 
 	/** The message for a value that looks like a unit slip, else null. */

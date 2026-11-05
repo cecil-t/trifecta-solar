@@ -474,6 +474,7 @@
 		toggle('cont-capped', st.capped);
 		toggle('cont-floor', st.floor);
 		toggle('cont-overridden', st.overridden);
+		toggle('dep-overridden', st.deposit_overridden);
 		toggle('panels-mismatch', st.mismatch);
 		// Production estimate: what is still missing, and whether the saved estimate is out of date
 		if (res.production) {

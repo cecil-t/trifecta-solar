@@ -725,7 +725,7 @@ $folded = [];
 						<?php if (!$inList && $depSel !== null): ?><option value="<?= e($pf((float) $depSel, 2)) ?>" selected><?= e($m((float) $depSel)) ?> (not allowed for this size)</option><?php endif; ?>
 						<?php if (!$depositOptions && $depSel === null): ?><option value="">No deposit tiers set</option><?php endif; ?>
 					</select>
-					<small class="hint">Fixed by the <?= e($classLabel) ?> tiers and system size.</small>
+					<small class="hint">Fixed by the <?= e($classLabel) ?> tiers and system size, unless overridden below.</small>
 				</label>
 				<label class="span-2">Schedule
 					<select name="payment_template_id">
@@ -739,6 +739,15 @@ $folded = [];
 						<small class="hint text-red">"<?= e($newSchedule['name']) ?>" changed on the Rates page since this build sheet copied it. Pick it again above to use the new version (names changed here are replaced).</small>
 					<?php endif; ?>
 				</label>
+			</div>
+			<div class="grid-form mt-sm">
+				<label>Override deposit ($)
+					<input type="text" name="deposit_override" value="<?= e($d['deposit_override'] === null ? '' : $pf((float) $d['deposit_override'], 2)) ?>" inputmode="decimal" placeholder="Blank = tier">
+				</label>
+				<label class="span-2">Reason for the override
+					<input type="text" name="deposit_reason" value="<?= e((string) $d['deposit_reason']) ?>" maxlength="200" placeholder="e.g. Material deposit combined with the deposit">
+				</label>
+				<div class="self-end"><span class="chip chip-red" id="dep-overridden" <?= $calc['deposit_overridden'] ? '' : 'hidden' ?>>Overridden</span></div>
 			</div>
 			<input type="hidden" name="milestone_src" id="milestone-src" value="">
 			<div class="table-wrap mt-xs"><table class="table table-payments">
