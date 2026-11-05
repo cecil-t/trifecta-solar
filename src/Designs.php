@@ -111,6 +111,7 @@ final class Designs
 			'warranty_price' => $warranty ? (float) $warranty['price'] : null,
 			'warranty_name' => $warranty['name'] ?? null,
 			'warranty_is_solarinsure' => (int) ($warranty['is_solarinsure'] ?? 0),
+			'warranty_adder' => !empty($warranty['is_solarinsure']) ? Presales::num('solarinsure_adder') : null,
 			'labor_mode' => 'per_watt',
 			'labor_value' => Presales::num('labor_default'),
 			'labor_rate' => Presales::num('labor_rate'),
@@ -263,19 +264,21 @@ final class Designs
 		// Warranty program: keep the saved price unless the program changes
 		$wid = (int) ($post['warranty_item_id'] ?? 0);
 		if ($wid === (int) $d['warranty_item_id']) {
-			foreach (['warranty_item_id', 'warranty_price', 'warranty_name', 'warranty_is_solarinsure'] as $k) {
-				$f[$k] = $d[$k];
+			foreach (['warranty_item_id', 'warranty_price', 'warranty_name', 'warranty_is_solarinsure', 'warranty_adder'] as $k) {
+				$f[$k] = $d[$k] ?? null;
 			}
 		} elseif ($wid && isset($catalog[$wid]) && $catalog[$wid]['category'] === 'warranty') {
 			$f['warranty_item_id'] = $wid;
 			$f['warranty_price'] = (float) $catalog[$wid]['price'];
 			$f['warranty_name'] = $catalog[$wid]['name'];
 			$f['warranty_is_solarinsure'] = (int) $catalog[$wid]['is_solarinsure'];
+			$f['warranty_adder'] = $f['warranty_is_solarinsure'] ? Presales::num('solarinsure_adder') : null;
 		} else {
 			$f['warranty_item_id'] = null;
 			$f['warranty_price'] = null;
 			$f['warranty_name'] = null;
 			$f['warranty_is_solarinsure'] = 0;
+			$f['warranty_adder'] = null;
 		}
 
 		$f['labor_mode'] = ($post['labor_mode'] ?? '') === 'total' ? 'total' : 'per_watt';
@@ -898,7 +901,7 @@ final class Designs
 			$c = Db::one('SELECT * FROM catalog_items WHERE id = ? AND is_active = 1', [(int) $d['warranty_item_id']]);
 			if ($c) {
 				Db::update('presales_designs', (int) $d['id'], ['warranty_price' => (float) $c['price'], 'warranty_name' => $c['name'],
-					'warranty_is_solarinsure' => (int) $c['is_solarinsure']]);
+					'warranty_is_solarinsure' => (int) $c['is_solarinsure'], 'warranty_adder' => $c['is_solarinsure'] ? Presales::num('solarinsure_adder') : null]);
 			}
 		}
 		$fresh = self::find((int) $d['id']);

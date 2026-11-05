@@ -191,6 +191,7 @@ $folded = [];
 				<tr><th>Line items</th><td data-v="equipment_cost"><?= e($m($calc['equipment_cost'])) ?></td></tr>
 				<tr class="dt-sub"><th>includes sales tax</th><td data-v="tax_total"><?= e($m($calc['tax_total'])) ?></td></tr>
 				<tr><th>Warranty program</th><td data-v="warranty_cost"><?= e($m($calc['warranty_cost'])) ?></td></tr>
+				<?php if (!empty($d['warranty_is_solarinsure'])): ?><tr class="dt-sub"><th>Trifecta coverage behind SolarInsure</th><td data-v="warranty_adder_cost"><?= e($m($calc['warranty_adder_cost'])) ?></td></tr><?php endif; ?>
 				<tr><th>Labor</th><td data-v="labor"><?= e($m($calc['labor'])) ?></td></tr>
 				<?php if ($calc['plan'] === null || $calc['site_visit'] > 0): ?><tr><th>Site visit</th><td data-v="site_visit"><?= e($m($calc['site_visit'])) ?></td></tr><?php endif; ?>
 				<tr><th>Travel (lodging, per diem)</th><td data-v="expenses"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></td></tr>

@@ -133,6 +133,7 @@ foreach ($lines as $i => $l) {
 			<tbody>
 			<tr><td>Line items <span class="muted">(with tax)</span></td><td class="num"><?= e($m($calc['equipment_cost'])) ?></td></tr>
 			<tr><td>Warranty program</td><td class="num"><?= e($m($calc['warranty_cost'])) ?></td></tr>
+			<?php if (!empty($d['warranty_is_solarinsure'])): ?><tr><td>Trifecta coverage behind SolarInsure <span class="muted">(internal)</span></td><td class="num"><?= e($m($calc['warranty_adder_cost'])) ?></td></tr><?php endif; ?>
 			<tr><td>Labor<?= $calc['man_hours'] !== null ? ' <span class="muted">(' . e(number_format($calc['man_hours'], 1)) . ' man-hours)</span>' : '' ?></td><td class="num"><?= e($m($calc['labor'])) ?></td></tr>
 			<?php if ($calc['plan'] === null || $calc['site_visit'] > 0): ?><tr><td>Site visit</td><td class="num"><?= e($m($calc['site_visit'])) ?></td></tr><?php endif; ?>
 			<?php if ($calc['overnight'] + $calc['per_diem'] > 0): ?><tr><td>Travel <span class="muted">(<?= (int) $d['trip_nights'] ?> nights, <?= (int) $d['trip_crew'] ?> crew)</span></td><td class="num"><?= e($m($calc['overnight'] + $calc['per_diem'])) ?></td></tr><?php endif; ?>

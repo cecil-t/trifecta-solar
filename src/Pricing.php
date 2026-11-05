@@ -13,7 +13,8 @@ namespace App;
  *                      plus the extended warranty and SolarInsure add-ons when they apply
  *   line cost        = max(unit x qty + setup, minimum) + tax (6% on BOS always, on major
  *                      equipment unless the job is tax exempt; "tax included" and fees untaxed)
- *   base cost        = lines + warranty program + labor + overnight + per diem + site visit
+ *   base cost        = lines + warranty program (+ Trifecta coverage behind SolarInsure) + labor
+ *                      + overnight + per diem + site visit
  *   contingency      = base cost x rule % (capped), at least the minimum, or an override with a reason
  *   marked up        = (base cost + contingency) x (1 + markup)
  *   commission       = with a commission plan (tiers): the commissionable price P that covers its own
@@ -144,8 +145,9 @@ final class Pricing
 			];
 		}
 
-		// Warranty program (per DC watt, no tax)
+		// Warranty program (per DC watt, no tax), plus Trifecta's own coverage behind SolarInsure
 		$warrantyCost = (float) ($d['warranty_price'] ?? 0) * $dcWatts;
+		$warrantyAdder = !empty($d['warranty_is_solarinsure']) ? (float) ($d['warranty_adder'] ?? 0) * $dcWatts : 0.0;
 
 		// Labor
 		$laborValue = (float) ($d['labor_value'] ?? 0);
@@ -156,7 +158,7 @@ final class Pricing
 		$perDiem = (float) ($d['per_diem'] ?? 0);
 		$siteVisit = (float) ($d['site_visit'] ?? 0);
 
-		$baseCost = $equipCost + $warrantyCost + $labor + $overnight + $perDiem + $siteVisit;
+		$baseCost = $equipCost + $warrantyCost + $warrantyAdder + $labor + $overnight + $perDiem + $siteVisit;
 
 		// Contingency
 		$installType = (string) ($d['install_type'] ?? '');
@@ -333,6 +335,7 @@ final class Pricing
 			'equipment_cost' => $equipCost,
 			'tax_total' => $taxTotal,
 			'warranty_cost' => $warrantyCost,
+			'warranty_adder_cost' => $warrantyAdder,
 			'labor' => $labor,
 			'man_hours' => $manHours,
 			'overnight' => $overnight,

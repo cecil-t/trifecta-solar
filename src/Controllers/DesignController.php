@@ -259,6 +259,7 @@ final class DesignController
 				'equipment_cost' => $m($c['equipment_cost']),
 				'tax_total' => $m($c['tax_total']),
 				'warranty_cost' => $m($c['warranty_cost']),
+				'warranty_adder_cost' => $m($c['warranty_adder_cost']),
 				'labor' => $m($c['labor']),
 				'labor_pw' => $c['dc_watts'] > 0 ? Presales::perWatt($c['labor'] / $c['dc_watts']) : '-',
 				'man_hours' => self::manHoursText($c['man_hours']),
