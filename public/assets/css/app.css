@@ -349,7 +349,7 @@ tr.clickable { cursor: pointer; }
 /* task grid */
 .tasks-wrap { display: flex; flex-direction: column; gap: 1rem; }
 .phase-title { display: flex; align-items: baseline; gap: .75rem; padding: .9rem 1rem .4rem; }
-.phase-title h2 { margin: 0; }
+.phase-title h2 { margin: 0; flex-shrink: 0; }
 .tgrid { font-size: .88rem; }
 .trow {
 	display: grid; align-items: center; gap: .4rem;
@@ -564,7 +564,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.table-service th:nth-child(6), .table-service td:nth-child(6), .table-service th:nth-child(7), .table-service td:nth-child(7) { display: none; }
 	.table-service th, .table-service td { padding-left: .6rem; padding-right: .6rem; }
 }
-.table-visits td:nth-child(5) { white-space: normal; min-width: 180px; }
+.table-visits td:nth-child(6) { white-space: normal; min-width: 180px; }
 .quick-form { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--border); }
 .quick-form input { width: auto; flex: 1 1 110px; padding: .35rem .5rem; font-size: .85rem; }
 .quick-form input[type=date] { flex: 0 1 150px; }

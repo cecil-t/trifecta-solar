@@ -135,7 +135,8 @@ final class ReportController
 		$f = $this->filters('ytd', false, false);
 		$tickets = Db::all(
 			"SELECT t.*, (SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,
-					(SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours
+					(SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours,
+					(SELECT COALESCE(SUM(parts_cents), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS parts_cents
 			 FROM service_tickets t WHERE t.opened_on BETWEEN ? AND ?",
 			[$f['from'], $f['to']]
 		);
@@ -152,6 +153,7 @@ final class ReportController
 		}
 		$this->render('service', $f, [
 			'totals' => $this->svcSum($tickets), 'byCoverage' => $byCoverage, 'byMonth' => array_reverse($byMonth, true),
+			'tripRate' => \App\Presales::num('warranty_trip_rate'), 'hourRate' => \App\Presales::num('warranty_hour_rate'),
 		]);
 	}
 
@@ -308,6 +310,8 @@ final class ReportController
 		return [
 			'w_trips' => (int) array_sum(array_column($w, 'trips')),
 			'w_hours' => (float) array_sum(array_column($w, 'man_hours')),
+			'w_parts' => array_sum(array_map('intval', array_column($w, 'parts_cents'))) / 100,
+			'parts' => array_sum(array_map('intval', array_column($rows, 'parts_cents'))) / 100,
 			'tickets' => count($rows),
 			'trips' => (int) array_sum(array_column($rows, 'trips')),
 			'hours' => (float) array_sum(array_column($rows, 'man_hours')),

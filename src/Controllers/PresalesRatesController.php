@@ -83,7 +83,8 @@ final class PresalesRatesController
 			'trench_vd_ac', 'trench_vd_dc', 'trench_allowance_ft', 'trench_dc_amps', 'trench_dc_volts', 'referral_bonus', 'handoff_share',
 			'production_other_loss', 'production_optimizer_loss', 'production_sam_adjust', 'degradation_default',
 			'savings_escalation', 'savings_srec_price', 'savings_srec_decline', 'savings_srec_years', 'savings_years', 'savings_discount', 'savings_dep_fed_rate', 'savings_dep_state_rate',
-			'proposal_valid_days', 'proposal_valid_max', 'guarantee_pct', 'guarantee_years', 'guarantee_rate', 'layout_gap_in', 'layout_row_gap_in'];
+			'proposal_valid_days', 'proposal_valid_max', 'guarantee_pct', 'guarantee_years', 'guarantee_rate', 'layout_gap_in', 'layout_row_gap_in',
+			'solarinsure_adder', 'warranty_trip_rate', 'warranty_hour_rate'];
 		$skip = ['commission_tiers' => true, 'self_gen_tiers' => true, 'site_visit' => true];
 		// Trench builder choices come from fixed lists
 		$post = (array) ($_POST['settings'] ?? []);
@@ -130,7 +131,8 @@ final class PresalesRatesController
 			'handoff_share' => ['handoff_share', 'In-house handoff share'], 'contingency_cap' => ['contingency', 'Contingency cap'],
 			'labor_default' => ['labor_per_watt', 'Default labor price'], 'trench_vd_ac' => ['voltage_drop', 'AC voltage drop target'],
 			'trench_vd_dc' => ['voltage_drop', 'DC voltage drop target'], 'production_other_loss' => ['other_loss', 'Other system losses'],
-			'production_optimizer_loss' => ['optimizer_loss', 'Optimizer loss'], 'degradation_default' => ['degradation', 'Module degradation']];
+			'production_optimizer_loss' => ['optimizer_loss', 'Optimizer loss'], 'degradation_default' => ['degradation', 'Module degradation'],
+			'solarinsure_adder' => ['adder_per_watt', 'Trifecta coverage behind SolarInsure']];
 		foreach (\App\Savings::ASSUMPTIONS as $k => [$setting, $label]) {
 			$guard[$setting] = [$k, $label];
 		}
@@ -144,7 +146,8 @@ final class PresalesRatesController
 		}
 		foreach (['guarantee_pct' => [1, 100, 'Production guarantee percent'], 'guarantee_years' => [1, 30, 'Production guarantee years'],
 			'guarantee_rate' => [0, 5, 'Production guarantee payout'], 'layout_gap_in' => [0, 12, 'Site layout gap between panels (inches)'],
-			'layout_row_gap_in' => [0, 120, 'Site layout gap between rows (inches)']] as $k => [$low, $high, $label]) {
+			'layout_row_gap_in' => [0, 120, 'Site layout gap between rows (inches)'], 'solarinsure_adder' => [0, 1, 'Trifecta coverage behind SolarInsure ($/W)'],
+			'warranty_trip_rate' => [0, 5000, 'Warranty trip charge ($)'], 'warranty_hour_rate' => [0, 1000, 'Warranty hourly rate ($ per man-hour)']] as $k => [$low, $high, $label]) {
 			$v = trim((string) ($post[$k] ?? ''));
 			if ($v === '' || !is_numeric($v) || (float) $v < $low || (float) $v > $high) {
 				throw new \InvalidArgumentException($label . ' must be ' . $low . ' to ' . $high . '.');

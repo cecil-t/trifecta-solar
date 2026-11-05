@@ -66,6 +66,7 @@ final class Service
 					u.name AS owner_name, u.initials AS owner_initials,
 					(SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,
 					(SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours,
+					(SELECT COALESCE(SUM(parts_cents), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS parts_cents,
 					(SELECT COUNT(*) FROM service_visits v WHERE v.ticket_id = t.id) AS visit_count
 			 FROM service_tickets t
 			 LEFT JOIN organizations c ON c.id = t.customer_id

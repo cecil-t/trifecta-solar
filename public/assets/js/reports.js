@@ -65,7 +65,7 @@
 		document.querySelectorAll('[data-show="trip"]').forEach((el) => { el.textContent = t; });
 		document.querySelectorAll('[data-show="hour"]').forEach((el) => { el.textContent = h; });
 		document.querySelectorAll('[data-wtrips]').forEach((row) => {
-			const cost = (+row.dataset.wtrips) * t + (+row.dataset.whours) * h;
+			const cost = (+row.dataset.wtrips) * t + (+row.dataset.whours) * h + (+row.dataset.wparts || 0);
 			row.querySelectorAll('[data-est]').forEach((el) => {
 				el.textContent = cost || el.hasAttribute('data-round') ? fmt(cost, el.hasAttribute('data-round')) : '';
 			});

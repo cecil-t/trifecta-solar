@@ -24,6 +24,7 @@ final class UnitGuard
 		'contingency'    => [1, null, 'is a percent, e.g. 10 for 10% (not 0.1)', true],
 		'tier_rate'      => [0.1, null, 'is a percent, e.g. 5 for 5% or 0.75 for 0.75% (not 0.05)', true],
 		'labor_per_watt' => [null, 10, 'is in dollars per watt, e.g. 0.22 (not 22 cents)', true],
+		'adder_per_watt' => [null, 0.25, 'is in dollars per watt, e.g. 0.01 for a penny a watt (not 1 cent)', true],
 		'other_loss'     => [1, null, 'is a percent, e.g. 14 for 14% (not 0.14)', true],
 		'optimizer_loss' => [0.1, null, 'is a percent, e.g. 1.2 for 1.2% (not 0.012)', true],
 		'degradation'    => [0.1, null, 'is a percent, e.g. 0.5 for 0.5% (not 0.005)', true],

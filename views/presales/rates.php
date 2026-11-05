@@ -311,8 +311,19 @@ $rules = $rules ?: [[]];
 	</section>
 
 	<section class="card band">
-		<h2>Warranty wording</h2>
-		<p class="hint">Used in every build sheet's warranty summary.</p>
+		<h2>Warranty</h2>
+		<div class="grid-form">
+			<label>Trifecta coverage behind SolarInsure ($/W) <input type="text" name="settings[solarinsure_adder]" value="<?= e($s('solarinsure_adder') === '' ? '0' : Presales::fixed((float) $s('solarinsure_adder'), 4)) ?>" data-dec="4" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Internal cost added to build sheets that include SolarInsure, for Trifecta's 10 year warranty on what SolarInsure doesn't cover. Never shown to the customer.</small>
+			</label>
+			<label>Warranty trip charge ($) <input type="text" name="settings[warranty_trip_rate]" value="<?= e($n($s('warranty_trip_rate'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Prices warranty work on the Service and Warranty reports.</small>
+			</label>
+			<label>Warranty hourly rate ($/man-hour) <input type="text" name="settings[warranty_hour_rate]" value="<?= e($n($s('warranty_hour_rate'), 2)) ?>" inputmode="decimal" <?= $dis ?>>
+				<small class="hint">Every man-hour, on top of the trip charge.</small>
+			</label>
+		</div>
+		<p class="hint">Warranty wording, used in every build sheet's warranty summary:</p>
 		<div class="grid-form">
 			<label class="span-all">Trifecta Solar labor and workmanship
 				<textarea name="settings[trifecta_warranty_text]" rows="2" <?= $dis ?>><?= e($s('trifecta_warranty_text')) ?></textarea>

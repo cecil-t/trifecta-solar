@@ -35,7 +35,8 @@ final class ServiceController
 		$rows = Db::all(
 			"SELECT t.*, c.name AS customer_name, p.project_number, u.initials AS owner_initials, u.name AS owner_name,
 					(SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,
-					(SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours
+					(SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours,
+					(SELECT COALESCE(SUM(parts_cents), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS parts_cents
 			 FROM service_tickets t
 			 LEFT JOIN organizations c ON c.id = t.customer_id
 			 LEFT JOIN projects p ON p.id = t.project_id
@@ -391,11 +392,17 @@ final class ServiceController
 			throw new \InvalidArgumentException('Man-hours should be between 0 and 500.');
 		}
 		$trips = (string) ($_POST['trips'] ?? '') === '' ? 1 : max(0, (int) $_POST['trips']);
+		$parts = Projects::parseMoney($_POST['parts'] ?? '');
+		if ($parts !== null && ($parts < 0 || $parts > 10000000)) {
+			throw new \InvalidArgumentException('Parts cost should be between $0 and $100,000.');
+		}
 		return [
 			'visit_date' => $date,
 			'crew' => trim((string) ($_POST['crew'] ?? '')) ?: null,
 			'man_hours' => $hours,
 			'trips' => $trips,
+			'parts_cents' => $parts,
+			'parts_note' => mb_substr(trim((string) ($_POST['parts_note'] ?? '')), 0, 200) ?: null,
 			'note' => trim((string) ($_POST['note'] ?? '')) ?: null,
 		];
 	}
@@ -407,6 +414,9 @@ final class ServiceController
 			$parts[] = Service::hours((float) $v['man_hours']) . ' man-hours';
 		}
 		$parts[] = (int) $v['trips'] . ' trip' . ((int) $v['trips'] === 1 ? '' : 's');
+		if (($v['parts_cents'] ?? null) !== null) {
+			$parts[] = Projects::money((int) $v['parts_cents']) . ' parts' . (!empty($v['parts_note']) ? ' (' . $v['parts_note'] . ')' : '');
+		}
 		if ($v['crew']) {
 			$parts[] = $v['crew'];
 		}

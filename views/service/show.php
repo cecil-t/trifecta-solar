@@ -77,6 +77,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 		<div class="metrics">
 			<div><span class="m-num"><?= (int) $t['trips'] ?></span><span class="m-label">Trips</span></div>
 			<div><span class="m-num"><?= e(Service::hours((float) $t['man_hours'])) ?: '0' ?></span><span class="m-label">Man-hours</span></div>
+			<div><span class="m-num"><?= e(Projects::money((int) $t['parts_cents'])) ?></span><span class="m-label">Parts</span></div>
 		</div>
 		<dl class="kv">
 			<dt>Coverage</dt><dd><?= $t['coverage'] ? e(Service::COVERAGE[$t['coverage']]) : $muted('Not set') ?></dd>
@@ -116,29 +117,32 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 <section class="card card-flush" id="visits">
 	<div class="phase-title">
 		<h2>Visits</h2>
-		<span class="muted small">Man-hours are on-site time for everyone who went (2 people for 3 hours = 6). Travel is covered by the trip.</span>
+		<span class="muted small">Man-hours are on-site time for everyone who went (2 people for 3 hours = 6). Travel is covered by the trip. Parts are what we paid; a part the manufacturer sent under warranty is $0.</span>
 	</div>
 	<table class="table table-visits">
-		<thead><tr><th>Date</th><th>Who went</th><th class="num">Man-hrs</th><th class="num">Trips</th><th>What was done</th><th></th></tr></thead>
+		<thead><tr><th>Date</th><th>Who went</th><th class="num">Man-hrs</th><th class="num">Trips</th><th class="num">Parts</th><th>What was done</th><th></th></tr></thead>
 		<tbody>
-		<?php if (!$visits): ?><tr><td colspan="6" class="empty">No visits yet.</td></tr><?php endif; ?>
+		<?php if (!$visits): ?><tr><td colspan="7" class="empty">No visits yet.</td></tr><?php endif; ?>
 		<?php foreach ($visits as $vi): ?>
 			<tr>
 				<td class="nowrap"><?= $vi['visit_date'] ? e(fmt_date($vi['visit_date'])) : $muted('No date') ?></td>
 				<td><?= e($vi['crew'] ?? '') ?></td>
 				<td class="num"><?= $vi['man_hours'] !== null ? e(Service::hours((float) $vi['man_hours'])) : '' ?></td>
 				<td class="num"><?= (int) $vi['trips'] ?></td>
+				<td class="num"><?= $vi['parts_cents'] !== null ? e(Projects::money((int) $vi['parts_cents'])) : '' ?><?php if ($vi['parts_note']): ?><br><span class="muted small"><?= e($vi['parts_note']) ?></span><?php endif; ?></td>
 				<td class="small"><?= nl2br(e($vi['note'] ?? ''), false) ?></td>
 				<td class="nowrap"><button type="button" class="btn btn-ghost btn-small" data-toggle-next-row>Edit</button></td>
 			</tr>
 			<tr class="visit-edit-row" hidden>
-				<td colspan="6">
+				<td colspan="7">
 					<form method="post" action="<?= $back ?>/visits/<?= (int) $vi['id'] ?>" class="visit-add visit-edit-form">
 						<?= Csrf::field() ?>
 						<label>Date <input type="date" name="visit_date" value="<?= e($vi['visit_date']) ?>"></label>
 						<label class="grow">Who went <input type="text" name="crew" value="<?= e($vi['crew']) ?>"></label>
 						<label class="short">Man-hours <input type="text" name="man_hours" value="<?= e($vi['man_hours'] !== null ? Service::hours((float) $vi['man_hours']) : '') ?>" inputmode="decimal"></label>
 						<label class="short">Trips <input type="number" name="trips" value="<?= (int) $vi['trips'] ?>" min="0"></label>
+						<label class="short">Parts ($) <input type="text" name="parts" value="<?= $vi['parts_cents'] !== null ? e(number_format($vi['parts_cents'] / 100, 2, '.', '')) : '' ?>" inputmode="decimal"></label>
+						<label class="grow">Parts used <input type="text" name="parts_note" value="<?= e($vi['parts_note']) ?>" maxlength="200"></label>
 						<label class="grow-2">What was done <input type="text" name="note" value="<?= e($vi['note']) ?>"></label>
 						<button class="btn btn-primary btn-small">Save</button>
 						<button class="btn btn-ghost btn-small text-red" formaction="<?= $back ?>/visits/<?= (int) $vi['id'] ?>/delete" data-confirm="Remove this visit?">Remove</button>
@@ -148,7 +152,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 		<?php endforeach; ?>
 		</tbody>
 		<?php if (count($visits) > 1): ?>
-			<tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num"><strong><?= e(Service::hours((float) $t['man_hours'])) ?></strong></td><td class="num"><strong><?= (int) $t['trips'] ?></strong></td><td colspan="2"></td></tr></tfoot>
+			<tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num"><strong><?= e(Service::hours((float) $t['man_hours'])) ?></strong></td><td class="num"><strong><?= (int) $t['trips'] ?></strong></td><td class="num"><strong><?= e(Projects::money((int) $t['parts_cents'])) ?></strong></td><td colspan="2"></td></tr></tfoot>
 		<?php endif; ?>
 	</table>
 	<form method="post" action="<?= $back ?>/visits" class="visit-add">
@@ -157,6 +161,8 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 		<label class="grow">Who went <input type="text" name="crew" placeholder="e.g. Chris, Pat"></label>
 		<label class="short">Man-hours <input type="text" name="man_hours" inputmode="decimal" placeholder="2"></label>
 		<label class="short">Trips <input type="number" name="trips" value="1" min="0"></label>
+		<label class="short">Parts ($) <input type="text" name="parts" inputmode="decimal" placeholder="0"></label>
+		<label class="grow">Parts used <input type="text" name="parts_note" maxlength="200" placeholder="e.g. 2 MC4 connectors"></label>
 		<label class="grow-2">What was done <input type="text" name="note" placeholder="e.g. Replaced bad MC4 on string 3"></label>
 		<button class="btn btn-secondary btn-small">Add visit</button>
 	</form>
