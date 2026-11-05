@@ -645,6 +645,11 @@ final class ProjectController
 			'lastComment' => Activity::latestComment('project', $id),
 			'commentsOnly' => $commentsOnly,
 			'commission' => \App\Commissions::forProject($id),
+			'warranty' => [
+				'lines' => \App\Warranties::forProject($p),
+				'program' => \App\Warranties::program($p, \App\Warranties::datesFor([$id])[$id]),
+				'stored' => array_column(Db::all('SELECT * FROM project_warranties WHERE project_id = ?', [$id]), null, 'id'),
+			],
 			'notices' => $notices,
 			'noticeHistory' => CustomerNotices::history($id),
 			'noticeRules' => CustomerNotices::rules(),

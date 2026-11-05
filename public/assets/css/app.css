@@ -2022,3 +2022,30 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 @media print {
 	.help-btn, .help-corner, .help-panel { display: none !important; }
 }
+
+/* ---------- warranties (project card and report) ---------- */
+.table-warranties td { vertical-align: top; }
+.table-warranties td:nth-child(2) { white-space: normal; min-width: 180px; }
+.table-warranties tr.w-expired td, .table-warranties tr.w-not_started td { color: var(--muted, #6b7780); }
+.warranty-add { padding: 0 1rem .9rem; }
+.warranty-add[open] { padding: 0; }
+.warranty-add[open] > summary { margin: .6rem 1rem; }
+.warranty-add > summary { list-style: none; display: inline-block; margin-top: .6rem; }
+.warranty-add > summary::-webkit-details-marker { display: none; }
+.runoff-chart { padding: 0 1rem .8rem; max-width: 760px; }
+.runoff-chart svg { width: 100%; height: auto; display: block; }
+.runoff-bar { fill: var(--blue); }
+.runoff-val { font-size: 12px; fill: #2d3b43; font-weight: 600; }
+.runoff-year { font-size: 12px; fill: var(--muted); }
+.table-warranty-report td { vertical-align: top; }
+.table-warranty-report > tbody > tr > td:nth-child(2), .table-warranty-report > tbody > tr > td:nth-child(8) { white-space: normal; }
+.table-warranty-report > tbody > tr > td:nth-child(2) { min-width: 220px; }
+.table-warranty-report meter { width: 70px; vertical-align: middle; }
+.table-warranty-report .row-toggle { padding: .1rem .45rem; }
+.table-warranty-report .visit-edit-row > td { padding: .4rem .8rem .8rem 2.6rem; background: var(--blue-50); }
+.table-warranty-report .visit-edit-row .table { background: #fff; font-size: .85rem; }
+.report-metrics .muted.small { margin-top: .1rem; }
+@media print {
+	.table-warranty-report .row-toggle { display: none; }
+}
+.table-warranty-flags td:nth-child(4) { white-space: normal; min-width: 220px; }

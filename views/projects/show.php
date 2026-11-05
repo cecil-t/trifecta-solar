@@ -432,6 +432,8 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 	<input type="hidden" name="name">
 </form>
 
+<?= App\View::partial('projects/_warranties', ['p' => $p] + $warranty) ?>
+
 <section class="card mt" id="log">
 	<div class="log-head">
 		<h2>Project log</h2>

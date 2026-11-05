@@ -26,6 +26,7 @@ final class ReportController
 		'projection' => ['Projection', 'Next 12 months at the pace of the last quarter, this year, and rolling 12 and 24 months.'],
 		'time' => ['Project time', 'Days from contract signed to PTO, with an in-progress list.'],
 		'service' => ['Service', 'Tickets, trips, man-hours and amounts billed by coverage and month.'],
+		'warranty' => ['Warranty', 'Systems under warranty, what expires when, warranty work and its estimated cost, and what needs review.'],
 		'opportunities' => ['Opportunities', 'Sales pipeline by salesperson: open, sold and lost quotes, win rate, pricing, overrides, and quotes going cold.'],
 	];
 
@@ -154,6 +155,175 @@ final class ReportController
 		$this->render('service', $f, [
 			'totals' => $this->svcSum($tickets), 'byCoverage' => $byCoverage, 'byMonth' => array_reverse($byMonth, true),
 			'tripRate' => \App\Presales::num('warranty_trip_rate'), 'hourRate' => \App\Presales::num('warranty_hour_rate'),
+		]);
+	}
+
+	// ------------------------------------------------------------------ warranty
+
+	public const WARRANTY_SHOW = [
+		'active' => 'Under Trifecta warranty', 'expiring' => 'Trifecta warranty ends within 12 months', 'expired' => 'Trifecta warranty ended',
+		'review' => 'Needs review', 'not_started' => 'Not installed yet', 'all' => 'All projects',
+	];
+	public const WARRANTY_PROGRAMS = [
+		'' => 'Any program', 'trifecta' => 'Trifecta 10 year only', 'solarinsure' => 'SolarInsure', 'se_extended' => 'SolarEdge extended',
+		'none' => 'None or unknown',
+	];
+
+	/** Warranty: coverage tiles, Trifecta coverage ending by year, flags, and the project list. */
+	public function warranty(): void
+	{
+		$fleet = \App\Warranties::fleet();
+		$today = date('Y-m-d');
+		$yearAgo = date('Y-m-d', strtotime('-12 months'));
+		$tripRate = \App\Presales::num('warranty_trip_rate');
+		$hourRate = \App\Presales::num('warranty_hour_rate');
+
+		// Warranty tickets in the last 12 months, and tickets that look miscoded
+		$tickets = Db::all(
+			"SELECT t.id, t.ticket_number, t.opened_on, t.coverage, t.project_id, t.description, c.name AS customer_name,
+					(SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,
+					(SELECT COALESCE(SUM(man_hours), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS man_hours,
+					(SELECT COALESCE(SUM(parts_cents), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS parts_cents
+			 FROM service_tickets t LEFT JOIN organizations c ON c.id = t.customer_id
+			 WHERE t.opened_on >= ? ORDER BY t.opened_on DESC",
+			[$yearAgo]
+		);
+		$byId = array_column($fleet, null, 'id');
+		$work = ['tickets' => 0, 'trips' => 0, 'hours' => 0.0, 'parts' => 0.0, 'cost' => 0.0, 'by_project' => []];
+		$flags = [];
+		foreach ($tickets as $t) {
+			$p = $t['project_id'] ? ($byId[(int) $t['project_id']] ?? null) : null;
+			if ($t['coverage'] === 'warranty') {
+				$cost = (int) $t['trips'] * $tripRate + (float) $t['man_hours'] * $hourRate + (int) $t['parts_cents'] / 100;
+				$work['tickets']++;
+				$work['trips'] += (int) $t['trips'];
+				$work['hours'] += (float) $t['man_hours'];
+				$work['parts'] += (int) $t['parts_cents'] / 100;
+				$work['cost'] += $cost;
+				if ($p) {
+					$work['by_project'][(int) $p['id']] = ($work['by_project'][(int) $p['id']] ?? 0) + $cost;
+				}
+				$tri = $p['trifecta'] ?? null;
+				if (!$p) {
+					$flags[] = ['ticket' => $t, 'project' => null, 'why' => 'Warranty ticket with no project, so its coverage can\'t be checked'];
+				} elseif (!$tri) {
+					$flags[] = ['ticket' => $t, 'project' => $p, 'why' => 'Warranty ticket, but the project has no Trifecta warranty (' . strtolower(\App\Warranties::PROGRAMS[$p['program']['code']]) . ')'];
+				} elseif ($tri['end'] && $tri['end'] < $t['opened_on']) {
+					$flags[] = ['ticket' => $t, 'project' => $p, 'why' => 'Warranty ticket opened after the Trifecta warranty ended (' . \App\Warranties::month($tri['end'], $tri['start_tag']) . '): billable?'];
+				} elseif ($p['program']['code'] === 'solarinsure') {
+					$flags[] = ['ticket' => $t, 'project' => $p, 'why' => 'SolarInsure job coded Trifecta warranty: confirm SolarInsure doesn\'t cover it'];
+				}
+			}
+		}
+
+		// Per-project review reasons
+		$review = static function (array $p): array {
+			$why = [];
+			if ($p['program']['code'] === 'unknown') {
+				$why[] = 'Program unknown';
+			}
+			if (!$p['installed']) {
+				return $why;
+			}
+			if ($p['program']['assumed'] && !$p['is_legacy']) {
+				$why[] = 'SolarInsure question not answered';
+			}
+			foreach ($p['lines'] as $l) {
+				if ($l['flag']) {
+					$why[] = $l['label'] . ': ' . strtolower($l['flag']);
+				}
+				if ($l['key'] === 'trifecta' && !$l['start']) {
+					$why[] = 'No date to start the Trifecta warranty from';
+				}
+				if ($l['key'] === 'trifecta' && $l['start_tag'] === 'estimated') {
+					$why[] = 'Trifecta start is estimated';
+				}
+			}
+			return $why;
+		};
+
+		$tiles = ['trifecta' => [0, 0.0], 'solarinsure' => [0, 0.0], 'se_extended' => [0, 0.0], 'expiring' => [0, 0.0], 'expired' => [0, 0.0],
+			'review' => 0, 'estimated' => 0];
+		$runoff = [];
+		$rows = [];
+		$show = isset(self::WARRANTY_SHOW[$_GET['show'] ?? '']) ? $_GET['show'] : 'active';
+		$prog = (string) ($_GET['program'] ?? '');
+		$prog = isset(self::WARRANTY_PROGRAMS[$prog]) ? $prog : '';
+		$legacy = in_array($_GET['legacy'] ?? '', ['legacy', 'tracker'], true) ? $_GET['legacy'] : '';
+		$q = mb_strtolower(trim((string) ($_GET['q'] ?? '')));
+		foreach ($fleet as $p) {
+			$p['review'] = $review($p);
+			$p['work_cost'] = $work['by_project'][(int) $p['id']] ?? 0;
+			$tri = $p['trifecta'];
+			$has = static fn (string $key) => (bool) array_filter($p['lines'], static fn ($l) => $l['key'] === $key && $l['status'] === 'active');
+			if ($tri && $tri['status'] === 'active') {
+				$tiles['trifecta'][0]++;
+				$tiles['trifecta'][1] += $p['kw'];
+				$year = (int) substr($tri['end'], 0, 4);
+				$runoff[$year] = ($runoff[$year] ?? 0) + $p['kw'];
+				if ($tri['months_left'] <= 12) {
+					$tiles['expiring'][0]++;
+					$tiles['expiring'][1] += $p['kw'];
+				}
+				if ($tri['start_tag'] === 'estimated') {
+					$tiles['estimated']++;
+				}
+			}
+			if ($tri && $tri['status'] === 'expired') {
+				$tiles['expired'][0]++;
+				$tiles['expired'][1] += $p['kw'];
+			}
+			foreach (['solarinsure', 'se_extended'] as $k) {
+				if ($has($k)) {
+					$tiles[$k][0]++;
+					$tiles[$k][1] += $p['kw'];
+				}
+			}
+			if ($p['review']) {
+				$tiles['review']++;
+			}
+
+			// Filters for the list
+			$keep = match ($show) {
+				'active' => $tri && $tri['status'] === 'active',
+				'expiring' => $tri && $tri['status'] === 'active' && $tri['months_left'] <= 12,
+				'expired' => $tri && $tri['status'] === 'expired',
+				'review' => (bool) $p['review'],
+				'not_started' => !$p['installed'],
+				default => true,
+			};
+			$keep = $keep && match ($prog) {
+				'trifecta' => $p['program']['code'] === 'trifecta',
+				'solarinsure' => $p['program']['code'] === 'solarinsure',
+				'se_extended' => $has('se_extended'),
+				'none' => in_array($p['program']['code'], ['none', 'unknown'], true),
+				default => true,
+			};
+			$keep = $keep && ($legacy === '' || ($legacy === 'legacy') === (bool) $p['is_legacy']);
+			if ($keep && $q !== '') {
+				$hay = mb_strtolower($p['project_number'] . ' ' . $p['name'] . ' ' . $p['customer_name'] . ' ' . $p['site_city']);
+				$keep = str_contains($hay, $q);
+			}
+			if ($keep) {
+				$rows[] = $p;
+			}
+		}
+		usort($rows, static fn ($a, $b) => [$a['trifecta']['end'] ?? '9999', $a['project_number']] <=> [$b['trifecta']['end'] ?? '9999', $b['project_number']]);
+		if ($runoff) {
+			// Every year from now to the last one, so gaps show as gaps
+			for ($y = min((int) date('Y'), min(array_keys($runoff))); $y <= max(array_keys($runoff)); $y++) {
+				$runoff[$y] ??= 0.0;
+			}
+			ksort($runoff);
+		}
+
+		View::render('reports/warranty', [
+			'title' => 'Warranty report', 'report' => 'warranty',
+			'tiles' => $tiles, 'runoff' => $runoff, 'rows' => $rows, 'flags' => $flags, 'work' => $work,
+			'perSystemYear' => $tiles['trifecta'][0] ? $work['cost'] / max(1, $tiles['trifecta'][0]) : null,
+			'tripRate' => $tripRate, 'hourRate' => $hourRate,
+			'filter' => ['show' => $show, 'program' => $prog, 'legacy' => $legacy, 'q' => (string) ($_GET['q'] ?? '')],
+			'total' => count($fleet), 'today' => $today,
 		]);
 	}
 
