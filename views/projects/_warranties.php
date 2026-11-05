@@ -67,7 +67,7 @@ $fields = static function (?array $w) use ($years): string {
 	<p class="hint report-hint">Starts: <strong>actual</strong> is the step's own date or a typed date, <strong>derived</strong> is worked out from a neighboring step, <strong>~estimated</strong> is contract signed plus <?= Warranties::LAG_MONTHS ?> months. Trifecta's 10 years start when final inspection passes. * Years assumed.</p>
 	<form method="post" action="<?= $base ?>/warranty" class="visit-add">
 		<?= Csrf::field() ?>
-		<label>Warranty program
+		<label class="warranty-program">Warranty program
 			<select name="warranty_program">
 				<option value="">From the SolarInsure question</option>
 				<?php foreach (Warranties::PROGRAMS as $k => $label): ?><option value="<?= $k ?>" <?= ($p['warranty_program'] ?? '') === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>

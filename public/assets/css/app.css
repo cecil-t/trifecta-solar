@@ -2049,3 +2049,4 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 	.table-warranty-report .row-toggle { display: none; }
 }
 .table-warranty-flags td:nth-child(4) { white-space: normal; min-width: 220px; }
+.visit-add label.warranty-program { flex: 0 1 300px; }

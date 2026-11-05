@@ -11,12 +11,14 @@ if ($counts['notify'] || $filter['phase'] === 'notify') {
 	$tabs['notify'] = 'Notify customer';
 }
 // Completed and Cancelled fold earlier years under a click-to-open header: the project # year,
-// or the contract signed year for early jobs numbered without a year code (01, 02...)
+// or the contract signed year for early jobs numbered without a year code (01, 02...); legacy
+// records go last under their own header
 $foldYears = $filter['q'] === '' && in_array($filter['phase'], ['complete', 'cancelled'], true);
 $thisYear = (int) date('Y');
 $groups = [];
 foreach ($projects as $p) {
 	$yr = match (true) {
+		!empty($p['is_legacy']) => 0, // legacy records (before the tracker) fold under their own header
 		(bool) preg_match('/^(\d{2})\d{3}/', (string) $p['project_number'], $m) => 2000 + (int) $m[1],
 		!empty($p['status']['start_date']) => (int) substr($p['status']['start_date'], 0, 4),
 		default => $thisYear,
@@ -65,7 +67,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 		</tbody><?php endif; ?>
 		<?php foreach ($groups as $yr => $list): ?>
 		<?php if ($yr < $thisYear): ?>
-			<tbody class="year-head"><tr><td colspan="8"><button type="button" class="year-toggle" aria-expanded="false"><span class="year-caret">&#9656;</span> <?= $yr ?> projects <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
+			<tbody class="year-head"><tr><td colspan="8"><button type="button" class="year-toggle" aria-expanded="false"><span class="year-caret">&#9656;</span> <?= $yr ? $yr . ' projects' : 'Legacy records (installed before the tracker)' ?> <span class="tab-count"><?= count($list) ?></span></button></td></tr></tbody>
 		<?php endif; ?>
 		<tbody <?= $yr < $thisYear ? 'hidden' : '' ?>>
 		<?php foreach ($list as $p): $st = $p['status']; ?>

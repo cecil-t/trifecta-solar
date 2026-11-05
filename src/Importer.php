@@ -11,13 +11,17 @@ namespace App;
  * dated steps are kept, no payments are created, an existing project number or name is
  * always skipped (never replaced), and existing customers and municipalities are not
  * changed.
+ *
+ * Optional per-project keys: "legacy": true (a bare-minimum record for a system installed before
+ * the tracker), "warranty_program" (trifecta, solarinsure, none, unknown), and "monitor_site":
+ * {"vendor": "solaredge", "site_id": "1234567"} to link that monitored system when it has no project.
  */
 final class Importer
 {
 	private array $log = [];
 	private bool $touchExisting = true;
 	private array $counts = ['projects' => 0, 'skipped' => 0, 'replaced' => 0, 'customers' => 0, 'contacts' => 0,
-		'municipalities' => 0, 'agencies' => 0, 'task_updates' => 0, 'task_misses' => 0, 'tasks_pruned' => 0];
+		'municipalities' => 0, 'agencies' => 0, 'task_updates' => 0, 'task_misses' => 0, 'tasks_pruned' => 0, 'sites_linked' => 0];
 
 	public function __construct(private bool $dryRun = false, private bool $replace = false)
 	{
@@ -112,7 +116,20 @@ final class Importer
 			'hold_reason' => $p['hold_reason'],
 			'archived_at' => $p['archived'] ? now_utc() : null,
 			'quote_number' => $p['quote_number'] ?? null,
+			'is_legacy' => !empty($p['legacy']) ? 1 : 0,
+			'warranty_program' => isset(Warranties::PROGRAMS[$p['warranty_program'] ?? '']) ? $p['warranty_program'] : null,
 		]);
+		if (!empty($p['monitor_site']['vendor']) && !empty($p['monitor_site']['site_id'])) {
+			$site = Db::one('SELECT id, project_id FROM monitor_sites WHERE vendor = ? AND vendor_site_id = ?', [$p['monitor_site']['vendor'], (string) $p['monitor_site']['site_id']]);
+			if (!$site) {
+				$this->log[] = "  ! $label: no {$p['monitor_site']['vendor']} monitoring system {$p['monitor_site']['site_id']}";
+			} elseif ($site['project_id']) {
+				$this->log[] = "  ! $label: monitoring system {$p['monitor_site']['site_id']} is already linked to another project, not changed";
+			} else {
+				Db::update('monitor_sites', (int) $site['id'], ['project_id' => $id]);
+				$this->counts['sites_linked']++;
+			}
+		}
 
 		foreach (['modules' => 'project_modules', 'inverters' => 'project_inverters', 'batteries' => 'project_batteries'] as $k => $table) {
 			foreach ($eq[$k] as $i => $row) {
