@@ -31,13 +31,13 @@ $back = $v('back', $isNew ? '/tasks' : '/tasks/' . (int) $id);
 			<small class="hint">Optional.</small>
 		</label>
 		<label>Project
-			<select name="project_id">
+			<select name="project_id" data-searchable="Type a project number or name">
 				<option value="">None</option>
 				<?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>" <?= $sel($v('project_id'), $p['id']) ?>><?= e($p['project_number'] . ' ' . $p['name']) ?></option><?php endforeach; ?>
 			</select>
 		</label>
 		<label>Service ticket
-			<select name="service_id">
+			<select name="service_id" data-searchable="Type a ticket number or customer">
 				<option value="">None</option>
 				<?php foreach ($tickets as $t): ?><option value="<?= (int) $t['id'] ?>" <?= $sel($v('service_id'), $t['id']) ?>><?= e($t['ticket_number'] . ' ' . $t['customer']) ?></option><?php endforeach; ?>
 			</select>
@@ -51,3 +51,4 @@ $back = $v('back', $isNew ? '/tasks' : '/tasks/' . (int) $id);
 		<a href="<?= e($back) ?>" class="btn btn-ghost">Cancel</a>
 	</div>
 </form>
+<script src="<?= asset('assets/js/combobox.js') ?>"></script>
