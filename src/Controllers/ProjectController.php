@@ -645,6 +645,7 @@ final class ProjectController
 			'lastComment' => Activity::latestComment('project', $id),
 			'commentsOnly' => $commentsOnly,
 			'commission' => \App\Commissions::forProject($id),
+			'production' => \App\ProductionCheck::forProject($p, \App\ProductionCheck::startFor($p, \App\Warranties::datesFor([$id])[$id]), \App\ProductionCheck::guaranteesFor($id)),
 			'warranty' => [
 				'lines' => \App\Warranties::forProject($p),
 				'program' => \App\Warranties::program($p, \App\Warranties::datesFor([$id])[$id]),

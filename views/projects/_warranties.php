@@ -15,7 +15,7 @@ $years = static fn ($y) => rtrim(rtrim(number_format((float) $y, 1), '0'), '.');
 $fields = static function (?array $w) use ($years): string {
 	$v = static fn (string $k) => $w[$k] ?? '';
 	$opt = static fn (array $list, string $sel) => implode('', array_map(static fn ($k, $l) => '<option value="' . e($k) . '"' . ($k === $sel ? ' selected' : '') . '>' . e($l) . '</option>', array_keys($list), $list));
-	return '<label>Kind <select name="kind" required>' . ($w ? '' : '<option value="">Pick one</option>') . $opt(Warranties::KINDS, (string) $v('kind')) . '</select></label>'
+	return '<label>Kind <select name="kind" required><option value="">Pick one</option>' . $opt(Warranties::KINDS, (string) $v('kind')) . '</select></label>'
 		. '<label class="grow">Provider <input type="text" name="provider" value="' . e((string) $v('provider')) . '" maxlength="120" placeholder="e.g. SEG Solar"></label>'
 		. '<label class="grow">Covers <input type="text" name="covers" value="' . e((string) $v('covers')) . '" maxlength="200" placeholder="e.g. 87.4% output at 30 years"></label>'
 		. '<label class="short">Years <input type="text" name="term_years" value="' . e($w ? $years($w['term_years']) : '') . '" inputmode="decimal" required></label>'

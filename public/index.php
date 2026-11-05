@@ -202,6 +202,7 @@ $r->get('/reports/projection', [ReportController::class, 'projection']);
 $r->get('/reports/time', [ReportController::class, 'time']);
 $r->get('/reports/service', [ReportController::class, 'service']);
 $r->get('/reports/warranty', [ReportController::class, 'warranty']);
+$r->get('/reports/production', [ReportController::class, 'production']);
 $r->get('/reports/opportunities', [ReportController::class, 'opportunities']);
 
 $r->post('/activity/{id}/edit', [ActivityController::class, 'edit']);

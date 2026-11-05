@@ -432,6 +432,7 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 	<input type="hidden" name="name">
 </form>
 
+<?php if ($production): ?><?= App\View::partial('projects/_production', ['check' => $production]) ?><?php endif; ?>
 <?= App\View::partial('projects/_warranties', ['p' => $p] + $warranty) ?>
 
 <section class="card mt" id="log">

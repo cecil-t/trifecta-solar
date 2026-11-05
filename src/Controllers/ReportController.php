@@ -27,6 +27,7 @@ final class ReportController
 		'time' => ['Project time', 'Days from contract signed to PTO, with an in-progress list.'],
 		'service' => ['Service', 'Tickets, trips, man-hours and amounts billed by coverage and month.'],
 		'warranty' => ['Warranty', 'Systems under warranty, what expires when, warranty work and its estimated cost, and what needs review.'],
+		'production' => ['Production', 'Monitored production against each project\'s estimate, how accurate the estimates are, and production guarantees.'],
 		'opportunities' => ['Opportunities', 'Sales pipeline by salesperson: open, sold and lost quotes, win rate, pricing, overrides, and quotes going cold.'],
 	];
 
@@ -324,6 +325,39 @@ final class ReportController
 			'tripRate' => $tripRate, 'hourRate' => $hourRate,
 			'filter' => ['show' => $show, 'program' => $prog, 'legacy' => $legacy, 'q' => (string) ($_GET['q'] ?? '')],
 			'total' => count($fleet), 'today' => $today,
+		]);
+	}
+
+	// ------------------------------------------------------------------ production
+
+	/** Production vs estimate across monitored projects. */
+	public function production(): void
+	{
+		$min = in_array((int) ($_GET['months'] ?? 6), [1, 6, 12], true) ? (int) ($_GET['months'] ?? 6) : 6;
+		$fleet = \App\ProductionCheck::fleet();
+		$rows = array_values(array_filter($fleet['rows'], static fn ($r) => $r['check']['counted'] >= $min && $r['check']['ratio'] !== null));
+		usort($rows, static fn ($a, $b) => $a['check']['ratio'] <=> $b['check']['ratio']);
+		$ratios = array_map(static fn ($r) => $r['check']['ratio'], $rows);
+		sort($ratios);
+		$n = count($ratios);
+		$actual = array_sum(array_map(static fn ($r) => $r['check']['actual'], $rows));
+		$estimate = array_sum(array_map(static fn ($r) => $r['check']['estimate'], $rows));
+		$guarantees = [];
+		foreach ($fleet['rows'] as $r) {
+			foreach ($r['check']['guarantees'] as $g) {
+				$guarantees[] = ['p' => $r['p'], 'check' => $r['check'], 'g' => $g];
+			}
+		}
+		View::render('reports/production', [
+			'title' => 'Production report', 'report' => 'production', 'rows' => $rows, 'min' => $min,
+			'summary' => [
+				'count' => $n, 'median' => $n ? ($n % 2 ? $ratios[intdiv($n, 2)] : ($ratios[$n / 2 - 1] + $ratios[$n / 2]) / 2) : null,
+				'weighted' => $estimate > 0 ? $actual / $estimate : null,
+				'under' => count(array_filter($ratios, static fn ($r) => round($r * 100) < 85)),
+				'over' => count(array_filter($ratios, static fn ($r) => round($r * 100) > 105)),
+				'fewer' => count($fleet['rows']) - $n, 'no_estimate' => $fleet['no_estimate'],
+			],
+			'guarantees' => $guarantees, 'today' => date('Y-m-d'),
 		]);
 	}
 
