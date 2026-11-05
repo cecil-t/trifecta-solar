@@ -89,11 +89,18 @@
 			}
 			last.after(clone);
 			renumber(box);
+			// A copied type-to-search box belongs to the old row: drop it and wire the copy's own
+			clone.querySelectorAll('.combo').forEach((c) => c.remove());
+			clone.querySelectorAll('select[data-searchable]').forEach((s) => {
+				delete s.dataset.comboWired;
+				s.hidden = false;
+				if (window.comboWire) window.comboWire(s);
+			});
 			if (form && clone.classList.contains('pl-row')) syncLine(clone);
 			const srcSel = last.querySelector('.pl-select');
 			if (form && srcSel && masters.has(srcSel)) masters.set(clone.querySelector('.pl-select'), masters.get(srcSel));
 			if (form && clone.classList.contains('array-row')) syncArray(clone);
-			const first = clone.querySelector('select, input[type=text]');
+			const first = clone.querySelector('.combo-input') || clone.querySelector('select, input[type=text]');
 			if (first) first.focus();
 			if (form) schedule();
 			return;

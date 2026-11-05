@@ -7,12 +7,14 @@
 	const words = (s) => s.toLowerCase().split(/\s+/).filter(Boolean);
 
 	function wire(sel) {
+		if (sel.dataset.comboWired) return;
+		sel.dataset.comboWired = '1';
 		const id = 'combo-' + (++uid);
-		const opts = Array.from(sel.options).map((o) => ({
+		// Options are read each time, since a page may rebuild them (the build sheet filters by install type)
+		const options = () => Array.from(sel.options).map((o) => ({
 			value: o.value, text: o.textContent.trim(), hay: o.textContent.toLowerCase(), always: o.hasAttribute('data-always'),
 			group: o.parentElement && o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '',
 		}));
-		const blank = opts.find((o) => o.value === '');
 
 		const box = document.createElement('div');
 		box.className = 'combo';
@@ -25,6 +27,8 @@
 		input.setAttribute('aria-expanded', 'false');
 		input.setAttribute('aria-controls', id);
 		input.placeholder = sel.dataset.searchable || 'Type to search';
+		input.disabled = sel.disabled;
+		if (sel.getAttribute('aria-label')) input.setAttribute('aria-label', sel.getAttribute('aria-label'));
 		const list = document.createElement('ul');
 		list.className = 'combo-list';
 		list.id = id;
@@ -36,7 +40,7 @@
 
 		let shown = [];
 		let active = -1;
-		const current = () => opts.find((o) => o.value === sel.value);
+		const current = () => options().find((o) => o.value === sel.value);
 		const sync = () => {
 			const c = current();
 			input.value = c && c.value !== '' ? c.text : '';
@@ -60,6 +64,7 @@
 		// all: list every choice (on focus) instead of filtering by what's in the box
 		function render(all) {
 			const terms = all ? [] : words(input.value);
+			const opts = options();
 			shown = terms.length
 				? [...opts.filter((o) => !o.always && o.value !== '' && terms.every((t) => o.hay.includes(t))), ...opts.filter((o) => o.always)]
 				: opts.slice();
@@ -101,7 +106,10 @@
 		}
 
 		input.addEventListener('focus', () => { input.select(); render(true); });
-		input.addEventListener('input', () => render(false));
+		// The search box has no name: its typing and its own change event stay out of the form's
+		// listeners (live totals, unsaved-changes tracking); picking fires "change" on the select
+		input.addEventListener('input', (e) => { e.stopPropagation(); render(false); });
+		input.addEventListener('change', (e) => e.stopPropagation());
 		input.addEventListener('keydown', (e) => {
 			if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
 				e.preventDefault();
@@ -124,6 +132,7 @@
 		// Leaving the box: an emptied box means the blank choice; anything else unpicked goes back
 		input.addEventListener('blur', () => {
 			close();
+			const blank = options().find((o) => o.value === '');
 			if (input.value.trim() === '' && blank) {
 				pick(blank);
 			} else {
@@ -136,4 +145,6 @@
 	}
 
 	document.querySelectorAll('select[data-searchable]').forEach(wire);
+	// For rows a page adds later (the build sheet's "+ line" copies a row)
+	window.comboWire = wire;
 })();

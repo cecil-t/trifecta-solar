@@ -614,7 +614,10 @@ final class ProjectController
 		$rows = Tasks::forProjects([$id])[$id] ?? [];
 		$status = Tasks::status($p, $rows);
 		$eq = Projects::equipment($id);
-		$commentsOnly = ($_GET['log'] ?? '') === 'comments';
+		// The log opens on Comments only when the project has any, else on All activity
+		$log = (string) ($_GET['log'] ?? '');
+		$commentsOnly = $log === 'comments' || ($log !== 'all' && (bool) Db::value(
+			"SELECT 1 FROM activity_log WHERE entity_type = 'project' AND entity_id = ? AND kind = 'comment' AND deleted_at IS NULL LIMIT 1", [$id]));
 		$contacts = Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [$p['customer_id'] ?? 0]);
 		$templateTasks = Db::all('SELECT id, name, phase FROM task_templates WHERE parent_id IS NULL AND is_active = 1 ORDER BY phase, sort_order');
 

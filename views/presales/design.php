@@ -351,7 +351,7 @@ $folded = [];
 								<input type="hidden" name="lines[<?= e($cat) ?>][<?= $k ?>][id]" value="<?= $l ? (int) ($l['id'] ?? 0) : '' ?>">
 								<input type="hidden" name="lines[<?= e($cat) ?>][<?= $k ?>][key]" value="<?= e($key) ?>" class="pl-key">
 								<div class="pl-item">
-									<select name="lines[<?= e($cat) ?>][<?= $k ?>][item]" class="pl-select" aria-label="<?= e($catLabel) ?> item">
+									<select name="lines[<?= e($cat) ?>][<?= $k ?>][item]" class="pl-select" aria-label="<?= e($catLabel) ?> item" data-searchable="Type to search <?= e(strtolower($catLabel)) ?>">
 										<option value="">Choose</option>
 										<?php if ($l && $l['catalog_item_id'] && !$current): ?>
 											<option value="<?= (int) $l['catalog_item_id'] ?>" selected data-rule="<?= e($rule) ?>"><?= e($l['name']) ?> (retired)</option>
@@ -362,7 +362,7 @@ $folded = [];
 											$stale = Presales::isStale($it['price_updated_at']); ?>
 											<option value="<?= (int) $it['id'] ?>" <?= $isSel ? 'selected' : '' ?> data-rule="<?= e($it['qty_rule']) ?>"<?= $it['mounts'] ? ' data-mounts="' . e($it['mounts']) . '"' : '' ?><?= $it['ext_warranty_cost'] !== null ? ' data-ext="' . e(Presales::money((float) $it['ext_warranty_cost'])) . ($it['ext_warranty_years'] ? ', ' . (int) $it['ext_warranty_years'] . ' yr' : '') . '"' : '' ?> data-notes="<?= e((string) $it['notes']) ?>"><?= e($it['name']) ?> &middot; <?= e(Presales::price((float) $it['price'] + (float) $it['shipping'], $it['qty_rule'])) ?><?= $it['qty_rule'] === 'dc_watts' ? '/W' : ($unitLabel === 'ft' ? '/ft' : '') ?><?= $stale ? ' (check price)' : '' ?></option>
 										<?php endforeach; ?>
-										<option value="custom" <?= $isCustom ? 'selected' : '' ?> data-rule="manual">Custom line...</option>
+										<option value="custom" <?= $isCustom ? 'selected' : '' ?> data-rule="manual" data-always>Custom line...</option>
 									</select>
 									<div class="pl-custom" <?= $isCustom ? '' : 'hidden' ?>>
 										<input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][name]" value="<?= e($isCustom ? $l['name'] : '') ?>" placeholder="Description" aria-label="Custom line description">
@@ -790,5 +790,6 @@ $folded = [];
 		<?php if (!$locked): ?><button class="btn btn-primary btn-small">Save</button><?php endif; ?>
 	</div>
 </form>
+<script src="<?= asset('assets/js/combobox.js') ?>"></script>
 <script src="<?= asset('assets/js/presales.js') ?>"></script>
 <script src="<?= asset('assets/js/pdf-download.js') ?>"></script>
