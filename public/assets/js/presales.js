@@ -889,4 +889,12 @@
 		});
 	}
 	window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+	// A sold build sheet with a project is locked: everything can be read, nothing edited
+	if (form && form.dataset.locked) {
+		form.querySelectorAll('input, select, textarea, button').forEach((el) => {
+			if (el.type === 'hidden' || el.matches('.fold-btn, .copy-btn, [data-fold-all]')) return;
+			el.disabled = true;
+		});
+	}
 })();

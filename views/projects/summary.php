@@ -164,29 +164,46 @@ $priceUrl = '/projects/' . $id . '/summary' . ($showPrice ? '?price=0' : '');
 
 <?php if ($roofs || $p['install_type'] === 'roof'): ?>
 	<section class="sheet-sec sheet-wide sheet-keep">
-		<h2>Roof faces</h2>
+		<h2>Arrays</h2>
 		<?php if ($roofs): ?>
+			<?php $hasStats = (bool) array_filter($roofs, static fn ($r) => $r['area_m2'] !== null || $r['perimeter_m'] !== null || $r['shading_pct']); ?>
 			<table class="sheet-table">
-				<thead><tr><th>Face</th><th>Material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th></tr></thead>
+				<thead><tr><th>Array</th><th>Mount / material</th><th class="num">Azimuth</th><th class="num">Tilt</th><th class="num">Panels</th><?php if ($hasStats): ?><th class="num">Shading</th><th class="num">Area</th><th class="num">Perimeter</th><?php endif; ?></tr></thead>
 				<tbody>
-					<?php foreach ($roofs as $n => $r): ?>
+					<?php foreach ($roofs as $n => $r): $mount = $r['mount'] ?: 'roof'; ?>
 						<tr>
-							<td><?= e($r['name'] ?: 'Roof face ' . ($n + 1)) ?></td>
-							<td><?= isset(Projects::ROOF_MATERIALS[$r['material'] ?? '']) ? e(Projects::ROOF_MATERIALS[$r['material']]) : '' ?></td>
+							<td><?= e($r['name'] ?: 'Array ' . ($n + 1)) ?></td>
+							<td><?= e(implode(', ', array_filter([$mount !== 'roof' ? (App\Presales::MOUNTS[$mount] ?? '') : null, Projects::ROOF_MATERIALS[$r['material'] ?? ''] ?? null]))) ?></td>
 							<td class="num"><?= $r['azimuth'] !== null ? (int) $r['azimuth'] . '&deg; ' . Projects::compass((int) $r['azimuth']) : '' ?></td>
 							<td class="num"><?= $r['tilt'] !== null ? $fmtNum($r['tilt']) . '&deg;' . (($pt = $pitch((float) $r['tilt'])) !== '' ? ' (' . $pt . ')' : '') : '' ?></td>
 							<td class="num"><?= $r['panels'] !== null ? (int) $r['panels'] : '' ?></td>
+							<?php if ($hasStats): ?>
+								<td class="num"><?= $r['shading_pct'] ? $fmtNum($r['shading_pct']) . '%' : '' ?></td>
+								<td class="num"><?= $r['area_m2'] !== null ? e(App\Layout::sqft((float) $r['area_m2'])) : '' ?></td>
+								<td class="num"><?= $r['perimeter_m'] !== null ? e(App\Layout::feetUp((float) $r['perimeter_m'])) : '' ?></td>
+							<?php endif; ?>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>
 				<?php if ($roofPanels): ?>
-					<tfoot><tr><td colspan="4">Total</td><td class="num"><?= $roofPanels ?></td></tr></tfoot>
+					<?php $area = array_sum(array_map(static fn ($r) => (float) $r['area_m2'], $roofs)); $perim = array_sum(array_map(static fn ($r) => (float) $r['perimeter_m'], $roofs)); ?>
+					<tfoot><tr><td colspan="4">Total</td><td class="num"><?= $roofPanels ?></td><?php if ($hasStats): ?><td></td><td class="num"><?= $area > 0 ? e(App\Layout::sqft($area)) : '' ?></td><td class="num"><?= $perim > 0 ? e(App\Layout::feetUp($perim)) : '' ?></td><?php endif; ?></tr></tfoot>
 				<?php endif; ?>
 			</table>
-			<p class="small muted">Azimuth from true north (180&deg; = due south).<?php if ($roofPanels && $roofPanels !== (int) $totals['panels']): ?> <strong class="text-red">Roof faces total <?= $roofPanels ?> panels; the module lines total <?= (int) $totals['panels'] ?>.</strong><?php endif; ?></p>
+			<p class="small muted">Azimuth from true north (180&deg; = due south).<?= $hasStats ? ' Area is the panels\' own surface; perimeter is a tape measure around each array.' : '' ?><?php if ($roofPanels && $roofPanels !== (int) $totals['panels']): ?> <strong class="text-red">Arrays total <?= $roofPanels ?> panels; the module lines total <?= (int) $totals['panels'] ?>.</strong><?php endif; ?></p>
 		<?php else: ?>
-			<p class="muted">No roof faces entered yet.</p>
+			<p class="muted">No arrays entered yet.</p>
 		<?php endif; ?>
+	</section>
+<?php endif; ?>
+
+<?php if ($aerial): ?>
+	<section class="sheet-sec sheet-wide sheet-keep" id="layout">
+		<h2>Site layout</h2>
+		<figure class="sheet-aerial">
+			<div class="sheet-aerial-frame"><?= $aerial['svg'] /* built by App\Layout::drawing from numbers and base64 tiles only */ ?></div>
+			<figcaption class="small muted"><?= e($aerial['attribution'] ?? '') ?><?= $aerial['trackers'] ? ' Dashed red circle: the space each tracker sweeps as it turns.' : '' ?></figcaption>
+		</figure>
 	</section>
 <?php endif; ?>
 

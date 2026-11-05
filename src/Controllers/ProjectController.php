@@ -193,7 +193,7 @@ final class ProjectController
 				[$data, $equipment, $funding, $roofs] = $this->input(null);
 				$data['created_by'] = Auth::id();
 				if ($data['municipality_id']) {
-					$data = $this->applyMunicipalityDefaults($data);
+					$data = Projects::municipalityDefaults($data);
 				}
 				$id = Db::insert('projects', $data);
 				if ($lookup) {
@@ -238,7 +238,7 @@ final class ProjectController
 			Db::transaction(function () use ($id, $before, $beforeEq, $beforeFunding, $beforeRoofs, $address, $lookup) {
 				[$data, $equipment, $funding, $roofs] = $this->input($id);
 				if ($data['municipality_id'] && (int) $data['municipality_id'] !== (int) $before['municipality_id']) {
-					$data = $this->applyMunicipalityDefaults($data, true);
+					$data = Projects::municipalityDefaults($data, true);
 				}
 				$this->saveGeo($id, $before, $data, $address, $lookup);
 				Db::update('projects', $id, $data + ['updated_at' => now_utc()]);
@@ -250,7 +250,7 @@ final class ProjectController
 					Activity::changes('project', $id, [$k => $this->eqSummary($k, $beforeEq[$k])], [$k => $this->eqSummary($k, $afterEq[$k])], [$k => $label]);
 				}
 				$this->saveRoofs($id, $roofs);
-				Activity::changes('project', $id, ['r' => $beforeRoofs], ['r' => $this->roofSummary(Projects::roofs($id))], ['r' => 'Roof faces']);
+				Activity::changes('project', $id, ['r' => $beforeRoofs], ['r' => $this->roofSummary(Projects::roofs($id))], ['r' => 'Arrays']);
 				$this->saveFunding($id, $funding);
 				Activity::changes('project', $id, ['f' => $beforeFunding], ['f' => $this->fundingNames($id)], ['f' => 'Funding']);
 
@@ -372,21 +372,26 @@ final class ProjectController
 		return [$data, $equipment, $funding, $this->roofRows()];
 	}
 
-	/** Roof face lines from the form; a line with nothing filled in is skipped. */
+	/** Array lines (roof faces and ground arrays) from the form; a line with nothing filled in is skipped. */
 	private function roofRows(): array
 	{
 		$out = [];
+		$num = static function ($v, float $max): ?float {
+			$v = trim((string) $v);
+			return $v !== '' && is_numeric($v) && (float) $v >= 0 && (float) $v <= $max ? (float) $v : null;
+		};
 		foreach ((array) ($_POST['roofs'] ?? []) as $r) {
 			$r = (array) $r;
 			$name = trim((string) ($r['name'] ?? '')) ?: null;
-			$material = isset(Projects::ROOF_MATERIALS[$r['material'] ?? '']) ? $r['material'] : null;
+			$mount = isset(\App\Presales::MOUNTS[$r['mount'] ?? '']) ? $r['mount'] : 'roof';
+			$material = $mount === 'roof' && isset(Projects::ROOF_MATERIALS[$r['material'] ?? '']) ? $r['material'] : null;
 			$azRaw = trim(str_replace('°', '', (string) ($r['azimuth'] ?? '')));
 			$panelsRaw = trim((string) ($r['panels'] ?? ''));
 			$tilt = Projects::parseTilt((string) ($r['tilt'] ?? ''));
 			if ($name === null && $material === null && $azRaw === '' && $tilt === null && $panelsRaw === '') {
 				continue;
 			}
-			$label = $name ?? 'Roof face ' . (count($out) + 1);
+			$label = $name ?? 'Array ' . (count($out) + 1);
 			if ($azRaw !== '' && (!preg_match('/^\d{1,3}$/', $azRaw) || (int) $azRaw > 360)) {
 				throw new \InvalidArgumentException($label . ': azimuth should be 0 to 359 degrees (180 is due south).');
 			}
@@ -394,10 +399,13 @@ final class ProjectController
 				throw new \InvalidArgumentException($label . ': panels should be a whole number.');
 			}
 			$out[] = [
-				'name' => $name, 'material' => $material,
-				'azimuth' => $azRaw === '' ? null : (int) $azRaw % 360,
-				'tilt' => $tilt,
+				'name' => $name, 'mount' => $mount, 'material' => $material,
+				'azimuth' => $azRaw === '' || $mount === 'tracker' ? null : (int) $azRaw % 360,
+				'tilt' => $mount === 'tracker' ? null : $tilt,
 				'panels' => $panelsRaw === '' ? null : (int) $panelsRaw,
+				'shading_pct' => $num($r['shading_pct'] ?? '', 90),
+				'area_m2' => $num($r['area_m2'] ?? '', 1e6),
+				'perimeter_m' => $num($r['perimeter_m'] ?? '', 1e5),
 			];
 		}
 		return $out;
@@ -411,23 +419,24 @@ final class ProjectController
 		}
 	}
 
-	/** One line per roof face for the project log, e.g. "East face: 18 panels, Asphalt shingle, az 180, tilt 26.6". */
+	/** One line per array for the project log, e.g. "East face: 18 panels, Asphalt shingle, az 180, tilt 26.6" (mount named when not a roof). */
 	private function roofSummary(array $roofs): string
 	{
 		$parts = [];
 		foreach ($roofs as $i => $r) {
 			$bits = array_filter([
 				$r['panels'] !== null ? $r['panels'] . ' panels' : null,
+				($r['mount'] ?? 'roof') !== 'roof' ? (\App\Presales::MOUNTS[$r['mount']] ?? null) : null,
 				Projects::ROOF_MATERIALS[$r['material'] ?? ''] ?? null,
 				$r['azimuth'] !== null ? 'az ' . $r['azimuth'] : null,
 				$r['tilt'] !== null ? 'tilt ' . rtrim(rtrim(number_format((float) $r['tilt'], 1), '0'), '.') : null,
 			]);
-			$parts[] = ($r['name'] ?: 'Roof face ' . ($i + 1)) . ($bits ? ': ' . implode(', ', $bits) : '');
+			$parts[] = ($r['name'] ?: 'Array ' . ($i + 1)) . ($bits ? ': ' . implode(', ', $bits) : '');
 		}
 		return implode('; ', $parts);
 	}
 
-	/** After a save, point out when the roof faces don't add up to the panel count. */
+	/** After a save, point out when the arrays don't add up to the panel count. */
 	private function roofCountNotice(int $id): void
 	{
 		$roofs = Projects::roofs($id);
@@ -437,7 +446,7 @@ final class ProjectController
 		}
 		$panels = Projects::totals(Projects::equipment($id), null)['panels'];
 		if ($allocated !== $panels) {
-			flash('info', 'Roof faces add up to ' . $allocated . ' panels, but the module lines total ' . $panels . '.');
+			flash('info', 'Arrays add up to ' . $allocated . ' panels, but the module lines total ' . $panels . '.');
 		}
 	}
 
@@ -500,24 +509,6 @@ final class ProjectController
 			} . ($r['description'] ? ' ' . $r['description'] : '');
 		}
 		return implode('; ', $parts);
-	}
-
-	/** Copy the municipality's usual review providers onto the project. */
-	private function applyMunicipalityDefaults(array $data, bool $overwrite = false): array
-	{
-		$m = Db::one('SELECT * FROM municipalities WHERE id = ?', [$data['municipality_id']]);
-		if (!$m) {
-			return $data;
-		}
-		foreach (Municipalities::SLOTS as $slot) {
-			// On create, fill blanks. On a municipality change, take the new municipality's
-			// setup only where it has one, so the user's own choices aren't wiped.
-			if ($overwrite ? !empty($m[$slot['by']]) : empty($data[$slot['by']])) {
-				$data[$slot['by']] = $m[$slot['by']];
-				$data[$slot['org']] = $m[$slot['org']];
-			}
-		}
-		return $data;
 	}
 
 	private function formatters(): array
@@ -651,10 +642,32 @@ final class ProjectController
 				'program' => \App\Warranties::program($p, \App\Warranties::datesFor([$id])[$id]),
 				'stored' => array_column(Db::all('SELECT * FROM project_warranties WHERE project_id = ?', [$id]), null, 'id'),
 			],
+			'sold' => self::soldFrom($p),
 			'notices' => $notices,
 			'noticeHistory' => CustomerNotices::history($id),
 			'noticeRules' => CustomerNotices::rules(),
 		]);
+	}
+
+	/** The sold build sheet's site layout on satellite tiles, for the print summary; null without one. */
+	private function aerial(array $p): ?array
+	{
+		$json = $p['design_id'] ? Db::value('SELECT layout_json FROM presales_designs WHERE id = ?', [(int) $p['design_id']]) : null;
+		$layout = \App\Layout::decode($json ?: null);
+		return $layout && \App\Layout::panels($layout) ? \App\Layout::aerial($layout) : null;
+	}
+
+	/** The sold build sheet the project came from, or null; links only for people who can open the opportunity. */
+	private static function soldFrom(array $p): ?array
+	{
+		$d = $p['design_id'] ? Db::one('SELECT d.id, d.name, d.quote_number, d.opportunity_id, d.layout_json, o.salesperson_id, o.created_by
+			FROM presales_designs d JOIN presales_opportunities o ON o.id = d.opportunity_id WHERE d.id = ?', [(int) $p['design_id']]) : null;
+		if (!$d) {
+			return null;
+		}
+		$layout = \App\Layout::decode($d['layout_json']);
+		unset($d['layout_json']);
+		return $d + ['can_see' => \App\Presales::canSee($d), 'has_layout' => $layout && \App\Layout::panels($layout) > 0];
 	}
 
 	/** Mark the customer update lines shown on the project as notified or not notified. */
@@ -674,7 +687,7 @@ final class ProjectController
 
 	/**
 	 * Printable project summary for the designer at kickoff: customer and contacts, site and
-	 * jurisdiction, contract basics, equipment, roof faces and the Notes field. No phases, steps
+	 * jurisdiction, contract basics, equipment, arrays and the Notes field. No phases, steps
 	 * or dates. The contract price shows unless ?price=0 hides it.
 	 */
 	public function summary(int $id): void
@@ -694,6 +707,7 @@ final class ProjectController
 			'customer' => $p['customer_id'] ? Db::one('SELECT * FROM organizations WHERE id = ?', [$p['customer_id']]) : null,
 			'contacts' => Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [$p['customer_id'] ?? 0]),
 			'showPrice' => $showPrice,
+			'aerial' => $this->aerial($p),
 		], 'print_layout');
 	}
 

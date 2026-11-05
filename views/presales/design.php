@@ -21,6 +21,8 @@ use App\Projects;
  * @var array  $who            created_name, updated_name
  * @var array $siblings        the opportunity's build sheets
  * @var array $trenchView      DesignController::trenchView()
+ * @var bool  $locked          sold with a project (App\SoldProject::locked): read only
+ * @var ?array $project        the project it sold into
  */
 $base = '/presales/' . (int) $o['id'] . '/designs/' . (int) $d['id'];
 $sel = static fn ($a, $b) => (string) $a === (string) $b && (string) $a !== '' ? 'selected' : '';
@@ -147,14 +149,22 @@ $folded = [];
 			<?= Csrf::field() ?>
 			<button class="btn btn-ghost" title="Make a copy to try another design; this one stays as it is">Copy</button>
 		</form>
-		<form method="post" action="<?= $base ?>/delete" data-confirm="Delete this build sheet? This can't be undone.">
-			<?= Csrf::field() ?>
-			<button class="btn btn-ghost">Delete</button>
-		</form>
+		<?php if (!$locked): ?>
+			<form method="post" action="<?= $base ?>/delete" data-confirm="Delete this build sheet? This can't be undone.">
+				<?= Csrf::field() ?>
+				<button class="btn btn-ghost">Delete</button>
+			</form>
+		<?php endif; ?>
 	</div>
 </div>
 
-<?php if ($flags['changed'] || $flags['retired']): ?>
+<?php if ($locked): ?>
+	<div class="flash flash-success design-banner design-locked">
+		<div><strong>Sold, locked:</strong> this build sheet is the contract for project <a href="/projects/<?= (int) $project['id'] ?>"><?= e($project['project_number'] . ' ' . $project['name']) ?></a>, so it can be read but not changed. A change after the sale is a new build sheet: use Copy.</div>
+	</div>
+<?php endif; ?>
+
+<?php if (!$locked && ($flags['changed'] || $flags['retired'])): ?>
 	<div class="flash flash-error design-banner">
 		<div><strong>Catalog price changed:</strong> <?= (int) ($flags['changed'] + $flags['retired']) ?> line<?= $flags['changed'] + $flags['retired'] > 1 ? 's are' : ' is' ?> priced differently in the catalog now. This build sheet keeps the prices it was built with.</div>
 		<form method="post" action="<?= $base ?>/reprice">
@@ -163,13 +173,13 @@ $folded = [];
 		</form>
 	</div>
 <?php endif; ?>
-<?php if ($flags['stale']): ?>
+<?php if (!$locked && $flags['stale']): ?>
 	<div class="flash flash-warn design-banner">
 		<div><strong>Check price:</strong> <?= (int) $flags['stale'] ?> line<?= $flags['stale'] > 1 ? 's use catalog prices' : ' uses a catalog price' ?> last checked more than <?= (int) Presales::num('stale_days') ?> days ago. Confirm or update <?= $flags['stale'] > 1 ? 'them' : 'it' ?> in the <a href="/presales/catalog?show=stale">catalog</a> before quoting.</div>
 	</div>
 <?php endif; ?>
 
-<form method="post" action="<?= $base ?>" id="design-form" class="design-layout"<?= $layoutMaster ? ' data-layout-master="1"' : '' ?> data-calc-url="<?= $base ?>/calc" data-steep="<?= e((string) $steep) ?>" novalidate>
+<form method="post" action="<?= $base ?>" id="design-form" class="design-layout"<?= $layoutMaster ? ' data-layout-master="1"' : '' ?><?= $locked ? ' data-locked="1"' : '' ?> data-calc-url="<?= $base ?>/calc" data-steep="<?= e((string) $steep) ?>" novalidate>
 	<?= Csrf::field() ?>
 
 	<aside class="design-summary" aria-label="Totals">
@@ -220,8 +230,12 @@ $folded = [];
 				<p class="hint mt-xs dt-explain">Gross margin = (retail price - extras without markup - pass-through paid to the salesperson) - internal cost (including contingency) - commission - self-generated or referral bonus, as a share of that revenue. Commission is paid on the price less pass-through items and extras: what isn't marked up earns no commission.</p>
 			</div>
 			<p class="dt-error" id="calc-error" hidden></p>
-			<button class="btn btn-primary btn-block">Save build sheet</button>
-			<p class="hint mt-xs center" id="calc-status">Totals update as you type. Save to keep changes.</p>
+			<?php if ($locked): ?>
+				<p class="hint mt-xs center">Sold and locked: these are the numbers the project was sold on.</p>
+			<?php else: ?>
+				<button class="btn btn-primary btn-block">Save build sheet</button>
+				<p class="hint mt-xs center" id="calc-status">Totals update as you type. Save to keep changes.</p>
+			<?php endif; ?>
 		</div>
 	</aside>
 
@@ -762,14 +776,18 @@ $folded = [];
 		</section>
 
 		<div class="form-actions">
-			<button class="btn btn-primary">Save build sheet</button>
-			<a href="/presales/<?= (int) $o['id'] ?>" class="btn btn-ghost">Back without saving</a>
+			<?php if ($locked): ?>
+				<a href="/presales/<?= (int) $o['id'] ?>" class="btn btn-ghost">Back to the opportunity</a>
+			<?php else: ?>
+				<button class="btn btn-primary">Save build sheet</button>
+				<a href="/presales/<?= (int) $o['id'] ?>" class="btn btn-ghost">Back without saving</a>
+			<?php endif; ?>
 		</div>
 	</div>
 
 	<div class="design-pricebar">
 		<div><strong data-v="price"><?= e($m($calc['price'])) ?></strong> <span class="muted small"><span data-v="gross_margin_pct"><?= $calc['gross_margin_pct'] === null ? '-' : e(Presales::pct($calc['gross_margin_pct'])) ?></span> margin</span></div>
-		<button class="btn btn-primary btn-small">Save</button>
+		<?php if (!$locked): ?><button class="btn btn-primary btn-small">Save</button><?php endif; ?>
 	</div>
 </form>
 <script src="<?= asset('assets/js/presales.js') ?>"></script>

@@ -130,6 +130,8 @@ $r->get('/presales/{id}', [PresalesController::class, 'show']);
 $r->get('/presales/{id}/edit', [PresalesController::class, 'edit']);
 $r->post('/presales/{id}', [PresalesController::class, 'update']);
 $r->post('/presales/{id}/status', [PresalesController::class, 'status']);
+$r->get('/presales/{id}/sold', [PresalesController::class, 'sold']);
+$r->post('/presales/{id}/sold', [PresalesController::class, 'soldSave']);
 $r->post('/presales/{id}/comments', [PresalesController::class, 'comment']);
 $r->post('/presales/{id}/designs', [DesignController::class, 'create']);
 $r->get('/presales/{id}/designs/{designId}', [DesignController::class, 'show']);

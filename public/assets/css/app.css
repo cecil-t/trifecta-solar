@@ -429,7 +429,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 .eq { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }
 .eq-head, .eq-row { display: grid; grid-template-columns: 90px 120px minmax(200px, 1fr) 36px; gap: .5rem; width: 100%; max-width: 720px; }
 .eq-4 .eq-head, .eq-4 .eq-row { grid-template-columns: 90px 110px 110px minmax(180px, 1fr) 36px; }
-.eq-roof .eq-head, .eq-roof .eq-row { grid-template-columns: minmax(160px, 1fr) 210px 90px 110px 80px 36px; max-width: 860px; }
+.eq-roof .eq-head, .eq-roof .eq-row { grid-template-columns: minmax(150px, 1fr) 110px 200px 90px 110px 80px 36px; max-width: 980px; }
 .eq-roof .eq-cell { display: block; font-weight: 400; }
 .eq-roof .eq-mlabel { display: none; }
 .eq-head { font-size: .72rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
@@ -474,7 +474,8 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.eq-roof .eq-row { grid-template-columns: 1fr 1fr 1fr 36px; }
 	.eq-roof .eq-row input[type=text]:first-child { grid-column: 1 / 4; grid-row: 1; }
 	.eq-roof .eq-row .eq-del { grid-column: 4; grid-row: 1; }
-	.eq-roof .eq-row select { grid-column: 1 / -1; grid-row: 2; }
+	.eq-roof .eq-row select { grid-column: 1 / 2; grid-row: 2; }
+	.eq-roof .eq-row select + select { grid-column: 2 / -1; }
 	.eq-roof .eq-mlabel { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; margin-bottom: .1rem; }
 	.eq-roof .eq-row { margin-bottom: .5rem; }
 	.eq-row input[type=text] { grid-column: 1 / -2; }
@@ -804,6 +805,12 @@ tr.row-flash, li.row-flash { animation: row-flash 2.5s ease-out; }
 .roof-name span { white-space: nowrap; }
 .roof-mismatch { margin: .5rem 0 0; color: #8c1d14; background: #fbe3e0; border-radius: var(--radius-sm); padding: .3rem .5rem; }
 .roof-none { margin: .7rem 0 0; }
+.sold-from { margin: .6rem 0 0; }
+.roof-total { margin: .45rem 0 0; }
+.sheet-aerial { margin: 0; }
+.sheet-aerial-frame { aspect-ratio: 7.3 / 3.1; overflow: hidden; border: 1px solid var(--border); }
+.sheet-aerial-frame svg { display: block; width: 100%; height: 100%; }
+.sheet-aerial figcaption { margin-top: .25rem; }
 .card-head-plain { padding: 0 0 .5rem; }
 
 /* task grid: Completed is the main date; Target is a quieter planning field */
@@ -1248,6 +1255,17 @@ a[href^="tel:"] { white-space: nowrap; }
 .design-card-price { font-size: 1.6rem; font-weight: 750; color: var(--blue); line-height: 1.15; font-variant-numeric: tabular-nums; }
 .design-card-meta { color: var(--muted); font-size: .88rem; }
 .design-tabs { margin: .5rem 0 0; border-bottom: 0; }
+/* Create project from a sold build sheet */
+.sold-pick { margin: 0 0 1rem; max-width: 26rem; }
+.sold-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.sold-layout .card { padding: 1rem 1.1rem; margin: 0; }
+.sold-create fieldset { border: 0; padding: 0; margin: 0; }
+.sold-link summary { cursor: pointer; font-weight: 600; color: var(--blue); }
+.tight-list { margin: .3rem 0 .6rem; padding-left: 1.2rem; }
+.tight-list li { margin: .15rem 0; }
+@media (max-width: 900px) { .sold-layout { grid-template-columns: minmax(0, 1fr); } }
+/* A sold build sheet with a project: read-only */
+.design-locked { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
 .design-banner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; font-weight: 400; }
 
 .design-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 1rem; align-items: start; }

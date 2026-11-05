@@ -13,6 +13,7 @@ use App\Csrf;
  * @var array|null  $origin      lat, lon
  * @var string      $originNote
  * @var string|null $who         who saved the layout last
+ * @var bool        $locked      the build sheet sold and has a project: look, don't change
  */
 $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2, '.', ''), '0'), '.');
 ?>
@@ -31,8 +32,13 @@ $inch = static fn (float $m): string => rtrim(rtrim(number_format($m / 0.0254, 2
 			<?= Csrf::field() ?>
 			<input type="hidden" name="layout" id="layout-json" value="">
 			<span class="small layout-dirty" id="layout-dirty" hidden>Unsaved changes</span>
-			<button class="btn btn-primary" name="then" value="">Save</button>
-			<button class="btn btn-secondary" name="then" value="sheet">Save and return to build sheet</button>
+			<?php if ($locked): ?>
+				<span class="chip chip-green" title="The build sheet sold and has a project, so the layout can't change">Sold, locked</span>
+				<a href="<?= e($base) ?>" class="btn btn-secondary">Back to build sheet</a>
+			<?php else: ?>
+				<button class="btn btn-primary" name="then" value="">Save</button>
+				<button class="btn btn-secondary" name="then" value="sheet">Save and return to build sheet</button>
+			<?php endif; ?>
 		</form>
 	<?php endif; ?>
 </div>

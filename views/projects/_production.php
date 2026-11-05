@@ -55,5 +55,5 @@ $shown = array_slice($check['rows'], 0, 14);
 			</table>
 		</details>
 	<?php endif; ?>
-	<p class="hint report-hint">Estimate: <?= e($kwh($check['annual'])) ?> kWh a year (the project's estimate), spread over the months by the fleet's own pattern (<?= (int) $check['shape_systems'] ?> monitored systems with a full year), less <?= e(rtrim(rtrim(number_format($check['degradation'] * 100, 2), '0'), '.')) ?>% a year for module aging. Single months swing with the weather; the 12-month figure is the one to judge by.</p>
+	<p class="hint report-hint">Estimate: <?= e($kwh($check['annual'])) ?> kWh a year (the project's estimate), spread over the months <?= $check['quoted_months'] ? 'the way the sold build sheet\'s estimate spread them' : 'by the fleet\'s own pattern (' . (int) $check['shape_systems'] . ' monitored systems with a full year)' ?>, less <?= e(rtrim(rtrim(number_format($check['degradation'] * 100, 2), '0'), '.')) ?>% a year for module aging. Single months swing with the weather; the 12-month figure is the one to judge by.</p>
 </section>

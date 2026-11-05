@@ -65,7 +65,25 @@ final class Projects
 		];
 	}
 
-	/** Roof faces of a rooftop project, in display order. */
+	/** Copy the municipality's usual review providers onto the project. */
+	public static function municipalityDefaults(array $data, bool $overwrite = false): array
+	{
+		$m = Db::one('SELECT * FROM municipalities WHERE id = ?', [$data['municipality_id']]);
+		if (!$m) {
+			return $data;
+		}
+		foreach (Municipalities::SLOTS as $slot) {
+			// On create, fill blanks. On a municipality change, take the new municipality's
+			// setup only where it has one, so the user's own choices aren't wiped.
+			if ($overwrite ? !empty($m[$slot['by']]) : empty($data[$slot['by']])) {
+				$data[$slot['by']] = $m[$slot['by']];
+				$data[$slot['org']] = $m[$slot['org']];
+			}
+		}
+		return $data;
+	}
+
+	/** A project's arrays (roof faces and ground arrays; table project_roofs), in display order. */
 	public static function roofs(int $projectId): array
 	{
 		return Db::all('SELECT * FROM project_roofs WHERE project_id = ? ORDER BY sort_order, id', [$projectId]);

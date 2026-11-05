@@ -9,6 +9,7 @@ use App\Designs;
 use App\Presales;
 use App\Production;
 use App\Savings;
+use App\SoldProject;
 use App\Trench;
 use App\View;
 
@@ -40,6 +41,8 @@ final class DesignController
 			'sav' => Savings::forDesign($o, $d, Designs::lines($id), $saved),
 			'contacts' => $o['customer_id'] ? Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [(int) $o['customer_id']]) : [],
 			'title' => $d['name'] . ' - ' . $o['name'],
+			'locked' => SoldProject::locked($o, $d),
+			'project' => $o['project_id'] ? Db::one('SELECT id, project_number, name FROM projects WHERE id = ?', [(int) $o['project_id']]) : null,
 			'o' => $o, 'd' => $d, 'lines' => $lines, 'arrays' => $arrays, 'calc' => $calc,
 			'flags' => self::flags($lines, $d, $calc),
 			'trenchView' => self::trenchView($calc),
@@ -89,7 +92,8 @@ final class DesignController
 	/** Save the build sheet from the form; on a problem, keep what was typed and go back to it. */
 	private function persist(int $oppId, int $id): array
 	{
-		[, $d] = $this->find($oppId, $id);
+		[$o, $d] = $this->find($oppId, $id);
+		self::refuseLocked($o, $d);
 		try {
 			[$f, $lines, $arrays, $trench] = Designs::fromInput($d, $_POST);
 			$merged = array_merge($d, $f);
@@ -120,6 +124,15 @@ final class DesignController
 			redirect('/presales/' . $oppId . '/designs/' . $id);
 		}
 		return $calc;
+	}
+
+	/** A sold build sheet with a project can't change: say so and go back to it. */
+	public static function refuseLocked(array $o, array $d, string $page = ''): void
+	{
+		if (SoldProject::locked($o, $d)) {
+			flash('error', 'This build sheet sold and is locked, so nothing was saved. Copy it to try a change.');
+			redirect('/presales/' . (int) $o['id'] . '/designs/' . (int) $d['id'] . $page);
+		}
 	}
 
 	/** Save the build sheet, then run its production estimate (SAM detailed and PVWatts). */

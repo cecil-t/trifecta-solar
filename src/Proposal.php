@@ -213,18 +213,7 @@ final class Proposal
 		if (!$layout || !Layout::panels($layout)) {
 			$warnings[] = 'No site layout drawn yet, so the System Summary page shows an empty box.';
 		} elseif ($withDrawing) {
-			$drawing = Layout::drawing($layout, Layout::PROPOSAL_ASPECT, static function (int $z, int $x, int $y): ?array {
-				$t = GoogleMaps::tile($z, $x, $y);
-				return $t['ok'] ? [$t['bytes'], $t['type']] : null;
-			});
-			if ($drawing && GoogleMaps::configured()) {
-				[$bx, $by, $bw, $bh] = $drawing['box'];
-				[$n, $w] = Layout::latLon($layout['origin'], $bx, $by);
-				[$s, $e] = Layout::latLon($layout['origin'], $bx + $bw, $by + $bh);
-				$vp = GoogleMaps::tileViewport($drawing['zoom'], $n, $s, $e, $w);
-				$drawing['attribution'] = (string) ($vp['copyright'] ?? '');   // the Google Maps logo is on the drawing
-			}
-			$drawing['trackers'] = (bool) Layout::sweeps($layout);
+			$drawing = Layout::aerial($layout);
 		}
 		if ($layout && ($out = Layout::panelsOutsideView($layout))) {
 			$warnings[] = $out . ' ' . ($out === 1 ? 'panel is' : 'panels are') . ' outside the saved proposal view, so the System Summary aerial cuts '

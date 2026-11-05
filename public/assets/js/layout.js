@@ -1258,7 +1258,7 @@
 	const savedState = cfg.unsaved ? '' : drawingState();   // after a failed save the drawing is still unsaved
 	let dirty = false;
 	function markDirty() {
-		dirty = drawingState() !== savedState;
+		dirty = !cfg.locked && drawingState() !== savedState;
 		$('layout-dirty').hidden = !dirty;
 	}
 	const commit = () => {
@@ -2037,7 +2037,11 @@
 	toolHint();
 	markDirty();
 	// A new layout looks up Google's roof faces at the map point once (saved with the layout after that)
-	if (cfg.autoRoof) {
+	if (cfg.autoRoof && !cfg.locked) {
 		fetchRoof(false);
+	}
+	// A sold build sheet with a project is locked: the drawing can be looked at, not changed
+	if (cfg.locked) {
+		document.querySelectorAll('.layout-toolbar .tool:not([data-tool="select"]), #btn-roof, #btn-pview, #sel-copy, #sel-flip, #sel-delete, #msel-delete, .layout-app input, .layout-app select, .layout-app textarea').forEach((el) => { el.disabled = true; });
 	}
 })();

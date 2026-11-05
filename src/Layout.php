@@ -736,6 +736,30 @@ final class Layout
 	}
 
 	/**
+	 * The proposal's aerial: drawing() on Google's satellite tiles (fetched now, never stored), with
+	 * Google's attribution and whether trackers (sweep circles) are on it. Null when nothing is drawn.
+	 */
+	public static function aerial(array $layout): ?array
+	{
+		$drawing = self::drawing($layout, self::PROPOSAL_ASPECT, static function (int $z, int $x, int $y): ?array {
+			$t = GoogleMaps::tile($z, $x, $y);
+			return $t['ok'] ? [$t['bytes'], $t['type']] : null;
+		});
+		if (!$drawing) {
+			return null;
+		}
+		if (GoogleMaps::configured()) {
+			[$bx, $by, $bw, $bh] = $drawing['box'];
+			[$n, $w] = self::latLon($layout['origin'], $bx, $by);
+			[$s, $e] = self::latLon($layout['origin'], $bx + $bw, $by + $bh);
+			$vp = GoogleMaps::tileViewport($drawing['zoom'], $n, $s, $e, $w);
+			$drawing['attribution'] = (string) ($vp['copyright'] ?? '');   // the Google Maps logo is on the drawing
+		}
+		$drawing['trackers'] = (bool) self::sweeps($layout);
+		return $drawing;
+	}
+
+	/**
 	 * The layout for the proposal: satellite tiles under the panels, framed by proposalBox(), as an SVG
 	 * (images inline, so the PDF needs nothing else). $tile fetches one tile's bytes and type, or
 	 * returns null (then the photo is left gray). Returns the SVG and the tile zoom it used.

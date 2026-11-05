@@ -12,6 +12,7 @@ use App\Geo;
 use App\Municipalities;
 use App\Presales;
 use App\Projects;
+use App\SoldProject;
 use App\SolarResource;
 use App\UtilityRates;
 use App\View;
@@ -211,6 +212,10 @@ final class PresalesController
 	{
 		$o = $this->find($id);
 		$status = (string) ($_POST['status'] ?? '');
+		if ($o['status'] === 'sold' && $o['project_id']) {
+			flash('error', 'This opportunity sold and has a project, so its status stays Sold.');
+			redirect('/presales/' . $id);
+		}
 		if (!isset(Presales::STATUSES[$status])) {
 			redirect('/presales/' . $id);
 		}
@@ -222,15 +227,8 @@ final class PresalesController
 				$msg .= ': ' . $data['lost_reason'];
 			}
 		} elseif ($status === 'sold') {
-			$did = (int) ($_POST['sold_design_id'] ?? 0);
-			$design = Db::one('SELECT * FROM presales_designs WHERE id = ? AND opportunity_id = ?', [$did, $id]);
-			if (!$design) {
-				flash('error', 'Pick the build sheet that sold.');
-				redirect('/presales/' . $id);
-			}
-			$data['sold_design_id'] = $did;
-			$data['lost_reason'] = null;
-			$msg .= ' with "' . $design['name'] . '"';
+			// Selling goes through the Create project page, which makes or links the project
+			redirect('/presales/' . $id . '/sold?design=' . (int) ($_POST['sold_design_id'] ?? 0));
 		} else {
 			$data['lost_reason'] = null;
 			$data['sold_design_id'] = null;
@@ -239,6 +237,102 @@ final class PresalesController
 		Activity::event('presales', $id, $msg);
 		flash('success', $msg . '.');
 		redirect('/presales/' . $id);
+	}
+
+	/** Create project page: what the sold build sheet carries into a new project, or link one that exists. */
+	public function sold(int $id): void
+	{
+		$o = $this->find($id);
+		if ($o['status'] === 'sold' && $o['project_id']) {
+			redirect('/projects/' . (int) $o['project_id']);
+		}
+		$designs = Db::all('SELECT id, name, price_total, contact_id FROM presales_designs WHERE opportunity_id = ? ORDER BY sort_order, id', [$id]);
+		if (!$designs) {
+			flash('error', 'Add a build sheet first.');
+			redirect('/presales/' . $id);
+		}
+		$did = (int) ($_GET['design'] ?? 0) ?: (int) ($o['sold_design_id'] ?? 0);
+		$d = Designs::find($did);
+		if (!$d || (int) $d['opportunity_id'] !== $id) {
+			$d = Designs::find((int) $designs[0]['id']);
+		}
+		$plan = SoldProject::plan($o, $d);
+		$contacts = $o['customer_id'] ? Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [(int) $o['customer_id']]) : [];
+		$old = $_SESSION['old_sold'] ?? null;
+		unset($_SESSION['old_sold']);
+		$picked = $old ? array_map('intval', (array) ($old['contacts'] ?? [])) : array_filter([(int) ($d['contact_id'] ?? 0)]);
+		if (!$old && !$picked) {
+			$picked = array_map('intval', array_column(array_filter($contacts, static fn ($c) => (int) $c['is_primary'] === 1), 'id'));
+		}
+		$name = (string) ($old['name'] ?? $o['name']);
+		View::render('presales/sold', [
+			'title' => 'Create project: ' . $o['name'], 'o' => $o,
+			'd' => $d, 'designs' => $designs, 'plan' => $plan, 'contacts' => $contacts, 'picked' => $picked,
+			'number' => (string) ($old['number'] ?? Projects::nextNumber()), 'name' => $name,
+			'signed' => (string) ($old['signed'] ?? ''), 'nameTaken' => (bool) Db::value('SELECT 1 FROM projects WHERE name = ? COLLATE NOCASE', [$name]),
+			'linkable' => SoldProject::linkable($o),
+			'lookups' => [
+				'customer' => Db::value('SELECT name FROM organizations WHERE id = ?', [(int) $o['customer_id']]),
+				'salesperson' => Db::value('SELECT name FROM users WHERE id = ?', [(int) $o['salesperson_id']]),
+				'utility' => Db::value('SELECT name FROM utilities WHERE id = ?', [(int) $o['utility_id']]),
+				'municipality' => Db::value("SELECT m.name || ' (' || c.name || ' Co.)' FROM municipalities m JOIN counties c ON c.id = m.county_id WHERE m.id = ?", [(int) $o['municipality_id']]),
+			],
+		]);
+	}
+
+	/** Create the project from the sold build sheet, or link the build sheet to an existing project. */
+	public function soldSave(int $id): void
+	{
+		$o = $this->find($id);
+		if ($o['status'] === 'sold' && $o['project_id']) {
+			redirect('/projects/' . (int) $o['project_id']);
+		}
+		$d = Designs::find((int) ($_POST['design_id'] ?? 0));
+		if (!$d || (int) $d['opportunity_id'] !== $id) {
+			flash('error', 'Pick the build sheet that sold.');
+			redirect('/presales/' . $id . '/sold');
+		}
+		$back = '/presales/' . $id . '/sold?design=' . (int) $d['id'];
+		if (($_POST['mode'] ?? '') === 'link') {
+			$pid = (int) ($_POST['project_id'] ?? 0);
+			if (!in_array($pid, array_map('intval', array_column(SoldProject::linkable($o), 'id')), true)) {
+				flash('error', 'Pick the project to link.');
+				redirect($back);
+			}
+			$filled = SoldProject::link($o, $d, $pid);
+			flash('success', 'Marked Sold and linked to this project.' . ($filled ? ' Filled in what was blank: ' . implode(', ', $filled) . '.' : ' Nothing on the project was blank, so nothing changed.'));
+			redirect('/projects/' . $pid);
+		}
+		try {
+			$number = trim((string) ($_POST['number'] ?? ''));
+			$name = trim((string) ($_POST['name'] ?? ''));
+			if ($number === '' || !preg_match('/^[A-Za-z0-9-]{2,12}$/', $number)) {
+				throw new \InvalidArgumentException('Enter a project number, like ' . Projects::nextNumber() . '.');
+			}
+			if (Db::value('SELECT 1 FROM projects WHERE project_number = ?', [$number])) {
+				throw new \InvalidArgumentException('Project number ' . $number . ' is already used.');
+			}
+			if ($name === '') {
+				throw new \InvalidArgumentException('Enter the project name.');
+			}
+			if (Db::value('SELECT 1 FROM projects WHERE name = ? COLLATE NOCASE', [$name])) {
+				throw new \InvalidArgumentException('A project named "' . $name . '" already exists. Project names must be unique.');
+			}
+			$signedRaw = trim((string) ($_POST['signed'] ?? ''));
+			$signed = $signedRaw === '' ? null : (Projects::parseDate($signedRaw) ?? throw new \InvalidArgumentException('Use a date like 11/05/2026 for the contract signed date.'));
+			$allowed = $o['customer_id'] ? array_map('intval', array_column(Db::all("SELECT id FROM contacts WHERE owner_type = 'organization' AND owner_id = ?", [(int) $o['customer_id']]), 'id')) : [];
+			$contacts = array_values(array_intersect(array_map('intval', (array) ($_POST['contacts'] ?? [])), $allowed));
+			if (!$o['customer_id']) {
+				throw new \InvalidArgumentException('Pick the customer on the opportunity first.');
+			}
+			$pid = SoldProject::create($o, $d, ['number' => $number, 'name' => $name, 'signed' => $signed, 'contacts' => $contacts]);
+		} catch (\InvalidArgumentException $e) {
+			$_SESSION['old_sold'] = $_POST;
+			flash('error', $e->getMessage());
+			redirect($back);
+		}
+		flash('success', 'Project created from "' . $d['name'] . '". The build sheet is now locked.');
+		redirect('/projects/' . $pid);
 	}
 
 	public function comment(int $id): void

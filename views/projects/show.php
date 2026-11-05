@@ -87,6 +87,8 @@ $notifyMark = static function (array $t) use ($noticeRules): string {
 $siteAddr = trim(implode(', ', array_filter([trim((string) $p['site_street']), trim((string) $p['site_city']), trim(($p['site_state'] ?? '') . ' ' . ($p['site_zip'] ?? ''))])));
 $fmtNum = static fn ($n, $d = 1) => rtrim(rtrim(number_format((float) $n, $d), '0'), '.');
 $roofPanels = array_sum(array_map(static fn ($r) => (int) $r['panels'], $roofs));
+$roofArea = array_sum(array_map(static fn ($r) => (float) $r['area_m2'], $roofs));
+$roofPerimeter = array_sum(array_map(static fn ($r) => (float) $r['perimeter_m'], $roofs));
 // Roofer's pitch for a tilt in degrees, to the nearest half inch of rise (26.6 degrees is 6/12)
 $pitch = static function (float $deg) use ($fmtNum): string {
 	return $deg > 0 && $deg < 90 ? $fmtNum(round(tan(deg2rad($deg)) * 24) / 2) . '/12' : '';
@@ -220,28 +222,41 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 		</dl>
 		<?php if ($roofs): ?>
 			<details class="roof-details">
-				<summary>Roof details <span class="muted small">(<?= count($roofs) ?> <?= count($roofs) === 1 ? 'face' : 'faces' ?><?= $roofPanels ? ', ' . $roofPanels . ' panels' : '' ?>)</span></summary>
+				<summary>Arrays <span class="muted small">(<?= count($roofs) ?><?= $roofPanels ? ', ' . $roofPanels . ' panels' : '' ?><?= $roofArea ? ', ' . e(App\Layout::sqft($roofArea)) : '' ?>)</span></summary>
 				<ul class="roof-list">
-					<?php foreach ($roofs as $i => $r): ?>
+					<?php foreach ($roofs as $i => $r): $mount = $r['mount'] ?: 'roof'; ?>
 						<li>
-							<div class="roof-name"><strong><?= e($r['name'] ?: 'Roof face ' . ($i + 1)) ?></strong><?php if ($r['panels'] !== null): ?><span><?= (int) $r['panels'] ?> panels</span><?php endif; ?></div>
+							<div class="roof-name"><strong><?= e($r['name'] ?: 'Array ' . ($i + 1)) ?></strong><?php if ($r['panels'] !== null): ?><span><?= (int) $r['panels'] ?> panels</span><?php endif; ?></div>
 							<?php
 							$bits = array_filter([
+								$mount !== 'roof' ? e(App\Presales::MOUNTS[$mount] ?? '') : null,
 								isset(Projects::ROOF_MATERIALS[$r['material'] ?? '']) ? e(Projects::ROOF_MATERIALS[$r['material']]) : null,
 								$r['azimuth'] !== null ? 'Azimuth ' . (int) $r['azimuth'] . '&deg; ' . Projects::compass((int) $r['azimuth']) : null,
 								$r['tilt'] !== null ? 'Tilt ' . $fmtNum($r['tilt']) . '&deg;' . (($pt = $pitch((float) $r['tilt'])) !== '' ? ' (' . $pt . ')' : '') : null,
+								$r['shading_pct'] ? 'Shading ' . $fmtNum($r['shading_pct']) . '%' : null,
+								$r['area_m2'] !== null ? 'Area ' . e(App\Layout::sqft((float) $r['area_m2'])) : null,
+								$r['perimeter_m'] !== null ? 'Perimeter ' . e(App\Layout::feetUp((float) $r['perimeter_m'])) : null,
 							]);
 							?>
-							<?php if ($bits): ?><div class="muted small"><?= implode(' &middot; ', $bits) ?></div><?php endif; ?>
+							<?php if ($bits): ?><div class="muted small"><?= implode(' &middot; ', array_map(static fn ($b) => '<span class="nowrap">' . $b . '</span>', $bits)) ?></div><?php endif; ?>
 						</li>
 					<?php endforeach; ?>
 				</ul>
+				<?php if ($roofPerimeter): ?><p class="small muted roof-total">Total perimeter <?= e(App\Layout::feetUp($roofPerimeter)) ?></p><?php endif; ?>
 				<?php if ($roofPanels && $roofPanels !== (int) $totals['panels']): ?>
-					<p class="roof-mismatch small">Roof faces total <?= $roofPanels ?> panels; the module lines total <?= (int) $totals['panels'] ?>.</p>
+					<p class="roof-mismatch small">Arrays total <?= $roofPanels ?> panels; the module lines total <?= (int) $totals['panels'] ?>.</p>
 				<?php endif; ?>
 			</details>
 		<?php elseif ($p['install_type'] === 'roof'): ?>
-			<p class="muted small roof-none">No roof details yet. <a href="/projects/<?= (int) $p['id'] ?>/edit#roof-block">Add roof faces</a></p>
+			<p class="muted small roof-none">No arrays yet. <a href="/projects/<?= (int) $p['id'] ?>/edit#roof-block">Add arrays</a></p>
+		<?php endif; ?>
+		<?php if ($sold): ?>
+			<p class="small sold-from">Sold from build sheet
+				<?php if ($sold['can_see']): ?><a href="/presales/<?= (int) $sold['opportunity_id'] ?>/designs/<?= (int) $sold['id'] ?>"><?= e($sold['name']) ?></a><?php else: ?><strong><?= e($sold['name']) ?></strong><?php endif; ?>
+				<?= $sold['quote_number'] ? '<span class="muted">(proposal ' . e($sold['quote_number']) . ')</span>' : '' ?>
+				<?php if ($sold['has_layout']): ?>&middot; <?php if ($sold['can_see']): ?><a href="/presales/<?= (int) $sold['opportunity_id'] ?>/designs/<?= (int) $sold['id'] ?>/layout">Site layout</a><?php else: ?><a href="/projects/<?= (int) $p['id'] ?>/summary#layout">Site layout on the summary</a><?php endif; ?><?php endif; ?>
+				<?php if ($sold['can_see']): ?>&middot; <a href="/presales/<?= (int) $sold['opportunity_id'] ?>/designs/<?= (int) $sold['id'] ?>/proposal/pdf">Proposal PDF</a><?php endif; ?>
+			</p>
 		<?php endif; ?>
 	</section>
 

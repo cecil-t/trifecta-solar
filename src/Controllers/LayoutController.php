@@ -11,6 +11,7 @@ use App\Geo;
 use App\GoogleMaps;
 use App\Layout;
 use App\Presales;
+use App\SoldProject;
 use App\Projects;
 use App\View;
 
@@ -62,9 +63,11 @@ final class LayoutController
 			'yieldUrl' => $base . '/layout/yield',
 			'aspect' => Layout::PROPOSAL_ASPECT,
 			'placeholder' => !GoogleMaps::configured(),
+			'locked' => SoldProject::locked($o, $d),
 		];
 		View::render('presales/layout', [
 			'title' => 'Site layout - ' . $d['name'], 'wide' => true,
+			'locked' => $config['locked'],
 			'o' => $o, 'd' => $d, 'base' => $base, 'config' => $config, 'module' => $module, 'origin' => $origin, 'originNote' => $originNote,
 			'who' => $d['layout_by'] ? Db::value('SELECT name FROM users WHERE id = ?', [(int) $d['layout_by']]) : null,
 		], 'layout');
@@ -72,7 +75,8 @@ final class LayoutController
 
 	public function save(int $id, int $designId): void
 	{
-		[, $d] = $this->find($id, $designId);
+		[$o, $d] = $this->find($id, $designId);
+		DesignController::refuseLocked($o, $d, '/layout');
 		$base = '/presales/' . $id . '/designs/' . $designId;
 		try {
 			$layout = Layout::fromInput((string) ($_POST['layout'] ?? ''));
@@ -111,8 +115,12 @@ final class LayoutController
 	 */
 	public function saveView(int $id, int $designId): void
 	{
-		[, $d] = $this->find($id, $designId);
+		[$o, $d] = $this->find($id, $designId);
 		header('Content-Type: application/json');
+		if (SoldProject::locked($o, $d)) {
+			echo json_encode(['ok' => false, 'error' => 'This build sheet sold and is locked.']);
+			return;
+		}
 		$layout = Layout::decode($d['layout_json']);
 		if (!$layout || !Layout::panels($layout)) {
 			echo json_encode(['ok' => false, 'error' => 'Save the layout with its panels first, then set the proposal view.']);

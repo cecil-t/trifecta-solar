@@ -81,24 +81,28 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 
 	<section class="card band">
 		<h2>Change status</h2>
-		<?php if ($o['status'] !== 'open'): ?>
+		<?php if ($o['status'] === 'sold' && $o['project_id']): ?>
+			<p class="small">Sold <?= e(fmt_dt((string) $o['status_at'], 'm/d/Y')) ?><?php foreach ($cards as $c): if ((int) $c['d']['id'] === (int) $o['sold_design_id']): ?> with <strong><?= e($c['d']['name']) ?></strong><?php endif; endforeach; ?>. Project <a href="/projects/<?= (int) $o['project_id'] ?>"><?= e($o['project_number'] . ' ' . $o['project_name']) ?></a>.</p>
+			<p class="hint">The sold build sheet is locked. A change after the sale is a new build sheet.</p>
+		<?php elseif ($o['status'] !== 'open'): ?>
 			<p class="muted small">Marked <?= e(Presales::STATUSES[$o['status']]) ?> <?= e(fmt_dt((string) $o['status_at'], 'm/d/Y')) ?>.</p>
-			<form method="post" action="/presales/<?= (int) $o['id'] ?>/status">
+			<?php if ($o['status'] === 'sold'): ?>
+				<p class="mt-xs"><a href="/presales/<?= (int) $o['id'] ?>/sold" class="btn btn-secondary btn-small">Create project</a></p>
+			<?php endif; ?>
+			<form method="post" action="/presales/<?= (int) $o['id'] ?>/status" class="mt-sm">
 				<?= Csrf::field() ?>
 				<input type="hidden" name="status" value="open">
 				<button class="btn btn-ghost btn-small">Reopen</button>
 			</form>
 		<?php else: ?>
 			<?php if ($cards): ?>
-				<form method="post" action="/presales/<?= (int) $o['id'] ?>/status" class="stack-sm">
-					<?= Csrf::field() ?>
-					<input type="hidden" name="status" value="sold">
+				<form method="get" action="/presales/<?= (int) $o['id'] ?>/sold" class="stack-sm">
 					<label>Sold build sheet
-						<select name="sold_design_id">
+						<select name="design">
 							<?php foreach ($cards as $c): ?><option value="<?= (int) $c['d']['id'] ?>"><?= e($c['d']['name']) ?> (<?= e(Presales::money($c['calc']['price'])) ?>)</option><?php endforeach; ?>
 						</select>
 					</label>
-					<button class="btn btn-secondary btn-small">Mark sold</button>
+					<button class="btn btn-secondary btn-small" title="Shows what carries into the project before anything is saved">Mark sold and create project</button>
 				</form>
 			<?php endif; ?>
 			<form method="post" action="/presales/<?= (int) $o['id'] ?>/status" class="stack-sm mt-sm">
@@ -122,7 +126,7 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 		<a class="card design-card<?= $sold ? ' is-sold' : '' ?>" href="/presales/<?= (int) $o['id'] ?>/designs/<?= (int) $d['id'] ?>">
 			<span class="design-card-head">
 				<strong><?= e($d['name']) ?></strong>
-				<?php if ($sold): ?><span class="chip chip-green">Sold</span><?php endif; ?>
+				<?php if ($sold): ?><span class="chip chip-green"><?= $o['project_id'] ? 'Sold, locked' : 'Sold' ?></span><?php endif; ?>
 			</span>
 			<span class="design-card-price"><?= e(Presales::money($k['price'])) ?></span>
 			<span class="design-card-meta">
@@ -131,7 +135,8 @@ $statusChip = ['open' => 'chip-blue', 'sold' => 'chip-green', 'lost' => 'chip-na
 				<?php if ($k['gross_margin_pct'] !== null): ?> &middot; <?= e(Presales::pct($k['gross_margin_pct'])) ?> margin<?php endif; ?>
 			</span>
 			<?php if ($d['install_type']): ?><span class="design-card-meta"><?= e(Projects::INSTALL_TYPES[$d['install_type']] ?? '') ?><?= $k['storage_kwh'] > 0 ? ' &middot; ' . e(number_format($k['storage_kwh'], 1)) . ' kWh storage' : '' ?></span><?php endif; ?>
-			<?php if ($c['flags']['changed'] || $c['flags']['retired']): ?>
+			<?php if ($sold && $o['project_id']): ?>
+			<?php elseif ($c['flags']['changed'] || $c['flags']['retired']): ?>
 				<span class="chip chip-red">Catalog prices changed since built</span>
 			<?php elseif ($c['flags']['stale']): ?>
 				<span class="chip chip-orange">Check <?= (int) $c['flags']['stale'] ?> price<?= $c['flags']['stale'] > 1 ? 's' : '' ?></span>

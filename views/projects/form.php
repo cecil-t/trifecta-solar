@@ -1,5 +1,6 @@
 <?php
 use App\Csrf;
+use App\Presales;
 use App\Projects;
 use App\Municipalities;
 
@@ -202,7 +203,7 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 				<small class="hint">Decides which template tasks apply (panels, SREC, battery commissioning). Turning one on later adds its missing tasks; turning one off never deletes tasks.</small>
 			</div>
 			<label>Install type
-				<select name="install_type" data-reveal="roof" data-target="#roof-block">
+				<select name="install_type">
 					<option value="">Choose</option>
 					<?php foreach (Projects::INSTALL_TYPES as $k => $label): ?>
 						<option value="<?= $k ?>" <?= $sel($v('install_type'), $k) ?>><?= e($label) ?></option>
@@ -247,13 +248,18 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 			</div>
 		</div>
 
-		<div id="roof-block" hidden>
-			<h3 class="sub">Roof faces</h3>
+		<div id="roof-block">
+			<h3 class="sub">Arrays</h3>
 			<div class="eq eq-roof" data-eq="roofs">
-				<div class="eq-head"><span>Face / building</span><span>Roof material</span><span>Azimuth</span><span>Tilt</span><span>Panels</span><span></span></div>
+				<div class="eq-head"><span>Array</span><span>Mount</span><span>Roof material</span><span>Azimuth</span><span>Tilt</span><span>Panels</span><span></span></div>
 				<?php foreach ($eqRows('roofs') as $i => $r): ?>
 					<div class="eq-row">
-						<input type="text" name="roofs[<?= $i ?>][name]" value="<?= e($r['name'] ?? '') ?>" placeholder="e.g. East face, Bank barn" aria-label="Face or building">
+						<input type="text" name="roofs[<?= $i ?>][name]" value="<?= e($r['name'] ?? '') ?>" placeholder="e.g. East face, Bank barn" aria-label="Array name">
+						<select name="roofs[<?= $i ?>][mount]" aria-label="Mount">
+							<?php foreach (Presales::MOUNTS as $k => $label): ?>
+								<option value="<?= $k ?>" <?= $sel(($r['mount'] ?? '') ?: 'roof', $k) ?>><?= e($label) ?></option>
+							<?php endforeach; ?>
+						</select>
 						<select name="roofs[<?= $i ?>][material]" aria-label="Roof material">
 							<option value="">Material</option>
 							<?php foreach (Projects::ROOF_MATERIALS as $k => $label): ?>
@@ -262,13 +268,16 @@ $tiltVal = static fn ($t) => is_numeric($t) ? rtrim(rtrim(number_format((float) 
 						</select>
 						<label class="eq-cell"><span class="eq-mlabel">Azimuth</span><input type="number" name="roofs[<?= $i ?>][azimuth]" value="<?= e($r['azimuth'] ?? '') ?>" min="0" max="359" placeholder="180" aria-label="Azimuth in degrees"></label>
 						<label class="eq-cell"><span class="eq-mlabel">Tilt</span><input type="text" name="roofs[<?= $i ?>][tilt]" value="<?= e($tiltVal($r['tilt'] ?? null)) ?>" placeholder="27 or 6/12" aria-label="Tilt in degrees or pitch"></label>
-						<label class="eq-cell"><span class="eq-mlabel">Panels</span><input type="number" name="roofs[<?= $i ?>][panels]" value="<?= e($r['panels'] ?? '') ?>" min="0" placeholder="0" aria-label="Panels on this face"></label>
+						<label class="eq-cell"><span class="eq-mlabel">Panels</span><input type="number" name="roofs[<?= $i ?>][panels]" value="<?= e($r['panels'] ?? '') ?>" min="0" placeholder="0" aria-label="Panels on this array"></label>
+						<input type="hidden" name="roofs[<?= $i ?>][shading_pct]" value="<?= e($r['shading_pct'] ?? '') ?>">
+						<input type="hidden" name="roofs[<?= $i ?>][area_m2]" value="<?= e($r['area_m2'] ?? '') ?>">
+						<input type="hidden" name="roofs[<?= $i ?>][perimeter_m]" value="<?= e($r['perimeter_m'] ?? '') ?>">
 						<button type="button" class="btn btn-ghost btn-small eq-del" title="Remove">&times;</button>
 					</div>
 				<?php endforeach; ?>
-				<button type="button" class="btn btn-ghost btn-small eq-add">+ Roof face</button>
+				<button type="button" class="btn btn-ghost btn-small eq-add">+ Array</button>
 			</div>
-			<p class="hint mt-sm">Azimuth is degrees from true north (90 east, 180 south, 270 west). Tilt takes degrees or a roof pitch like 6/12. Panels per face should add up to the module count.</p>
+			<p class="hint mt-sm">Roof faces and ground arrays. Azimuth is degrees from true north (90 east, 180 south, 270 west); trackers have none. Tilt takes degrees or a roof pitch like 6/12. Panels per array should add up to the module count. Shading, area and perimeter come from the sold build sheet and are kept as they are.</p>
 		</div>
 
 		<h3 class="sub">Inverters</h3>

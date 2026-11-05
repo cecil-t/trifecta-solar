@@ -101,6 +101,16 @@ final class ProductionCheck
 		}
 		$deg = Presales::num('degradation_default') / 100;
 		$shape = self::shape();
+		// A project sold from a build sheet keeps that estimate's own 12 months: its pattern, scaled
+		// to the project's yearly figure (which someone may have changed since)
+		$quoted = json_decode((string) ($p['est_monthly_kwh'] ?? ''), true);
+		$quotedShape = null;
+		if (is_array($quoted) && count($quoted) === 12 && array_sum($quoted) > 0) {
+			$sum = array_sum($quoted);
+			foreach (array_values($quoted) as $i => $v) {
+				$quotedShape[$i + 1] = (float) $v / $sum;
+			}
+		}
 		$byMonth = self::monthsFor(array_map('intval', array_column($sites, 'id')));
 		$thisMonth = date('Y-m');
 		$startMonth = substr($start, 0, 7);
@@ -122,7 +132,7 @@ final class ProductionCheck
 			}
 			$ok = $m['days'] >= self::MIN_DAYS && $m['sites'] === count($sites);
 			$age = max(0, Warranties::monthsBetween($start, $ym . '-15')) / 12;
-			$est = $annual * $shape[(int) substr($ym, 5, 2)] * (1 - $deg) ** floor($age);
+			$est = $annual * ($quotedShape ?? $shape)[(int) substr($ym, 5, 2)] * (1 - $deg) ** floor($age);
 			if (!$ok) {
 				$gaps++;
 			}
@@ -136,7 +146,7 @@ final class ProductionCheck
 		$out = [
 			'sites' => $sites, 'rows' => $rows, 'counted' => count($counted), 'gaps' => $gaps,
 			'actual' => $actual, 'estimate' => $estimate, 'ratio' => $ratio, 'annual' => $annual,
-			'shape_systems' => $shape['_systems'] ?? 0, 'degradation' => $deg, 'guarantees' => [],
+			'shape_systems' => $shape['_systems'] ?? 0, 'quoted_months' => $quotedShape !== null, 'degradation' => $deg, 'guarantees' => [],
 		];
 		foreach ($guarantees as $g) {
 			$out['guarantees'][] = self::guarantee($g, $annual, $deg, $ratio);
