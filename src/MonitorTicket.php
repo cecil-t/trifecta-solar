@@ -42,6 +42,30 @@ final class MonitorTicket
 		};
 	}
 
+	/** Where each vendor's portal opens when it has no link straight to one system. */
+	private const PORTAL_HOMES = [
+		'growatt' => 'https://shiner-us.growatt.com/',
+		'apsystems' => 'https://www.apsystemsema.com/',
+	];
+
+	/**
+	 * The portal link for a linked monitoring system: straight to the system where the vendor has
+	 * such a link, else the vendor portal's home (deep false), with the system name to look for.
+	 * @return array{url:string, deep:bool, name:string}|null
+	 */
+	public static function portalFor(?int $siteId): ?array
+	{
+		$s = $siteId ? Db::one('SELECT vendor, vendor_site_id, name FROM monitor_sites WHERE id = ?', [$siteId]) : null;
+		if (!$s) {
+			return null;
+		}
+		$url = self::portalUrl((string) $s['vendor'], (string) $s['vendor_site_id']);
+		if ($url !== null) {
+			return ['url' => $url, 'deep' => true, 'name' => (string) $s['name']];
+		}
+		return isset(self::PORTAL_HOMES[$s['vendor']]) ? ['url' => self::PORTAL_HOMES[$s['vendor']], 'deep' => false, 'name' => (string) $s['name']] : null;
+	}
+
 	/**
 	 * The newest open ticket (not completed) for each of these monitored systems.
 	 *

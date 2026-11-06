@@ -30,9 +30,9 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 		<?php endif; ?>
 		<?php if ($monitoring = safe_url($t['monitoring_url'])): ?>
 			<a href="<?= e($monitoring) ?>" target="_blank" rel="noopener" class="btn btn-secondary">Monitoring portal &#8599;</a>
-		<?php endif; ?>
-		<?php if (!$drive || !$monitoring): ?>
-			<a href="<?= $back ?>/edit" class="btn btn-ghost">+ Add <?= !$drive && !$monitoring ? 'Drive / monitoring links' : (!$drive ? 'Drive folder link' : 'monitoring link') ?></a>
+		<?php elseif ($portal = \App\MonitorTicket::portalFor($t['monitor_site_id'] ? (int) $t['monitor_site_id'] : null)): ?>
+			<?php // From the linked monitoring system: straight to it where the vendor allows, else the portal's home ?>
+			<a href="<?= e($portal['url']) ?>" target="_blank" rel="noopener" class="btn btn-secondary"<?= $portal['deep'] ? '' : ' title="Opens the portal; look for ' . e($portal['name']) . '"' ?>>Monitoring portal &#8599;</a>
 		<?php endif; ?>
 		<a href="<?= $back ?>/edit" class="btn btn-primary">Edit</a>
 	</div>
@@ -115,7 +115,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 </section>
 
 <section class="card card-flush" id="visits">
-	<div class="phase-title">
+	<div class="phase-title title-band">
 		<h2>Visits</h2>
 		<span class="muted small">Man-hours are on-site time for everyone who went (2 people for 3 hours = 6). Travel is covered by the trip. Parts are what we paid; a part the manufacturer sent under warranty is $0.</span>
 	</div>

@@ -350,6 +350,10 @@ tr.clickable { cursor: pointer; }
 .tasks-wrap { display: flex; flex-direction: column; gap: 1rem; }
 .phase-title { display: flex; align-items: baseline; gap: .75rem; padding: .9rem 1rem .4rem; }
 .phase-title h2 { margin: 0; flex-shrink: 0; }
+/* A heavier, dark blue section header (service ticket Visits) */
+.phase-title.title-band { background: var(--blue); border-radius: var(--radius) var(--radius) 0 0; padding: .6rem 1rem; margin-bottom: .4rem; }
+.phase-title.title-band h2 { color: #fff; }
+.phase-title.title-band .muted { color: #dce9f2; }
 .tgrid { font-size: .88rem; }
 .trow {
 	display: grid; align-items: center; gap: .4rem;
