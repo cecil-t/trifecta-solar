@@ -27,7 +27,7 @@ final class MonitorTicket
 
 	/**
 	 * A link straight to the system in the vendor's portal, where the vendor has a stable one.
-	 * APsystems EMA and Growatt Shiner open on the fleet view, so they get none.
+	 * APsystems EMA opens on the fleet view, so it gets none.
 	 */
 	public static function portalUrl(string $vendor, string $vendorSiteId): ?string
 	{
@@ -38,13 +38,13 @@ final class MonitorTicket
 			'solaredge' => 'https://monitoring.solaredge.com/solaredge-web/p/site/' . $vendorSiteId . '/',
 			'enphase' => 'https://enlighten.enphaseenergy.com/systems/' . $vendorSiteId,
 			'sma' => 'https://ennexos.sunnyportal.com/' . $vendorSiteId . '/dashboard',
+			'growatt' => 'https://shiner-us.growatt.com/site_detail/' . $vendorSiteId . '/overview',
 			default => null,
 		};
 	}
 
 	/** Where each vendor's portal opens when it has no link straight to one system. */
 	private const PORTAL_HOMES = [
-		'growatt' => 'https://shiner-us.growatt.com/',
 		'apsystems' => 'https://www.apsystemsema.com/',
 	];
 

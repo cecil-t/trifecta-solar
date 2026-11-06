@@ -315,7 +315,10 @@ final class ServiceController
 	public function show(int $id): void
 	{
 		$t = $this->find($id);
-		$commentsOnly = ($_GET['log'] ?? '') === 'comments';
+		// The log opens on Comments only when the ticket has any, else on All activity
+		$log = (string) ($_GET['log'] ?? '');
+		$commentsOnly = $log === 'comments' || ($log !== 'all' && (bool) Db::value(
+			"SELECT 1 FROM activity_log WHERE entity_type = 'service' AND entity_id = ? AND kind = 'comment' AND deleted_at IS NULL LIMIT 1", [$id]));
 		$contacts = Db::all("SELECT * FROM contacts WHERE owner_type = 'organization' AND owner_id = ? AND is_active = 1 ORDER BY is_primary DESC, name", [$t['customer_id'] ?? 0]);
 		$history = $t['customer_id'] ? Db::all(
 			'SELECT id, ticket_number, opened_on, description FROM service_tickets WHERE customer_id = ? AND id <> ? ORDER BY opened_on DESC LIMIT 10',

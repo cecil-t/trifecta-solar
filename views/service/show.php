@@ -172,7 +172,7 @@ $muted = static fn (string $s) => '<span class="muted">' . e($s) . '</span>';
 	<div class="log-head">
 		<h2>Log</h2>
 		<div class="seg">
-			<a href="<?= $back ?>#log" class="<?= $commentsOnly ? '' : 'active' ?>">All activity</a>
+			<a href="<?= $back ?>?log=all#log" class="<?= $commentsOnly ? '' : 'active' ?>">All activity</a>
 			<a href="<?= $back ?>?log=comments#log" class="<?= $commentsOnly ? 'active' : '' ?>">Comments only</a>
 		</div>
 	</div>
