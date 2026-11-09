@@ -331,7 +331,13 @@ final class CustomerNotices
 			foreach ($rows as $n) {
 				Db::update('customer_notices', (int) $n['id'], ['cleared_at' => $now, 'cleared_by' => Auth::id(), 'outcome' => $outcome, 'clear_note' => $note]);
 			}
-			Activity::event('project', $projectId, self::OUTCOMES[$outcome] . ': ' . implode('; ', array_map(self::line(...), $rows)) . ($note !== null ? ' (' . $note . ')' : ''));
+			$lines = implode('; ', array_map(self::line(...), $rows));
+			Activity::event('project', $projectId, self::OUTCOMES[$outcome] . ': ' . $lines);
+			// The typed note is the person's own words, so it goes in the log as their comment
+			// (shown under Comments only), with the cleared lines for context
+			if ($note !== null) {
+				Activity::comment('project', $projectId, self::OUTCOMES[$outcome] . ' (' . $lines . '): ' . $note);
+			}
 			Db::update('projects', $projectId, ['updated_at' => $now]);
 		});
 		return count($rows);
