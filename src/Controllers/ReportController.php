@@ -121,7 +121,11 @@ final class ReportController
 	public function time(): void
 	{
 		$f = $this->filters('ytd');
+		$f['class'] = $this->classFilter();
 		$signed = $this->signedProjects($f['sales']);
+		if ($f['class'] !== '') {
+			$signed = array_values(array_filter($signed, static fn ($p) => \App\Presales::depositClass($p['customer_type'], (bool) $p['is_agricultural']) === $f['class']));
+		}
 		$completed = array_values(array_filter($signed, static fn ($p) => $p['st']['pto_date'] && $p['st']['pto_date'] >= $f['from'] && $p['st']['pto_date'] <= $f['to']));
 		usort($completed, static fn ($a, $b) => $b['st']['days'] <=> $a['st']['days']);
 		$inProgress = array_values(array_filter($signed, static fn ($p) => !$p['st']['pto_date'] && $p['st']['phase'] !== 'complete'));
@@ -373,9 +377,8 @@ final class ReportController
 			$f['sales'] = (int) \App\Auth::id();
 			$f['sales_name'] = (string) (\App\Auth::user()['name'] ?? '');
 		}
-		$class = in_array($_GET['class'] ?? '', ['residential', 'commercial'], true) ? $_GET['class'] : '';
-		$f['class'] = $class;
-		$this->render('opportunities', $f, \App\OpportunityReport::build($f['from'], $f['to'], $f['sales'], $class) + ['admin' => $admin]);
+		$f['class'] = $this->classFilter();
+		$this->render('opportunities', $f, \App\OpportunityReport::build($f['from'], $f['to'], $f['sales'], $f['class']) + ['admin' => $admin]);
 	}
 
 	// ------------------------------------------------------------------ shared
@@ -417,6 +420,13 @@ final class ReportController
 			'sales_name' => $sales ? (string) Db::value('SELECT name FROM users WHERE id = ?', [$sales]) : null,
 			'asof' => $asOf, 'show_sales' => $showSales,
 		];
+	}
+
+	/** Jobs filter: 'residential', 'commercial' (Non-Residential) or '' for all jobs. */
+	private function classFilter(): string
+	{
+		$class = $_GET['class'] ?? '';
+		return in_array($class, ['residential', 'commercial'], true) ? $class : '';
 	}
 
 	/** @return array{0:string,1:string} */
