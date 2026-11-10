@@ -8,7 +8,10 @@ $tabs = [
 	'complete' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All',
 ];
 if ($counts['notify'] || $filter['phase'] === 'notify') {
-	$tabs['notify'] = 'Notify customer';
+	$tabs['notify'] = 'Notify';
+}
+if ($counts['overdue'] || $filter['phase'] === 'overdue') {
+	$tabs['overdue'] = 'Overdue';
 }
 // Completed and Cancelled fold earlier years under a click-to-open header: the project # year,
 // or the contract signed year for early jobs numbered without a year code (01, 02...); legacy
@@ -74,7 +77,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 			<tr id="project-<?= (int) $p['id'] ?>" data-href="/projects/<?= (int) $p['id'] ?>" class="clickable">
 				<td><strong><?= e($p['project_number']) ?></strong><?php if ($icons = App\Icons::scope($p)): ?><div class="scope-icons"><?= $icons ?></div><?php endif; ?></td>
 				<td>
-					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a><?php if ($p['notices']): ?><a href="/projects/<?= (int) $p['id'] ?>#customer-updates" class="chip chip-red notify-chip" title="Customer updates waiting">Notify (<?= (int) $p['notices'] ?>)</a><?php endif; ?>
+					<a href="/projects/<?= (int) $p['id'] ?>"><?= e($p['name']) ?></a><?php if ($p['notices']): ?><a href="/projects/<?= (int) $p['id'] ?>#customer-updates" class="chip chip-red notify-chip" title="Customer updates waiting">Notify (<?= (int) $p['notices'] ?>)</a><?php endif; ?><?php if ($p['overdue_todos']): ?><a href="/projects/<?= (int) $p['id'] ?>#overdue" class="chip chip-red notify-chip" title="Tasks past their due date">Overdue task (<?= (int) $p['overdue_todos'] ?>)</a><?php endif; ?><?php if ($p['missed']): ?><a href="/projects/<?= (int) $p['id'] ?>#overdue" class="chip <?= $p['missed_late'] ? 'chip-red' : 'chip-orange' ?> notify-chip" title="Target dates passed without a completed date<?= $p['missed_late'] ? ', one or more by ' . App\Overdue::LATE_DAYS . '+ days' : '' ?>">Missed target (<?= (int) $p['missed'] ?>)</a><?php endif; ?>
 					<?php if ($drive = safe_url($p['drive_url'])): ?><a href="<?= e($drive) ?>" target="_blank" rel="noopener" class="drive-link" title="Open Google Drive folder">Drive &#8599;</a><?php endif; ?>
 					<?php if ($p['status_note']): ?><div class="muted small cell-note"><?= e($p['status_note']) ?></div><?php endif; ?>
 				</td>

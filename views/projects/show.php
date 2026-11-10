@@ -117,6 +117,8 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			<?php if ($p['hold_state'] === 'cancelled' && $p['hold_reason']): ?><span class="chip"><?= e($p['hold_reason']) ?></span><?php endif; ?>
 			<span id="clear-badge" class="chip chip-green" <?= $status['phase'] === 'pre_install' && $status['clear_to_install'] ? '' : 'hidden' ?>>Clear to install</span>
 			<a href="#customer-updates" id="notify-badge" class="chip chip-red" <?= $notices ? '' : 'hidden' ?>>Notify customer (<span id="notify-count"><?= count($notices) ?></span>)</a>
+			<a href="#overdue" id="overdue-todo-badge" class="chip chip-red" <?= $overdueFlags['todos'] ? '' : 'hidden' ?>>Overdue task (<span data-overdue-count="todos"><?= count($overdueFlags['todos']) ?></span>)</a>
+			<a href="#overdue" id="missed-badge" class="chip <?= $overdueFlags['late'] ? 'chip-red' : 'chip-orange' ?>" <?= $overdueFlags['missed'] ? '' : 'hidden' ?>>Missed target (<span data-overdue-count="missed"><?= count($overdueFlags['missed']) ?></span>)</a>
 			<span class="chip chip-blue" id="days-badge" <?= $status['days'] === null ? 'hidden' : '' ?>><span id="days-num"><?= (int) $status['days'] ?></span> days<?= $status['pto_date'] ? ' to PTO' : ' in progress' ?></span>
 		</div>
 		<?php if ($p['status_note']): ?><p class="status-note"><?= e($p['status_note']) ?></p><?php endif; ?>
@@ -160,6 +162,23 @@ $geoLabel = ($geoClient['status'] ?? '') === 'found' ? $geoClient['label'] : nul
 			</ul>
 		</details>
 	<?php endif; ?>
+</section>
+
+<section class="card notify-card overdue-card<?= $overdueFlags['late'] || $overdueFlags['todos'] ? ' is-late' : '' ?>" id="overdue" <?= $overdueFlags['missed'] || $overdueFlags['todos'] ? '' : 'hidden' ?>>
+	<div class="task-strip-head">
+		<h2>Overdue</h2>
+		<span class="muted small">Complete these, or set a new date.</span>
+	</div>
+	<?php foreach (['todos' => 'Overdue tasks', 'missed' => 'Missed targets'] as $kind => $heading): ?>
+		<div class="overdue-group" data-overdue-group="<?= $kind ?>" <?= $overdueFlags[$kind] ? '' : 'hidden' ?>>
+			<h3><?= $heading ?></h3>
+			<ul class="notify-list" data-overdue-list="<?= $kind ?>">
+				<?php foreach ($overdueFlags[$kind] as $o): ?>
+					<li class="<?= $o['mine'] ? 'is-mine' : '' ?>"><span class="overdue-item"><a href="<?= e($o['href']) ?>" class="notify-text"><?= e($o['text']) ?></a><span class="overdue-when<?= $o['late'] ? ' is-late' : '' ?>"><?= e($o['when']) ?></span></span><?php if ($o['owner'] !== ''): ?><span class="notify-owner" title="Assigned to <?= e($o['owner_name']) ?>"><?= e($o['owner']) ?></span><?php endif; ?></li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+	<?php endforeach; ?>
 </section>
 
 <div class="summary-grid">

@@ -2000,6 +2000,15 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .notify-chip { margin-left: .35rem; }
 .notify-card .task-strip-head { flex-wrap: wrap; row-gap: .2rem; }
 .notify-card .task-strip-head h2 { white-space: nowrap; }
+.overdue-card { border-left-color: var(--orange); }
+.overdue-card.is-late { border-left-color: var(--red); }
+.overdue-group h3 { margin: .6rem 0 0; font-size: .85rem; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.overdue-group .notify-list { margin: .2rem 0 0; }
+.overdue-group .notify-list li:last-child { border-bottom: 0; }
+.overdue-item { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .7rem; row-gap: .1rem; min-width: 0; }
+.overdue-item a { overflow-wrap: anywhere; }
+.overdue-when { font-size: .85rem; color: #a5620a; white-space: nowrap; }
+.overdue-when.is-late { color: var(--red); }
 
 /* Help: the "?" beside a page title, the panel it slides in, and the help pages */
 .help-btn {

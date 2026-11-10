@@ -69,11 +69,17 @@ final class ProjectController
 		$tasks = Tasks::forProjects(array_column($projects, 'id'));
 		$kw = Projects::dcKwMap();
 		$battKwh = Projects::batteryKwhMap();
-		$counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'all' => 0, 'notify' => 0];
+		$overdueTodos = \App\Overdue::todos(array_column($projects, 'id'));
+		$counts = ['active' => 0, 'pre_install' => 0, 'installation' => 0, 'closeout' => 0, 'complete' => 0, 'cancelled' => 0, 'on_hold' => 0, 'all' => 0, 'notify' => 0, 'overdue' => 0];
 		$rows = [];
 		foreach ($projects as $p) {
 			$st = Tasks::status($p, $tasks[(int) $p['id']] ?? []);
 			unset($st['tree']);
+			$flagged = \App\Overdue::applies($p, $st['phase']);
+			$missed = $flagged ? \App\Overdue::missed($tasks[(int) $p['id']] ?? []) : [];
+			$p['missed'] = count($missed);
+			$p['missed_late'] = \App\Overdue::late($missed);
+			$p['overdue_todos'] = $flagged ? count($overdueTodos[(int) $p['id']] ?? []) : 0;
 			$p['status'] = $st;
 			$p['dc_kw'] = $kw[(int) $p['id']] ?? null;
 			$p['batt_kwh'] = $battKwh[(int) $p['id']] ?? null;
@@ -87,12 +93,14 @@ final class ProjectController
 			if ($isActive) { $counts['active']++; }
 			if ($onHold && $isOpen) { $counts['on_hold']++; }
 			if ($p['notices']) { $counts['notify']++; }
+			if ($p['missed'] || $p['overdue_todos']) { $counts['overdue']++; }
 
 			$keep = match ($filter['phase']) {
 				'all'     => true,
 				'active'  => $isActive,
 				'on_hold' => $onHold && $isOpen,
 				'notify'  => $p['notices'] > 0,
+				'overdue' => $p['missed'] || $p['overdue_todos'],
 				default   => $st['phase'] === $filter['phase'] && !($onHold && $isOpen),
 			};
 			if ($keep) {
@@ -649,6 +657,7 @@ final class ProjectController
 			'notices' => $notices,
 			'noticeHistory' => CustomerNotices::history($id),
 			'noticeRules' => CustomerNotices::rules(),
+			'overdueFlags' => \App\Overdue::forClient(\App\Overdue::forProject($p, $status['phase'], $rows)),
 		]);
 	}
 
@@ -809,6 +818,7 @@ final class ProjectController
 		echo json_encode([
 			'ok' => true,
 			'notices' => CustomerNotices::forClient($notices),
+			'overdue' => \App\Overdue::forClient(\App\Overdue::forProject($p, $status['phase'], $rows)),
 			'value' => $value,
 			'display' => in_array($field, ['target_date', 'done_date'], true) ? fmt_date($value) : $value,
 			'note_meta' => $field === 'note' && $value !== null ? 'edited by ' . Auth::user()['name'] . ' just now' : null,

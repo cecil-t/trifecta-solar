@@ -54,6 +54,7 @@
 		const clear = document.getElementById('clear-badge');
 		if (clear) clear.hidden = !(d.phase === 'pre_install' && d.clear_to_install);
 		if (Array.isArray(d.notices)) renderNotices(d.notices);
+		if (d.overdue) renderOverdue(d.overdue);
 		const days = document.getElementById('days-badge');
 		if (days && d.days !== null && d.days !== undefined) {
 			days.hidden = false;
@@ -91,6 +92,53 @@
 		if (badge) {
 			badge.hidden = list.length === 0;
 			document.getElementById('notify-count').textContent = list.length;
+		}
+	}
+
+	// Overdue card (overdue tasks, missed targets) and its two header chips.
+	function renderOverdue(o) {
+		const card = document.getElementById('overdue');
+		if (!card) return;
+		['todos', 'missed'].forEach((kind) => {
+			const list = Array.isArray(o[kind]) ? o[kind] : [];
+			const ul = card.querySelector('[data-overdue-list="' + kind + '"]');
+			ul.replaceChildren(...list.map((n) => {
+				const li = document.createElement('li');
+				if (n.mine) li.className = 'is-mine';
+				const item = document.createElement('span');
+				item.className = 'overdue-item';
+				const a = document.createElement('a');
+				a.className = 'notify-text';
+				a.href = n.href;
+				a.textContent = n.text;
+				const when = document.createElement('span');
+				when.className = 'overdue-when' + (n.late ? ' is-late' : '');
+				when.textContent = n.when;
+				item.append(a, when);
+				li.append(item);
+				if (n.owner) {
+					const who = document.createElement('span');
+					who.className = 'notify-owner';
+					who.title = 'Assigned to ' + n.owner_name;
+					who.textContent = n.owner;
+					li.append(who);
+				}
+				return li;
+			}));
+			card.querySelector('[data-overdue-group="' + kind + '"]').hidden = list.length === 0;
+			document.querySelectorAll('[data-overdue-count="' + kind + '"]').forEach((c) => { c.textContent = list.length; });
+		});
+		const todos = (o.todos || []).length;
+		const missed = (o.missed || []).length;
+		card.hidden = todos + missed === 0;
+		card.classList.toggle('is-late', !!o.late || todos > 0);
+		const todoBadge = document.getElementById('overdue-todo-badge');
+		if (todoBadge) todoBadge.hidden = todos === 0;
+		const missedBadge = document.getElementById('missed-badge');
+		if (missedBadge) {
+			missedBadge.hidden = missed === 0;
+			missedBadge.classList.toggle('chip-red', !!o.late);
+			missedBadge.classList.toggle('chip-orange', !o.late);
 		}
 	}
 
@@ -231,6 +279,12 @@
 	});
 	applyPhases();
 	phone.addEventListener('change', applyPhases);
+	// A link to a task (the Overdue card) opens its phase first, so the jump lands on the row.
+	document.addEventListener('click', (ev) => {
+		const a = ev.target.closest('a[href^="#task-"]');
+		const row = a && /^#task-\d+$/.test(a.getAttribute('href')) ? document.querySelector(a.getAttribute('href')) : null;
+		if (row) row.closest('.phase-block')?.classList.remove('is-collapsed');
+	});
 
 	// Beside Completed: a green check fills in today while empty; an x clears a set date.
 	function syncToday(input) {
