@@ -72,7 +72,8 @@ final class PresalesController
 				(SELECT COUNT(*) FROM presales_designs d WHERE d.opportunity_id = o.id) AS design_count,
 				(SELECT MIN(price_total) FROM presales_designs d WHERE d.opportunity_id = o.id AND price_total > 0) AS price_min,
 				(SELECT MAX(price_total) FROM presales_designs d WHERE d.opportunity_id = o.id AND price_total > 0) AS price_max,
-				(SELECT MAX(dc_watts) FROM presales_designs d WHERE d.opportunity_id = o.id) AS dc_max,
+				(SELECT MIN(dc_watts) FROM presales_designs d WHERE d.opportunity_id = o.id AND dc_watts > 0) AS dc_min,
+				(SELECT MAX(dc_watts) FROM presales_designs d WHERE d.opportunity_id = o.id AND dc_watts > 0) AS dc_max,
 				p.project_number
 			 FROM presales_opportunities o
 			 LEFT JOIN organizations c ON c.id = o.customer_id

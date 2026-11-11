@@ -66,7 +66,11 @@ $tabUrl = static fn (string $key) => '/presales?' . http_build_query(array_filte
 				<td><?= e($r['salesperson_initials'] ?: $r['salesperson_name']) ?></td>
 				<td><?= e(Projects::CUSTOMER_TYPES[$r['customer_type']] ?? '') ?><?= $r['is_agricultural'] ? ' <span class="chip">Ag</span>' : '' ?></td>
 				<td class="num"><?= (int) $r['design_count'] ?></td>
-				<td class="num"><?= $r['dc_max'] ? e(number_format($r['dc_max'] / 1000, 2)) : '' ?></td>
+				<td class="num nowrap">
+					<?php if ($r['dc_max']): ?>
+						<?= e(number_format($r['dc_min'] / 1000, 2)) ?><?= $r['dc_max'] > $r['dc_min'] ? ' to ' . e(number_format($r['dc_max'] / 1000, 2)) : '' ?>
+					<?php endif; ?>
+				</td>
 				<td class="num nowrap">
 					<?php if ($r['price_min'] !== null): ?>
 						<?= e(Presales::money((float) $r['price_min'])) ?><?= $r['price_max'] > $r['price_min'] ? ' to ' . e(Presales::money((float) $r['price_max'])) : '' ?>
