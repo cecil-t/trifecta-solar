@@ -66,6 +66,7 @@ final class TlsInfo
 			'names'      => $names,
 			'name_match' => self::nameMatches($host, $names),
 			'issuer'     => trim(($issuer['O'] ?? '') . ' ' . (($issuer['CN'] ?? '') !== ($issuer['O'] ?? '') ? ($issuer['CN'] ?? '') : '')),
+			'issuer_org' => ($issuer['O'] ?? '') !== '' ? $issuer['O'] : null,
 			'valid_from' => $x['validFrom_time_t'] ?? null,
 			'valid_to'   => $x['validTo_time_t'] ?? null,
 			'self_signed' => ($x['subject'] ?? null) == ($x['issuer'] ?? null),

@@ -1687,6 +1687,23 @@ a[href^="tel:"] { white-space: nowrap; }
 .sam-point .sam-address input { width: 100%; }
 .sam-aerial { display: block; width: 100%; max-width: 640px; height: auto; border-radius: var(--radius-sm); background: var(--bg); }
 
+/* About: how it fits together (views/partials/about_diagram.php); scrolls sideways on a phone rather than shrinking the text */
+.arch-wrap { overflow-x: auto; margin-top: .5rem; }
+.arch { display: block; width: 100%; min-width: 560px; max-width: 760px; height: auto; margin: 0 auto; }
+.arch text { font-family: var(--font); }
+.arch .arch-t { font-size: 14px; font-weight: 650; fill: var(--text); }
+.arch .arch-n { font-size: 13px; font-weight: 500; fill: var(--text); }
+.arch .arch-s { font-size: 12px; fill: var(--muted); }
+.arch .arch-l { font-size: 12px; font-weight: 650; fill: var(--muted); }
+.arch-host { fill: var(--bg); stroke: #cbd3ce; stroke-width: 1; }
+.arch-ctr { fill: var(--blue-50); stroke: var(--blue); stroke-width: 1; }
+.arch-store { fill: #f7fafc; stroke: var(--blue); stroke-width: 1; stroke-dasharray: 4 3; }
+.arch-app { fill: #fff; stroke: var(--blue); stroke-width: .75; }
+.arch-node { fill: #fff; stroke: #b9c3bd; stroke-width: .75; }
+.arch-ext { fill: var(--orange-50); stroke: var(--orange); stroke-width: .75; }
+.arch-arr { fill: none; stroke: #7a868d; stroke-width: 1.25; }
+.arch-head { fill: none; stroke: #7a868d; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
 /* About: outside services */
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); gap: .8rem; margin-top: .5rem; }
 .svc { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .7rem .8rem; }

@@ -165,6 +165,12 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 	</div>
 </div>
 
+<section class="card mt" id="how-it-fits">
+	<h2>How it fits together</h2>
+	<p class="muted small">Who reaches the app, what runs where, and which scheduled jobs talk to which outside services. Arrows point from whoever starts the connection.</p>
+	<?= App\View::partial('partials/about_diagram', ['model' => $server['model'] ?? null, 'issuer' => ($tls['cert']['issuer_org'] ?? null)]) ?>
+</section>
+
 <section class="card mt" id="services">
 	<h2>Outside services and software</h2>
 	<p class="muted small">Everything the app reaches outside this server, and the outside software built into it. Keys and logins live in the server's .env file and are only shown as set or not set. "Last used" is shown where the app keeps a record.</p>
