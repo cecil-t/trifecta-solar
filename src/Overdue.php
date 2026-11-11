@@ -5,9 +5,9 @@ namespace App;
 
 /**
  * Overdue flags on active projects (open, not on hold, not cancelled):
- * - Missed target: a project task or sub-task with a target date before today, no completed date,
- *   not marked Not needed, and not under a parent marked Not needed (the same rule as the cream
- *   and red Target cells on the project page).
+ * - Missed target: a project task without sub-tasks, or a sub-task, with a target date before
+ *   today, no completed date, not marked Not needed, and not under a parent marked Not needed
+ *   (the same rule as the cream and red Target cells on the project page).
  * - Overdue task: an open to-do (Tasks menu) linked to the project with a due date before today.
  * Computed on each view; nothing is stored.
  */
@@ -32,11 +32,20 @@ final class Overdue
 	{
 		$today ??= date('Y-m-d');
 		$byId = [];
+		$hasSubs = [];
 		foreach ($rows as $r) {
 			$byId[(int) $r['id']] = $r;
+			if ($r['parent_id']) {
+				$hasSubs[(int) $r['parent_id']] = true;
+			}
 		}
 		$out = [];
 		foreach ($rows as $r) {
+			// A task with sub-tasks shows no dates on the page (its sub-tasks carry them), so a
+			// target left on it from before it had sub-tasks can't be seen or cleared there
+			if (isset($hasSubs[(int) $r['id']])) {
+				continue;
+			}
 			$target = (string) ($r['target_date'] ?? '');
 			if ($target === '' || $target >= $today || !empty($r['done_date']) || (string) $r['needed'] === '0') {
 				continue;
