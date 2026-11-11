@@ -319,7 +319,7 @@ final class PresalesController
 				throw new \InvalidArgumentException('A project named "' . $name . '" already exists. Project names must be unique.');
 			}
 			$signedRaw = trim((string) ($_POST['signed'] ?? ''));
-			$signed = $signedRaw === '' ? null : (Projects::parseDate($signedRaw) ?? throw new \InvalidArgumentException('Use a date like 11/05/2026 for the contract signed date.'));
+			$signed = $signedRaw === '' ? null : (Projects::parseDate($signedRaw) ?? throw new \InvalidArgumentException('Pick a valid contract signed date.'));
 			$allowed = $o['customer_id'] ? array_map('intval', array_column(Db::all("SELECT id FROM contacts WHERE owner_type = 'organization' AND owner_id = ?", [(int) $o['customer_id']]), 'id')) : [];
 			$contacts = array_values(array_intersect(array_map('intval', (array) ($_POST['contacts'] ?? [])), $allowed));
 			if (!$o['customer_id']) {

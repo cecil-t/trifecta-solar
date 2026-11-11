@@ -69,7 +69,7 @@ $notSet = '<span class="muted">Not set</span>';
 					<input type="text" name="number" value="<?= e($number) ?>" required maxlength="12" pattern="[A-Za-z0-9\-]{2,12}">
 				</label>
 				<label>Contract signed
-					<input type="text" name="signed" value="<?= e($signed) ?>" placeholder="mm/dd/yyyy" inputmode="numeric" maxlength="10">
+					<input type="date" name="signed" value="<?= e((string) (Projects::parseDate($signed) ?? '')) ?>" min="1900-01-01" max="2099-12-31">
 					<small class="hint">Starts the day counter. Can be filled in later on the project.</small>
 				</label>
 				<label class="span-2">Project name
