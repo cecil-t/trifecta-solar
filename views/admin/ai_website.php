@@ -107,7 +107,7 @@ $tAll = $usageRows($usageAll);
 		</dl>
 		<p class="hint mt-xs">The schedule runs from the server's cron (website:poll every 15 minutes; it skips the times that are not due).</p>
 		<div class="btn-row">
-			<form method="post" action="/admin/ai-website/form"><?= Csrf::field() ?><button class="btn btn-secondary btn-small" <?= $gfSet ? '' : 'disabled' ?>>Check the form</button></form>
+			<form method="post" action="/admin/ai-website/form" data-busy="Checking..."><?= Csrf::field() ?><button class="btn btn-secondary btn-small" <?= $gfSet ? '' : 'disabled' ?>>Check the form</button></form>
 			<form method="post" action="/admin/ai-website/poll" data-busy="Checking..."><?= Csrf::field() ?><button class="btn btn-secondary btn-small" <?= $gfSet ? '' : 'disabled' ?>>Check the website now</button></form>
 		</div>
 		<p class="hint">Check the form lists its fields and newest entries and saves nothing. Check the website now brings in new requests and reads their bills, like a scheduled check.</p>

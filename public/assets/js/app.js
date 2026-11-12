@@ -179,16 +179,21 @@
 		if (form.matches('form[data-busy]')) {
 			if (form.dataset.sending) { e.preventDefault(); return; }
 			form.dataset.sending = '1';
-			form.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-			const btn = form.querySelector('button');
-			if (btn) btn.textContent = form.dataset.busy;
+			const btn = e.submitter || form.querySelector('button');
+			if (btn) { btn.dataset.label = btn.textContent; btn.textContent = form.dataset.busy; btn.classList.add('is-busy'); }
+			// Disabled after the form's values are taken, so a clicked button's name and value still go
+			setTimeout(() => form.querySelectorAll('button').forEach((b) => { b.disabled = true; }), 0);
 		}
 	});
 	// Coming back to a page from the browser cache: slow forms work again
 	window.addEventListener('pageshow', () => {
 		document.querySelectorAll('form[data-busy][data-sending]').forEach((form) => {
 			delete form.dataset.sending;
-			form.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+			form.querySelectorAll('button').forEach((b) => {
+				b.disabled = false;
+				b.classList.remove('is-busy');
+				if (b.dataset.label !== undefined) { b.textContent = b.dataset.label; delete b.dataset.label; }
+			});
 		});
 	});
 

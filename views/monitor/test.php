@@ -86,12 +86,12 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 				</dl>
 
 				<div class="monitor-test-buttons mt-sm">
-					<form method="post" action="/admin/monitor-test">
+					<form method="post" action="/admin/monitor-test" data-busy="Checking...">
 						<?= Csrf::field() ?>
 						<button type="submit" name="check" value="<?= e($key) ?>" class="btn btn-secondary" title="<?= e(ucfirst($v['check'][1])) ?>">Check <?= e($v['check'][0]) ?></button>
 					</form>
 					<?php if ($key === 'growatt'): ?>
-						<form method="post" action="/admin/monitor-test/growatt-curve">
+						<form method="post" action="/admin/monitor-test/growatt-curve" data-busy="Checking...">
 							<?= Csrf::field() ?>
 							<button type="submit" class="btn btn-secondary" title="One request, free">Check daily energy</button>
 						</form>

@@ -12,6 +12,7 @@
  */
 $flagged = array_filter($updates, static fn ($u) => $u['flagged']);
 $failed = array_filter($updates, static fn ($u) => $u['level'] === 'error');
+$current = array_filter($updates, static fn ($u) => !$u['flagged'] && $u['level'] !== 'error');
 $bytes = static function (?float $n): string {
 	if (!$n) {
 		return '';
@@ -65,9 +66,13 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 					</li>
 				<?php endforeach; ?>
 			</ul>
-		<?php elseif ($updates): ?>
-			<p class="small muted">Everything is on the newest version, or hidden until the next one.</p>
-		<?php else: ?>
+		<?php endif; ?>
+		<?php if ($current): ?>
+			<p class="small update-current"><strong>Up to date:</strong>
+				<?php foreach (array_values($current) as $i => $u): ?><?= $i ? ', ' : '' ?><?= e($u['label']) ?> <span class="muted"><?= e((string) $u['current_version']) ?><?= $u['level'] !== 'ok' ? ' (newer ' . e((string) $u['latest_version']) . ' hidden)' : '' ?></span><?php endforeach; ?>
+			</p>
+		<?php endif; ?>
+		<?php if (!$updates): ?>
 			<p class="small muted">The weekly check has not run yet. It needs the cron line for updates:check, or use Check for updates.</p>
 		<?php endif; ?>
 		<?php if ($failed): ?>

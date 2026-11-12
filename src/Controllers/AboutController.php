@@ -87,7 +87,21 @@ final class AboutController
 	{
 		set_time_limit(120);
 		Updates::run();
-		flash('success', 'Checked for updates.');
+		$all = Updates::all();
+		$flagged = array_filter($all, static fn ($u) => $u['flagged']);
+		$current = array_filter($all, static fn ($u) => $u['level'] === 'ok');
+		$failed = array_filter($all, static fn ($u) => $u['level'] === 'error');
+		$parts = [];
+		if ($current) {
+			$parts[] = 'Up to date: ' . implode(', ', array_column($current, 'label')) . '.';
+		}
+		if ($flagged) {
+			$parts[] = 'Update available: ' . implode(', ', array_column($flagged, 'label')) . '.';
+		}
+		if ($failed) {
+			$parts[] = 'Could not check: ' . implode(', ', array_column($failed, 'label')) . '.';
+		}
+		flash($failed ? 'info' : 'success', 'Checked just now. ' . implode(' ', $parts));
 		redirect('/about#updates');
 	}
 

@@ -2178,3 +2178,13 @@ label.radio-line input { width: 1rem; margin: 0 .55rem 0 0; vertical-align: -.1r
 .update-list li { padding: .55rem 0; border-top: 1px solid var(--border); display: grid; gap: .2rem; }
 .update-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .update-hide { margin-left: auto; }
+
+/* A slow button that was pressed (data-busy): a small spinner beside its new label */
+.btn.is-busy { opacity: .85; cursor: progress; }
+.btn.is-busy::before {
+	content: ""; display: inline-block; width: .85em; height: .85em; margin-right: .45em; vertical-align: -.1em;
+	border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: busy-spin .8s linear infinite;
+}
+@keyframes busy-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn.is-busy::before { animation-duration: 2.4s; } }
+.update-current { margin: .6rem 0 0; }

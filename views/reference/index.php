@@ -50,7 +50,7 @@ $share = static function (array $t, int $i): ?float {
 			<?php endforeach; ?>
 			</tbody>
 		</table></div>
-		<form method="post" action="/admin/reference-jobs/run" class="mt-sm">
+		<form method="post" action="/admin/reference-jobs/run" class="mt-sm" data-busy="Running every job...">
 			<?= Csrf::field() ?>
 			<button type="submit" class="btn btn-primary"<?= $installed ? '' : ' disabled' ?>>Run every job</button>
 			<span class="muted small">A few seconds per job, plus about 8 seconds for any site whose weather is not downloaded yet.</span>
@@ -72,7 +72,7 @@ $share = static function (array $t, int $i): ?float {
 				<?php if ($j['notes']): ?><dt>Notes</dt><dd><?= nl2br(e($j['notes'])) ?></dd><?php endif; ?>
 			</dl>
 
-			<form method="post" action="/admin/reference-jobs/<?= (int) $j['id'] ?>/run" class="mt-sm">
+			<form method="post" action="/admin/reference-jobs/<?= (int) $j['id'] ?>/run" class="mt-sm" data-busy="Running...">
 				<?= Csrf::field() ?>
 				<button type="submit" class="btn btn-secondary btn-small"<?= $installed ? '' : ' disabled' ?>><?= $res ? 'Run again' : 'Run' ?></button>
 				<?php if ($res): ?><span class="muted small">Last run <?= e($utc($j['last_run_at'])) ?></span><?php endif; ?>

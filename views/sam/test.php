@@ -90,7 +90,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<div class="flash flash-error"><?= e($googleError) ?></div>
 	<?php endif; ?>
 
-	<form method="post" action="/admin/proposal-apis/google#google" class="sam-point">
+	<form method="post" action="/admin/proposal-apis/google#google" class="sam-point" data-busy="Looking up...">
 		<?= Csrf::field() ?>
 		<label class="sam-address">Address <input type="text" name="address" value="<?= e($address) ?>" placeholder="123 Main St, Springfield, PA 17000" maxlength="300" required></label>
 		<button type="submit" class="btn btn-primary">Look up</button>
@@ -141,7 +141,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 <section class="card mt" id="coverage">
 	<h2>Solar API coverage (past projects)</h2>
 	<p class="muted small">Runs the Solar API roof model for every rooftop project (and those without an install type) that has a map point, up to 60, to see how often Google has a roof model where Trifecta works. About one Building Insights call each, inside Google's free monthly allowance. Takes up to a minute. Nothing is saved.</p>
-	<form method="post" action="/admin/proposal-apis/coverage#coverage">
+	<form method="post" action="/admin/proposal-apis/coverage#coverage" data-busy="Checking...">
 		<?= Csrf::field() ?>
 		<button type="submit" class="btn btn-primary" <?= $googleConfigured ? '' : 'disabled' ?>>Check coverage</button>
 	</form>
@@ -191,7 +191,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<div class="flash flash-error"><?= e($weatherError) ?></div>
 	<?php endif; ?>
 
-	<form method="post" action="/admin/proposal-apis/weather" class="sam-point">
+	<form method="post" action="/admin/proposal-apis/weather" class="sam-point" data-busy="Running...">
 		<?= Csrf::field() ?>
 		<label>Latitude <input type="text" name="lat" value="<?= e($point['lat']) ?>" inputmode="decimal" placeholder="40.1600" required></label>
 		<label>Longitude <input type="text" name="lon" value="<?= e($point['lon']) ?>" inputmode="decimal" placeholder="-76.3900" required></label>
@@ -266,7 +266,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<div class="flash flash-error"><?= e($ratesError) ?></div>
 	<?php endif; ?>
 
-	<form method="post" action="/admin/proposal-apis/rates#rates" class="sam-point">
+	<form method="post" action="/admin/proposal-apis/rates#rates" class="sam-point" data-busy="Finding rates...">
 		<?= Csrf::field() ?>
 		<label>Latitude <input type="text" name="lat" value="<?= e($rf['lat']) ?>" inputmode="decimal" placeholder="40.1600" required></label>
 		<label>Longitude <input type="text" name="lon" value="<?= e($rf['lon']) ?>" inputmode="decimal" placeholder="-76.3900" required></label>
@@ -315,7 +315,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 						<td class="num"><?php if ($rt['energy_min'] !== null): ?><?= e(number_format($rt['energy_min'], 4)) ?><?= $rt['energy_max'] > $rt['energy_min'] ? ' to ' . e(number_format($rt['energy_max'], 4)) : '' ?><?php endif; ?></td>
 						<td class="num"><?= $rt['fixed'] !== null ? '$' . e(number_format($rt['fixed'], 2)) . ' <span class="muted small">' . e($rt['fixed_units']) . '</span>' : '' ?></td>
 						<td>
-							<form method="post" action="/admin/proposal-apis/rates#rates">
+							<form method="post" action="/admin/proposal-apis/rates#rates" data-busy="Billing...">
 								<?= Csrf::field() ?>
 								<input type="hidden" name="lat" value="<?= e($rf['lat']) ?>">
 								<input type="hidden" name="lon" value="<?= e($rf['lon']) ?>">
@@ -447,7 +447,7 @@ $deg = static fn ($v): string => $v === null ? '' : rtrim(rtrim(number_format((f
 		<dt>Python</dt><dd><code><?= e($python) ?></code></dd>
 		<dt>Libraries</dt><dd><code><?= e($libFolder) ?></code></dd>
 	</dl>
-	<form method="post" action="/admin/proposal-apis" class="mt">
+	<form method="post" action="/admin/proposal-apis" class="mt" data-busy="Running...">
 		<?= Csrf::field() ?>
 		<button type="submit" class="btn btn-primary">Run check</button>
 		<span class="muted small">Starts SAM, reads the library files and runs the detailed PV model once (about a second).</span>
