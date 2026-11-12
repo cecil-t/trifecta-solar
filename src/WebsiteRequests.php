@@ -190,7 +190,7 @@ final class WebsiteRequests
 		if (!$r['ok']) {
 			return self::billFailed($id, (int) $req['bill_attempts'], $r['error']);
 		}
-		Db::update('web_requests', $id, ['bill_json' => json_encode(['fields' => $r['fields'], 'raw' => $r['raw']]), 'bill_error' => null,
+		Db::update('web_requests', $id, ['bill_json' => json_encode(['bills' => $r['bills']]), 'bill_error' => null,
 			'bill_read_at' => now_utc(), 'bill_attempts' => (int) $req['bill_attempts'] + 1]);
 		return ['ok' => true];
 	}
@@ -290,7 +290,9 @@ final class WebsiteRequests
 	{
 		$r['data'] = json_decode((string) $r['data_json'], true) ?: [];
 		$r['files'] = json_decode((string) $r['files_json'], true) ?: [];
-		$r['bill'] = json_decode((string) $r['bill_json'], true) ?: null;
+		$b = json_decode((string) $r['bill_json'], true) ?: null;
+		// One entry per bill read; requests read before several bills were kept hold a single one
+		$r['bills'] = $b === null ? [] : ($b['bills'] ?? (isset($b['raw']) ? [['raw' => $b['raw'], 'fields' => $b['fields'], 'summary' => BillReader::summary($b['raw'])]] : []));
 		return $r;
 	}
 
@@ -360,13 +362,16 @@ final class WebsiteRequests
 	/**
 	 * The New opportunity form, filled from a request: the form's answers, then what the bill reader
 	 * found where the form left a field blank. $customerId picks an existing customer; 0 makes a new one.
-	 * Returns the form values and the names of fields the bill filled (highlighted on the form).
+	 * $primary is the bill that fills the fields when several were read; the others go in Notes.
+	 * Name on utility bill always comes from the bill. Returns the form values and the names of
+	 * fields the bill filled (highlighted on the form).
 	 */
-	public static function prefill(array $req, int $customerId): array
+	public static function prefill(array $req, int $customerId, int $primary = 0): array
 	{
 		$d = $req['data'];
 		[$type, $ag] = self::type((string) ($d['project_type'] ?? ''));
-		$bill = $req['bill']['fields'] ?? [];
+		$primary = isset($req['bills'][$primary]) ? $primary : 0;
+		$bill = $req['bills'][$primary]['fields'] ?? [];
 		$o = [
 			'salesperson_id' => Auth::id(), 'site_state' => 'PA', 'customer_type' => $type, 'is_agricultural' => $ag,
 			'lead_source' => 'trifecta', 'lead_detail' => 'website', 'web_request_id' => (int) $req['id'],
@@ -409,6 +414,11 @@ final class WebsiteRequests
 		}
 		if ($o['full_address'] === '' && ($bill['service_address'] ?? '') !== '') {
 			$o['full_address'] = $bill['service_address'];
+		}
+		$others = BillReader::otherBillsNote($req['bills'], $primary);
+		if ($others !== '') {
+			$o['notes'] = trim($o['notes'] . "\n\n" . $others);
+			$auto[] = 'notes';
 		}
 		return [$o, $auto];
 	}

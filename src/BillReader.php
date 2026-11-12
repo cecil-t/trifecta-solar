@@ -20,7 +20,8 @@ final class BillReader
 
 	private const SYSTEM = <<<'TXT'
 		You read US electric utility bills for a solar installer in Pennsylvania, Maryland and Delaware.
-		The pages or photos you are given are one customer's bill (possibly several pages, possibly photographed at an angle).
+		The pages or photos you are given are one customer's bills (possibly several pages each, possibly photographed at an angle).
+		Return one entry in bills for each separate bill: a different account, or the same account for a different billing period. Pages or photos of the same bill are one entry. Keep the order the files came in.
 		Copy values as printed. Never guess or work out a value the bill does not show: use an empty string instead.
 		Numbers: digits and a decimal point only, no dollar signs, commas or units.
 		Dates: YYYY-MM-DD.
@@ -38,7 +39,7 @@ final class BillReader
 		demand_kw: billed demand in kW, commercial bills only.
 		uncertain: names of fields you filled but could not read clearly.
 		is_bill: "yes" if this is an electric utility bill, otherwise "no".
-		notes: one short sentence only when something matters for using these numbers (e.g. estimated reading, two meters, net metered, a first bill covering a partial month). Otherwise empty.
+		notes: one short sentence only when something matters for using this bill's numbers (e.g. estimated reading, two meters on one account, net metered, a first bill covering a partial month). Otherwise empty.
 		TXT;
 
 	/** Fields Claude returns; every one is a string so the schema stays simple (empty when absent). */
@@ -60,7 +61,8 @@ final class BillReader
 			'required' => ['month', 'kwh'], 'additionalProperties' => false,
 		]];
 		$props['uncertain'] = ['type' => 'array', 'items' => ['type' => 'string']];
-		return ['type' => 'object', 'properties' => $props, 'required' => array_keys($props), 'additionalProperties' => false];
+		$bill = ['type' => 'object', 'properties' => $props, 'required' => array_keys($props), 'additionalProperties' => false];
+		return ['type' => 'object', 'properties' => ['bills' => ['type' => 'array', 'items' => $bill]], 'required' => ['bills'], 'additionalProperties' => false];
 	}
 
 	/** Uploaded files from $_FILES[$key] (single or multiple) as [name, bytes]. */
@@ -111,16 +113,22 @@ final class BillReader
 			}
 			$content[] = $block;
 		}
-		$content[] = ['type' => 'text', 'text' => 'Read this electric bill and fill in the fields.'];
-		$r = Claude::ask($purpose, trim(self::SYSTEM), $content, self::schema(), 2500, 150);
+		$content[] = ['type' => 'text', 'text' => 'Read these electric bills and fill in the fields, one entry per bill.'];
+		$r = Claude::ask($purpose, trim(self::SYSTEM), $content, self::schema(), 6000, 180);
 		if (!$r['ok']) {
 			return ['ok' => false, 'error' => $r['error'], 'cost' => $r['cost']];
 		}
-		$raw = self::clean((array) $r['json']);
-		if (($raw['is_bill'] ?? '') === 'no') {
+		$bills = [];
+		foreach ((array) ($r['json']['bills'] ?? []) as $item) {
+			$raw = self::clean((array) $item);
+			if (($raw['is_bill'] ?? '') !== 'no') {
+				$bills[] = ['raw' => $raw, 'fields' => self::fields($raw), 'summary' => self::summary($raw)];
+			}
+		}
+		if (!$bills) {
 			return ['ok' => false, 'error' => 'That doesn\'t look like an electric bill.', 'cost' => $r['cost']];
 		}
-		return ['ok' => true, 'raw' => $raw, 'fields' => self::fields($raw), 'cost' => $r['cost'], 'model' => $r['model'],
+		return ['ok' => true, 'bills' => $bills, 'cost' => $r['cost'], 'model' => $r['model'],
 			'tokens' => $r['input_tokens'] + $r['output_tokens']];
 	}
 
@@ -256,6 +264,46 @@ final class BillReader
 			$f['ptc_cents'] = (string) round((float) $f['ptc_cents'] * 100, 4);
 		}
 		return $f;
+	}
+
+	/**
+	 * One line with a bill's basic information, for the opportunity's Notes when it is not the
+	 * primary bill: utility, account, meter, rate, service address, name, use and charges.
+	 */
+	public static function summary(array $raw): string
+	{
+		$money = static fn (string $v): string => '$' . number_format((float) $v, 2);
+		$date = static fn (string $v): string => ($t = strtotime($v)) ? date('m/d/Y', $t) : $v;
+		$f = self::fields($raw);
+		$parts = array_filter([
+			$raw['utility'],
+			$raw['account_number'] !== '' ? 'account ' . $raw['account_number'] : '',
+			$raw['meter_number'] !== '' ? 'meter ' . $raw['meter_number'] : '',
+			$raw['rate_name'] !== '' ? 'rate ' . $raw['rate_name'] : '',
+			$raw['service_address'] !== '' ? 'service address ' . $raw['service_address'] : '',
+			$f['bill_name'] !== '' ? 'name on bill ' . $f['bill_name'] : '',
+			$f['annual_usage_kwh'] !== '' ? number_format((float) $f['annual_usage_kwh']) . ' kWh in the last 12 months' : '',
+			$raw['kwh_this_period'] !== '' ? trim(($raw['period_start'] !== '' ? 'billing period ' . $date($raw['period_start']) . ' to ' . $date($raw['period_end']) . ': ' : 'this bill: ')
+				. number_format((float) $raw['kwh_this_period']) . ' kWh' . ($raw['current_charges'] !== '' ? ', current charges ' . $money($raw['current_charges']) : '')) : '',
+			$raw['customer_charge'] !== '' ? 'customer charge ' . $money($raw['customer_charge']) . ' a month' : '',
+			$raw['price_to_compare_cents'] !== '' ? 'Price to Compare ' . $raw['price_to_compare_cents'] . ' cents per kWh' : '',
+			$raw['demand_kw'] !== '' ? 'billed demand ' . $raw['demand_kw'] . ' kW' : '',
+			$raw['supplier'] !== '' ? 'generation from ' . $raw['supplier'] : '',
+		], static fn ($p) => $p !== '');
+		return implode('; ', $parts) . '.';
+	}
+
+	/** "Second utility bill provided by customer: ..." for the bills after the primary one, in order. */
+	public static function otherBillsNote(array $bills, int $primary): string
+	{
+		$ordinals = ['Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'];
+		$lines = [];
+		foreach ($bills as $i => $b) {
+			if ($i !== $primary) {
+				$lines[] = ($ordinals[count($lines)] ?? 'Another') . ' utility bill provided by customer: ' . (is_string($b['summary'] ?? null) ? $b['summary'] : self::summary($b['raw']));
+			}
+		}
+		return implode("\n", $lines);
 	}
 
 	/** "JOHN Q SMITH" reads better as "John Q Smith"; mixed case is left as printed. */

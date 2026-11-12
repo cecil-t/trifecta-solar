@@ -83,6 +83,8 @@ final class AiWebsiteController
 			$r = ['ok' => false, 'error' => $e->getMessage()];
 		}
 		$_SESSION['ai_result'] = ['kind' => 'bill'] + $r;
+		unset($_SESSION['ai_result']['bills']);
+		$_SESSION['ai_result']['raws'] = array_column($r['bills'] ?? [], 'raw');
 		redirect('/admin/ai-website');
 	}
 

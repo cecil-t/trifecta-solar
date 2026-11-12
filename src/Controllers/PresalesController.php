@@ -112,7 +112,7 @@ final class PresalesController
 			if (!isset($o['web_request_id'])) {
 				$customer = (int) ($_GET['customer'] ?? 0);
 				$customer = $customer && Db::value("SELECT 1 FROM organizations WHERE id = ? AND type = 'customer'", [$customer]) ? $customer : 0;
-				[$o, $auto] = WebsiteRequests::prefill($req, $customer);
+				[$o, $auto] = WebsiteRequests::prefill($req, $customer, max(0, (int) ($_GET['bill'] ?? 0)));
 			}
 		} else {
 			$req = null;

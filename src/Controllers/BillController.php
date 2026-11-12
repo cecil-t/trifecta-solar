@@ -34,12 +34,15 @@ final class BillController
 			echo json_encode(['ok' => false, 'error' => $r['error']]);
 			return;
 		}
-		echo json_encode([
-			'ok' => true, 'fields' => $r['fields'],
-			'utility_text' => $r['raw']['utility'], 'supplier' => $r['raw']['supplier'], 'notes' => $r['raw']['notes'],
-			'period' => trim($r['raw']['period_start'] . ' to ' . $r['raw']['period_end'], ' to'),
-			'demand_kw' => $r['raw']['demand_kw'], 'uncertain' => $r['raw']['uncertain'],
-			'cost' => round((float) $r['cost'], 4),
-		]);
+		// Every bill read, so the salesperson picks the primary one when there are several
+		$bills = array_map(static fn (array $b): array => [
+			'fields' => $b['fields'], 'summary' => $b['summary'],
+			'utility_text' => $b['raw']['utility'], 'supplier' => $b['raw']['supplier'], 'notes' => $b['raw']['notes'],
+			'period' => trim($b['raw']['period_start'] . ' to ' . $b['raw']['period_end'], ' to'),
+			'demand_kw' => $b['raw']['demand_kw'], 'uncertain' => $b['raw']['uncertain'],
+		], $r['bills']);
+		// The Notes text for the other bills, for each choice of primary bill
+		$otherNotes = array_map(static fn (int $i): string => BillReader::otherBillsNote($r['bills'], $i), array_keys($r['bills']));
+		echo json_encode(['ok' => true, 'bills' => $bills, 'other_notes' => $otherNotes, 'cost' => round((float) $r['cost'], 4)]);
 	}
 }

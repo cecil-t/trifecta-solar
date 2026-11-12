@@ -12,7 +12,7 @@ use App\Projects;
  */
 $d = $req['data'];
 [$type, $ag] = App\WebsiteRequests::type((string) ($d['project_type'] ?? ''));
-$bill = $req['bill']['raw'] ?? null;
+$bills = $req['bills'];
 $money = static fn (string $v): string => $v === '' ? '' : '$' . number_format((float) $v, 2);
 $kwh = static fn (string $v): string => $v === '' ? '' : number_format((float) $v) . ' kWh';
 $rows = [
@@ -73,31 +73,35 @@ $rows = [
 					<?php endforeach; ?>
 					<span class="muted">(opened from the website)</span>
 				</p>
-				<?php if ($bill): ?>
-					<dl class="kv">
-						<?php foreach ([
-							'Name on the bill' => $bill['account_holder'], 'Service address' => $bill['service_address'], 'Utility' => $bill['utility'],
-							'Account #' => $bill['account_number'], 'Meter #' => $bill['meter_number'], 'Rate' => $bill['rate_name'],
-							'Billing period' => trim($bill['period_start'] . ' to ' . $bill['period_end'], ' to'),
-							'kWh this period' => $kwh($bill['kwh_this_period']), 'Current charges' => $money($bill['current_charges']),
-							'Customer charge' => $money($bill['customer_charge']),
-							'Price to Compare' => $bill['price_to_compare_cents'] !== '' ? $bill['price_to_compare_cents'] . ' cents per kWh' : '',
-							'Supplier' => $bill['supplier'], 'Yearly use' => $kwh((string) ($req['bill']['fields']['annual_usage_kwh'] ?? '')),
-							'Billed demand' => $bill['demand_kw'] !== '' ? $bill['demand_kw'] . ' kW' : '',
-						] as $label => $value): if ($value === '' || $value === null) { continue; } ?>
-							<dt><?= e($label) ?></dt><dd><?= e((string) $value) ?></dd>
-						<?php endforeach; ?>
-					</dl>
-					<?php if ($bill['notes'] !== ''): ?><p class="small text-orange"><?= e($bill['notes']) ?></p><?php endif; ?>
-					<?php if ($bill['uncertain']): ?><p class="small text-orange">Hard to read on the bill, check: <?= e(str_replace('_', ' ', implode(', ', $bill['uncertain']))) ?>.</p><?php endif; ?>
-					<p class="muted small">Read <?= e(fmt_dt($req['bill_read_at'])) ?>. These fill the opportunity where the form left a field blank.</p>
+				<?php if ($bills): ?>
+					<?php if (count($bills) > 1): ?><p class="small"><?= count($bills) ?> separate bills. Pick the primary one under Create opportunity; the others go in the opportunity's Notes.</p><?php endif; ?>
+					<?php foreach ($bills as $bi => $b): $bill = $b['raw']; ?>
+						<?php if (count($bills) > 1): ?><h3 class="mt">Bill <?= $bi + 1 ?></h3><?php endif; ?>
+						<dl class="kv">
+							<?php foreach ([
+								'Name on the bill' => $b['fields']['bill_name'] ?? $bill['account_holder'], 'Service address' => $bill['service_address'], 'Utility' => $bill['utility'],
+								'Account #' => $bill['account_number'], 'Meter #' => $bill['meter_number'], 'Rate' => $bill['rate_name'],
+								'Billing period' => trim($bill['period_start'] . ' to ' . $bill['period_end'], ' to'),
+								'kWh this period' => $kwh($bill['kwh_this_period']), 'Current charges' => $money($bill['current_charges']),
+								'Customer charge' => $money($bill['customer_charge']),
+								'Price to Compare' => $bill['price_to_compare_cents'] !== '' ? $bill['price_to_compare_cents'] . ' cents per kWh' : '',
+								'Supplier' => $bill['supplier'], 'Yearly use' => $kwh((string) ($b['fields']['annual_usage_kwh'] ?? '')),
+								'Billed demand' => $bill['demand_kw'] !== '' ? $bill['demand_kw'] . ' kW' : '',
+							] as $label => $value): if ($value === '' || $value === null) { continue; } ?>
+								<dt><?= e($label) ?></dt><dd><?= e((string) $value) ?></dd>
+							<?php endforeach; ?>
+						</dl>
+						<?php if ($bill['notes'] !== ''): ?><p class="small text-orange"><?= e($bill['notes']) ?></p><?php endif; ?>
+						<?php if ($bill['uncertain']): ?><p class="small text-orange">Hard to read on the bill, check: <?= e(str_replace('_', ' ', implode(', ', $bill['uncertain']))) ?>.</p><?php endif; ?>
+					<?php endforeach; ?>
+					<p class="muted small mt-xs">Read <?= e(fmt_dt($req['bill_read_at'])) ?>. The primary bill fills the opportunity where the form left a field blank; Name on utility bill always comes from the bill.</p>
 				<?php elseif ($req['bill_error']): ?>
 					<p class="small text-orange">Not read: <?= e($req['bill_error']) ?></p>
 				<?php else: ?>
 					<p class="muted small"><?= $canRead ? 'Not read yet; it is read on the next website check.' : 'Not read: bill reading is not set up yet (the Claude API key).' ?></p>
 				<?php endif; ?>
 				<?php if ($canRead && $req['status'] !== 'created'): ?>
-					<form method="post" action="/presales/requests/<?= (int) $req['id'] ?>/read" class="mt-xs"><?= Csrf::field() ?><button class="btn btn-secondary btn-small"><?= $bill ? 'Read it again' : 'Read the bill now' ?></button></form>
+					<form method="post" action="/presales/requests/<?= (int) $req['id'] ?>/read" class="mt-xs"><?= Csrf::field() ?><button class="btn btn-secondary btn-small"><?= $bills ? 'Read it again' : 'Read the bill now' ?></button></form>
 				<?php endif; ?>
 			<?php endif; ?>
 		</section>
@@ -116,6 +120,14 @@ $rows = [
 							<label class="radio-line"><input type="radio" name="customer" value="<?= (int) $m['id'] ?>" <?= $i === 0 ? 'checked' : '' ?>> <a href="/organizations/<?= (int) $m['id'] ?>" target="_blank" rel="noopener"><?= e($m['name']) ?></a> <span class="muted small">(<?= e(implode(', ', $m['why'])) ?>)</span></label>
 						<?php endforeach; ?>
 					</fieldset>
+					<?php if (count($bills) > 1): ?>
+						<fieldset class="req-pick">
+							<legend class="small muted">Primary bill</legend>
+							<?php foreach ($bills as $bi => $b): ?>
+								<label class="radio-line"><input type="radio" name="bill" value="<?= $bi ?>" <?= $bi === 0 ? 'checked' : '' ?>> Bill <?= $bi + 1 ?>: <?= e(trim(($b['raw']['rate_name'] ?: $b['raw']['utility']) . ($b['raw']['account_number'] !== '' ? ', account ' . $b['raw']['account_number'] : '') . ($b['raw']['service_address'] !== '' ? ', ' . $b['raw']['service_address'] : ''), ', ')) ?></label>
+							<?php endforeach; ?>
+						</fieldset>
+					<?php endif; ?>
 					<p class="hint"><?= $matches ? 'Possible existing customer found. Pick it for a repeat customer, or New customer if it is someone else.' : 'No existing customer has this email, phone, name or street.' ?>
 						Type: <?= e(Projects::CUSTOMER_TYPES[$type] ?? $type) ?><?= $ag ? ', agricultural' : '' ?>. Lead source: Trifecta lead (website).</p>
 					<button class="btn btn-primary">Create opportunity</button>

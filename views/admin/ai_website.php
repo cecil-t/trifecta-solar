@@ -73,12 +73,15 @@ $tAll = $usageRows($usageAll);
 				<p class="text-orange"><?= e((string) $result['error']) ?></p>
 			<?php else: ?>
 				<p class="small muted"><?= e(Claude::MODELS[$result['model']][0] ?? $result['model']) ?>, <?= number_format((int) $result['tokens']) ?> tokens, about $<?= e(number_format((float) $result['cost'], 4)) ?>. Nothing was saved.</p>
-				<dl class="kv">
-					<?php foreach ($result['raw'] as $k => $val): if ($val === '' || $val === []) { continue; } ?>
-						<dt><?= e(str_replace('_', ' ', $k)) ?></dt>
-						<dd><?= e(is_array($val) ? implode(', ', array_map(static fn ($x) => is_array($x) ? $x['month'] . ': ' . number_format((float) $x['kwh']) : (string) $x, $val)) : (string) $val) ?></dd>
-					<?php endforeach; ?>
-				</dl>
+				<?php foreach ($result['raws'] as $bi => $raw): ?>
+					<?php if (count($result['raws']) > 1): ?><h3 class="mt">Bill <?= $bi + 1 ?></h3><?php endif; ?>
+					<dl class="kv">
+						<?php foreach ($raw as $k => $val): if ($val === '' || $val === []) { continue; } ?>
+							<dt><?= e(str_replace('_', ' ', $k)) ?></dt>
+							<dd><?= e(is_array($val) ? implode(', ', array_map(static fn ($x) => is_array($x) ? $x['month'] . ': ' . number_format((float) $x['kwh']) : (string) $x, $val)) : (string) $val) ?></dd>
+						<?php endforeach; ?>
+					</dl>
+				<?php endforeach; ?>
 			<?php endif; ?>
 		<?php endif; ?>
 	</section>

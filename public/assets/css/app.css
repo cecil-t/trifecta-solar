@@ -2139,7 +2139,8 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .bill-note { margin-top: .4rem; display: grid; gap: .25rem; }
 .bill-note .btn { margin-left: .3rem; }
 .req-pick { border: 0; margin: 0 0 .5rem; padding: 0; min-width: 0; }
-label.radio-line { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: .4rem; padding: .25rem 0; font-weight: 500; }
+label.radio-line { display: block; padding: .3rem 0 .3rem 1.6rem; text-indent: -1.6rem; font-weight: 500; }
+label.radio-line input { width: 1rem; margin: 0 .55rem 0 0; vertical-align: -.1rem; text-indent: 0; }
 .req-pick + .hint { margin-bottom: .75rem; }
 .log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .table tr.row-pending td:first-child { box-shadow: inset 4px 0 0 var(--orange); }
@@ -2150,3 +2151,8 @@ label.radio-line { flex-direction: row; flex-wrap: wrap; align-items: baseline; 
 .model-form { display: flex; gap: .5rem; align-items: flex-end; flex-wrap: wrap; }
 .model-form label { flex: 1 1 18rem; min-width: 0; }
 .model-form select { width: 100%; }
+.bill-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .5rem; margin: .3rem 0; }
+.bill-choice { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .5rem .65rem; display: grid; gap: .3rem; background: var(--surface); }
+.bill-choice.is-primary { border-color: var(--green); box-shadow: inset 3px 0 0 var(--green); }
+.bill-choice-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.bill-applied { display: grid; gap: .25rem; }

@@ -58,7 +58,8 @@ $tabUrl = static fn (string $key) => '/presales?' . http_build_query(array_filte
 			<tr data-href="/presales/requests/<?= (int) $w['id'] ?>" class="row-pending">
 				<td>
 					<a href="/presales/requests/<?= (int) $w['id'] ?>"><strong><?= e(($wd['name'] ?? '') !== '' ? $wd['name'] : 'Website request') ?></strong></a>
-					<div class="muted small">Website quote request<?= $w['files'] ? ', bill ' . ($w['bill'] ? 'read' : ($w['bill_error'] ? 'not read' : 'attached')) : '' ?></div>
+					<?php $billState = !$w['files'] ? '' : (count($w['bills']) > 1 ? ', ' . count($w['bills']) . ' bills read' : ($w['bills'] ? ', bill read' : ($w['bill_error'] ? ', bill not read' : ', bill attached'))); ?>
+					<div class="muted small">Website quote request<?= e($billState) ?></div>
 					<?php if (($wd['address'] ?? '') !== ''): ?><div class="muted small"><?= e($wd['address']) ?></div><?php endif; ?>
 				</td>
 				<td></td>
