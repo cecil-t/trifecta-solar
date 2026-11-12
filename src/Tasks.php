@@ -303,6 +303,8 @@ final class Tasks
 		'Interconnection > Conditional approval' => 'Interconnection > Approved / permission to install',
 		'Utility > COC submitted' => 'Utility > PTO received',
 		'Utility > Meter swap / DER visit' => 'Utility > PTO received',
+		'Utility rebate > Paperwork gathered' => 'Utility rebate > Rebate check cut',
+		'Utility rebate > Submitted to utility' => 'Utility rebate > Rebate check cut',
 	];
 	/** Tasks whose sub-steps run side by side; open items shows them as one line (rule R4). */
 	public const GROUPED = ['Materials', 'Monitoring portal', 'Photos', 'Commissioning'];
