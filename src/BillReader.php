@@ -26,9 +26,9 @@ final class BillReader
 		Numbers: digits and a decimal point only, no dollar signs, commas or units.
 		Dates: YYYY-MM-DD.
 		account_holder: the customer name on the account.
-		service_address: the address of the service location (where the meter is), as one line; not the mailing address unless the bill shows only one address.
+		service_address: the address of the service location (where the meter is), as one line: street, city, state and ZIP only, leaving out the name and utility notes such as "NEW SVC"; not the mailing address unless the bill shows only one address.
 		utility: the electric distribution company that sends the bill (e.g. PPL Electric Utilities, PECO, Met-Ed).
-		rate_name: the rate or rate schedule as printed (e.g. "RS Residential Service", "R - TOU").
+		rate_name: the rate or rate schedule exactly as printed, without expanding codes (e.g. "RS", "Standard Residential ME-RESF", "R - TOU").
 		kwh_this_period: total kWh used in this billing period (sum the meters only if the bill does).
 		current_charges: this period's new electric charges (delivery plus supply), not including any previous balance, payments, late fees from earlier periods, or non-electric items such as payment plans.
 		customer_charge: the fixed monthly customer charge or basic service charge, in dollars.
@@ -39,7 +39,7 @@ final class BillReader
 		demand_kw: billed demand in kW, commercial bills only.
 		uncertain: names of fields you filled but could not read clearly.
 		is_bill: "yes" if this is an electric utility bill, otherwise "no".
-		notes: one short sentence only when something matters for using this bill's numbers (e.g. estimated reading, two meters on one account, net metered, a first bill covering a partial month). Otherwise empty.
+		notes: one short plain sentence only when something matters for using this bill's numbers (e.g. estimated reading, two meters on one account, net metered, a first bill covering a partial month, a "new service" note on the address). Do not mention amounts left out of current_charges (previous balance, payments, late fees, deposits); that is expected. Otherwise empty.
 		TXT;
 
 	/** Fields Claude returns; every one is a string so the schema stays simple (empty when absent). */
