@@ -2163,3 +2163,5 @@ label.radio-line input { width: 1rem; margin: 0 .55rem 0 0; vertical-align: -.1r
 	.form-actions, .design-pricebar, .help-panel, .help-btn, .help-corner { display: none !important; }
 	.card-sticky-head .table th, .card-sticky-head .todo-head, .trow.thead, .design-summary { position: static !important; }
 }
+.admin-links { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .5rem 0 0; }
+.svc-group-head a { font-weight: 500; margin-left: .4rem; }

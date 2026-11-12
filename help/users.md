@@ -6,3 +6,4 @@ Staff sign-ins. Admins only.
 - **Active:** can sign in. Turn it off when someone leaves; their name and history stay on everything they touched.
 - **Devices:** where they are signed in. Sign out all devices if a phone or laptop is lost.
 - Each user's page shows their activity.
+- **Display links** (below the users) are sign-ins for office screens: each opens only the Monitor page, with no password. See [Display links](/help/display-links).

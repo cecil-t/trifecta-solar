@@ -8,4 +8,4 @@ Every system Trifecta monitors, across SolarEdge, Enphase, APsystems, Growatt an
 - SolarEdge is read on weekday mornings only (as often as its free API credits allow), so its weekend days fill in on Monday and it has no figure for today.
 - Notes under the tiles and chart say when a figure is partial (a brand that hasn't reported yet, or history that starts partway through the year).
 
-For an office screen, an admin makes a link under Lists > Display links.
+For an office screen, an admin makes a link under Users, Display links.

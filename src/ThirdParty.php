@@ -23,12 +23,20 @@ final class ThirdParty
 		'pillow_heif 1.8.1' => '2026-10-11',
 	];
 
-	/** @return list<array{group:string, services:list<array>}> */
+	/** Admin pages that check and set up these services, linked from the About page: [path, label]. */
+	public const ADMIN = [
+		'monitor' => ['/admin/monitor-test', 'Monitor APIs'],
+		'proposal' => ['/admin/proposal-apis', 'Proposal APIs'],
+		'reference' => ['/admin/reference-jobs', 'Reference jobs'],
+		'ai' => ['/admin/ai-website', 'Website and AI'],
+	];
+
+	/** @return list<array{group:string, admin?:array{0:string,1:string}, services:list<array>}> */
 	public static function all(): array
 	{
 		return [
-			['group' => 'Inverter monitoring (Monitor page, collected every 15 minutes)', 'services' => self::monitoring()],
-			['group' => 'Addresses, maps and roofs', 'services' => [
+			['group' => 'Inverter monitoring (Monitor page, collected every 15 minutes)', 'admin' => self::ADMIN['monitor'], 'services' => self::monitoring()],
+			['group' => 'Addresses, maps and roofs', 'admin' => self::ADMIN['proposal'], 'services' => [
 				[
 					'name' => 'US Census Geocoder', 'url' => 'https://www.census.gov/data/developers/data-sets/Geocoding-services.html',
 					'for' => 'Township or borough and county for project addresses',
@@ -57,7 +65,7 @@ final class ThirdParty
 					'storage' => [['Stored here', 'Nothing; aerial images are passed through to the browser, never stored']],
 				],
 			]],
-			['group' => 'Weather, solar resource and utility rates', 'services' => [
+			['group' => 'Weather, solar resource and utility rates', 'admin' => self::ADMIN['proposal'], 'services' => [
 				[
 					'name' => 'Open-Meteo', 'url' => 'https://open-meteo.com/',
 					'for' => 'Five-day forecast on the dashboard',
@@ -86,8 +94,8 @@ final class ThirdParty
 					'storage' => [['Stored here', 'Nothing; rates are looked up when needed']],
 				],
 			]],
-			['group' => 'Website requests and AI', 'services' => self::websiteAndAi()],
-			['group' => 'Software built into the server image', 'services' => self::software()],
+			['group' => 'Website requests and AI', 'admin' => self::ADMIN['ai'], 'services' => self::websiteAndAi()],
+			['group' => 'Software built into the server image', 'admin' => self::ADMIN['proposal'], 'services' => self::software()],
 			['group' => 'Code', 'services' => [
 				[
 					'name' => 'GitHub', 'url' => Version::REPO_URL,
@@ -147,7 +155,7 @@ final class ThirdParty
 		return [
 			[
 				'name' => 'Company website quote form (Gravity Forms)', 'url' => 'https://docs.gravityforms.com/rest-api-v2/',
-				'for' => 'Quote requests from the website become Pending rows on Sales (Lists > Website and AI)',
+				'for' => 'Quote requests from the website become Pending rows on Sales (About > Website and AI)',
 				'interface' => 'Gravity Forms REST API v2 (entries, forms), polled weekdays every 15 minutes from 8 AM to 6 PM and weekends once at noon',
 				'access' => 'Read-only API key, HTTP Basic, in the server .env file', 'configured' => WebsiteRequests::configured(),
 				'last' => $poll,

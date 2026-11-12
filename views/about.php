@@ -174,8 +174,16 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 <section class="card mt" id="services">
 	<h2>Outside services and software</h2>
 	<p class="muted small">Everything the app reaches outside this server, and the outside software built into it. Keys and logins live in the server's .env file and are only shown as set or not set. "Last used" is shown where the app keeps a record.</p>
+	<?php if (App\Auth::isAdmin()): ?>
+		<nav class="admin-links" aria-label="Admin pages">
+			<span class="menu-tag">Admin</span>
+			<?php foreach (App\ThirdParty::ADMIN as [$path, $label]): ?>
+				<a href="<?= e($path) ?>" class="btn btn-secondary btn-small"><?= e($label) ?></a>
+			<?php endforeach; ?>
+		</nav>
+	<?php endif; ?>
 	<?php foreach ($services as $grp): ?>
-		<h3 class="mt"><?= e($grp['group']) ?></h3>
+		<h3 class="mt svc-group-head"><?= e($grp['group']) ?><?php if (!empty($grp['admin']) && App\Auth::isAdmin()): ?> <a href="<?= e($grp['admin'][0]) ?>" class="small"><?= e($grp['admin'][1]) ?></a><?php endif; ?></h3>
 		<div class="svc-grid">
 			<?php foreach ($grp['services'] as $sv): ?>
 				<div class="svc">

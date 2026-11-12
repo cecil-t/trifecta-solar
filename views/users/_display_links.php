@@ -2,18 +2,15 @@
 use App\Csrf;
 
 /**
+ * Users page: display links, the no-sign-in links for office screens (App\Controllers\DisplayKeyController).
+ *
  * @var array  $keys  display_keys rows plus created_by_name, active first
  * @var string $base  this site's address
  */
 ?>
-<div class="page-head">
-	<div>
-		<h1>Display links<?= help_link('display-links') ?></h1>
-		<p class="muted">Links for office screens. Each one opens the Monitor page without the menus and without signing in, and nothing else in the tracker. Anyone with a link can see that page, so revoke a link when its screen is retired or the link gets out.</p>
-	</div>
-</div>
-
-<section class="card">
+<section class="card mt" id="display-links">
+	<h2>Display links<?= help_link('display-links') ?></h2>
+	<p class="muted small">Sign-ins for office screens. Each link opens the Monitor page without the menus and without signing in, and nothing else in the tracker. Anyone with a link can see that page, so revoke a link when its screen is retired or the link gets out.</p>
 	<form method="post" action="/admin/display-links" class="display-key-new">
 		<?= Csrf::field() ?>
 		<label>Name for a new link

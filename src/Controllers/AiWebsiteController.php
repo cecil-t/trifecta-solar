@@ -12,7 +12,7 @@ use App\View;
 use App\WebsiteRequests;
 
 /**
- * Lists > Website and AI (admins): the website quote form connection (Gravity Forms) and the Claude
+ * About > Website and AI (admins): the website quote form connection (Gravity Forms) and the Claude
  * API that reads bills. Each check makes one call and saves nothing, except Check the website now,
  * which is a real poll, and the model choice.
  */

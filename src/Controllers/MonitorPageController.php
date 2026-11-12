@@ -26,7 +26,7 @@ final class MonitorPageController
 	}
 
 	/**
-	 * The office-screen view of the same page, opened with a display key (Lists > Display links) instead
+	 * The office-screen view of the same page, opened with a display key (Users > Display links) instead
 	 * of a sign-in: no navigation, the Trifecta logo, no links into the rest of the tracker. The key opens
 	 * only this page and never creates a session.
 	 */

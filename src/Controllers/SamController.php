@@ -13,7 +13,7 @@ use App\View;
 use App\Weather;
 
 /**
- * Lists > Proposal APIs (admin): checks that SAM (System Advisor Model) is installed and runs, fetches
+ * About > Proposal APIs (admin): checks that SAM (System Advisor Model) is installed and runs, fetches
  * NSRDB weather for a point and runs SAM's example system on it, and lists OpenEI utility rates at
  * a point with SAM's bill for one of them, looks up an address with Google (point, roof segments and
  * an aerial image) and makes a test PDF with WeasyPrint. A test bench for the production and savings

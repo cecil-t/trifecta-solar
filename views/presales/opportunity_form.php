@@ -50,7 +50,7 @@ $isNew = $id === null;
 			</div>
 			<div class="bill-note" aria-live="polite" hidden></div>
 		<?php else: ?>
-			<p class="hint">Not set up yet: bill reading needs the Claude API key on the server (Lists, Website and AI).</p>
+			<p class="hint">Not set up yet: bill reading needs the Claude API key on the server (About, Website and AI).</p>
 		<?php endif; ?>
 	</section>
 	<section class="card band">

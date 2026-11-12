@@ -4,7 +4,7 @@ The tracker holds Trifecta's sales, projects, service and to-dos in one place. G
 
 - **Main menu:** Dashboard, Sales (salespeople and admins), Projects, Service, Tasks, Reports and Monitor.
 - **Search** finds projects and service tickets together: name, customer, number, municipality, a ticket's problem or address. A single match opens it directly.
-- **Lists:** customers, municipalities, the directory of third parties and the sales lists. Admins also see the Task template, Users and the API pages.
+- **Lists:** customers, municipalities, the directory of third parties and the sales lists. Admins also see the Task template and Users (staff sign-ins and display links for office screens). The admin pages that check outside services (Monitor APIs, Proposal APIs, Website and AI) are linked from [About](/about).
 - **Your initials:** My account, Help, About and Sign out.
 
 ## Everywhere

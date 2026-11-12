@@ -26,7 +26,7 @@ final class UserController
 				(SELECT MAX(last_seen_at) FROM device_sessions d WHERE d.user_id = u.id) AS last_seen_at
 			 FROM users u ORDER BY u.is_active DESC, u.name'
 		);
-		View::render('users/index', ['title' => 'Users', 'users' => $users]);
+		View::render('users/index', ['title' => 'Users', 'users' => $users, 'keys' => DisplayKeyController::keys(), 'base' => DisplayKeyController::base()]);
 	}
 
 	public function create(): void

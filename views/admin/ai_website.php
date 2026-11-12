@@ -32,6 +32,7 @@ $tAll = $usageRows($usageAll);
 ?>
 <div class="page-head">
 	<div>
+		<a href="/about#services" class="back">&larr; About</a>
 		<h1>Website and AI<?= help_link('ai-website') ?></h1>
 		<p class="muted">Quote requests from the company website's form, and Claude, which reads electric bills. Keys live in the server's .env file and show only as set or not set.</p>
 	</div>

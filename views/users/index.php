@@ -30,3 +30,5 @@
 		</tbody>
 	</table>
 </div>
+
+<?= App\View::partial('users/_display_links', ['keys' => $keys, 'base' => $base]) ?>

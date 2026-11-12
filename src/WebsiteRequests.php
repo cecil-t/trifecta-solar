@@ -14,7 +14,7 @@ final class WebsiteRequests
 {
 	public const ENV = ['GF_SITE', 'GF_FORM_ID', 'GF_CONSUMER_KEY', 'GF_CONSUMER_SECRET'];
 
-	/** The form's field IDs (GET /forms/{id} lists them; Lists > Website and AI shows the form). */
+	/** The form's field IDs (GET /forms/{id} lists them; About > Website and AI shows the form). */
 	public const FIELDS = [
 		'name' => '1', 'phone' => '3', 'email' => '4', 'project_type' => '5', 'share' => '9', 'upload' => '6',
 		'address' => '10', 'utility' => '11', 'utility_other' => '18', 'yearly_kwh' => '12', 'rate_plan' => '13',

@@ -257,7 +257,7 @@ $r->post('/municipalities/{id}', [MunicipalityController::class, 'update']);
 
 // Monitoring (office display; reads only what monitor:poll stored)
 $r->get('/monitor', [MonitorPageController::class, 'show']);
-// Office screens: the Monitor page with a display key instead of a sign-in (Lists > Display links)
+// Office screens: the Monitor page with a display key instead of a sign-in (Users > Display links)
 $r->get('/display', [MonitorPageController::class, 'display'], 'public');
 $r->get('/admin/display-links', [DisplayKeyController::class, 'index'], 'admin');
 $r->post('/admin/display-links', [DisplayKeyController::class, 'store'], 'admin');

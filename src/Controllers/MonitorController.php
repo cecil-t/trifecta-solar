@@ -13,7 +13,7 @@ use App\SolarEdge;
 use App\View;
 
 /**
- * Lists > Monitor APIs (admin): the monitoring collector's connections. Per manufacturer: whether it is
+ * About > Monitor APIs (admin): the monitoring collector's connections. Per manufacturer: whether it is
  * set up, its last scheduled pull, the session controls it needs (forgetting a saved session), and one
  * check button that makes a single list call and shows what came back (Growatt also has a check of its
  * daily energy curve). Responses are not stored.

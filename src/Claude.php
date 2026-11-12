@@ -5,7 +5,7 @@ namespace App;
 
 /**
  * Claude (Anthropic's Messages API), called from the server only. The key is ANTHROPIC_API_KEY in
- * .env; the model is a setting on Lists > Website and AI. Every call is logged in ai_calls with its
+ * .env; the model is a setting on About > Website and AI. Every call is logged in ai_calls with its
  * tokens and cost (never the documents sent). Answers come back as JSON matching a schema
  * (structured outputs), so callers get fields, not prose.
  */

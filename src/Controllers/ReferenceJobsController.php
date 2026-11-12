@@ -9,7 +9,7 @@ use App\SolarResource;
 use App\View;
 
 /**
- * Lists > Proposal APIs > Reference jobs (admin): built, monitored systems with their signed
+ * About > Proposal APIs > Reference jobs (admin): built, monitored systems with their signed
  * proposal's estimate, run through SAM's detailed model and PVWatts v8 on NSRDB weather and compared
  * month by month with the proposal and with monitored production. Jobs are added by
  * import:reference-jobs; a run keeps its result on the job.

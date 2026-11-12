@@ -1,4 +1,4 @@
-Links for office screens. Admins only.
+Links for office screens, on the [Users](/users#display-links) page. Admins only.
 
 - Each link opens the Monitor page without the menus and without signing in, and nothing else in the tracker.
 - **Create link** with a name for the screen (for example, "Front office TV"), then copy the link into that screen's browser.
