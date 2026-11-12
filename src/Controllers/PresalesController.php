@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Activity;
 use App\Address;
 use App\Auth;
+use App\Claude;
 use App\Db;
 use App\Designs;
 use App\Geo;
@@ -16,6 +17,7 @@ use App\SoldProject;
 use App\SolarResource;
 use App\UtilityRates;
 use App\View;
+use App\WebsiteRequests;
 
 /**
  * Pre-Sales: opportunities (a customer and a site being quoted) and their build sheets.
@@ -91,8 +93,10 @@ final class PresalesController
 			? Db::all('SELECT id, name FROM users WHERE is_active = 1 AND (is_sales = 1 OR is_admin = 1)
 				OR id IN (SELECT salesperson_id FROM presales_opportunities WHERE salesperson_id IS NOT NULL) ORDER BY name')
 			: [];
+		// Website quote requests wait at the top of Open and All until someone handles them
+		$pending = in_array($status, ['open', 'all'], true) && $q === '' ? WebsiteRequests::pending() : [];
 		View::render('presales/index', ['title' => 'Sales', 'rows' => $rows, 'status' => $status, 'q' => $q, 'counts' => $counts,
-			'person' => $person, 'people' => $people]);
+			'person' => $person, 'people' => $people, 'pending' => $pending]);
 	}
 
 	public function create(): void
@@ -100,7 +104,20 @@ final class PresalesController
 		Presales::requireUse();
 		$o = $_SESSION['old_presales'] ?? ['salesperson_id' => Auth::id(), 'site_state' => 'PA', 'customer_type' => 'residential'];
 		unset($_SESSION['old_presales']);
-		$this->form($o, null);
+		// From a website request: the form's answers, then what its bill reader found
+		$req = null;
+		$auto = [];
+		$reqId = (int) ($_GET['request'] ?? ($o['web_request_id'] ?? 0));
+		if ($reqId && ($req = WebsiteRequests::find($reqId)) && $req['status'] === 'pending') {
+			if (!isset($o['web_request_id'])) {
+				$customer = (int) ($_GET['customer'] ?? 0);
+				$customer = $customer && Db::value("SELECT 1 FROM organizations WHERE id = ? AND type = 'customer'", [$customer]) ? $customer : 0;
+				[$o, $auto] = WebsiteRequests::prefill($req, $customer);
+			}
+		} else {
+			$req = null;
+		}
+		$this->form($o, null, $req, $auto);
 	}
 
 	public function edit(int $id): void
@@ -110,7 +127,7 @@ final class PresalesController
 		$this->form($o, $id);
 	}
 
-	private function form(array $o, ?int $id): void
+	private function form(array $o, ?int $id, ?array $webRequest = null, array $autoFields = []): void
 	{
 		if (!empty($o['referrer_org_id']) && !isset($o['referrer_label'])) {
 			$o['referrer_label'] = (string) Db::value('SELECT name FROM organizations WHERE id = ?', [(int) $o['referrer_org_id']]);
@@ -121,6 +138,7 @@ final class PresalesController
 			'municipalities' => Projects::municipalities(), 'counties' => Projects::counties(),
 			'users' => Db::all('SELECT id, name, initials FROM users WHERE is_active = 1 AND (is_sales = 1 OR is_admin = 1) ORDER BY name'),
 			'canAssign' => Auth::isAdmin(),
+			'billReader' => Claude::configured(), 'webRequest' => $webRequest, 'autoFields' => $autoFields,
 		]);
 	}
 
@@ -132,6 +150,12 @@ final class PresalesController
 			$data['created_by'] = Auth::id();
 			$id = Db::insert('presales_opportunities', $data);
 			Activity::event('presales', $id, 'Opportunity created');
+			$req = WebsiteRequests::find((int) ($_POST['web_request_id'] ?? 0));
+			if ($req && $req['status'] === 'pending') {
+				Db::update('web_requests', (int) $req['id'], ['status' => 'created', 'opportunity_id' => $id, 'handled_by' => Auth::id(), 'handled_at' => now_utc()]);
+				Activity::event('presales', $id, 'From the website quote request of ' . fmt_dt($req['submitted_at'] ?? $req['created_at']));
+				Activity::event('web_request', (int) $req['id'], 'Opportunity created');
+			}
 			$designId = Designs::create($id, Designs::defaultName($id));
 		} catch (\InvalidArgumentException $e) {
 			$_SESSION['old_presales'] = $_POST;

@@ -10,6 +10,9 @@ use App\Projects;
  * @var bool     $canAssign  admins pick the salesperson; a salesperson's opportunities are their own
  * @var array    $municipalities
  * @var array    $counties
+ * @var bool     $billReader  Read a bill is set up (Claude API key)
+ * @var ?array   $webRequest  the website request this new opportunity comes from
+ * @var array    $autoFields  fields filled from that request's bill (highlighted until edited)
  */
 $v = static fn (string $k, $d = '') => $o[$k] ?? $d;
 // A stored number as typed: no trailing zeros after the decimal point (13000 stays 13000)
@@ -27,8 +30,29 @@ $isNew = $id === null;
 	</div>
 </div>
 
-<form method="post" action="<?= $isNew ? '/presales' : '/presales/' . (int) $id ?>" class="project-form">
+<form method="post" action="<?= $isNew ? '/presales' : '/presales/' . (int) $id ?>" class="project-form"<?= $autoFields ? ' data-auto-fields="' . e(implode(',', $autoFields)) . '"' : '' ?>>
 	<?= Csrf::field() ?>
+	<?php if ($webRequest): ?>
+		<input type="hidden" name="web_request_id" value="<?= (int) $webRequest['id'] ?>">
+		<div class="flash flash-info">
+			From the website request of <?= e(fmt_dt($webRequest['submitted_at'] ?? $webRequest['created_at'])) ?> (<a href="/presales/requests/<?= (int) $webRequest['id'] ?>">see the request</a>).
+			<?= $autoFields ? 'Fields read from the uploaded bill are highlighted until you edit them; check them against the bill.' : '' ?>
+			Saving creates the opportunity and takes the request off the Pending list.
+		</div>
+	<?php endif; ?>
+	<section class="card band bill-read" data-bill-read="/presales/bill-read">
+		<h2>Read a bill</h2>
+		<?php if ($billReader): ?>
+			<p class="hint">Upload the customer's electric bill (a PDF, or photos of each page) and the bill fields below fill in. Check them before saving; the bill itself is not kept.</p>
+			<div class="bill-read-row">
+				<input type="file" class="bill-files" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,image/*" aria-label="Bill files">
+				<button type="button" class="btn btn-secondary btn-small bill-go">Read the bill</button>
+			</div>
+			<div class="bill-note" aria-live="polite" hidden></div>
+		<?php else: ?>
+			<p class="hint">Not set up yet: bill reading needs the Claude API key on the server (Lists, Website and AI).</p>
+		<?php endif; ?>
+	</section>
 	<section class="card band">
 		<h2>Customer</h2>
 		<div class="grid-form">
@@ -127,7 +151,7 @@ $isNew = $id === null;
 	<section class="card band">
 		<h2>Site</h2>
 		<div class="grid-form">
-			<?= App\View::partial('partials/address_full', ['value' => '']) ?>
+			<?= App\View::partial('partials/address_full', ['value' => (string) $v('full_address'), 'auto' => $v('full_address') !== '' && $v('site_street') === '']) ?>
 			<label class="span-2">Street <input type="text" name="site_street" value="<?= e($v('site_street')) ?>" data-addr="street" data-geo-field="street"></label>
 			<label>City <input type="text" name="site_city" value="<?= e($v('site_city')) ?>" data-addr="city" data-geo-field="city"></label>
 			<div class="grid-pair">
@@ -255,3 +279,4 @@ $isNew = $id === null;
 <script src="<?= asset('assets/js/picker.js') ?>"></script>
 <script src="<?= asset('assets/js/address.js') ?>"></script>
 <script src="<?= asset('assets/js/geo.js') ?>"></script>
+<script src="<?= asset('assets/js/bill.js') ?>"></script>

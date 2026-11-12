@@ -129,6 +129,8 @@
 		btn.addEventListener('click', go);
 		input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
 		input.addEventListener('paste', () => setTimeout(go, 30));
+		if (box.dataset.addressAuto && input.value.trim() !== '') go();
+		box.addEventListener('trifecta:lookup', go);
 
 		// A split field typed by hand: the old point no longer fits the address
 		['street', 'city', 'state', 'zip'].forEach((k) => {

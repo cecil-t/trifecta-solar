@@ -32,13 +32,15 @@ RUN apt-get update \
 # WeasyPrint turns the app's HTML (proposals, reports) into PDF: its own venv in /opt/pdf, plus the
 # Pango and HarfBuzz libraries it draws text with and basic fonts (Liberation is metric-compatible
 # with Arial, Helvetica and Times). App\Pdf calls it. To upgrade: change the version, rebuild, then
-# run Lists > Proposal APIs > Test PDF.
+# run Lists > Proposal APIs > Test PDF. The same venv carries pillow-heif, so the bill reader
+# (bin/image_prep.py) can turn iPhone HEIC photos into JPEG; WeasyPrint already brings Pillow.
 ARG WEASYPRINT_VERSION=70.0
+ARG PILLOW_HEIF_VERSION=1.8.1
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-liberation fonts-dejavu-core \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& python3 -m venv /opt/pdf \
-	&& /opt/pdf/bin/pip install --no-cache-dir "weasyprint==${WEASYPRINT_VERSION}" \
+	&& /opt/pdf/bin/pip install --no-cache-dir "weasyprint==${WEASYPRINT_VERSION}" "pillow-heif==${PILLOW_HEIF_VERSION}" \
 	&& /opt/pdf/bin/python -m weasyprint --version
 
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-trifecta.ini"

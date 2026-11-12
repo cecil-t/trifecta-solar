@@ -9,6 +9,7 @@ use App\Projects;
  * @var array  $counts  per status
  * @var int    $person  salesperson filter (admins only; 0 = everyone)
  * @var array  $people  salesperson choices (empty for non-admins)
+ * @var array  $pending website quote requests not handled yet (App\WebsiteRequests::pending)
  */
 $tabs = ['open' => 'Open', 'sold' => 'Sold', 'lost' => 'Lost', 'all' => 'All'];
 $tabUrl = static fn (string $key) => '/presales?' . http_build_query(array_filter(['status' => $key, 'sales' => $person ?: null], static fn ($v) => $v !== null));
@@ -53,7 +54,24 @@ $tabUrl = static fn (string $key) => '/presales?' . http_build_query(array_filte
 		<tr><th>Opportunity</th><th>Sales</th><th>Type</th><th class="num">Build sheets</th><th class="num">kW DC</th><th class="num">Price</th><th>Status</th><th>Created</th><th>Updated</th></tr>
 		</thead>
 		<tbody>
-		<?php if (!$rows): ?>
+		<?php foreach ($pending as $w): $wd = $w['data']; [$wtype, $wag] = App\WebsiteRequests::type((string) ($wd['project_type'] ?? '')); ?>
+			<tr data-href="/presales/requests/<?= (int) $w['id'] ?>" class="row-pending">
+				<td>
+					<a href="/presales/requests/<?= (int) $w['id'] ?>"><strong><?= e(($wd['name'] ?? '') !== '' ? $wd['name'] : 'Website request') ?></strong></a>
+					<div class="muted small">Website quote request<?= $w['files'] ? ', bill ' . ($w['bill'] ? 'read' : ($w['bill_error'] ? 'not read' : 'attached')) : '' ?></div>
+					<?php if (($wd['address'] ?? '') !== ''): ?><div class="muted small"><?= e($wd['address']) ?></div><?php endif; ?>
+				</td>
+				<td></td>
+				<td><?= e(Projects::CUSTOMER_TYPES[$wtype] ?? '') ?><?= $wag ? ' <span class="chip">Ag</span>' : '' ?></td>
+				<td class="num"></td>
+				<td class="num"></td>
+				<td class="num"></td>
+				<td><span class="chip chip-orange">Pending</span></td>
+				<td class="nowrap"><?= e(fmt_dt($w['submitted_at'] ?? $w['created_at'], 'm/d/Y')) ?></td>
+				<td></td>
+			</tr>
+		<?php endforeach; ?>
+		<?php if (!$rows && !$pending): ?>
 			<tr><td colspan="9" class="empty"><?= $q !== '' ? 'Nothing matches that search.' : 'Nothing here yet.' ?></td></tr>
 		<?php endif; ?>
 		<?php foreach ($rows as $r): ?>

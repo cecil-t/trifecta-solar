@@ -31,6 +31,9 @@ declare(strict_types=1);
  *                                             Inverter monitoring collector (run every 15 minutes from cron). Pulls each
  *                                             vendor only when due and inside its limits; --dry-run reports what is due
  *                                             without calling any vendor; --force pulls even when not due
+ *   website:poll [--force] [--dry-run]       Website quote requests (run every 15 minutes from cron). Works only when
+ *                                             due: weekdays 8 AM to 6 PM, weekends once from noon. Keeps new form
+ *                                             entries and reads their bills; --dry-run lists new entries without saving
  *   monitor:backfill [--vendor=X] [--daily] [--months] [--dry-run] [--force]
  *                                             One-time fill of this year's history before daily tracking began: monthly
  *                                             totals (SolarEdge 1 credit per site), --daily adds day-by-day values
@@ -225,6 +228,24 @@ try {
 			foreach (App\MonitorCollector::run(in_array('--force', $args, true), $vendor, in_array('--dry-run', $args, true)) as $line) { out($line); }
 			break;
 
+		case 'website:poll':
+			$force = in_array('--force', $args, true);
+			$dry = in_array('--dry-run', $args, true);
+			$now = new DateTimeImmutable('now', new DateTimeZone('America/New_York'));
+			if (!App\WebsiteRequests::configured()) {
+				out('Website form key not set (GF_ lines in .env); nothing to do.');
+				break;
+			}
+			if (!$force && !App\WebsiteRequests::due($now)) {
+				if ($dry) { out('Not due at ' . $now->format('D g:i A') . ' (weekdays 8 AM to 6 PM, weekends once from noon).'); }
+				break;
+			}
+			$r = App\WebsiteRequests::poll($force, $dry);
+			foreach ($r['log'] ?? [] as $line) { out($line); }
+			if (!$r['ok']) { fail('Website check failed: ' . $r['error']); }
+			out($now->format('Y-m-d H:i') . ': ' . (int) $r['new'] . ' new request(s), ' . (int) $r['read'] . ' bill(s) read.' . ($dry ? ' DRY RUN: nothing saved and no bills read.' : ''));
+			break;
+
 		case 'monitor:backfill':
 			$vendor = null;
 			foreach ($args as $a) {
@@ -278,7 +299,7 @@ try {
 			break;
 
 		default:
-			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | import:reference-jobs <file.json> [--dry-run] | import:commissions <file.json> [--paid-on=YYYY-MM-DD] [--paid-before=YYYY-MM-DD] [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run] | monitor:backfill [--vendor=X] [--daily] [--months] [--dry-run] [--force]');
+			out('Commands: migrate | backup [--keep=N] | user:list | user:password <email> | import:projects <file.json> [--dry-run] | import:service <file.json> [--dry-run] | import:todos <file.json> [--dry-run] | import:updates <file.json> [--dry-run] | import:reference-jobs <file.json> [--dry-run] | import:commissions <file.json> [--paid-on=YYYY-MM-DD] [--paid-before=YYYY-MM-DD] [--dry-run] | fix:payment-labels [--dry-run] | fix:completed-payments [--dry-run] | fix:question-defaults [--dry-run] | geo:check [--dry-run] | monitor:poll [--vendor=X] [--force] [--dry-run] | monitor:backfill [--vendor=X] [--daily] [--months] [--dry-run] [--force] | website:poll [--force] [--dry-run]');
 	}
 } catch (Throwable $e) {
 	fail('Error: ' . $e->getMessage());

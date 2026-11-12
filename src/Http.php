@@ -15,7 +15,9 @@ final class Http
 	 */
 	public static function request(string $method, string $url, array $headers = [], string $body = '', int $timeout = 20): array
 	{
-		$headers[] = 'Accept: application/json';
+		if (!array_filter($headers, static fn ($h) => stripos($h, 'Accept:') === 0)) {
+			$headers[] = 'Accept: application/json';
+		}
 		$headers[] = 'User-Agent: TrifectaTracker/1.0';
 		if ($method !== 'GET') {
 			$headers[] = 'Content-Length: ' . strlen($body);

@@ -20,6 +20,7 @@ final class ThirdParty
 	public const RELEASED = [
 		'nlr_pysam 8.0.0' => '2026-08-14',
 		'weasyprint 70.0' => '2026-09-08',
+		'pillow_heif 1.8.1' => '2026-10-11',
 	];
 
 	/** @return list<array{group:string, services:list<array>}> */
@@ -85,6 +86,7 @@ final class ThirdParty
 					'storage' => [['Stored here', 'Nothing; rates are looked up when needed']],
 				],
 			]],
+			['group' => 'Website requests and AI', 'services' => self::websiteAndAi()],
 			['group' => 'Software built into the server image', 'services' => self::software()],
 			['group' => 'Code', 'services' => [
 				[
@@ -134,6 +136,42 @@ final class ThirdParty
 		return $out;
 	}
 
+	/** The website's quote form (Gravity Forms) and Claude, which reads bills. */
+	private static function websiteAndAi(): array
+	{
+		$poll = self::value('SELECT MAX(started_at) FROM website_polls WHERE ok = 1');
+		$failed = self::value('SELECT error FROM website_polls WHERE id = (SELECT MAX(id) FROM website_polls) AND ok = 0');
+		$calls = self::count('SELECT COUNT(*) FROM ai_calls');
+		$cost = (float) self::value('SELECT COALESCE(SUM(cost_usd), 0) FROM ai_calls');
+		$month = (float) self::value('SELECT COALESCE(SUM(cost_usd), 0) FROM ai_calls WHERE created_at >= ?', [gmdate('Y-m-d\\TH:i:s\\Z', time() - 30 * 86400)]);
+		return [
+			[
+				'name' => 'Company website quote form (Gravity Forms)', 'url' => 'https://docs.gravityforms.com/rest-api-v2/',
+				'for' => 'Quote requests from the website become Pending rows on Sales (Lists > Website and AI)',
+				'interface' => 'Gravity Forms REST API v2 (entries, forms), polled weekdays every 15 minutes from 8 AM to 6 PM and weekends once at noon',
+				'access' => 'Read-only API key, HTTP Basic, in the server .env file', 'configured' => WebsiteRequests::configured(),
+				'last' => $poll,
+				'storage' => array_values(array_filter([
+					['Requests', self::n(self::rows('web_requests'), 'request', 'requests') . ' (table web_requests: the form answers, links to the uploaded bills, what the bill reader found)'],
+					['Bills', 'Not kept here; the files stay on the website and are fetched when read or opened'],
+					['Run log', self::n(self::rows('website_polls'), 'check', 'checks') . ' (table website_polls)'],
+					$failed !== null ? ['Last check failed', $failed] : null,
+				])),
+			],
+			[
+				'name' => 'Claude API (Anthropic)', 'url' => 'https://platform.claude.com/docs/en/api/overview',
+				'for' => 'Reads electric bills (PDFs and photos) into the opportunity\'s utility bill fields',
+				'interface' => 'Messages API version ' . Claude::API_VERSION . ' with structured JSON output; model ' . (Claude::MODELS[Claude::model()][0] ?? Claude::model()),
+				'access' => 'API key in the server .env file, called from the server only', 'configured' => Claude::configured(),
+				'last' => self::value('SELECT MAX(created_at) FROM ai_calls WHERE ok = 1'),
+				'storage' => [
+					['Call log', $calls . ' call' . ($calls === '1' ? '' : 's') . ', $' . number_format($cost, 2) . ' in all, $' . number_format($month, 2) . ' in the last 30 days (table ai_calls: purpose, model, tokens, cost)'],
+					['Documents', 'Never stored; each bill is sent for one read and dropped'],
+				],
+			],
+		];
+	}
+
 	/** SAM and WeasyPrint: versions read from what is installed (no program is started). */
 	private static function software(): array
 	{
@@ -142,6 +180,7 @@ final class ThirdParty
 		$libRelease = is_file(Sam::libFolder() . '/VERSION') ? trim((string) file_get_contents(Sam::libFolder() . '/VERSION')) : null;
 		$pysam = self::package($samRoot, 'nlr_pysam');
 		$weasy = self::package($pdfRoot, 'weasyprint');
+		$heif = self::package($pdfRoot, 'pillow_heif');
 		$py = self::pythonVersion($samRoot);
 		$sam = self::samRelease($libRelease);
 		return [
@@ -162,9 +201,12 @@ final class ThirdParty
 			],
 			[
 				'name' => 'WeasyPrint', 'url' => 'https://weasyprint.org/',
-				'for' => 'PDFs from the app\'s pages (proposals later)',
+				'for' => 'PDFs from the app\'s pages (proposals); its Python also prepares bill photos (bin/image_prep.py)',
 				'interface' => 'HTML and CSS to PDF',
-				'versions' => [['WeasyPrint', ($weasy ?? 'Not installed') . self::released('weasyprint', $weasy)]],
+				'versions' => [
+					['WeasyPrint', ($weasy ?? 'Not installed') . self::released('weasyprint', $weasy)],
+					['pillow-heif', ($heif ?? 'Not installed') . self::released('pillow_heif', $heif) . ' (iPhone HEIC photos for the bill reader)'],
+				],
 				'access' => 'Open source (BSD 3-Clause), runs on this server', 'configured' => null,
 				'last' => null,
 				'storage' => [['Program', 'In the Docker image (' . $pdfRoot . '); PDFs are made when asked for and not kept']],

@@ -37,6 +37,7 @@ final class Help
 		'users'           => ['Users', 'Admin', 'admin'],
 		'monitor-apis'    => ['Monitor APIs', 'Admin', 'admin'],
 		'proposal-apis'   => ['Proposal APIs', 'Admin', 'admin'],
+		'ai-website'      => ['Website and AI', 'Admin', 'admin'],
 		'reference-jobs'  => ['Reference jobs', 'Admin', 'admin'],
 		'display-links'   => ['Display links', 'Admin', 'admin'],
 	];

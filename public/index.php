@@ -121,6 +121,12 @@ $r->post('/presales/catalog/{id}', [CatalogController::class, 'update']);
 $r->post('/presales/catalog/{id}/confirm', [CatalogController::class, 'confirm']);
 $r->get('/presales/rates', [PresalesRatesController::class, 'show']);
 $r->get('/presales/utility-rates', [PresalesController::class, 'utilityRates']);
+$r->post('/presales/bill-read', [App\Controllers\BillController::class, 'read']);
+$r->get('/presales/requests/{id}', [App\Controllers\WebRequestController::class, 'show']);
+$r->post('/presales/requests/{id}/dismiss', [App\Controllers\WebRequestController::class, 'dismiss']);
+$r->post('/presales/requests/{id}/reopen', [App\Controllers\WebRequestController::class, 'reopen']);
+$r->post('/presales/requests/{id}/read', [App\Controllers\WebRequestController::class, 'read']);
+$r->get('/presales/requests/{id}/file/{n}', [App\Controllers\WebRequestController::class, 'file']);
 $r->post('/presales/rates', [PresalesRatesController::class, 'save']);
 $r->get('/presales/layout-tiles/{z}/{x}/{y}', [LayoutController::class, 'tile']);
 $r->get('/presales/layout-viewport', [LayoutController::class, 'viewport']);
@@ -271,6 +277,12 @@ $r->post('/admin/proposal-apis/google', [SamController::class, 'google'], 'admin
 $r->post('/admin/proposal-apis/coverage', [SamController::class, 'coverage'], 'admin');
 $r->get('/admin/proposal-apis/aerial', [SamController::class, 'aerial'], 'admin');
 $r->get('/admin/reference-jobs', [ReferenceJobsController::class, 'index'], 'admin');
+// Admin: Website and AI (website quote form, Claude bill reading)
+$r->get('/admin/ai-website', [App\Controllers\AiWebsiteController::class, 'show'], 'admin');
+$r->post('/admin/ai-website/form', [App\Controllers\AiWebsiteController::class, 'checkForm'], 'admin');
+$r->post('/admin/ai-website/poll', [App\Controllers\AiWebsiteController::class, 'poll'], 'admin');
+$r->post('/admin/ai-website/bill', [App\Controllers\AiWebsiteController::class, 'testBill'], 'admin');
+$r->post('/admin/ai-website/model', [App\Controllers\AiWebsiteController::class, 'saveModel'], 'admin');
 $r->post('/admin/reference-jobs/run', [ReferenceJobsController::class, 'runAll'], 'admin');
 $r->post('/admin/reference-jobs/{id}/run', [ReferenceJobsController::class, 'run'], 'admin');
 $r->get('/admin/monitor-test', [MonitorController::class, 'test'], 'admin');

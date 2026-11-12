@@ -4,9 +4,11 @@
  * fills the split fields below it (data-addr). Goes inside a .grid-form.
  *
  * @var string $value
+ * @var bool   $auto   look the value up when the page opens (a form filled from a website request)
  */
+$auto ??= false;
 ?>
-<div class="checkfield span-all addr-box" data-address="/address/lookup">
+<div class="checkfield span-all addr-box" data-address="/address/lookup"<?= $auto ? ' data-address-auto="1"' : '' ?>>
 	<label for="addr-full" class="field-label">Full address</label>
 	<div class="addr-row">
 		<input type="text" id="addr-full" class="addr-full" value="<?= e($value) ?>" autocomplete="off" placeholder="Type or paste the whole address, e.g. 123 Main St, Manheim, PA 17545">
