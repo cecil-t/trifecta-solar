@@ -207,7 +207,7 @@ final class WebsiteRequests
 		$site = parse_url((string) Config::get('GF_SITE'), PHP_URL_HOST);
 		$host = parse_url($url, PHP_URL_HOST);
 		if (!$host || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true) || !self::sameSite((string) $host, (string) $site)) {
-			return ['ok' => false, 'error' => 'The file link is not on the company website.'];
+			return ['ok' => false, 'error' => 'The file link is ' . ($host ? 'on ' . $host : 'not a full web address (' . mb_substr($url, 0, 80) . ')') . ', not on the company website (' . $site . ').'];
 		}
 		$r = Http::request('GET', $url, ['Accept: */*', self::auth()], '', 60);
 		if ($r['status'] !== 200 || $r['body'] === '') {
