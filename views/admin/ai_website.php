@@ -106,7 +106,7 @@ $tAll = $usageRows($usageAll);
 		<p class="hint mt-xs">The schedule runs from the server's cron (website:poll every 15 minutes; it skips the times that are not due).</p>
 		<div class="btn-row">
 			<form method="post" action="/admin/ai-website/form"><?= Csrf::field() ?><button class="btn btn-secondary btn-small" <?= $gfSet ? '' : 'disabled' ?>>Check the form</button></form>
-			<form method="post" action="/admin/ai-website/poll"><?= Csrf::field() ?><button class="btn btn-secondary btn-small" <?= $gfSet ? '' : 'disabled' ?>>Check the website now</button></form>
+			<form method="post" action="/admin/ai-website/poll" data-busy="Checking..."><?= Csrf::field() ?><button class="btn btn-secondary btn-small" <?= $gfSet ? '' : 'disabled' ?>>Check the website now</button></form>
 		</div>
 		<p class="hint">Check the form lists its fields and newest entries and saves nothing. Check the website now brings in new requests and reads their bills, like a scheduled check.</p>
 	</section>
@@ -143,7 +143,7 @@ $tAll = $usageRows($usageAll);
 			<p class="hint">Costs from list prices and the tokens each call used; the Claude Console has the billed amounts.</p>
 		<?php endif; ?>
 		<h3 class="mt">Test a bill</h3>
-		<form method="post" action="/admin/ai-website/bill" enctype="multipart/form-data">
+		<form method="post" action="/admin/ai-website/bill" enctype="multipart/form-data" data-busy="Reading...">
 			<?= Csrf::field() ?>
 			<div class="bill-read-row">
 				<input type="file" name="bill[]" class="bill-files" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,image/*" aria-label="Bill files" required>

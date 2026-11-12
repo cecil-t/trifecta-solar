@@ -101,7 +101,7 @@ $rows = [
 					<p class="muted small"><?= $canRead ? 'Not read yet; it is read on the next website check.' : 'Not read: bill reading is not set up yet (the Claude API key).' ?></p>
 				<?php endif; ?>
 				<?php if ($canRead && $req['status'] !== 'created'): ?>
-					<form method="post" action="/presales/requests/<?= (int) $req['id'] ?>/read" class="mt-xs"><?= Csrf::field() ?><button class="btn btn-secondary btn-small"><?= $bills ? 'Read it again' : 'Read the bill now' ?></button></form>
+					<form method="post" action="/presales/requests/<?= (int) $req['id'] ?>/read" class="mt-xs" data-busy="Reading the bill..."><?= Csrf::field() ?><button class="btn btn-secondary btn-small"><?= $bills ? 'Read it again' : 'Read the bill now' ?></button></form>
 				<?php endif; ?>
 			<?php endif; ?>
 		</section>

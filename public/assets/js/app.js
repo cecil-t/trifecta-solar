@@ -171,9 +171,25 @@
 	});
 
 	// Forms that ask before submitting (deletes).
+	// Slow forms (data-busy="Reading..."): the button is disabled and relabeled while the page
+	// works, so a second click can't send the same request again (a bill read costs money each time).
 	document.addEventListener('submit', (e) => {
 		const form = e.target;
-		if (form.matches('form[data-confirm]') && !window.confirm(form.dataset.confirm)) e.preventDefault();
+		if (form.matches('form[data-confirm]') && !window.confirm(form.dataset.confirm)) { e.preventDefault(); return; }
+		if (form.matches('form[data-busy]')) {
+			if (form.dataset.sending) { e.preventDefault(); return; }
+			form.dataset.sending = '1';
+			form.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+			const btn = form.querySelector('button');
+			if (btn) btn.textContent = form.dataset.busy;
+		}
+	});
+	// Coming back to a page from the browser cache: slow forms work again
+	window.addEventListener('pageshow', () => {
+		document.querySelectorAll('form[data-busy][data-sending]').forEach((form) => {
+			delete form.dataset.sending;
+			form.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+		});
 	});
 
 	// Filter drop-downs that apply as soon as they change.

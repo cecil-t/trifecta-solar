@@ -27,7 +27,7 @@ Read README.md for the feature list and layout. This file covers how to work in 
 - All writes go through `Activity::changes` / `Activity::event` so the project or ticket log records them.
 - Security:
   - Escape every value in views with `e()` (or cast to int/float). User links render only through `safe_url()`. JS never uses `innerHTML` with data.
-  - A Content Security Policy (sent from `public/index.php`) allows scripts and styles only from this site, with no inline script. So no `<script>` blocks, no `onclick=`/`onsubmit=`/`onchange=` attributes and no `style=` attributes in views. Use the data attributes `app.js` handles (`data-href` rows, `data-confirm` forms and buttons, `data-autosubmit` selects, `data-print`, `data-toggle-next-row`, `.year-toggle`) or a script file in `public/assets/js/`.
+  - A Content Security Policy (sent from `public/index.php`) allows scripts and styles only from this site, with no inline script. So no `<script>` blocks, no `onclick=`/`onsubmit=`/`onchange=` attributes and no `style=` attributes in views. Use the data attributes `app.js` handles (`data-href` rows, `data-confirm` forms and buttons, `data-autosubmit` selects, `data-print`, `data-toggle-next-row`, `.year-toggle`, `data-busy` for slow forms that must not be sent twice) or a script file in `public/assets/js/`.
   - Validate input on the server in each controller's `input()`; SQL uses `?` placeholders only; every POST carries `Csrf::field()`.
   - Return paths from `back` parameters go through `local_path()`.
 - Inputs whose unit invites a decimal slip (percent typed as a fraction, dollars in a cents field, cents in a $/W field) get an entry in `App\UnitGuard::FIELDS` with the believable range, checked on save. New fields like that get one too.
