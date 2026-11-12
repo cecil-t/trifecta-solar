@@ -14,7 +14,7 @@ namespace App;
  */
 final class BillReader
 {
-	public const MAX_FILES = 8;
+	public const MAX_FILES = 15;
 	public const MAX_BYTES = 15 * 1024 * 1024;
 	public const PREP_TIMEOUT = 30;
 
