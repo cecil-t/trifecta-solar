@@ -18,16 +18,19 @@ final class Updates
 	/** A central Pennsylvania point for asking NSRDB which typical-year datasets exist. */
 	private const NSRDB_POINT = [40.2, -76.4];
 
-	/** item => [label, what upgrading involves] */
+	/** item => [label, what upgrading involves]; the first three drive proposal estimates (PROPOSAL) */
 	public const ITEMS = [
 		'sam' => ['SAM (System Advisor Model)', 'Production and bill models change between SAM releases, so proposal numbers can move. Claude updates SAM_LIBRARY_TAG and the two library hashes in the Dockerfile; you rebuild (trifecta-update); then run About > Proposal APIs > Run check and Reference jobs > Run all and compare with before.'],
 		'pysam' => ['PySAM', 'The Python wrapper for SAM, usually upgraded together with SAM. Claude updates PYSAM_VERSION in the Dockerfile; you rebuild; then run Proposal APIs > Run check and Reference jobs.'],
+		'nsrdb' => ['NSRDB typical-year weather', 'A newer typical year moves production estimates a little. Claude changes the dataset in the code (no rebuild); new weather files download as sites are run; then run Reference jobs and compare with before.'],
 		'weasyprint' => ['WeasyPrint', 'Makes the proposal PDFs. Claude updates WEASYPRINT_VERSION in the Dockerfile; you rebuild; then Proposal APIs > Test PDF and open a proposal PDF to check the layout.'],
 		'pillow_heif' => ['pillow-heif', 'Turns iPhone HEIC photos into JPEG for the bill reader. Claude updates PILLOW_HEIF_VERSION in the Dockerfile; you rebuild; then Website and AI > Test a bill with an iPhone photo.'],
-		'nsrdb' => ['NSRDB typical-year weather', 'A newer typical year moves production estimates a little. Claude changes the dataset in the code (no rebuild); new weather files download as sites are run; then run Reference jobs and compare with before.'],
 		'claude' => ['Claude model', 'Pick the model on About > Website and AI, then Test a bill with a few real bills and compare with the old model. A retired model stops bill reading until another is picked.'],
 		'php' => ['PHP', 'Security fixes come with a rebuild that pulls the newest php:8.3-apache image (docker compose build --pull). Moving to a newer PHP branch before 8.3 reaches end of life is a Dockerfile change Claude makes and tests first.'],
 	];
+
+	/** Items whose version changes the production numbers on proposals; the rest are other tools. */
+	public const PROPOSAL = ['sam', 'pysam', 'nsrdb'];
 
 	// ------------------------------------------------------------------ reading
 

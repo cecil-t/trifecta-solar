@@ -2187,4 +2187,5 @@ label.radio-line input { width: 1rem; margin: 0 .55rem 0 0; vertical-align: -.1r
 }
 @keyframes busy-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .btn.is-busy::before { animation-duration: 2.4s; } }
-.update-current { margin: .6rem 0 0; }
+.update-current { margin: .5rem 0 0; }
+.update-current + .update-current { margin-top: .2rem; }

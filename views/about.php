@@ -68,9 +68,13 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 			</ul>
 		<?php endif; ?>
 		<?php if ($current): ?>
-			<p class="small update-current"><strong>Up to date:</strong>
-				<?php foreach (array_values($current) as $i => $u): ?><?= $i ? ', ' : '' ?><?= e($u['label']) ?> <span class="muted"><?= e((string) $u['current_version']) ?><?= $u['level'] !== 'ok' ? ' (newer ' . e((string) $u['latest_version']) . ' hidden)' : '' ?></span><?php endforeach; ?>
-			</p>
+			<?php foreach (['Proposal estimates' => true, 'Other tools' => false] as $groupLabel => $proposal):
+				$inGroup = array_values(array_filter($current, static fn ($u, $k) => in_array($k, App\Updates::PROPOSAL, true) === $proposal, ARRAY_FILTER_USE_BOTH));
+				if (!$inGroup) { continue; } ?>
+				<p class="small update-current"><strong><?= e($groupLabel) ?>, up to date:</strong>
+					<?php foreach ($inGroup as $i => $u): ?><?= $i ? ', ' : '' ?><?= e($u['label']) ?> <span class="muted"><?= e((string) $u['current_version']) ?><?= $u['level'] !== 'ok' ? ' (newer ' . e((string) $u['latest_version']) . ' hidden)' : '' ?></span><?php endforeach; ?>
+				</p>
+			<?php endforeach; ?>
 		<?php endif; ?>
 		<?php if (!$updates): ?>
 			<p class="small muted">The weekly check has not run yet. It needs the cron line for updates:check, or use Check for updates.</p>
