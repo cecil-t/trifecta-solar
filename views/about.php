@@ -7,7 +7,11 @@
  * @var ?array  $tls     host, port and cert (from App\TlsInfo, null if no TLS answered)
  * @var array   $stats  (not $data: View::partial keeps its own $data)
  * @var array   $services outside services and software by group (App\ThirdParty::all)
+ * @var array   $updates  newer versions found (App\Updates::all), admins only
+ * @var ?string $updatesChecked when updates:check last ran
  */
+$flagged = array_filter($updates, static fn ($u) => $u['flagged']);
+$failed = array_filter($updates, static fn ($u) => $u['level'] === 'error');
 $bytes = static function (?float $n): string {
 	if (!$n) {
 		return '';
@@ -37,6 +41,40 @@ $utc = static fn (?string $t): string => $t ? date('m/d/Y g:i A', (int) strtotim
 		<p class="muted">All about the systems, software, libraries, data, licenses, and versions that this Operations Tracker platform is built on.</p>
 	</div>
 </div>
+
+<?php if (App\Auth::isAdmin()): ?>
+	<section class="card notify-card update-card<?= $flagged ? '' : ' is-quiet' ?>" id="updates">
+		<div class="task-strip-head">
+			<h2><?= $flagged ? 'Updates available' : 'Updates' ?></h2>
+			<span class="muted small"><?= $updatesChecked ? 'Checked ' . e(fmt_dt($updatesChecked)) . ', weekly' : 'Not checked yet' ?></span>
+			<form method="post" action="/about/updates/check" data-busy="Checking..."><?= App\Csrf::field() ?><button class="btn btn-secondary btn-small">Check for updates</button></form>
+		</div>
+		<?php if ($flagged): ?>
+			<p class="small muted">Nothing upgrades by itself. Each one says what upgrading involves; ask Claude to start it, or hide it until the next version. "Needs action" items can't be hidden; they clear once fixed and checked again.</p>
+			<ul class="update-list">
+				<?php foreach ($flagged as $key => $u): ?>
+					<li>
+						<div class="update-head">
+							<strong><?= e($u['label']) ?></strong>
+							<span class="chip <?= $u['level'] === 'alert' ? 'chip-red' : ($u['level'] === 'major' ? 'chip-orange' : 'chip-blue') ?>"><?= $u['level'] === 'alert' ? 'Needs action' : ($u['level'] === 'major' ? 'Major release' : 'Small update') ?></span>
+							<?php if ($u['url']): ?><a href="<?= e($u['url']) ?>" target="_blank" rel="noopener" class="small">Release notes</a><?php endif; ?>
+							<?php if ($u['level'] !== 'alert'): ?><form method="post" action="/about/updates/hide" class="update-hide"><?= App\Csrf::field() ?><input type="hidden" name="item" value="<?= e($key) ?>"><button class="btn btn-ghost btn-small">Hide until the next version</button></form><?php endif; ?>
+						</div>
+						<div class="small"><?= e((string) $u['note']) ?></div>
+						<div class="small muted">To upgrade: <?= e($u['how']) ?></div>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		<?php elseif ($updates): ?>
+			<p class="small muted">Everything is on the newest version, or hidden until the next one.</p>
+		<?php else: ?>
+			<p class="small muted">The weekly check has not run yet. It needs the cron line for updates:check, or use Check for updates.</p>
+		<?php endif; ?>
+		<?php if ($failed): ?>
+			<p class="small text-orange">Could not check: <?= e(implode('; ', array_map(static fn ($u) => $u['label'] . ' (' . $u['note'] . ')', $failed))) ?></p>
+		<?php endif; ?>
+	</section>
+<?php endif; ?>
 
 <div class="grid-2">
 	<div class="col-stack">

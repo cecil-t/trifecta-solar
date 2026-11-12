@@ -3,12 +3,14 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Auth;
 use App\Backup;
 use App\Db;
 use App\Migrator;
 use App\ServerInfo;
 use App\ThirdParty;
 use App\TlsInfo;
+use App\Updates;
 use App\Version;
 use App\View;
 
@@ -60,6 +62,8 @@ final class AboutController
 			],
 			'tls' => $tls,
 			'services' => ThirdParty::all(),
+			'updates' => Auth::isAdmin() ? Updates::all() : [],
+			'updatesChecked' => Updates::lastChecked(),
 			'server' => ServerInfo::all() + [
 				'disk_free' => @disk_free_space(dirname($dbPath)) ?: null,
 				'disk_total' => @disk_total_space(dirname($dbPath)) ?: null,
@@ -76,6 +80,26 @@ final class AboutController
 				'backup_count' => count($backups),
 			],
 		]);
+	}
+
+	/** Check for newer versions now (admins). */
+	public function checkUpdates(): void
+	{
+		set_time_limit(120);
+		Updates::run();
+		flash('success', 'Checked for updates.');
+		redirect('/about#updates');
+	}
+
+	/** Hide one item's flag until a newer version than the one found now (admins). */
+	public function hideUpdate(): void
+	{
+		$item = (string) ($_POST['item'] ?? '');
+		if (isset(Updates::ITEMS[$item])) {
+			Updates::dismiss($item);
+			flash('success', Updates::ITEMS[$item][0] . ': hidden until a newer version comes out.');
+		}
+		redirect('/about#updates');
 	}
 
 	/**

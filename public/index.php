@@ -88,6 +88,8 @@ $r->get('/', [DashboardController::class, 'index']);
 
 $r->get('/account', [AccountController::class, 'show']);
 $r->get('/about', [AboutController::class, 'show']);
+$r->post('/about/updates/check', [AboutController::class, 'checkUpdates'], 'admin');
+$r->post('/about/updates/hide', [AboutController::class, 'hideUpdate'], 'admin');
 $r->get('/help', [HelpController::class, 'index']);
 foreach (array_keys(App\Help::TOPICS) as $slug) { // the router's {placeholders} take digits only
 	$r->get('/help/' . $slug, [HelpController::class, 'show']);

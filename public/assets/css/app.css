@@ -2165,3 +2165,16 @@ label.radio-line input { width: 1rem; margin: 0 .55rem 0 0; vertical-align: -.1r
 }
 .admin-links { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .5rem 0 0; }
 .svc-group-head a { font-weight: 500; margin-left: .4rem; }
+
+/* Updates available: a red dot on the admin's avatar and beside About, and a card on About */
+.avatar.has-dot { position: relative; }
+.alert-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #e02424; box-shadow: 0 0 0 2px var(--surface); }
+.avatar .alert-dot { position: absolute; left: -3px; bottom: -3px; }
+.alert-dot.dot-inline { width: 9px; height: 9px; margin-left: .35rem; vertical-align: .05em; box-shadow: none; }
+.update-card.is-quiet { border-left-color: var(--border); }
+.update-card .task-strip-head { align-items: center; gap: .6rem; }
+.update-card .task-strip-head form { margin-left: auto; }
+.update-list { list-style: none; margin: .5rem 0 0; padding: 0; }
+.update-list li { padding: .55rem 0; border-top: 1px solid var(--border); display: grid; gap: .2rem; }
+.update-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.update-hide { margin-left: auto; }

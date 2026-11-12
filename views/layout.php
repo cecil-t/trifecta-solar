@@ -61,13 +61,14 @@ $isActive = static fn (string $href) => $href === '/' ? $path === '/' : (str_sta
 
 		<details class="usermenu">
 			<summary>
-				<span class="avatar"><?= e($user['initials'] ?: mb_substr($user['name'], 0, 1)) ?></span>
+				<?php $updateCount = Auth::isAdmin() ? App\Updates::count() : 0; ?>
+				<span class="avatar<?= $updateCount ? ' has-dot' : '' ?>"><?= e($user['initials'] ?: mb_substr($user['name'], 0, 1)) ?><?php if ($updateCount): ?><span class="alert-dot" title="<?= $updateCount ?> update<?= $updateCount === 1 ? '' : 's' ?> available: see About"></span><?php endif; ?></span>
 				<span class="usermenu-name"><?= e($user['name']) ?></span>
 			</summary>
 			<div class="usermenu-panel">
 				<a href="/account">My account</a>
 				<a href="/help">Help</a>
-				<a href="/about">About</a>
+				<a href="/about<?= $updateCount ? '#updates' : '' ?>">About<?php if ($updateCount): ?> <span class="alert-dot dot-inline" title="Updates available"></span><span class="visually-hidden"> (updates available)</span><?php endif; ?></a>
 				<form method="post" action="/logout">
 					<?= Csrf::field() ?>
 					<button type="submit" class="linklike">Sign out</button>
