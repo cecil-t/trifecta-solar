@@ -118,6 +118,36 @@ final class Claude
 		}
 	}
 
+	/**
+	 * What one bill read costs on each model, in dollars: the size of the bills read so far (the
+	 * average of the successful reads), priced at each model's list price. Until there are reads,
+	 * a typical two-page bill is assumed.
+	 *
+	 * @return array<string, float> model id => dollars per bill
+	 */
+	public static function perBill(): array
+	{
+		$avg = Db::one("SELECT AVG(input_tokens) AS tin, AVG(output_tokens) AS tout, COUNT(*) AS n FROM ai_calls WHERE ok = 1 AND purpose IN ('bill', 'bill_test')");
+		[$in, $out] = $avg && (int) $avg['n'] > 0 ? [(float) $avg['tin'], (float) $avg['tout']] : [9000.0, 600.0];
+		$out2 = [];
+		foreach (self::MODELS as $id => [, $pin, $pout]) {
+			$out2[$id] = ($in * $pin + $out * $pout) / 1_000_000;
+		}
+		return $out2;
+	}
+
+	/** "about 2 cents", "about 0.1 cent", "about 12 cents" for a cost in dollars. */
+	public static function cents(float $dollars): string
+	{
+		$c = $dollars * 100;
+		if ($c < 1) {
+			return 'about ' . rtrim(rtrim(number_format(max($c, 0.01), $c < 0.1 ? 2 : 1), '0'), '.') . ' cent';
+		}
+		$r = $c < 10 ? round($c, 1) : round($c);
+		$t = rtrim(rtrim(number_format($r, 1), '0'), '.');
+		return 'about ' . $t . ($t === '1' ? ' cent' : ' cents');
+	}
+
 	/** Calls and cost over the last N days, by purpose: purpose => [calls, failed, cost, input, output]. */
 	public static function usage(int $days): array
 	{

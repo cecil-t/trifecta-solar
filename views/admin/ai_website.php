@@ -10,6 +10,7 @@ use App\Csrf;
  * @var array   $counts    web_requests by status
  * @var bool    $claudeSet ANTHROPIC_API_KEY is in .env
  * @var string  $model
+ * @var array   $perBill  model id => dollars per bill read (App\Claude::perBill)
  * @var array   $usage30   App\Claude::usage(30)
  * @var array   $usageAll
  * @var ?bool   $heic      photo conversion with HEIC installed (null: no Python here)
@@ -72,7 +73,7 @@ $tAll = $usageRows($usageAll);
 			<?php if (!$result['ok']): ?>
 				<p class="text-orange"><?= e((string) $result['error']) ?></p>
 			<?php else: ?>
-				<p class="small muted"><?= e(Claude::MODELS[$result['model']][0] ?? $result['model']) ?>, <?= number_format((int) $result['tokens']) ?> tokens, about $<?= e(number_format((float) $result['cost'], 4)) ?>. Nothing was saved.</p>
+				<p class="small muted"><?= e(Claude::MODELS[$result['model']][0] ?? $result['model']) ?>, this read cost <?= e(Claude::cents((float) $result['cost'])) ?>. Nothing was saved.</p>
 				<?php foreach ($result['raws'] as $bi => $raw): ?>
 					<?php if (count($result['raws']) > 1): ?><h3 class="mt">Bill <?= $bi + 1 ?></h3><?php endif; ?>
 					<dl class="kv">
@@ -117,8 +118,8 @@ $tAll = $usageRows($usageAll);
 			<?= Csrf::field() ?>
 			<label>Model
 				<select name="model">
-					<?php foreach (Claude::MODELS as $id => [$label, $in, $out]): ?>
-						<option value="<?= e($id) ?>" <?= $id === $model ? 'selected' : '' ?>><?= e($label) ?> ($<?= e(rtrim(rtrim(number_format($in, 2), '0'), '.')) ?> / $<?= e(rtrim(rtrim(number_format($out, 2), '0'), '.')) ?> per million tokens)</option>
+					<?php foreach (Claude::MODELS as $id => [$label]): ?>
+						<option value="<?= e($id) ?>" <?= $id === $model ? 'selected' : '' ?>><?= e($label) ?> (<?= e(Claude::cents($perBill[$id] ?? 0)) ?> a bill)</option>
 					<?php endforeach; ?>
 				</select>
 			</label>
@@ -133,14 +134,14 @@ $tAll = $usageRows($usageAll);
 		</dl>
 		<?php if ($usage30): ?>
 			<table class="table table-tight ai-usage mt-xs">
-				<thead><tr><th>Last 30 days</th><th class="num">Calls</th><th class="num">Average</th><th class="num">Cost</th></tr></thead>
+				<thead><tr><th>Last 30 days</th><th class="num">Calls</th><th class="num">Each</th><th class="num">Cost</th></tr></thead>
 				<tbody>
 				<?php foreach ($usage30 as $p => $u): ?>
-					<tr><td><?= e(Claude::PURPOSES[$p] ?? $p) ?></td><td class="num"><?= (int) $u['calls'] ?></td><td class="num">$<?= e(number_format($u['cost'] / max(1, $u['calls']), 3)) ?></td><td class="num">$<?= e(number_format($u['cost'], 2)) ?></td></tr>
+					<tr><td><?= e(Claude::PURPOSES[$p] ?? $p) ?></td><td class="num"><?= (int) $u['calls'] ?></td><td class="num"><?= e(Claude::cents($u['cost'] / max(1, $u['calls']))) ?></td><td class="num">$<?= e(number_format($u['cost'], 2)) ?></td></tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table>
-			<p class="hint">Costs from list prices and the tokens each call used; the Claude Console has the billed amounts.</p>
+			<p class="hint">Worked out from Anthropic's list prices; the Claude Console has the billed amounts.</p>
 		<?php endif; ?>
 		<h3 class="mt">Test a bill</h3>
 		<form method="post" action="/admin/ai-website/bill" enctype="multipart/form-data" data-busy="Reading...">

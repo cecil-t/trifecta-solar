@@ -31,6 +31,7 @@ final class AiWebsiteController
 			'counts' => array_column(Db::all('SELECT status, COUNT(*) AS n FROM web_requests GROUP BY status'), 'n', 'status'),
 			'claudeSet' => Claude::configured(),
 			'model' => Claude::model(),
+			'perBill' => Claude::perBill(),
 			'usage30' => Claude::usage(30),
 			'usageAll' => Claude::usage(36500),
 			'heic' => $this->heicReady(),

@@ -165,7 +165,7 @@ final class ThirdParty
 				'access' => 'API key in the server .env file, called from the server only', 'configured' => Claude::configured(),
 				'last' => self::value('SELECT MAX(created_at) FROM ai_calls WHERE ok = 1'),
 				'storage' => [
-					['Call log', $calls . ' call' . ($calls === '1' ? '' : 's') . ', $' . number_format($cost, 2) . ' in all, $' . number_format($month, 2) . ' in the last 30 days (table ai_calls: purpose, model, tokens, cost)'],
+					['Call log', $calls . ' call' . ($calls === '1' ? '' : 's') . ', $' . number_format($cost, 2) . ' in all, $' . number_format($month, 2) . ' in the last 30 days (table ai_calls: what each call was for, the model and its cost)'],
 					['Documents', 'Never stored; each bill is sent for one read and dropped'],
 				],
 			],
