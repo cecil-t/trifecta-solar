@@ -336,7 +336,7 @@ final class ReportController
 	// ------------------------------------------------------------------ utility rebates
 
 	public const REBATE_SHOW = [
-		'yes' => 'Rebate: Yes', 'open' => 'Rebate: Yes, steps still open', 'done' => 'Rebate: Yes, every step completed',
+		'open' => 'Rebate: Yes, steps still open', 'yes' => 'Rebate: Yes, all', 'done' => 'Rebate: Yes, every step completed',
 		'unanswered' => 'Rebate question not answered',
 	];
 
@@ -347,7 +347,7 @@ final class ReportController
 	 */
 	public function rebates(): void
 	{
-		$show = isset(self::REBATE_SHOW[$_GET['show'] ?? '']) ? $_GET['show'] : 'yes';
+		$show = isset(self::REBATE_SHOW[$_GET['show'] ?? '']) ? $_GET['show'] : 'open';
 		$utility = (int) ($_GET['utility'] ?? 0);
 		$q = mb_strtolower(trim((string) ($_GET['q'] ?? '')));
 
