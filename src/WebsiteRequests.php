@@ -174,7 +174,20 @@ final class WebsiteRequests
 	public static function readBill(int $id): array
 	{
 		$req = Db::one('SELECT * FROM web_requests WHERE id = ?', [$id]);
-		$urls = $req ? (json_decode((string) $req['files_json'], true) ?: []) : [];
+		if (!$req) {
+			return ['ok' => false, 'error' => 'Request not found.'];
+		}
+		// The links as the website gives them now (they are fetched again, so a saved bad link fixes itself)
+		$fresh = self::get('/entries/' . (int) $req['entry_id']);
+		if ($fresh['ok'] && is_array($fresh['json'])) {
+			$links = self::fileLinks($fresh['json'][self::FIELDS['upload']] ?? '');
+			$json = $links ? json_encode($links) : null;
+			if ($json !== $req['files_json']) {
+				Db::update('web_requests', $id, ['files_json' => $json]);
+				$req['files_json'] = $json;
+			}
+		}
+		$urls = json_decode((string) $req['files_json'], true) ?: [];
 		if (!$urls) {
 			return ['ok' => false, 'error' => 'This request has no bill attached.'];
 		}
@@ -234,19 +247,17 @@ final class WebsiteRequests
 	/** An entry's answers in our terms (files: the upload links). */
 	public static function map(array $entry): array
 	{
-		$v = static fn (string $k): string => trim((string) ($entry[self::FIELDS[$k]] ?? ''));
+		$v = static function (string $k) use ($entry): string {
+			$x = $entry[self::FIELDS[$k]] ?? '';
+			return is_array($x) ? trim(implode(', ', array_filter(array_map(static fn ($y) => is_scalar($y) ? (string) $y : '', $x)))) : trim((string) $x);
+		};
 		$first = trim((string) ($entry[self::FIELDS['name'] . '.3'] ?? ''));
 		$last = trim((string) ($entry[self::FIELDS['name'] . '.6'] ?? ''));
 		$name = trim($first . ' ' . $last);
 		if ($name === '') {
 			$name = $v('name');
 		}
-		$upload = $v('upload');
-		$files = [];
-		if ($upload !== '') {
-			$decoded = json_decode($upload, true);
-			$files = is_array($decoded) ? array_values(array_filter(array_map('strval', $decoded))) : [$upload];
-		}
+		$files = self::fileLinks($entry[self::FIELDS['upload']] ?? '');
 		$utility = $v('utility');
 		if ($v('utility_other') !== '' && ($utility === '' || stripos($utility, 'other') !== false)) {
 			$utility = $v('utility_other');
@@ -258,6 +269,33 @@ final class WebsiteRequests
 			'period_kwh' => self::number($v('period_kwh')), 'current_charges' => self::number($v('current_charges')),
 			'customer_charge' => self::number($v('customer_charge')), 'notes' => $v('notes'), 'files' => $files,
 		];
+	}
+
+	/**
+	 * The upload field's file links. Gravity Forms gives a single upload as a URL, a multi-file upload
+	 * as a JSON array in a string, and some versions as a real array; any of them can nest.
+	 *
+	 * @return list<string>
+	 */
+	public static function fileLinks(mixed $value): array
+	{
+		if (is_string($value)) {
+			$value = trim($value);
+			if ($value !== '' && ($value[0] === '[' || $value[0] === '{')) {
+				$decoded = json_decode($value, true);
+				if (is_array($decoded)) {
+					return self::fileLinks($decoded);
+				}
+			}
+			return preg_match('#^https?://#i', $value) ? [$value] : [];
+		}
+		$out = [];
+		foreach (is_array($value) ? $value : [] as $item) {
+			foreach (self::fileLinks($item) as $url) {
+				$out[] = $url;
+			}
+		}
+		return array_values(array_unique($out));
 	}
 
 	private static function number(string $s): string
