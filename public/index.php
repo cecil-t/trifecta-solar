@@ -206,6 +206,7 @@ $r->get('/reports/service', [ReportController::class, 'service']);
 $r->get('/reports/warranty', [ReportController::class, 'warranty']);
 $r->get('/reports/production', [ReportController::class, 'production']);
 $r->get('/reports/opportunities', [ReportController::class, 'opportunities']);
+$r->get('/reports/rebates', [ReportController::class, 'rebates']);
 
 $r->post('/activity/{id}/edit', [ActivityController::class, 'edit']);
 $r->post('/activity/{id}/delete', [ActivityController::class, 'delete']);

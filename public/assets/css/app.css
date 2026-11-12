@@ -2097,6 +2097,22 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 	.table-warranty-report .row-toggle { display: none; }
 }
 .table-warranty-flags td:nth-child(4) { white-space: normal; min-width: 220px; }
+
+/* ---------- utility rebates report ---------- */
+.table-rebates td { vertical-align: top; }
+.table-rebates > tbody > tr > td:nth-child(2) { white-space: normal; min-width: 220px; }
+.table-rebates > tbody > tr > td:nth-child(6) { white-space: normal; min-width: 240px; }
+.table-rebates .row-toggle { padding: .1rem .45rem; }
+.table-rebates .visit-edit-row > td { padding: .4rem .8rem .8rem 2.6rem; background: var(--blue-50); }
+.table-rebates .visit-edit-row .table { background: #fff; font-size: .85rem; }
+.table-rebate-log td:nth-child(3) { white-space: normal; }
+.rebate-steps { list-style: none; margin: 0; padding: 0; }
+.rebate-steps li { padding: .1rem 0; }
+.rebate-steps li > span:first-child { font-weight: 600; margin-right: .35rem; }
+.rebate-who { display: inline-block; margin-left: .3rem; padding: 0 .3rem; border-radius: 4px; background: var(--blue-50); font-size: .75rem; font-weight: 600; }
+@media print {
+	.table-rebates .row-toggle { display: none; }
+}
 .visit-add label.warranty-program { flex: 0 1 300px; }
 .prod-ratio { font-size: 1.05rem; padding: .15rem .55rem; }
 .prod-guarantee { margin: 0 1rem .7rem; padding: .6rem .8rem; border-left: 3px solid var(--blue); background: var(--blue-50); font-size: .92rem; }

@@ -29,6 +29,7 @@ final class ReportController
 		'warranty' => ['Warranty', 'Systems under warranty, what expires when, warranty work and its estimated cost, and what needs review.'],
 		'production' => ['Production', 'Monitored production against each project\'s estimate, how accurate the estimates are, and production guarantees.'],
 		'opportunities' => ['Opportunities', 'Sales pipeline by salesperson: open, sold and lost quotes, win rate, pricing, overrides, and quotes going cold.'],
+		'rebates' => ['Utility rebates', 'Projects with a utility rebate: where each one stands, its step dates, notes and history.'],
 	];
 
 	/** The reports this user may open (Opportunities is for salespeople and admins). */
@@ -329,6 +330,145 @@ final class ReportController
 			'tripRate' => $tripRate, 'hourRate' => $hourRate,
 			'filter' => ['show' => $show, 'program' => $prog, 'legacy' => $legacy, 'q' => (string) ($_GET['q'] ?? '')],
 			'total' => count($fleet), 'today' => $today,
+		]);
+	}
+
+	// ------------------------------------------------------------------ utility rebates
+
+	public const REBATE_SHOW = [
+		'yes' => 'Rebate: Yes', 'open' => 'Rebate: Yes, steps still open', 'done' => 'Rebate: Yes, every step completed',
+		'unanswered' => 'Rebate question not answered',
+	];
+
+	/**
+	 * Utility rebates: every project whose "Utility rebate" closeout task is answered Yes (or not
+	 * answered, as a filter), with its sub-step dates, notes, the task's log history and project
+	 * comments that mention a rebate. Cancelled projects are left out.
+	 */
+	public function rebates(): void
+	{
+		$show = isset(self::REBATE_SHOW[$_GET['show'] ?? '']) ? $_GET['show'] : 'yes';
+		$utility = (int) ($_GET['utility'] ?? 0);
+		$q = mb_strtolower(trim((string) ($_GET['q'] ?? '')));
+
+		$projects = Db::all(
+			"SELECT p.*, c.name AS customer_name, u.name AS utility_name, s.name AS sales_name
+			 FROM projects p
+			 JOIN project_tasks r ON r.project_id = p.id AND r.parent_id IS NULL AND r.name = 'Utility rebate'
+			 LEFT JOIN organizations c ON c.id = p.customer_id
+			 LEFT JOIN utilities u ON u.id = p.utility_id
+			 LEFT JOIN users s ON s.id = p.salesperson_id
+			 WHERE p.hold_state IS NULL OR p.hold_state <> 'cancelled'
+			 GROUP BY p.id"
+		);
+		$tasks = Tasks::forProjects(array_column($projects, 'id'));
+		$owners = array_column(Db::all('SELECT id, name, initials FROM users'), null, 'id');
+
+		$tiles = ['yes' => 0, 'open' => 0, 'done' => 0, 'unanswered' => 0, 'unanswered_pto' => 0];
+		$utilities = [];
+		$rows = [];
+		foreach ($projects as $p) {
+			$id = (int) $p['id'];
+			$all = $tasks[$id] ?? [];
+			$rebate = null;
+			foreach ($all as $t) {
+				if ($t['parent_id'] === null && $t['name'] === 'Utility rebate') {
+					$rebate = $t;
+					break;
+				}
+			}
+			if (!$rebate || (string) $rebate['needed'] === '0') {
+				continue;
+			}
+			$status = Tasks::status($p, $all);
+			$phase = $status['phase'] !== 'complete' && $p['hold_state'] === 'on_hold' ? 'on_hold' : $status['phase'];
+
+			// Sub-steps in order; "not needed" ones are listed but don't count toward completion
+			$steps = [];
+			foreach ($all as $t) {
+				if ((int) $t['parent_id'] === (int) $rebate['id']) {
+					$steps[] = $t + ['owner' => $owners[(int) $t['owner_id']] ?? null];
+				}
+			}
+			$active = array_values(array_filter($steps, static fn ($t) => (string) $t['needed'] !== '0'));
+			$doneDates = array_filter(array_column($active, 'done_date'));
+			$complete = $active ? count($doneDates) === count($active) : (bool) $rebate['done_date'];
+			$next = null;
+			foreach ($active as $t) {
+				if (!$t['done_date']) {
+					$next = $t;
+					break;
+				}
+			}
+			$state = $rebate['needed'] === null ? 'unanswered' : ($complete ? 'done' : 'open');
+
+			if ($state === 'unanswered') {
+				$tiles['unanswered']++;
+				if ($status['pto_date']) {
+					$tiles['unanswered_pto']++;
+				}
+			} else {
+				$tiles['yes']++;
+				$tiles[$state]++;
+			}
+			if ($p['utility_id']) {
+				$utilities[(int) $p['utility_id']] = (string) $p['utility_name'];
+			}
+
+			$keep = match ($show) {
+				'open' => $state === 'open',
+				'done' => $state === 'done',
+				'unanswered' => $state === 'unanswered',
+				default => $state !== 'unanswered',
+			};
+			$keep = $keep && (!$utility || (int) $p['utility_id'] === $utility);
+			if ($keep && $q !== '') {
+				$hay = mb_strtolower($p['project_number'] . ' ' . $p['name'] . ' ' . $p['customer_name'] . ' ' . $p['site_city'] . ' ' . $p['utility_name']
+					. ' ' . $rebate['note'] . ' ' . $rebate['reference'] . ' ' . implode(' ', array_column($steps, 'note')));
+				$keep = str_contains($hay, $q);
+			}
+			if (!$keep) {
+				continue;
+			}
+			$rows[] = [
+				'p' => $p, 'phase' => $phase, 'contract' => $status['start_date'], 'pto' => $status['pto_date'],
+				'rebate' => $rebate + ['owner' => $owners[(int) $rebate['owner_id']] ?? null],
+				'steps' => $steps, 'next' => $next, 'state' => $state,
+				'completed_on' => $complete && $doneDates ? max($doneDates) : ($complete ? $rebate['done_date'] : null),
+				'waiting' => $state === 'open' && $status['pto_date'] ? (int) floor((strtotime(date('Y-m-d')) - strtotime($status['pto_date'])) / 86400) : null,
+			];
+		}
+
+		// Log history for the rebate task and its steps, and comments that mention a rebate
+		$ids = array_map(static fn ($r) => (int) $r['p']['id'], $rows);
+		$history = [];
+		if ($ids) {
+			$in = implode(',', $ids);
+			$log = Db::all(
+				"SELECT a.entity_id, a.kind, a.field, a.old_value, a.new_value, a.body, a.created_at, u.name AS user_name
+				 FROM activity_log a LEFT JOIN users u ON u.id = a.user_id
+				 WHERE a.entity_type = 'project' AND a.entity_id IN ($in) AND a.deleted_at IS NULL
+				   AND ((a.kind = 'change' AND a.field LIKE 'Utility rebate%')
+				     OR (a.kind IN ('comment', 'event') AND a.body LIKE '%rebate%'))
+				 ORDER BY a.created_at DESC, a.id DESC"
+			);
+			foreach ($log as $l) {
+				$history[(int) $l['entity_id']][] = $l;
+			}
+		}
+
+		// Open first and not answered next, each oldest PTO first (waiting longest); completed newest first
+		$order = ['open' => 0, 'unanswered' => 1, 'done' => 2];
+		$key = static fn (array $r) => [$order[$r['state']], $r['state'] === 'done' ? -strtotime($r['completed_on'] ?? '1970-01-01') : 0,
+			$r['pto'] ?? '9999', $r['p']['project_number']];
+		usort($rows, static fn ($a, $b) => $key($a) <=> $key($b));
+		asort($utilities);
+
+		View::render('reports/rebates', [
+			'title' => 'Utility rebates report', 'report' => 'rebates',
+			'tiles' => $tiles, 'rows' => $rows, 'history' => $history, 'utilities' => $utilities,
+			'filter' => ['show' => $show, 'utility' => $utility, 'q' => (string) ($_GET['q'] ?? '')],
+			'today' => date('Y-m-d'),
 		]);
 	}
 
