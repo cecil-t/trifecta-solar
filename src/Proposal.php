@@ -97,6 +97,9 @@ final class Proposal
 		foreach ($calc['checks'] ?? [] as $m) {
 			$warnings[] = 'Build sheet: ' . $m;
 		}
+		foreach (Savings::itcWarnings($o, $d) as $m) {
+			$warnings[] = $m;
+		}
 
 		$customer = $o['customer_id'] ? Db::one('SELECT * FROM organizations WHERE id = ?', [(int) $o['customer_id']]) : null;
 		$contact = $d['contact_id'] ? Db::one('SELECT * FROM contacts WHERE id = ?', [(int) $d['contact_id']]) : null;

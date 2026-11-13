@@ -1811,6 +1811,7 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 
 /* Build sheet: savings and proposal */
 .sav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: .6rem .9rem; }
+.sav-grid-one { max-width: 14rem; }
 .sav-inc { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }
 .sav-inc .sav-inc-headrow, .sav-inc .sav-inc-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) 2rem; gap: .4rem .6rem; align-items: end; width: 100%; max-width: none; }
 .sav-inc .sav-inc-headrow span { font-size: .75rem; font-weight: 600; color: var(--muted); }

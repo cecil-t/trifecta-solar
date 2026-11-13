@@ -150,7 +150,7 @@ $rules = $rules ?: [[]];
 				</select>
 			</label>
 		</div>
-		<p class="hint">Depreciation counts for commercial and farm customers unless a build sheet turns it off (or on for others). Federal: the price less half of the tax credits, as bonus or 5-year MACRS, at the federal rate. State: the full price over 5-year MACRS at the state rate (Pennsylvania doesn't allow bonus depreciation). The state default is the personal income tax rate, which owners of LLCs, S corporations and sole proprietorships pay; a build sheet for a C corporation types the corporate rate.</p>
+		<p class="hint">Depreciation counts for commercial and farm customers unless a build sheet turns it off (or on for others). Federal: the price less half of the federal tax credit picked on the build sheet (a $100,000 job with a 30% credit depreciates $85,000), as bonus or 5-year MACRS, at the federal rate. State: the full price over 5-year MACRS at the state rate (Pennsylvania doesn't allow bonus depreciation). The state default is the personal income tax rate, which owners of LLCs, S corporations and sole proprietorships pay; a build sheet for a C corporation types the corporate rate.</p>
 	</section>
 
 	<section class="card band" id="proposal">

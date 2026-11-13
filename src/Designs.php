@@ -601,6 +601,10 @@ final class Designs
 		if (isset(Savings::DEP_METHODS[$method]) && $method !== Savings::depreciationMethod(['savings_inputs' => null])) {
 			$own['dep_method'] = $method;
 		}
+		$itc = (int) ($post['savings']['itc'] ?? 0);
+		if (isset(Savings::ITC_RATES[$itc])) {
+			$own['itc'] = $itc;
+		}
 		$f['savings_inputs'] = $own ? json_encode($own) : null;
 
 		$inc = [];

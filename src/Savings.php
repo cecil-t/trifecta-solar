@@ -53,6 +53,43 @@ final class Savings
 	/** 5-year MACRS, half-year convention: share of the basis deducted each year. */
 	public const MACRS5 = [0.20, 0.32, 0.192, 0.1152, 0.1152, 0.0576];
 
+	/** Federal tax credit (commercial ITC) as a percent of the price: the base 30% plus 10% bonuses (domestic content, energy community). */
+	public const ITC_RATES = [30 => '30%', 40 => '40% (one bonus)', 50 => '50% (two bonuses)'];
+
+	/** Incentive names that look like the federal tax credit typed as an incentive row instead of picked. */
+	private const ITC_LOOKALIKE = '/\bITC\b|investment tax credit|federal (tax )?credit/i';
+
+	/** The build sheet's federal tax credit percent, or 0 for none. */
+	public static function itcRate(array $d): int
+	{
+		$own = json_decode((string) ($d['savings_inputs'] ?? ''), true) ?: [];
+		$v = (int) ($own['itc'] ?? 0);
+		return isset(self::ITC_RATES[$v]) ? $v : 0;
+	}
+
+	/**
+	 * Warnings about the federal tax credit for the salesperson: depreciation counted without a picked
+	 * credit, and incentive rows that look like the credit (they don't lower the depreciation basis, and
+	 * with the picker they count it twice).
+	 *
+	 * @return list<string>
+	 */
+	public static function itcWarnings(array $o, array $d): array
+	{
+		$out = [];
+		foreach (self::incentiveRows($d) as $x) {
+			$label = (string) ($x['label'] ?? '');
+			if (preg_match(self::ITC_LOOKALIKE, $label)) {
+				$out[] = 'The incentive "' . $label . '" looks like the federal tax credit. Pick the credit under Federal tax credit and remove the row: only the picker lowers the depreciation basis'
+					. (self::itcRate($d) ? ', and with both the credit counts twice.' : '.');
+			}
+		}
+		if (self::depreciationOn($o, $d) && !self::itcRate($d)) {
+			$out[] = 'Depreciation is counted but no federal tax credit is picked, so federal depreciation runs on the full price. Pick the credit if the customer takes it.';
+		}
+		return $out;
+	}
+
 	/**
 	 * Whether the build sheet counts depreciation: its own choice, else on for commercial and farm
 	 * customers (nonprofits, government and homes don't take it).
@@ -75,16 +112,16 @@ final class Savings
 	}
 
 	/**
-	 * Depreciation tax savings by year (index 0 = year one). Federal: the price less half of the tax
-	 * credits (the basis reduction for the ITC), bonus or 5-year MACRS, at the federal rate. State
-	 * (Pennsylvania doesn't follow bonus depreciation): the full price over 5-year MACRS at the state
-	 * rate.
+	 * Depreciation tax savings by year (index 0 = year one). Federal: the price less half of the
+	 * federal tax credit (the ITC basis reduction, IRC 50(c)(3): a $100,000 job with a 30% credit
+	 * depreciates $85,000), bonus or 5-year MACRS, at the federal rate. State (Pennsylvania doesn't
+	 * follow bonus depreciation): the full price over 5-year MACRS at the state rate.
 	 *
 	 * @return array{fed: list<float>, state: list<float>, basis_fed: float, basis_state: float}
 	 */
-	public static function depreciation(float $price, float $credits, string $method, float $fedRate, float $stateRate): array
+	public static function depreciation(float $price, float $itc, string $method, float $fedRate, float $stateRate): array
 	{
-		$basisFed = max(0.0, $price - $credits / 2);
+		$basisFed = max(0.0, $price - $itc / 2);
 		$fed = array_map(static fn ($s) => $basisFed * $s * $fedRate / 100, $method === 'macrs' ? self::MACRS5 : [1.0]);
 		$state = array_map(static fn ($s) => $price * $s * $stateRate / 100, self::MACRS5);
 		return ['fed' => $fed, 'state' => $state, 'basis_fed' => $basisFed, 'basis_state' => $price];
@@ -577,6 +614,11 @@ final class Savings
 		$deg = self::degradation($lines);
 		$price = (float) $calc['price'];
 		$inc = [];
+		$itcPct = self::itcRate($d);
+		$itc = round($price * $itcPct / 100, 2);
+		if ($itc > 0) {
+			$inc[] = ['label' => 'Federal tax credit (ITC), ' . $itcPct . '%', 'amount' => $itc, 'timing' => 'year1', 'pct' => (float) $itcPct];
+		}
 		foreach (self::incentiveRows($d) as $x) {
 			$v = (float) ($x['value'] ?? 0);
 			$inc[] = ['label' => (string) ($x['label'] ?? 'Incentive'), 'amount' => ($x['kind'] ?? 'amount') === 'pct' ? $price * $v / 100 : $v,
@@ -584,9 +626,9 @@ final class Savings
 		}
 		$depInfo = null;
 		if (self::depreciationOn($o, $d)) {
-			$credits = array_sum(array_map(static fn ($x) => $x['timing'] === 'year1' ? $x['amount'] : 0, $inc));
-			$depInfo = self::depreciation($price, $credits, self::depreciationMethod($d), $a['dep_fed_rate'], $a['dep_state_rate'])
-				+ ['method' => self::depreciationMethod($d)];
+			// Only the federal credit lowers the basis; other incentive rows (grants, rebates) don't
+			$depInfo = self::depreciation($price, $itc, self::depreciationMethod($d), $a['dep_fed_rate'], $a['dep_state_rate'])
+				+ ['method' => self::depreciationMethod($d), 'itc' => $itc, 'itc_pct' => $itcPct];
 		}
 		$r = self::calculate([
 			'depreciation' => $depInfo,

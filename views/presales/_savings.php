@@ -44,7 +44,7 @@ $model = Savings::model($d);
 		</div>
 		<p class="hint mt-sm">NPV and discounted payback show on the proposal only for business customers (commercial or agricultural)<?= Proposal::residential($o) ? '; this is a residential customer, so the proposal leaves them off' : '' ?>.</p>
 		<?php if ($r['dep']): ?>
-			<p class="hint">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(lcfirst(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, the price less half the tax credits, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
+			<p class="hint">Depreciation (business customer): federal <?= e($m0($r['lifetime_dep_fed'])) ?> (<?= e(lcfirst(Savings::DEP_METHODS[$r['dep']['method']])) ?> on <?= e($m0($r['dep']['basis_fed'])) ?>, <?= $r['dep']['itc'] > 0 ? 'the price less half the ' . e($m0($r['dep']['itc'])) . ' federal tax credit' : 'the full price, no federal tax credit picked' ?>, at <?= e($f($a['dep_fed_rate'], 2)) ?>%), state <?= e($m0($r['lifetime_dep_state'])) ?> (5-year MACRS on the price at <?= e($f($a['dep_state_rate'], 2)) ?>%). Counted in the payback, return and <?= (int) $a['years'] ?>-year figures.</p>
 		<?php endif; ?>
 		<div class="table-wrap mt-sm"><table class="table table-tight sav-table">
 			<thead><tr><th>Year one</th><?php foreach ($r['months'] as $mo): ?><th class="num"><?= e($mo['label']) ?></th><?php endforeach; ?><th class="num">Year</th></tr></thead>
@@ -84,12 +84,22 @@ $model = Savings::model($d);
 	</div>
 
 	<h3 class="mt-sm">Incentives</h3>
-	<p class="hint">Utility rebates, grants (USDA REAP) and tax credits (commercial ITC, with any bonus). Each is listed on the Price and Payments page; the net cost, payback and savings figures include them. Residential jobs have no federal credit for systems placed in service after 2025.</p>
+	<p class="hint">The federal tax credit (commercial ITC) is picked here, as a percent of the price: 30% base, plus 10% for each bonus (domestic content, energy community). It is claimed for year one and lowers the federal depreciation basis by half its amount. Residential jobs have no federal credit for systems placed in service after 2025.</p>
+	<div class="sav-grid sav-grid-one">
+		<label>Federal tax credit
+			<select name="savings[itc]">
+				<option value="0" <?= Savings::itcRate($d) === 0 ? 'selected' : '' ?>>None</option>
+				<?php foreach (Savings::ITC_RATES as $k => $label): ?><option value="<?= (int) $k ?>" <?= Savings::itcRate($d) === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+			</select>
+		</label>
+	</div>
+	<?php foreach (Savings::itcWarnings($o, $d) as $msg): ?><div class="flash flash-warn mt-sm"><?= e($msg) ?></div><?php endforeach; ?>
+	<p class="hint mt-sm">Other incentives: utility rebates and grants (USDA REAP). Each incentive is listed on the Price and Payments page; the net cost, payback and savings figures include them.</p>
 	<div class="sav-inc" data-rows>
 		<div class="sav-inc-headrow"><span>Incentive</span><span>Amount</span><span>As</span><span>When</span><span></span></div>
 		<?php foreach ($inc as $i => $x): ?>
 			<div class="eq-row sav-inc-row">
-			<input type="text" name="incentives[<?= $i ?>][label]" value="<?= e((string) ($x['label'] ?? '')) ?>" placeholder="e.g. Federal ITC (30%)" aria-label="Incentive name" maxlength="80">
+			<input type="text" name="incentives[<?= $i ?>][label]" value="<?= e((string) ($x['label'] ?? '')) ?>" placeholder="e.g. USDA REAP grant" aria-label="Incentive name" maxlength="80">
 			<input type="text" name="incentives[<?= $i ?>][value]" value="<?= isset($x['value']) ? e($f($x['value'], 2)) : '' ?>" inputmode="decimal" aria-label="Incentive amount">
 			<select name="incentives[<?= $i ?>][kind]" aria-label="Dollars or percent of the price">
 				<option value="amount" <?= ($x['kind'] ?? '') !== 'pct' ? 'selected' : '' ?>>Dollars</option>
