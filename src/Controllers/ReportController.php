@@ -364,7 +364,8 @@ final class ReportController
 		$tasks = Tasks::forProjects(array_column($projects, 'id'));
 		$owners = array_column(Db::all('SELECT id, name, initials FROM users'), null, 'id');
 
-		$tiles = ['yes' => 0, 'open' => 0, 'done' => 0, 'unanswered' => 0, 'unanswered_pto' => 0];
+		$tiles = ['yes' => 0, 'open' => 0, 'done' => 0, 'not_started' => 0, 'unanswered' => 0, 'unanswered_pto' => 0];
+		$today = date('Y-m-d');
 		$utilities = [];
 		$rows = [];
 		foreach ($projects as $p) {
@@ -401,6 +402,17 @@ final class ReportController
 				}
 			}
 			$state = $rebate['needed'] === null ? 'unanswered' : ($complete ? 'done' : 'open');
+			// Flag: PTO is in (today or earlier) but neither Paperwork gathered nor Submitted to utility has a date
+			$started = false;
+			foreach ($steps as $t) {
+				if (in_array($t['name'], ['Paperwork gathered', 'Submitted to utility'], true) && $t['done_date']) {
+					$started = true;
+				}
+			}
+			$notStarted = $state === 'open' && $status['pto_date'] && $status['pto_date'] <= $today && !$started;
+			if ($notStarted) {
+				$tiles['not_started']++;
+			}
 
 			if ($state === 'unanswered') {
 				$tiles['unanswered']++;
@@ -433,9 +445,9 @@ final class ReportController
 			$rows[] = [
 				'p' => $p, 'phase' => $phase, 'contract' => $status['start_date'], 'pto' => $status['pto_date'],
 				'rebate' => $rebate + ['owner' => $owners[(int) $rebate['owner_id']] ?? null],
-				'steps' => $steps, 'next' => $next, 'state' => $state,
+				'steps' => $steps, 'next' => $next, 'state' => $state, 'not_started' => $notStarted,
 				'completed_on' => $complete && $doneDates ? max($doneDates) : ($complete ? $rebate['done_date'] : null),
-				'waiting' => $state === 'open' && $status['pto_date'] ? (int) floor((strtotime(date('Y-m-d')) - strtotime($status['pto_date'])) / 86400) : null,
+				'waiting' => $state === 'open' && $status['pto_date'] ? (int) floor((strtotime($today) - strtotime($status['pto_date'])) / 86400) : null,
 			];
 		}
 

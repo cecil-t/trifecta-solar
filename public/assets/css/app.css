@@ -2104,6 +2104,7 @@ input.is-auto, select.is-auto { background: #fff7dd; border-color: #e7b84a; box-
 .table-rebates > tbody > tr > td:nth-child(2) { white-space: normal; min-width: 220px; }
 .table-rebates > tbody > tr > td:nth-child(6) { white-space: normal; min-width: 240px; }
 .table-rebates .row-toggle { padding: .1rem .45rem; }
+.table-rebates > tbody > tr.row-warn > td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .table-rebates .visit-edit-row > td { padding: .4rem .8rem .8rem 2.6rem; background: var(--blue-50); }
 .table-rebates .visit-edit-row .table { background: #fff; font-size: .85rem; }
 .table-rebate-log td:nth-child(3) { white-space: normal; }

@@ -32,10 +32,11 @@ $who = static fn (?array $u) => $u ? '<span class="rebate-who" title="' . e($u['
 	<div class="metrics report-metrics">
 		<?= $tile((string) $tiles['yes'], 'Projects with a rebate') ?>
 		<?= $tile((string) $tiles['open'], 'Steps still open') ?>
+		<?= $tile((string) $tiles['not_started'], 'Past PTO, not started') ?>
 		<?= $tile((string) $tiles['done'], 'Every step completed') ?>
 		<?= $tile((string) $tiles['unanswered'], 'Question not answered', $tiles['unanswered_pto'] ? $tiles['unanswered_pto'] . ' past PTO' : '') ?>
 	</div>
-	<p class="hint report-hint">From the Utility rebate task in each project's Closeout phase, answered Yes. Steps marked Not needed don't count toward completion. Cancelled projects are left out.</p>
+	<p class="hint report-hint">From the Utility rebate task in each project's Closeout phase, answered Yes. Steps marked Not needed don't count toward completion. Cancelled projects are left out. Rows shaded orange have PTO but no date on Paperwork gathered or Submitted to utility.</p>
 </section>
 
 <form class="filters report-filters no-print mt" method="get" action="/reports/rebates">
@@ -61,7 +62,7 @@ $who = static fn (?array $u) => $u ? '<span class="rebate-who" title="' . e($u['
 		<tbody>
 		<?php if (!$rows): ?><tr><td colspan="7" class="empty">No projects match.</td></tr><?php endif; ?>
 		<?php foreach ($rows as $r): $p = $r['p']; $t = $r['rebate']; $log = $history[(int) $p['id']] ?? []; ?>
-			<tr>
+			<tr<?= $r['not_started'] ? ' class="row-warn"' : '' ?>>
 				<td class="nowrap"><button type="button" class="btn btn-ghost btn-small row-toggle" data-toggle-next-row aria-label="Show the rebate history for <?= e($p['project_number']) ?>">&#9662;</button></td>
 				<td><a href="/projects/<?= (int) $p['id'] ?>"><strong><?= e($p['project_number']) ?></strong> <?= e($p['name']) ?></a>
 					<div class="muted small"><?= e(implode(' · ', array_filter([(string) $p['customer_name'], (string) $p['utility_name'] ?: 'No utility', (string) $p['site_city']]))) ?></div>
@@ -89,7 +90,7 @@ $who = static fn (?array $u) => $u ? '<span class="rebate-who" title="' . e($u['
 				<td class="nowrap">
 					<?php if ($r['state'] === 'done'): ?><span class="chip chip-green">Completed</span><?= $r['completed_on'] ? '<div class="muted small">' . e(fmt_date($r['completed_on'])) . '</div>' : '' ?>
 					<?php elseif ($r['state'] === 'unanswered'): ?><span class="chip chip-orange">Not answered</span>
-					<?php else: ?><span class="chip chip-blue">Open</span>
+					<?php else: ?><?= $r['not_started'] ? '<span class="chip chip-orange">Past PTO, not started</span>' : '<span class="chip chip-blue">Open</span>' ?>
 						<?php if ($r['next']): ?><div class="small">Next: <?= e($r['next']['name']) ?></div><?php endif; ?>
 						<?php if ($r['waiting'] !== null): ?><div class="small<?= $r['waiting'] > 60 ? ' text-red' : ' muted' ?>"><?= (int) $r['waiting'] ?> days since PTO</div><?php endif; ?>
 					<?php endif; ?>
