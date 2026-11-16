@@ -496,11 +496,11 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 		grid-template-areas: "name name" "done target" "needed ref" "note note";
 		padding: .5rem 10px; row-gap: .3rem; column-gap: 6px;
 	}
-	.trow > .tname { grid-area: name; font-size: .92rem; padding-right: calc(2.3rem + 22px + 28px + 12px); }
+	.trow > .tname { grid-area: name; font-size: .92rem; padding-right: calc(1.9rem + 16px + 28px + 12px); }
 	.trow > [data-field=needed], .trow > .needed-cell { grid-area: needed; }
 	.trow > .needed-cell:empty, .trow > .needed-cell[data-needed=""]:not(:has(*)), .trow > .needed-cell[data-needed="1"] { display: none; }
 	/* Assigned holds 3 initials at most: sized to fit them plus the drawn arrow */
-	.trow > .dw-owner { grid-area: name; justify-self: end; width: calc(2.3rem + 22px); margin-right: calc(28px + 6px); }
+	.trow > .dw-owner { grid-area: name; justify-self: end; width: calc(1.9rem + 16px); margin-right: calc(28px + 6px); }
 	.trow > .dw-owner .mlabel { display: none; }
 	.trow > .dw-target { grid-area: target; }
 	.trow > .dw-done { grid-area: done; }
@@ -513,7 +513,7 @@ h3.sub, h2.sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .0
 	.trow > span:empty { display: none; }
 	.trow input, .trow select { padding: .28rem 5px; font-size: .84rem; }
 	.trow .date-wrap { gap: 4px; }
-	.trow select[data-field=owner_id] { font-size: .84rem; padding: .28rem 13px .28rem 5px; }
+	.trow select[data-field=owner_id] { font-size: .74rem; letter-spacing: -.03em; padding: .28rem 10px .28rem 4px; background-position: right 3px center; background-size: 6px 4px; }
 	.trow .tname .gate { flex: none; }
 	.trow input[data-field=note] { font-size: .84rem; }
 	/* indent in px so a large phone text size doesn't eat into the date fields */
