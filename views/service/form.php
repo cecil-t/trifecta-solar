@@ -78,6 +78,20 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 					<small class="hint">The system on the Monitor page this ticket is about. Its Issues row then shows this ticket while it is open. Fills a blank portal link on save.</small>
 				</label>
 			<?php endif; ?>
+			<label>Trifecta install?
+				<select name="trifecta_install">
+					<option value="">Unknown</option>
+					<option value="1" <?= $sel($v('trifecta_install'), 1) ?>>Yes</option>
+					<option value="0" <?= $sel($v('trifecta_install'), 0) ?>>No (another installer)</option>
+				</select>
+			</label>
+			<label>Coverage
+				<select name="coverage">
+					<option value="">Choose</option>
+					<?php foreach (Service::COVERAGE as $k => $l): ?><option value="<?= $k ?>" <?= $sel($v('coverage'), $k) ?>><?= e($l) ?></option><?php endforeach; ?>
+				</select>
+				<small class="hint">Billable and SolarInsure go to Ready to invoice when completed. Closeout: finishing our install after inspection, not billed.</small>
+			</label>
 		</div>
 	</section>
 
@@ -112,20 +126,6 @@ $back = $isNew ? '/service' : '/service/' . (int) $id;
 				<label>State <input type="text" name="site_state" value="<?= e($v('site_state', 'PA')) ?>" maxlength="2" data-addr="state"></label>
 				<label>ZIP <input type="text" name="site_zip" value="<?= e($v('site_zip')) ?>" data-addr="zip"></label>
 			</div>
-			<label>Trifecta install?
-				<select name="trifecta_install">
-					<option value="">Unknown</option>
-					<option value="1" <?= $sel($v('trifecta_install'), 1) ?>>Yes</option>
-					<option value="0" <?= $sel($v('trifecta_install'), 0) ?>>No (another installer)</option>
-				</select>
-			</label>
-			<label>Coverage
-				<select name="coverage">
-					<option value="">Choose</option>
-					<?php foreach (Service::COVERAGE as $k => $l): ?><option value="<?= $k ?>" <?= $sel($v('coverage'), $k) ?>><?= e($l) ?></option><?php endforeach; ?>
-				</select>
-				<small class="hint">Billable and SolarInsure go to the Ready to invoice list when completed.</small>
-			</label>
 		</div>
 	</section>
 

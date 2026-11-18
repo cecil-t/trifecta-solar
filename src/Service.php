@@ -6,7 +6,8 @@ namespace App;
 /** Service tickets: numbering, lookups, derived status and visit totals. */
 final class Service
 {
-	public const COVERAGE = ['billable' => 'Billable', 'warranty' => 'Warranty', 'solarinsure' => 'SolarInsure'];
+	/** closeout: a truck roll that finishes one of our installs after inspection; never invoiced. */
+	public const COVERAGE = ['billable' => 'Billable', 'warranty' => 'Warranty', 'solarinsure' => 'SolarInsure', 'closeout' => 'Closeout'];
 	public const SOURCES = [
 		'customer' => 'Customer request', 'monitoring' => 'Monitoring portal',
 		'trifecta' => 'Found by Trifecta', 'other' => 'Other',
@@ -41,7 +42,7 @@ final class Service
 		return $counts;
 	}
 
-	/** Billable and SolarInsure work gets invoiced; warranty work does not. */
+	/** Billable and SolarInsure work gets invoiced; Warranty and Closeout work does not. */
 	public static function needsInvoice(array $t): bool
 	{
 		return in_array($t['coverage'], ['billable', 'solarinsure'], true);

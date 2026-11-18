@@ -45,9 +45,18 @@ final class Migrator
 				if (isset($done[$version])) {
 					continue;
 				}
+				$sql = file_get_contents($file);
+				// A table rebuild (SQLite can't change a CHECK constraint in place) must run with
+				// foreign keys off, or dropping the old table cascades into its child tables.
+				// The pragma is ignored inside a transaction, so it is set before BEGIN. Such a file
+				// must keep every id it copies, so references stay valid.
+				$fkOff = (bool) preg_match('/^-- migrator: foreign_keys off\s*$/m', $sql);
+				if ($fkOff) {
+					$pdo->exec('PRAGMA foreign_keys = OFF');
+				}
 				$pdo->beginTransaction();
 				try {
-					$pdo->exec(file_get_contents($file));
+					$pdo->exec($sql);
 					$pdo->prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)')
 						->execute([$version, now_utc()]);
 					$pdo->commit();
@@ -55,6 +64,10 @@ final class Migrator
 				} catch (\Throwable $e) {
 					$pdo->rollBack();
 					throw new RuntimeException("Migration $version failed: " . $e->getMessage(), 0, $e);
+				} finally {
+					if ($fkOff) {
+						$pdo->exec('PRAGMA foreign_keys = ON');
+					}
 				}
 			}
 			return $ran;

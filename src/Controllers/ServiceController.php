@@ -79,6 +79,11 @@ final class ServiceController
 				$t += ['project_id' => $pid, 'customer_id' => $p['customer_id'], 'trifecta_install' => 1,
 					'site_street' => $p['site_street'], 'site_city' => $p['site_city'], 'site_zip' => $p['site_zip']];
 				$t['site_state'] = $p['site_state'] ?: 'PA';
+				// A truck roll for a job still being installed or closed out is Closeout work.
+				$phase = \App\Tasks::status($p, \App\Tasks::forProjects([$pid])[$pid] ?? [])['phase'];
+				if (in_array($phase, ['installation', 'closeout'], true)) {
+					$t['coverage'] = 'closeout';
+				}
 			}
 		}
 		$monitor = null;

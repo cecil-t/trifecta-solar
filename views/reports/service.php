@@ -10,11 +10,17 @@ echo App\View::partial('reports/_filters', ['report' => $report, 'f' => $f, 'use
 // Each row carries its warranty trips, hours and parts so the page can price warranty work live.
 $wAttrs = static fn (array $s) => ' data-wtrips="' . $s['w_trips'] . '" data-whours="' . $s['w_hours'] . '" data-wparts="' . $s['w_parts'] . '"';
 $rate = static fn (float $v) => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
-$row = static function (string $label, array $s, bool $isWarranty = false) use ($money2, $wAttrs): string {
-	$amount = $isWarranty
+// Warranty and Closeout rows show an estimated cost in place of an amount billed; Closeout is
+// priced from its own trips, hours and parts.
+$row = static function (string $label, array $s, string $c) use ($money2, $wAttrs): string {
+	$priced = in_array($c, ['warranty', 'closeout'], true);
+	$amount = $priced
 		? '<span class="est" data-est></span>'
 		: ($s['billed'] ? $money2($s['amount']) : '');
-	return '<tr' . $wAttrs($s) . '><td>' . $label . '</td><td class="num">' . $s['tickets'] . '</td><td class="num">' . $s['trips'] . '</td><td class="num">'
+	$attrs = $c === 'closeout'
+		? ' data-wtrips="' . $s['trips'] . '" data-whours="' . $s['hours'] . '" data-wparts="' . $s['parts'] . '"'
+		: $wAttrs($s);
+	return '<tr' . $attrs . '><td>' . $label . '</td><td class="num">' . $s['tickets'] . '</td><td class="num">' . $s['trips'] . '</td><td class="num">'
 		. e(Service::hours($s['hours'])) . '</td><td class="num">' . ($s['parts'] ? $money2($s['parts']) : '') . '</td><td class="num">' . $amount . '</td></tr>';
 };
 $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): string {
@@ -40,13 +46,13 @@ $monthRow = static function (string $label, array $s) use ($money2, $wAttrs): st
 		<span class="rate-note">The first hour is not included in the trip charge: every man-hour is priced at the hourly rate.</span>
 		<span class="print-only small">Warranty priced at $<span data-show="trip"><?= e($rate($tripRate)) ?></span> per trip + $<span data-show="hour"><?= e($rate($hourRate)) ?></span> per man-hour (first hour not included in the trip charge) + parts</span>
 	</div>
-	<p class="hint report-hint">Tickets opened in the date range. Amount billed is what was entered on each ticket (customer or SolarInsure). Parts are what was entered on each visit. Warranty cost is an estimate: trips &times; trip charge + man-hours &times; hourly rate + parts.</p>
+	<p class="hint report-hint">Tickets opened in the date range. Amount billed is what was entered on each ticket (customer or SolarInsure). Parts are what was entered on each visit. Warranty cost is an estimate: trips &times; trip charge + man-hours &times; hourly rate + parts. Closeout rows are estimated the same way and are not in the Warranty cost total.</p>
 
 	<h2 class="sub report-sub">By coverage</h2>
 	<table class="table">
 		<thead><tr><th>Coverage</th><th class="num" data-short="Tkts">Tickets</th><th class="num">Trips</th><th class="num" data-short="Hrs">Man-hours</th><th class="num">Parts</th><th class="num">Amount billed</th></tr></thead>
 		<tbody>
-		<?php foreach ($byCoverage as $c => $s): ?><?= $row($c === '' ? '<span class="muted">Not set</span>' : e(Service::COVERAGE[$c]) . ($c === 'warranty' ? ' <span class="muted small">(est. cost)</span>' : ''), $s, $c === 'warranty') ?><?php endforeach; ?>
+		<?php foreach ($byCoverage as $c => $s): ?><?= $row($c === '' ? '<span class="muted">Not set</span>' : e(Service::COVERAGE[$c]) . (in_array($c, ['warranty', 'closeout'], true) ? ' <span class="muted small">(est. cost)</span>' : ''), $s, (string) $c) ?><?php endforeach; ?>
 		</tbody>
 		<tfoot><tr><td>Total billed</td><td class="num"><?= $totals['tickets'] ?></td><td class="num"><?= $totals['trips'] ?></td><td class="num"><?= e(Service::hours($totals['hours'])) ?></td><td class="num"><?= $totals['parts'] ? $money2($totals['parts']) : '' ?></td><td class="num"><?= $money2($totals['amount']) ?></td></tr></tfoot>
 	</table>
