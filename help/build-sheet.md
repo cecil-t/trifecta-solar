@@ -17,7 +17,7 @@ One priced design for an opportunity: equipment, labor and costs in, retail pric
 
 ## Prices and flags
 
-- Each line keeps the price it was picked at. **Catalog price changed** (red): the catalog differs now; Copy at today's prices makes a repriced copy. **Check price** (orange): a price is older than the stale setting; confirm it in the catalog.
+- Each line keeps the price it was picked at. **Catalog price changed** (red): the catalog differs now. To update one line, click the pencil, then **Use catalog price** (it also clears an override); Copy at today's prices makes a repriced copy of the whole build sheet and leaves this one as it is. **Check price** (orange): a price is older than the stale setting; confirm it in the catalog.
 - Markup can't go below the floor on Sales rates. Commission is solved into the price, so the price covers it exactly.
 - Contingency comes from rules on Sales rates (added up to a cap, with a minimum). Overriding it needs a reason.
 - Gross margin leaves out extras without markup; the note under it gives the full formula.
