@@ -108,7 +108,7 @@ final class DesignController
 			if (abs((float) $d['price_total'] - $calc['price']) > 0.5) {
 				$changes[] = 'price ' . Presales::money((float) $d['price_total']) . ' to ' . Presales::money($calc['price']);
 			}
-			$changes = [...$changes, ...self::overrideChanges($before, $lines, $calc)];
+			$changes = [...$changes, ...self::overrideChanges($before, $lines, $calc), ...self::repricedLines($before, $lines)];
 			$oldPay = array_map(static fn ($m) => $m['label'] . ' ' . $m['pct'] . '%', Designs::milestones($d['payment_milestones']));
 			$newPay = array_map(static fn ($m) => $m['label'] . ' ' . $m['pct'] . '%', Designs::milestones($f['payment_milestones']));
 			if ($oldPay !== $newPay || (string) $d['payment_template_name'] !== (string) $f['payment_template_name']) {
@@ -158,6 +158,24 @@ final class DesignController
 			. ' kWh, PVWatts ' . number_format((float) $r['pvwatts']['annual_kwh']) . ' kWh a year');
 		flash('success', 'Saved and ran the production estimate.');
 		redirect($back);
+	}
+
+	/** Log lines for lines moved to today's catalog price ("Use catalog price") in this save. */
+	private static function repricedLines(array $before, array $lines): array
+	{
+		$out = [];
+		foreach ($lines as $l) {
+			$old = $l['id'] ? ($before[(int) $l['id']] ?? null) : null;
+			if (!$old || !$l['catalog_item_id'] || (int) $old['catalog_item_id'] !== (int) $l['catalog_item_id']) {
+				continue;
+			}
+			$was = (float) $old['price'] + (float) $old['shipping'];
+			$now = (float) $l['price'] + (float) $l['shipping'];
+			if (abs($was - $now) > 0.00001 || (string) $old['price_date'] !== (string) $l['price_date']) {
+				$out[] = 'today\'s catalog price on ' . $l['name'] . ': ' . Presales::price($was, $l['qty_rule']) . ' to ' . Presales::price($now, $l['qty_rule']);
+			}
+		}
+		return $out;
 	}
 
 	/** Log lines for price overrides that were added, changed or removed in this save. */

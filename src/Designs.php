@@ -398,7 +398,9 @@ final class Designs
 					continue;
 				}
 				$old = $existing[$lineId] ?? null;
-				if ($old && (int) $old['catalog_item_id'] === $itemId) {
+				// The line keeps the price it was picked at, unless "Use catalog price" asked for today's
+				$refresh = !empty($r['refresh']) && $catalog[$itemId]['is_active'];
+				if ($old && (int) $old['catalog_item_id'] === $itemId && !$refresh) {
 					$snap = array_intersect_key($old, array_flip([...self::SNAPSHOT, 'category', 'catalog_item_id', 'price_date']));
 				} else {
 					$snap = self::snapshot($catalog[$itemId]);

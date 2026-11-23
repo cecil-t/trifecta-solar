@@ -421,6 +421,9 @@
 		if (clear) {
 			const pop = clear.closest('.pl-ovr-pop');
 			pop.querySelectorAll('input').forEach((i) => { i.value = ''; });
+			// and take today's catalog price for the line (it keeps its picked price otherwise)
+			const refresh = clear.closest('.pl-unit').querySelector('.pl-refresh');
+			if (refresh) refresh.value = '1';
 			closePop(pop);
 			schedule();
 			return;

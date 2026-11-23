@@ -390,11 +390,12 @@ $folded = [];
 								</div>
 								<div class="num pl-unit<?= $c && $c['overridden'] ? ' is-overridden' : '' ?>">
 									<span class="pl-unit-row"><span data-l="unit"<?= $c && $c['overridden'] ? ' title="Catalog ' . e(Presales::price($c['catalog_unit'], $c['qty_rule'])) . '"' : '' ?>><?= $c ? e(Presales::price($c['unit_total'], $c['qty_rule'])) : '' ?></span><button type="button" class="pl-pencil" title="Override this price" aria-label="Override price" <?= $l && !$isCustom ? '' : 'hidden' ?>><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M11.3 1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1L5.6 13.4 2 14l.6-3.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button></span>
+									<input type="hidden" name="lines[<?= e($cat) ?>][<?= $k ?>][refresh]" value="" class="pl-refresh">
 									<small class="pl-ovr-why" data-l="why"><?= $c && $c['overridden'] ? e((string) $c['override_reason']) : '' ?></small>
 									<div class="pl-ovr-pop" hidden>
 										<label>Unit cost <input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override]" value="<?= e($l && $l['price_override'] !== null ? ($rule === 'dc_watts' ? Presales::fixed((float) $l['price_override'], 4) : $pf((float) $l['price_override'])) : '') ?>" inputmode="decimal" class="pl-ovr-price"></label>
 										<label>Reason <input type="text" name="lines[<?= e($cat) ?>][<?= $k ?>][override_reason]" value="<?= e((string) ($l['override_reason'] ?? '')) ?>" maxlength="200" class="pl-ovr-reason" placeholder="Required"></label>
-										<p class="pl-ovr-help">Replaces the catalog cost per unit, shipping included. Extended warranty and SolarInsure still add.</p>
+										<p class="pl-ovr-help">Replaces the catalog cost per unit, shipping included. Extended warranty and SolarInsure still add. Use catalog price clears this and takes today's catalog price.</p>
 										<div class="pl-ovr-actions"><button type="button" class="btn btn-primary btn-small pl-ovr-done">Done</button><button type="button" class="btn btn-ghost btn-small pl-ovr-clear">Use catalog price</button></div>
 									</div>
 								</div>
