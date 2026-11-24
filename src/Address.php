@@ -79,6 +79,57 @@ final class Address
 		return strlen($s) === 2 && isset($codes[$s]) ? strtoupper($s) : null;
 	}
 
+	/** Street words written both ways in the data ("Rd" and "Road" are about half and half). */
+	private const SEARCH_ALIASES = [
+		['rd', 'road'], ['st', 'street'], ['ave', 'av', 'avenue'], ['dr', 'drive'], ['ln', 'lane'],
+		['ct', 'court'], ['blvd', 'boulevard'], ['hwy', 'highway'], ['pl', 'place'], ['cir', 'circle'],
+		['ter', 'terrace'], ['pkwy', 'parkway'], ['tpke', 'turnpike'], ['trl', 'trail'], ['pk', 'pke', 'pike'],
+		['n', 'north'], ['s', 'south'], ['e', 'east'], ['w', 'west'], ['mt', 'mount'],
+	];
+
+	/**
+	 * A search on address columns: the text as typed plus its street-word spellings, so
+	 * "oak hill rd" finds "Oak Hill Road" and "main street" finds "Main St".
+	 *
+	 * @param list<string> $cols SQL column expressions
+	 * @return array{0:string, 1:list<string>} SQL "(a LIKE ? OR ...)" and its parameters
+	 */
+	public static function searchLike(array $cols, string $q): array
+	{
+		$sets = [];
+		foreach (preg_split('/\s+/', strtolower(trim($q))) ?: [] as $word) {
+			$bare = rtrim($word, '.');
+			$alt = [$word];
+			foreach (self::SEARCH_ALIASES as $group) {
+				if (in_array($bare, $group, true)) {
+					$alt = $group;
+					break;
+				}
+			}
+			$sets[] = $alt;
+		}
+		$texts = [''];
+		foreach ($sets as $alt) {
+			$next = [];
+			foreach ($texts as $t) {
+				foreach ($alt as $w) {
+					$next[] = ltrim($t . ' ' . $w);
+				}
+			}
+			$texts = array_slice($next, 0, 16); // a handful of street words at most
+		}
+		$texts = array_values(array_unique($texts)); // LIKE ignores case, so the lowercase forms cover the text as typed
+		$sql = [];
+		$params = [];
+		foreach ($cols as $c) {
+			foreach ($texts as $t) {
+				$sql[] = $c . ' LIKE ?';
+				$params[] = '%' . $t . '%';
+			}
+		}
+		return ['(' . implode(' OR ', $sql) . ')', $params];
+	}
+
 	/** "Oak Hill Rd 12" (house number last, as some portals write it) becomes "12 Oak Hill Rd". */
 	public static function street(string $s): string
 	{

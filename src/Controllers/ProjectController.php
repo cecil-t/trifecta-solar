@@ -58,8 +58,9 @@ final class ProjectController
 			$params[] = $filter['sales'];
 		}
 		if ($filter['q'] !== '') {
-			$sql .= ' AND (p.name LIKE ? OR p.project_number LIKE ? OR c.name LIKE ? OR m.name LIKE ?)';
-			array_push($params, ...array_fill(0, 4, '%' . $filter['q'] . '%'));
+			[$addrSql, $addrParams] = \App\Address::searchLike(['p.site_street', 'p.site_city', 'p.site_zip'], $filter['q']);
+			$sql .= ' AND (p.name LIKE ? OR p.project_number LIKE ? OR c.name LIKE ? OR m.name LIKE ? OR ' . $addrSql . ')';
+			array_push($params, ...array_fill(0, 4, '%' . $filter['q'] . '%'), ...$addrParams);
 		}
 		$sql .= ' ORDER BY p.project_number';
 		$projects = Db::all($sql, $params);

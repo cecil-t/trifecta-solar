@@ -32,6 +32,7 @@ final class ServiceController
 		if ($q !== '') {
 			$tab = 'all'; // a search always looks across every ticket
 		}
+		[$addrSql, $addrParams] = \App\Address::searchLike(['t.site_street', 't.site_city', 't.site_zip'], $q);
 		$rows = Db::all(
 			"SELECT t.*, c.name AS customer_name, p.project_number, u.initials AS owner_initials, u.name AS owner_name,
 					(SELECT COALESCE(SUM(trips), 0) FROM service_visits v WHERE v.ticket_id = t.id) AS trips,
@@ -41,9 +42,9 @@ final class ServiceController
 			 LEFT JOIN organizations c ON c.id = t.customer_id
 			 LEFT JOIN projects p ON p.id = t.project_id
 			 LEFT JOIN users u ON u.id = t.owner_id
-			 WHERE 1 = 1" . ($q !== '' ? ' AND (t.ticket_number LIKE ? OR c.name LIKE ? OR t.description LIKE ? OR t.site_city LIKE ? OR t.site_street LIKE ?)' : '') . "
+			 WHERE 1 = 1" . ($q !== '' ? ' AND (t.ticket_number LIKE ? OR c.name LIKE ? OR t.description LIKE ? OR ' . $addrSql . ')' : '') . "
 			 ORDER BY t.ticket_number DESC",
-			$q !== '' ? array_fill(0, 5, '%' . $q . '%') : []
+			$q !== '' ? [...array_fill(0, 3, '%' . $q . '%'), ...$addrParams] : []
 		);
 		$counts = ['active' => 0, 'to_invoice' => 0, 'done' => 0, 'all' => 0];
 		$searching = $q !== '';

@@ -20,15 +20,17 @@ final class SearchController
 		$projects = $tickets = [];
 		if ($q !== '') {
 			$like = '%' . $q . '%';
+			[$projAddr, $projAddrParams] = \App\Address::searchLike(['p.site_street', 'p.site_city', 'p.site_zip'], $q);
+			[$ticketAddr, $ticketAddrParams] = \App\Address::searchLike(['t.site_street', 't.site_city', 't.site_zip'], $q);
 			$projects = Db::all(
 				'SELECT p.*, u.initials AS sales_initials, u.name AS sales_name, m.name AS municipality_name, c.name AS customer_name
 				 FROM projects p
 				 LEFT JOIN users u ON u.id = p.salesperson_id
 				 LEFT JOIN municipalities m ON m.id = p.municipality_id
 				 LEFT JOIN organizations c ON c.id = p.customer_id
-				 WHERE p.name LIKE ? OR p.project_number LIKE ? OR c.name LIKE ? OR m.name LIKE ?
+				 WHERE p.name LIKE ? OR p.project_number LIKE ? OR c.name LIKE ? OR m.name LIKE ? OR ' . $projAddr . '
 				 ORDER BY p.project_number DESC',
-				array_fill(0, 4, $like)
+				[...array_fill(0, 4, $like), ...$projAddrParams]
 			);
 			$tasks = Tasks::forProjects(array_column($projects, 'id'));
 			foreach ($projects as &$p) {
@@ -41,9 +43,9 @@ final class SearchController
 				 FROM service_tickets t
 				 LEFT JOIN organizations c ON c.id = t.customer_id
 				 LEFT JOIN projects p ON p.id = t.project_id
-				 WHERE t.ticket_number LIKE ? OR c.name LIKE ? OR t.description LIKE ? OR t.site_city LIKE ? OR t.site_street LIKE ?
+				 WHERE t.ticket_number LIKE ? OR c.name LIKE ? OR t.description LIKE ? OR ' . $ticketAddr . '
 				 ORDER BY t.ticket_number DESC',
-				array_fill(0, 5, $like)
+				[...array_fill(0, 3, $like), ...$ticketAddrParams]
 			);
 			foreach ($tickets as &$t) {
 				$t['status'] = Service::status($t);

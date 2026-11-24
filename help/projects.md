@@ -5,7 +5,7 @@ Every installation job, from contract signed to closeout.
 - **Tabs:** Active (Pre-Install, Installation and Closeout together), each of those phases, On hold, Completed, Cancelled and All. **Notify customer** shows up when customer updates are waiting.
 - Completed and Cancelled fold earlier years under a header; click it to open.
 - **Status** shows the phase, plus On hold and Clear to install. **Days** counts from contract signed to PTO, or to today until PTO.
-- The salesperson filter is remembered for you. A search looks across every project.
+- The salesperson filter is remembered for you. A search looks across every project: name, number, customer, address (street, town or ZIP) and municipality. "Rd" finds "Road" and the other way around.
 
 ## How a project moves through its phases
 

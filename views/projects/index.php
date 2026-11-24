@@ -50,7 +50,7 @@ $qs = static fn (array $over) => '/projects?' . http_build_query(array_filter(ar
 
 <form class="filters" method="get" action="/projects">
 	<input type="hidden" name="phase" value="<?= e($filter['phase']) ?>">
-	<input type="search" name="q" value="<?= e($filter['q']) ?>" placeholder="Search name, #, customer, municipality">
+	<input type="search" name="q" value="<?= e($filter['q']) ?>" placeholder="Search name, #, customer, address, municipality">
 	<select name="sales" data-autosubmit>
 		<option value="">All salespeople</option>
 		<?php foreach ($users as $u): ?>
