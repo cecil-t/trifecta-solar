@@ -598,7 +598,8 @@ final class Designs
 		if (in_array($dep, ['on', 'off'], true)) {
 			$own['dep'] = $dep;
 		}
-		$method = (string) ($post['savings']['dep_method'] ?? '');
+		// The method select is disabled (not posted) while depreciation is off: keep the saved choice
+		$method = (string) ($post['savings']['dep_method'] ?? (json_decode((string) ($d['savings_inputs'] ?? ''), true)['dep_method'] ?? ''));
 		// Kept only when it differs from the Rates page, so the build sheet follows the default otherwise
 		if (isset(Savings::DEP_METHODS[$method]) && $method !== Savings::depreciationMethod(['savings_inputs' => null])) {
 			$own['dep_method'] = $method;

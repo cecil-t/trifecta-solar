@@ -901,6 +901,19 @@
 	}
 	window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
+	// Federal depreciation method: grayed out while depreciation is off (Don't count it, or Automatic for a non-business customer)
+	const depSel = form ? form.querySelector('select[name="savings[dep]"]') : null;
+	const depMethod = form ? form.querySelector('select[name="savings[dep_method]"]') : null;
+	if (depSel && depMethod && !form.dataset.locked) {
+		const syncDep = () => {
+			const on = (depSel.value || depSel.dataset.depAuto) === 'on';
+			depMethod.disabled = !on;
+			depMethod.closest('label').classList.toggle('is-off', !on);
+		};
+		depSel.addEventListener('change', syncDep);
+		syncDep();
+	}
+
 	// A sold build sheet with a project is locked: everything can be read, nothing edited
 	if (form && form.dataset.locked) {
 		form.querySelectorAll('input, select, textarea, button').forEach((el) => {

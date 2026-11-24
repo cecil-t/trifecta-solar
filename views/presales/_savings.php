@@ -29,7 +29,7 @@ $model = Savings::model($d);
 ?>
 <section class="card band" id="sec-savings">
 	<div class="card-head card-head-plain band-head">
-		<h2><?= $foldBtn('sec-savings', 'Savings', false) ?>Savings</h2>
+		<h2><?= $foldBtn('sec-savings', 'Savings & Incentives', false) ?>Savings &amp; Incentives</h2>
 		<span class="small"><?= $r ? e($m0($r['first_year']['savings'])) . ' year one, payback ' . e($r['payback_years'] !== null ? number_format($r['payback_years'], 1) . ' years' : 'none') : 'Not ready' ?></span>
 	</div>
 	<?php if ($sav['missing']): ?>
@@ -68,16 +68,17 @@ $model = Savings::model($d);
 				<?php if ($k === 'dep_state_rate'): ?><small class="hint">The default is the personal income tax rate, which owners of LLCs, S corporations and sole proprietorships pay. A C corporation pays the corporate rate instead; type it here.</small><?php endif; ?>
 			</label>
 		<?php endforeach; ?>
+		<?php $depAuto = Savings::depreciationOn($o, ['savings_inputs' => null]); $depOn = Savings::depreciationOn($o, $d); ?>
 		<label>Depreciation
-			<select name="savings[dep]">
-				<option value="" <?= !in_array($own['dep'] ?? '', ['on', 'off'], true) ? 'selected' : '' ?>>Automatic (<?= Savings::depreciationOn($o, ['savings_inputs' => null]) ? 'on: business customer' : 'off: not a business customer' ?>)</option>
+			<select name="savings[dep]" data-dep-auto="<?= $depAuto ? 'on' : 'off' ?>">
+				<option value="" <?= !in_array($own['dep'] ?? '', ['on', 'off'], true) ? 'selected' : '' ?>>Automatic (<?= $depAuto ? 'on: business customer' : 'off: not a business customer' ?>)</option>
 				<option value="on" <?= ($own['dep'] ?? '') === 'on' ? 'selected' : '' ?>>Count it</option>
 				<option value="off" <?= ($own['dep'] ?? '') === 'off' ? 'selected' : '' ?>>Don't count it</option>
 			</select>
 		</label>
 		<?php $depDefault = Savings::depreciationMethod(['savings_inputs' => null]); ?>
-		<label>Federal depreciation
-			<select name="savings[dep_method]">
+		<label<?= $depOn ? '' : ' class="is-off"' ?>>Federal depreciation
+			<select name="savings[dep_method]"<?= $depOn ? '' : ' disabled' ?> title="Used only when depreciation is counted">
 				<?php foreach (Savings::DEP_METHODS as $k => $label): ?><option value="<?= e($k) ?>" <?= Savings::depreciationMethod($d) === $k ? 'selected' : '' ?>><?= e($label) ?><?= $k === $depDefault ? ' (Rates page)' : '' ?></option><?php endforeach; ?>
 			</select>
 		</label>
