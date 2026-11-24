@@ -13,7 +13,8 @@ One priced design for an opportunity: equipment, labor and costs in, retail pric
 - **Line items:** catalog items by category. Per-watt and per-module quantities fill in on their own. The pencil overrides a price; it needs a reason and is logged.
 - **Arrays:** tilt, azimuth, panels and shading. Once the site layout has panels it is the master: arrays and module counts come from the drawing and are read-only here.
 - **Production estimate:** Save and run production runs SAM and PVWatts (about 10 seconds). It lists what is still missing, and shows Out of date when the sheet changes.
-- **Trenching and boring, Labor, Extras without markup, Contingency, Payment schedule, Warranty summary, Savings, Proposal, Internal notes.** Internal notes carry over to the project and never print.
+- **Trenching and boring, Labor, Extras without markup, Contingency, Payment schedule, Warranty summary, Savings & Incentives, Proposal, Internal notes.** Internal notes carry over to the project and never print.
+- **Savings & Incentives:** while Depreciation is off (Don't count it, or Automatic for a non-business customer), the federal method and the two depreciation tax rates are grayed out. Their saved values stay for when it is turned back on.
 
 ## Prices and flags
 

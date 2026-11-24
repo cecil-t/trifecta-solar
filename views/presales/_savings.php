@@ -62,13 +62,13 @@ $model = Savings::model($d);
 	<h3 class="mt-sm">Assumptions</h3>
 	<p class="hint">Blank uses the Rates page value (shown). A value here changes this build sheet's proposal only.</p>
 	<div class="sav-grid">
-		<?php foreach (Savings::ASSUMPTIONS as $k => [, $label, $unit]): ?>
-			<label><?= e($label) ?> (<?= e($unit) ?>)
-				<input type="text" name="savings[<?= e($k) ?>]" value="<?= isset($own[$k]) ? e($f($own[$k], 2)) : '' ?>" placeholder="<?= e($f($a['default_' . $k], 2)) ?>" inputmode="decimal" class="<?= in_array($k, $a['changed'], true) ? 'is-changed' : '' ?>">
+		<?php $depAuto = Savings::depreciationOn($o, ['savings_inputs' => null]); $depOn = Savings::depreciationOn($o, $d); ?>
+		<?php foreach (Savings::ASSUMPTIONS as $k => [, $label, $unit]): $depOnly = in_array($k, Savings::DEP_FIELDS, true); ?>
+			<label<?= $depOnly && !$depOn ? ' class="is-off"' : '' ?>><?= e($label) ?> (<?= e($unit) ?>)
+				<input type="text" name="savings[<?= e($k) ?>]"<?= $depOnly ? ' data-dep-only' . ($depOn ? '' : ' disabled') : '' ?> value="<?= isset($own[$k]) ? e($f($own[$k], 2)) : '' ?>" placeholder="<?= e($f($a['default_' . $k], 2)) ?>" inputmode="decimal" class="<?= in_array($k, $a['changed'], true) ? 'is-changed' : '' ?>">
 				<?php if ($k === 'dep_state_rate'): ?><small class="hint">The default is the personal income tax rate, which owners of LLCs, S corporations and sole proprietorships pay. A C corporation pays the corporate rate instead; type it here.</small><?php endif; ?>
 			</label>
 		<?php endforeach; ?>
-		<?php $depAuto = Savings::depreciationOn($o, ['savings_inputs' => null]); $depOn = Savings::depreciationOn($o, $d); ?>
 		<label>Depreciation
 			<select name="savings[dep]" data-dep-auto="<?= $depAuto ? 'on' : 'off' ?>">
 				<option value="" <?= !in_array($own['dep'] ?? '', ['on', 'off'], true) ? 'selected' : '' ?>>Automatic (<?= $depAuto ? 'on: business customer' : 'off: not a business customer' ?>)</option>
@@ -78,7 +78,7 @@ $model = Savings::model($d);
 		</label>
 		<?php $depDefault = Savings::depreciationMethod(['savings_inputs' => null]); ?>
 		<label<?= $depOn ? '' : ' class="is-off"' ?>>Federal depreciation
-			<select name="savings[dep_method]"<?= $depOn ? '' : ' disabled' ?> title="Used only when depreciation is counted">
+			<select name="savings[dep_method]" data-dep-only<?= $depOn ? '' : ' disabled' ?> title="Used only when depreciation is counted">
 				<?php foreach (Savings::DEP_METHODS as $k => $label): ?><option value="<?= e($k) ?>" <?= Savings::depreciationMethod($d) === $k ? 'selected' : '' ?>><?= e($label) ?><?= $k === $depDefault ? ' (Rates page)' : '' ?></option><?php endforeach; ?>
 			</select>
 		</label>

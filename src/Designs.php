@@ -579,7 +579,15 @@ final class Designs
 		$f['production_model'] = isset(Production::MODELS[$model]) ? $model : null;
 
 		$own = [];
+		$saved = json_decode((string) ($d['savings_inputs'] ?? ''), true) ?: [];
 		foreach (Savings::ASSUMPTIONS as $k => [, $label, $unit, $low, $high]) {
+			// Depreciation fields are disabled (not posted) while depreciation is off: keep the saved value
+			if (!array_key_exists($k, (array) ($post['savings'] ?? [])) && in_array($k, Savings::DEP_FIELDS, true)) {
+				if (isset($saved[$k])) {
+					$own[$k] = $saved[$k];
+				}
+				continue;
+			}
 			$v = $num($post['savings'][$k] ?? '', $label);
 			if ($v === null) {
 				continue;
@@ -599,7 +607,7 @@ final class Designs
 			$own['dep'] = $dep;
 		}
 		// The method select is disabled (not posted) while depreciation is off: keep the saved choice
-		$method = (string) ($post['savings']['dep_method'] ?? (json_decode((string) ($d['savings_inputs'] ?? ''), true)['dep_method'] ?? ''));
+		$method = (string) ($post['savings']['dep_method'] ?? ($saved['dep_method'] ?? ''));
 		// Kept only when it differs from the Rates page, so the build sheet follows the default otherwise
 		if (isset(Savings::DEP_METHODS[$method]) && $method !== Savings::depreciationMethod(['savings_inputs' => null])) {
 			$own['dep_method'] = $method;

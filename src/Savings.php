@@ -47,6 +47,9 @@ final class Savings
 		'dep_state_rate' => ['savings_dep_state_rate', 'Depreciation: state tax rate', '%', 0, 20],
 	];
 
+	/** Assumptions used only by depreciation: grayed out on the build sheet while it is off. */
+	public const DEP_FIELDS = ['dep_fed_rate', 'dep_state_rate'];
+
 	/** Depreciation for business customers: how the federal deduction is taken. */
 	public const DEP_METHODS = ['bonus' => 'Bonus: 100% in year one', 'macrs' => '5-year MACRS'];
 

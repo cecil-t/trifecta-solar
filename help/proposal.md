@@ -7,7 +7,7 @@ The customer's proposal: a PDF made from the build sheet. Once signed, with its 
 
 ## Where each part comes from
 
-- **The build sheet:** Proposal section (date, valid until, addressed-to contact, which production model leads, customer notes, financing estimate), Savings section (assumptions and incentives), Line items, Arrays, Warranty summary and Payment schedule.
+- **The build sheet:** Proposal section (date, valid until, addressed-to contact, which production model leads, customer notes, financing estimate), Savings & Incentives section (assumptions and incentives), Line items, Arrays, Warranty summary and Payment schedule.
 - **The opportunity:** customer, site and the utility bill.
 - **The site layout:** the aerial on the System Summary page, framed by the saved proposal view.
 - **Sales rates:** company block, cover letter, next steps and savings defaults.
