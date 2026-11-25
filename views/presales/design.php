@@ -107,7 +107,7 @@ $hasTrench = (bool) ($calc['trench_rows']['trenches'] || $calc['trench_rows']['c
 $foldTrench = !$hasTrench;
 $foldExtras = !array_filter($extras, static fn ($x) => trim((string) ($x['name'] ?? '')) !== '' || (float) ($x['price'] ?? 0) != 0);
 $foldContingency = !$calc['contingency_overridden'] && $d['contingency_override'] === null && !array_filter(array_map('intval', json_decode((string) ($d['contingency_manual'] ?? ''), true) ?: []));
-$always = ['modules', 'inverters', 'mlpe', 'racking', 'bos', 'permits', 'interconnection'];
+$always = ['modules', 'inverters', 'mlpe', 'racking', 'bos', 'equipment', 'permits', 'interconnection'];
 // One-line summaries for the folded section headers
 $eqCount = [];
 foreach ($calc['lines'] as $cl) {
